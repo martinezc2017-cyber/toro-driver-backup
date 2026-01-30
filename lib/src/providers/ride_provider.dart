@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show ChangeNotifier;
 import '../services/ride_service.dart';
 import '../services/driver_service.dart';
 import '../models/ride_model.dart';
@@ -46,18 +46,11 @@ class RideProvider with ChangeNotifier {
     _currentDriverId = driverId;  // Store for periodic refresh
     notifyListeners();
 
-    debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    debugPrint('RideProvider: 🚀 INITIALIZING for driver: $driverId');
-    debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-
     try {
       // Check driver status - only active drivers can see rides
       final driver = await _driverService.getDriver(driverId);
 
       if (driver == null) {
-        debugPrint('RideProvider: ⚠️ DRIVER NOT FOUND in database!');
-        debugPrint('RideProvider: → The driver record does not exist');
-        debugPrint('RideProvider: → Will NOT subscribe to rides');
         _status = RideProviderStatus.idle;
         notifyListeners();
         return;
@@ -65,56 +58,31 @@ class RideProvider with ChangeNotifier {
 
       final isActiveDriver = driver.status == DriverStatus.active;
 
-      debugPrint('RideProvider: 📋 DRIVER RECORD FOUND:');
-      debugPrint('RideProvider:   → ID: ${driver.id}');
-      debugPrint('RideProvider:   → Status: ${driver.status.value}');
-      debugPrint('RideProvider:   → Is Online: ${driver.isOnline}');
-      debugPrint('RideProvider:   → Is Active: ${driver.isActive}');
-      debugPrint('RideProvider:   → Can See Rides: $isActiveDriver');
-
-      if (!isActiveDriver) {
-        debugPrint('RideProvider: ❌ DRIVER STATUS IS NOT "active"');
-        debugPrint('RideProvider:   → Current status: "${driver.status.value}"');
-        debugPrint('RideProvider:   → To see rides, status must be "active"');
-        debugPrint('RideProvider:   → Ask admin to approve/activate the driver');
-      }
-
       // Check for active ride
       _activeRide = await _rideService.getActiveRide(driverId);
 
       if (_activeRide != null) {
-        debugPrint('RideProvider: 🚗 Found active ride: ${_activeRide!.id}');
         _status = RideProviderStatus.hasActiveRide;
         _subscribeToActiveRide(_activeRide!.id);
       } else {
-        debugPrint('RideProvider: 📭 No active ride found');
         _status = RideProviderStatus.idle;
         // Only subscribe to available rides if driver is active
         if (isActiveDriver) {
-          debugPrint('RideProvider: ✅ Driver is ACTIVE - subscribing to available rides...');
           _subscribeToAvailableRides();
-        } else {
-          debugPrint('RideProvider: ⛔ Driver is NOT active (status: ${driver.status.value})');
-          debugPrint('RideProvider: → Skipping ride subscription');
-          debugPrint('RideProvider: → Go to Admin Web → Conductores → Aprobar/Activar driver');
         }
       }
 
       // Load today's count
       _todayRidesCount = await _rideService.getTodayRidesCount(driverId);
-      debugPrint('RideProvider: 📊 Today rides count: $_todayRidesCount');
 
       _error = null;
-    } catch (e, stack) {
-      debugPrint('RideProvider: ❌ ERROR initializing: $e');
-      debugPrint('RideProvider: Stack: $stack');
+    } catch (e) {
       // Don't subscribe to rides on error - driver may not be active
       _status = RideProviderStatus.idle;
       _todayRidesCount = 0;
       _error = null; // Clear error
     }
 
-    debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     notifyListeners();
   }
 
@@ -153,19 +121,13 @@ class RideProvider with ChangeNotifier {
 
     _availableRides = [mockRide, ..._availableRides];
     notifyListeners();
-    debugPrint('RideProvider: New ride request simulated - ${mockRide.id}');
   }
 
   // Subscribe to available rides
   void _subscribeToAvailableRides() {
-    debugPrint('RideProvider: Setting up realtime subscription for available rides');
     _availableRidesSubscription?.cancel();
     _availableRidesSubscription = _rideService.streamAvailableRides().listen(
       (rides) {
-        debugPrint('RideProvider: Received ${rides.length} available rides from realtime');
-        if (rides.isNotEmpty) {
-          debugPrint('RideProvider: New ride! ID: ${rides.first.id}, Pickup: ${rides.first.pickupLocation.address}');
-        }
         _availableRides = rides;
         notifyListeners();
       },
@@ -190,12 +152,11 @@ class RideProvider with ChangeNotifier {
       try {
         final freshRides = await _rideService.getAvailableRides();
         if (_availableRides.length != freshRides.length) {
-          debugPrint('RideProvider: 🔄 Periodic refresh found ${freshRides.length} rides (was ${_availableRides.length})');
           _availableRides = freshRides;
           notifyListeners();
         }
       } catch (e) {
-        debugPrint('RideProvider: Periodic refresh error: $e');
+        // Ignore periodic refresh errors
       }
     });
   }
@@ -280,13 +241,11 @@ class RideProvider with ChangeNotifier {
     // Remove from local list
     _availableRides = _availableRides.where((r) => r.id != rideId).toList();
     notifyListeners();
-    debugPrint('RideProvider: Rejected ride $rideId');
   }
 
   // Track timeout when ride expires without response
   Future<void> trackRideTimeout(String rideId, String driverId, {String serviceType = 'ride'}) async {
     await _rideService.trackRideTimeout(rideId, driverId, serviceType: serviceType);
-    debugPrint('RideProvider: Tracked timeout for ride $rideId');
   }
 
   // Arrive at pickup

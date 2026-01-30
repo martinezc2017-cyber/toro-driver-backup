@@ -107,7 +107,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
       setState(() => _isLoading = false);
     } catch (e) {
-      debugPrint('Error loading history: $e');
+      //Error loading history: $e');
       // Load mock data for testing
       _loadMockData();
       setState(() => _isLoading = false);

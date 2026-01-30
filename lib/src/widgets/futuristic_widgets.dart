@@ -1200,14 +1200,14 @@ class _FireGlowButtonState extends State<FireGlowButton>
         animation: _glowAnimation,
         builder: (context, child) {
           return Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 // Icon with neon glow border
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     color: widget.isSelected
                         ? _neonPrimary.withValues(alpha: 0.12)
@@ -1243,7 +1243,7 @@ class _FireGlowButtonState extends State<FireGlowButton>
                         ? (widget.activeIcon ?? widget.icon)
                         : widget.icon,
                     color: widget.isSelected ? _neonBright : AppColors.textTertiary,
-                    size: 28,
+                    size: 24,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -1252,7 +1252,7 @@ class _FireGlowButtonState extends State<FireGlowButton>
                   widget.label,
                   style: TextStyle(
                     color: widget.isSelected ? _neonBright : AppColors.textTertiary,
-                    fontSize: 10,
+                    fontSize: 9,
                     fontWeight: widget.isSelected ? FontWeight.w600 : FontWeight.w400,
                     letterSpacing: 0.2,
                   ),

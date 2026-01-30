@@ -75,7 +75,7 @@ class _EarningsBreakdownScreenState extends ConsumerState<EarningsBreakdownScree
         _isLoading = false;
       });
     } catch (e) {
-      debugPrint('Error loading earnings breakdown: $e');
+      //Error loading earnings breakdown: $e');
       setState(() => _isLoading = false);
     }
   }

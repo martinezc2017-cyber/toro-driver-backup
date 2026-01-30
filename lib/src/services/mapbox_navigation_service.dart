@@ -33,7 +33,7 @@ class MapboxNavigationService {
   /// Initialize the Mapbox SDK
   Future<void> initialize() async {
     MapboxOptions.setAccessToken(_accessToken);
-    debugPrint('MapboxNavigationService: Initialized with access token');
+    // MapboxNavigationService: Initialized with access token');
   }
 
   /// Get route from Mapbox Directions API
@@ -54,10 +54,11 @@ class MapboxNavigationService {
         '&steps=true'
         '&voice_instructions=true'
         '&banner_instructions=true'
+        '&annotations=congestion' // Request traffic congestion data
         '&language=es' // Spanish instructions
       );
 
-      debugPrint('MapboxNavigationService: Fetching route from $url');
+      // MapboxNavigationService: Fetching route from $url');
 
       final response = await http.get(url);
 
@@ -70,10 +71,10 @@ class MapboxNavigationService {
         }
       }
 
-      debugPrint('MapboxNavigationService: Failed to get route - ${response.statusCode}');
+      // MapboxNavigationService: Failed to get route - ${response.statusCode}');
       return null;
     } catch (e) {
-      debugPrint('MapboxNavigationService: Error getting route - $e');
+      // MapboxNavigationService: Error getting route - $e');
       return null;
     }
   }
@@ -97,7 +98,7 @@ class MapboxNavigationService {
       );
 
       if (route == null) {
-        debugPrint('MapboxNavigationService: Could not get route');
+        // MapboxNavigationService: Could not get route');
         return false;
       }
 
@@ -124,10 +125,10 @@ class MapboxNavigationService {
         isNavigating: true,
       ));
 
-      debugPrint('MapboxNavigationService: Navigation started with ${_currentSteps.length} steps');
+      // MapboxNavigationService: Navigation started with ${_currentSteps.length} steps');
       return true;
     } catch (e) {
-      debugPrint('MapboxNavigationService: Error starting navigation - $e');
+      // MapboxNavigationService: Error starting navigation - $e');
       return false;
     }
   }
@@ -175,7 +176,7 @@ class MapboxNavigationService {
           ));
         }
       } catch (e) {
-        debugPrint('MapboxNavigationService: Location tracking error - $e');
+        // MapboxNavigationService: Location tracking error - $e');
       }
     });
   }
@@ -195,7 +196,7 @@ class MapboxNavigationService {
       // If within 20 meters of next maneuver, advance step
       if (distanceToNextManeuver < 20) {
         _currentStepIndex++;
-        debugPrint('MapboxNavigationService: Advanced to step $_currentStepIndex');
+        // MapboxNavigationService: Advanced to step $_currentStepIndex');
       }
     }
   }
@@ -213,7 +214,7 @@ class MapboxNavigationService {
     _currentStepIndex = 0;
     _locationTimer?.cancel();
     _navigationController?.close();
-    debugPrint('MapboxNavigationService: Navigation stopped');
+    // MapboxNavigationService: Navigation stopped');
   }
 
   /// Build a Mapbox map widget
@@ -261,7 +262,7 @@ class MapboxNavigationService {
   /// Dispose the navigation service
   void dispose() {
     stopNavigation();
-    debugPrint('MapboxNavigationService: Disposed');
+    // MapboxNavigationService: Disposed');
   }
 }
 
@@ -288,22 +289,34 @@ class MapboxRoute {
   final double duration; // seconds
   final List<NavigationStep> steps;
   final List<List<double>> geometry; // [lng, lat] pairs
+  final List<String> congestion; // Traffic congestion per segment
 
   MapboxRoute({
     required this.distance,
     required this.duration,
     required this.steps,
     required this.geometry,
+    this.congestion = const [],
   });
 
   factory MapboxRoute.fromJson(Map<String, dynamic> json) {
     final legs = json['legs'] as List? ?? [];
     final steps = <NavigationStep>[];
+    final congestionList = <String>[];
 
     for (final leg in legs) {
       final legSteps = leg['steps'] as List? ?? [];
       for (final step in legSteps) {
         steps.add(NavigationStep.fromJson(step));
+      }
+
+      // Extract congestion data from annotations
+      final annotations = leg['annotation'] as Map<String, dynamic>?;
+      if (annotations != null && annotations['congestion'] != null) {
+        final legCongestion = annotations['congestion'] as List? ?? [];
+        for (final item in legCongestion) {
+          congestionList.add(item.toString());
+        }
       }
     }
 
@@ -316,6 +329,7 @@ class MapboxRoute {
       geometry: geometryCoords.map<List<double>>((c) =>
         [(c[0] as num).toDouble(), (c[1] as num).toDouble()]
       ).toList(),
+      congestion: congestionList,
     );
   }
 }

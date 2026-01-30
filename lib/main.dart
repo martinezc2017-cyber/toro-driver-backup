@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:provider/provider.dart';
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 // Firebase disabled for Windows build - uncomment for mobile release
 // import 'package:firebase_core/firebase_core.dart';
 
@@ -43,7 +44,7 @@ import 'src/screens/language_screen.dart';
 import 'src/screens/login_screen.dart';
 import 'src/screens/auth_wrapper.dart';
 import 'src/screens/notifications_screen.dart';
-import 'src/screens/map_screen.dart';
+// map_screen.dart eliminado - usar home_screen.dart
 import 'src/screens/messages_screen.dart';
 import 'src/screens/bank_account_screen.dart';
 import 'src/screens/add_vehicle_screen.dart';
@@ -52,6 +53,9 @@ import 'src/widgets/animated_splash.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Set Mapbox access token BEFORE any MapWidget is created
+  MapboxOptions.setAccessToken('pk.eyJ1IjoibWFydGluZXpjMjAxNyIsImEiOiJjbWtocWtoZHIwbW1iM2dvdXZ3bmp0ZjBiIn0.MjYgv6DuvLTkrBVbrhtFbg');
 
   // Set system UI overlay style for futuristic dark theme
   SystemChrome.setSystemUIOverlayStyle(
@@ -95,7 +99,7 @@ Future<void> _initializeServices() async {
   try {
     await PaymentService.initialize();
   } catch (e) {
-    debugPrint('Stripe not configured, skipping: $e');
+    // Stripe not configured, skipping
   }
 
   // Initialize Haptic Service
@@ -149,7 +153,6 @@ class ToroDriverApp extends StatelessWidget {
           '/refer': (context) => const ReferScreen(),
           '/language': (context) => const LanguageScreen(),
           '/notifications': (context) => const NotificationsScreen(),
-          '/map': (context) => const MapScreen(),
           '/messages': (context) => const MessagesScreen(),
           '/bank-account': (context) => const BankAccountScreen(),
           '/add-vehicle': (context) => const AddVehicleScreen(),
@@ -377,7 +380,7 @@ class _SplashWrapperState extends State<_SplashWrapper> {
         await UpdateService.showUpdateDialog(context, updateInfo);
       }
     } catch (e) {
-      debugPrint('Error checking for updates: $e');
+      // Error checking for updates
     } finally {
       if (mounted) {
         setState(() => _checkingUpdate = false);

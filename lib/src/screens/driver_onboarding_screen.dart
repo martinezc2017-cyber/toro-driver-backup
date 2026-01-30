@@ -191,14 +191,14 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
         }
       }
     } catch (e) {
-      debugPrint('Error picking image: $e');
+      //Error picking image: $e');
     }
   }
 
   /// Extract data from document using ML Kit OCR (offline, free)
   Future<void> _verifyDocument(String type, String imagePath) async {
     if (!_ocrService.isAvailable) {
-      debugPrint('OCR not available on this platform');
+      //OCR not available on this platform');
       return;
     }
 
@@ -244,7 +244,7 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
           // Registration uses same insurance parser for VIN extraction
           final regData = await _ocrService.extractFromImage(XFile(imagePath));
           // Auto-fill VIN if found (but no separate state variable needed)
-          debugPrint('Registration OCR: VIN=${regData?.vin}');
+          //Registration OCR: VIN=${regData?.vin}');
           break;
       }
 
@@ -253,7 +253,7 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
         _showVerificationResult(type);
       }
     } catch (e) {
-      debugPrint('Document OCR error: $e');
+      //Document OCR error: $e');
     } finally {
       if (mounted) {
         setState(() => _isVerifying = false);
@@ -472,7 +472,7 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
 
       // Get current user from Supabase
       final currentUser = Supabase.instance.client.auth.currentUser;
-      debugPrint('ONBOARDING -> currentUser: ${currentUser?.email ?? "NULL"}');
+      //ONBOARDING -> currentUser: ${currentUser?.email ?? "NULL"}');
 
       if (currentUser == null) {
         _showError('User not authenticated. Please sign in again.');
@@ -483,7 +483,7 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
       // Use Supabase auth user ID as driver ID (must match for profile lookup)
       final driverId = currentUser.id;
       final now = DateTime.now();
-      debugPrint('ONBOARDING -> Creating driver with ID: $driverId');
+      //ONBOARDING -> Creating driver with ID: $driverId');
 
       // Create driver model with pending status
       final fullName = '${_firstNameController.text.trim()} ${_lastNameController.text.trim()}'.trim();
@@ -502,13 +502,13 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
         updatedAt: now,
       );
 
-      debugPrint('ONBOARDING -> Saving to database...');
+      //ONBOARDING -> Saving to database...');
       // Save driver to database
       final savedDriver = await driverService.createDriver(newDriver);
-      debugPrint('ONBOARDING -> Driver saved successfully: ${savedDriver.id}');
+      //ONBOARDING -> Driver saved successfully: ${savedDriver.id}');
 
       // Save W-9 Tax Information
-      debugPrint('ONBOARDING -> Saving W-9 tax info...');
+      //ONBOARDING -> Saving W-9 tax info...');
       await driverService.saveW9TaxInfo(
         driverId: savedDriver.id,
         ssn: _ssnController.text,
@@ -523,11 +523,11 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
         zipCode: _zipCodeController.text.trim(),
         certificationSigned: _certifyW9,
       );
-      debugPrint('ONBOARDING -> W-9 saved successfully');
+      //ONBOARDING -> W-9 saved successfully');
 
       // Update AuthProvider with the new driver
       authProvider.updateDriver(savedDriver);
-      debugPrint('ONBOARDING -> AuthProvider updated');
+      //ONBOARDING -> AuthProvider updated');
 
       if (mounted) {
         HapticService.success();
@@ -535,8 +535,8 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
         Navigator.of(context).pushNamedAndRemoveUntil('/pending', (route) => false);
       }
     } catch (e, stackTrace) {
-      debugPrint('ONBOARDING ERROR -> $e');
-      debugPrint('ONBOARDING STACK -> $stackTrace');
+      //ONBOARDING ERROR -> $e');
+      //ONBOARDING STACK -> $stackTrace');
       _showError('Registration failed: $e');
     } finally {
       if (mounted) {

@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -49,18 +48,18 @@ class LocationService {
         desiredAccuracy: LocationAccuracy.best,
         timeLimit: const Duration(seconds: 10),
       );
-      debugPrint('LocationService: Fresh GPS - lat: ${_currentPosition?.latitude}, lng: ${_currentPosition?.longitude}');
+      // LocationService: Fresh GPS - lat: ${_currentPosition?.latitude}, lng: ${_currentPosition?.longitude}');
     } catch (e) {
-      debugPrint('LocationService: GPS error: $e - trying alternative...');
+      // LocationService: GPS error: $e - trying alternative...');
       try {
         // Segundo intento con precisión alta
         _currentPosition = await Geolocator.getCurrentPosition(
           desiredAccuracy: LocationAccuracy.high,
           timeLimit: const Duration(seconds: 8),
         );
-        debugPrint('LocationService: Alternative GPS - lat: ${_currentPosition?.latitude}, lng: ${_currentPosition?.longitude}');
+        // LocationService: Alternative GPS - lat: ${_currentPosition?.latitude}, lng: ${_currentPosition?.longitude}');
       } catch (e2) {
-        debugPrint('LocationService: All GPS attempts failed: $e2');
+        // LocationService: All GPS attempts failed: $e2');
         // NO usar getLastKnownPosition - puede devolver ubicación del emulador
         _currentPosition = null;
       }
@@ -107,9 +106,9 @@ class LocationService {
         'updated_at': DateTime.now().toIso8601String(),
       }).eq('id', driverId);
 
-      debugPrint('LocationService: Updated driver location - lat: ${position.latitude}, lng: ${position.longitude}');
+      // LocationService: Updated driver location - lat: ${position.latitude}, lng: ${position.longitude}');
     } catch (e) {
-      debugPrint('LocationService: Error updating driver location: $e');
+      // LocationService: Error updating driver location: $e');
     }
 
     // Also try to update separate locations table (may not exist)
@@ -240,7 +239,7 @@ class LocationService {
       _updateRideLocation(rideId, position);
     });
 
-    debugPrint('LocationService: Started ride tracking for ride $rideId');
+    // LocationService: Started ride tracking for ride $rideId');
   }
 
   /// Stop ride tracking
@@ -248,7 +247,7 @@ class LocationService {
     _rideTrackingSubscription?.cancel();
     _rideTrackingSubscription = null;
     _activeRideId = null;
-    debugPrint('LocationService: Stopped ride tracking');
+    // LocationService: Stopped ride tracking');
   }
 
   /// Update ride location in deliveries table
@@ -263,7 +262,7 @@ class LocationService {
       }).eq('id', rideId);
     } catch (e) {
       // Columns might not exist - that's okay
-      debugPrint('LocationService: Error updating ride location: $e');
+      // LocationService: Error updating ride location: $e');
     }
   }
 
@@ -285,13 +284,13 @@ class LocationService {
     try {
       final position = await getCurrentPosition();
       if (position == null) {
-        debugPrint('LocationService: No GPS position, using fallback AZ');
+        // LocationService: No GPS position, using fallback AZ');
         return 'AZ';
       }
 
       return await getStateCodeFromCoordinates(position.latitude, position.longitude);
     } catch (e) {
-      debugPrint('LocationService: Error getting state from GPS: $e');
+      // LocationService: Error getting state from GPS: $e');
       return 'AZ';
     }
   }
@@ -304,7 +303,7 @@ class LocationService {
       final latDiff = (lat - _cachedStatePosition!.latitude).abs();
       final lngDiff = (lng - _cachedStatePosition!.longitude).abs();
       if (latDiff < 0.1 && lngDiff < 0.1) {
-        debugPrint('LocationService: Using cached state code: $_cachedStateCode');
+        // LocationService: Using cached state code: $_cachedStateCode');
         return _cachedStateCode!;
       }
     }
@@ -332,15 +331,15 @@ class LocationService {
             speedAccuracy: 0,
           );
 
-          debugPrint('LocationService: State code from coordinates: $stateCode');
+          // LocationService: State code from coordinates: $stateCode');
           return stateCode;
         }
       }
 
-      debugPrint('LocationService: Could not determine state, using fallback AZ');
+      // LocationService: Could not determine state, using fallback AZ');
       return 'AZ';
     } catch (e) {
-      debugPrint('LocationService: Reverse geocoding error: $e');
+      // LocationService: Reverse geocoding error: $e');
       return 'AZ';
     }
   }

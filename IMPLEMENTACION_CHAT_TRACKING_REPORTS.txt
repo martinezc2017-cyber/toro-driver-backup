@@ -1,0 +1,356 @@
+================================================================================
+TORO DRIVER APP - IMPLEMENTACION CHAT, TRACKING Y REPORTES
+Fecha: 2026-01-03
+================================================================================
+
+================================================================================
+1. CHAT REAL DRIVER-RIDER (Durante viaje activo)
+================================================================================
+
+DESCRIPCION:
+- Chat en tiempo real usando Supabase Realtime
+- Respuestas rapidas predefinidas
+- Envio de ubicacion en vivo
+- Llamada directa al pasajero
+- Solo disponible durante viaje activo
+
+ARCHIVOS MODIFICADOS/CREADOS:
+
+[PANTALLA DE CHAT]
+------------------------------------------------------------
+lib/src/screens/messages_screen.dart
+  - ChatService conectado a Supabase
+  - _initializeChat() - Crea/obtiene conversacion
+  - _sendMessage() - Envia mensaje a Supabase
+  - _sendQuickResponse() - Respuestas rapidas
+  - _sendLocation() - Envia ubicacion GPS real
+  - _callPassenger() - Llama al pasajero (url_launcher)
+  - Realtime con streamMessages()
+
+RESPUESTAS RAPIDAS:
+  - "On my way" (Voy en camino)
+  - "Arrived" (He llegado)
+  - "Waiting" (Te estoy esperando)
+  - "Traffic" (Hay trafico)
+  - "Can't find" (No encuentro la ubicacion)
+
+
+================================================================================
+2. TRACKING GPS EN TIEMPO REAL
+================================================================================
+
+DESCRIPCION:
+- Actualiza ubicacion cada 10 metros durante viaje activo
+- Guarda en driver_locations (ubicacion general del conductor)
+- Guarda en deliveries (para que rider vea en su app)
+- Mapa se actualiza en tiempo real
+- Ruta se recalcula cada 30 segundos
+
+ARCHIVOS MODIFICADOS:
+
+[SERVICIO DE UBICACION]
+------------------------------------------------------------
+lib/src/services/location_service.dart
+  METODOS NUEVOS:
+  - startRideTracking(driverId, rideId) - Inicia tracking para viaje
+  - stopRideTracking() - Detiene tracking
+  - _updateRideLocation() - Actualiza deliveries table
+
+  PROPIEDADES:
+  - isTrackingRide - Estado del tracking
+  - activeRideId - ID del viaje activo
+
+[PANTALLA DE NAVEGACION]
+------------------------------------------------------------
+lib/src/screens/navigation_screen.dart
+  CAMBIOS:
+  - _startRealTimeTracking() - Inicia tracking al abrir pantalla
+  - _stopRealTimeTracking() - Para tracking al cerrar
+  - _updateRouteIfNeeded() - Recalcula ruta cada 30s
+  - _locationSubscription - Escucha cambios de ubicacion
+  - Mapa se actualiza con nueva posicion en tiempo real
+
+COLUMNAS EN DELIVERIES (rider puede ver):
+  - driver_lat DOUBLE PRECISION
+  - driver_lng DOUBLE PRECISION
+  - driver_heading DOUBLE PRECISION
+  - driver_speed DOUBLE PRECISION
+  - driver_location_updated_at TIMESTAMPTZ
+
+
+================================================================================
+3. SISTEMA DE REPORTES (Reportar Rider)
+================================================================================
+
+DESCRIPCION:
+- Reportar pasajero problematico desde el chat
+- 8 razones predefinidas + texto libre
+- Incluye ubicacion GPS del reporte
+- Se guarda en Supabase para revision de admin
+
+ARCHIVOS CREADOS/MODIFICADOS:
+
+[SERVICIO DE REPORTES]
+------------------------------------------------------------
+lib/src/services/report_service.dart (NUEVO)
+  - submitRiderReport() - Guarda reporte en Supabase
+  - getDriverReports() - Historial de reportes del conductor
+  - getReport() - Obtiene reporte por ID
+  - updateReportStatus() - Admin actualiza estado
+
+[PANTALLA DE CHAT - BOTTOM SHEET]
+------------------------------------------------------------
+lib/src/screens/messages_screen.dart
+  - _ReportBottomSheet widget
+  - _ReportBottomSheetState con ReportService
+  - _submitReport() conectado a Supabase
+
+RAZONES DE REPORTE:
+  1. rude - Comportamiento grosero
+  2. no_show - No aparecio
+  3. wrong_address - Direccion incorrecta
+  4. unsafe - Me senti inseguro
+  5. intoxicated - Pasajero intoxicado
+  6. damage - Dano al vehiculo
+  7. harassment - Acoso
+  8. other - Otro (con texto libre)
+
+
+================================================================================
+4. MIGRACIONES SQL (Supabase)
+================================================================================
+
+ARCHIVO:
+------------------------------------------------------------
+supabase_migrations/002_chat_tracking_reports.sql
+
+TABLAS CREADAS:
+
+1. conversations
+   - id UUID PRIMARY KEY
+   - ride_id UUID NOT NULL
+   - driver_id UUID NOT NULL
+   - passenger_id UUID NOT NULL
+   - created_at, updated_at
+
+2. messages
+   - id UUID PRIMARY KEY
+   - conversation_id UUID (FK)
+   - sender_id, receiver_id UUID
+   - content TEXT
+   - type VARCHAR(20) - text, image, location, system, quickResponse
+   - latitude, longitude DOUBLE PRECISION
+   - is_read BOOLEAN
+   - read_at TIMESTAMPTZ
+   - created_at
+
+3. driver_locations
+   - driver_id UUID PRIMARY KEY
+   - latitude, longitude DOUBLE PRECISION
+   - heading, speed, accuracy DOUBLE PRECISION
+   - is_online BOOLEAN
+   - updated_at
+
+4. driver_reports
+   - id UUID PRIMARY KEY
+   - driver_id, ride_id, rider_id UUID
+   - rider_name VARCHAR(255)
+   - reason VARCHAR(50)
+   - details TEXT
+   - latitude, longitude DOUBLE PRECISION
+   - status VARCHAR(20) - pending, reviewed, resolved, dismissed
+   - admin_notes TEXT
+   - reviewed_at, reviewed_by
+   - created_at
+
+5. notifications
+   - id UUID PRIMARY KEY
+   - driver_id UUID
+   - type VARCHAR(50)
+   - title VARCHAR(255)
+   - body TEXT
+   - data JSONB
+   - is_read BOOLEAN
+   - read_at, created_at
+
+6. ratings
+   - id UUID PRIMARY KEY
+   - ride_id UUID
+   - rater_id, rated_id UUID
+   - rated_by VARCHAR(20) - driver/passenger
+   - rating DECIMAL(2,1)
+   - comment TEXT
+   - created_at
+
+COLUMNAS AGREGADAS A DELIVERIES:
+   - driver_lat, driver_lng, driver_heading, driver_speed
+   - driver_location_updated_at
+
+REALTIME HABILITADO:
+   - messages
+   - driver_locations
+   - notifications
+
+
+================================================================================
+5. INSTRUCCIONES DE INSTALACION
+================================================================================
+
+PASO 1: Ejecutar migracion SQL
+------------------------------------------------------------
+1. Abrir Supabase Dashboard
+2. Ir a SQL Editor
+3. Copiar contenido de:
+   supabase_migrations/002_chat_tracking_reports.sql
+4. Ejecutar
+
+PASO 2: Verificar tablas
+------------------------------------------------------------
+SELECT * FROM conversations LIMIT 1;
+SELECT * FROM messages LIMIT 1;
+SELECT * FROM driver_locations LIMIT 1;
+SELECT * FROM driver_reports LIMIT 1;
+
+PASO 3: Probar funcionalidad
+------------------------------------------------------------
+1. Aceptar un viaje
+2. Ir a navegacion (tracking se inicia automatico)
+3. Abrir chat (boton mensaje en navegacion)
+4. Enviar mensaje - debe aparecer en Supabase
+5. Reportar rider - debe guardarse en driver_reports
+
+
+================================================================================
+6. FLUJO DE USO
+================================================================================
+
+CHAT:
+1. Conductor acepta viaje
+2. Va a pantalla de navegacion
+3. Toca boton de chat (icono mensaje)
+4. Se abre chat con pasajero
+5. Puede enviar mensaje, respuesta rapida, o ubicacion
+6. Mensajes en tiempo real con Supabase Realtime
+
+TRACKING:
+1. Conductor acepta viaje
+2. Va a pantalla de navegacion
+3. Tracking GPS inicia automaticamente
+4. Ubicacion se actualiza cada 10 metros
+5. Rider puede ver ubicacion del conductor en su app
+6. Al completar/cancelar viaje, tracking se detiene
+
+REPORTAR:
+1. En el chat, tocar boton de bandera (esquina superior)
+2. Seleccionar razon del reporte
+3. Agregar detalles (opcional)
+4. Tocar "Submit Report"
+5. Admin puede revisar en dashboard
+
+
+================================================================================
+7. ARCHIVOS CLAVE
+================================================================================
+
+SERVICIOS:
+  lib/src/services/chat_service.dart      - Chat con Supabase
+  lib/src/services/location_service.dart  - Tracking GPS
+  lib/src/services/report_service.dart    - Reportes (NUEVO)
+
+PANTALLAS:
+  lib/src/screens/messages_screen.dart    - Chat completo
+  lib/src/screens/navigation_screen.dart  - Navegacion + tracking
+
+MODELOS:
+  lib/src/models/message_model.dart       - Modelo de mensaje
+
+SQL:
+  supabase_migrations/002_chat_tracking_reports.sql
+
+
+================================================================================
+8. NOTIFICATIONS SCREEN (Pantalla de Notificaciones)
+================================================================================
+
+DESCRIPCION:
+- Conectada a NotificationService y Supabase
+- Muestra notificaciones reales del conductor
+- Marca como leido individual o todas
+- Pull-to-refresh para actualizar
+- Iconos y colores segun tipo de notificacion
+
+ARCHIVOS MODIFICADOS:
+------------------------------------------------------------
+lib/src/screens/notifications_screen.dart
+  - _loadNotifications() - Carga desde Supabase
+  - _markAsRead() - Marca notificacion como leida
+  - _markAllAsRead() - Marca todas como leidas
+  - _handleNotificationTap() - Navega segun tipo
+
+TIPOS DE NOTIFICACION:
+  - ride_request - Nueva solicitud de viaje
+  - ride_update - Actualizacion de viaje
+  - message - Mensaje de pasajero
+  - earning - Ganancia recibida
+  - payout - Pago procesado
+  - system - Notificacion del sistema
+
+
+================================================================================
+9. HISTORY SCREEN (Pantalla de Historial)
+================================================================================
+
+DESCRIPCION:
+- Historial de viajes conectado a RideService
+- Historial de mensajes conectado a ChatService
+- Filtros por periodo (Hoy, Esta Semana, Este Mes, Todo)
+- Resumen de estadisticas en tiempo real
+- Detalle de cada viaje en bottom sheet
+
+ARCHIVOS MODIFICADOS:
+------------------------------------------------------------
+lib/src/screens/history_screen.dart
+  - _loadRides() - Carga viajes desde Supabase
+  - _loadConversations() - Carga conversaciones desde Supabase
+  - _calculateSummary() - Calcula estadisticas
+  - _showRideDetails() - Bottom sheet con detalles
+
+SERVICIOS UTILIZADOS:
+  - RideService.getRideHistory() - Historial de viajes
+  - ChatService.getRecentConversations() - Historial de chats
+
+DATOS MOSTRADOS:
+  - Lista de viajes completados/cancelados
+  - Ganancias por periodo
+  - Ruta (pickup -> dropoff)
+  - Duracion y distancia
+  - Propinas recibidas
+
+
+================================================================================
+10. RESUMEN DE PANTALLAS CONECTADAS A SUPABASE
+================================================================================
+
+[COMPLETO]
+  - home_screen.dart - Stats en tiempo real
+  - navigation_screen.dart - Tracking GPS
+  - messages_screen.dart - Chat real
+  - notifications_screen.dart - Notificaciones reales
+  - history_screen.dart - Historial de viajes/mensajes
+  - earnings_screen.dart - Ganancias
+  - profile_screen.dart - Perfil del conductor
+  - documents_screen.dart - Documentos
+
+[SERVICIOS IMPLEMENTADOS]
+  - RideService - Viajes
+  - ChatService - Mensajes
+  - NotificationService - Notificaciones
+  - LocationService - GPS/Tracking
+  - ReportService - Reportes
+  - DriverService - Perfil
+  - EarningsProvider - Ganancias
+
+
+================================================================================
+FIN DEL DOCUMENTO
+================================================================================

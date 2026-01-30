@@ -9,7 +9,6 @@ import '../providers/location_provider.dart';
 import '../models/ride_model.dart';
 import '../utils/app_colors.dart';
 import '../utils/haptic_service.dart';
-import 'navigation_map_screen.dart';
 
 /// Map Screen - Shows driver location and searching animation
 class MapScreen extends StatefulWidget {
@@ -752,12 +751,8 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                 GestureDetector(
                   onTap: () {
                     HapticService.mediumImpact();
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => NavigationMapScreen(ride: activeRide),
-                      ),
-                    );
+                    // Close map screen - HomeScreen will detect active ride via RideProvider
+                    Navigator.pop(context);
                   },
                   child: Container(
                     width: double.infinity,
@@ -839,12 +834,8 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
         if (driverId != null) {
           final success = await rideProvider.acceptRide(ride.id, driverId);
           if (mounted && success) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => NavigationMapScreen(ride: ride),
-              ),
-            );
+            // Close map screen - HomeScreen will detect active ride via RideProvider
+            Navigator.pop(context);
           }
         }
       },

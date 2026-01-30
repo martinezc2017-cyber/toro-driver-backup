@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import '../config/supabase_config.dart';
 import 'ticket_service.dart';
 
@@ -41,7 +40,7 @@ class SupportService {
             phone = driverData['phone'];
           }
         } catch (e) {
-          debugPrint('SupportService: Could not fetch driver info: $e');
+          // Could not fetch driver info
         }
       }
 
@@ -61,8 +60,6 @@ class SupportService {
       );
 
       if (ticket != null) {
-        debugPrint('SupportService: Help request created with ID: ${ticket['id']}');
-
         // Also log to audit for admin visibility
         await _logToAudit(
           driverId: driverId,
@@ -79,7 +76,6 @@ class SupportService {
 
       return false;
     } catch (e) {
-      debugPrint('SupportService: Error creating help request: $e');
       return false;
     }
   }
@@ -131,7 +127,7 @@ class SupportService {
         'created_at': DateTime.now().toIso8601String(),
       });
     } catch (e) {
-      debugPrint('SupportService: Could not log to audit: $e');
+      // Ignore audit log errors
     }
   }
 

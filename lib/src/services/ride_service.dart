@@ -45,8 +45,6 @@ class RideService {
         .order('created_at', ascending: false)
         .limit(20);
 
-    debugPrint('RideService: 📦 Deliveries (rides/packages) found: ${(deliveriesResponse as List).length}');
-
     // === 2. Query share_ride_bookings table (carpools) with rider profile ===
     List<dynamic> carpoolsResponse = [];
     try {
@@ -64,9 +62,8 @@ class RideService {
           .isFilter('driver_id', null)
           .order('pickup_time', ascending: true) // Ordenar por hora de pickup
           .limit(20);
-      debugPrint('RideService: 🚗 Carpools found: ${carpoolsResponse.length}');
     } catch (e) {
-      debugPrint('RideService: ⚠️ Error fetching carpools: $e');
+      // Error fetching carpools
     }
 
     // === 3. Combine and parse all rides ===
@@ -86,7 +83,6 @@ class RideService {
       rides.add(ride);
     }
 
-    debugPrint('RideService: ✅ Total available trips: ${rides.length}');
     return rides;
   }
 
@@ -99,25 +95,14 @@ class RideService {
       json['passenger_name'] = profiles['full_name'];
       json['passenger_image_url'] = profiles['avatar_url'];
       json['passenger_rating'] = profiles['rating'];
-      debugPrint('RideService: 👤 Rider profile: ${profiles['full_name']}');
     }
 
     final ride = RideModel.fromJson(json);
 
-    // DEBUG: Log raw JSON values for price fields
-    debugPrint('RideService: 📊 Raw JSON - type: ${json['service_type']}, estimated_price: ${json['estimated_price']}, total_price: ${json['total_price']}');
-    debugPrint('RideService: 📊 Parsed - type: ${ride.type}, fare: ${ride.fare}, driverEarnings: ${ride.driverEarnings}');
-
     // Calculate preview split if driverEarnings is 0
     if (ride.driverEarnings == 0 && ride.fare > 0) {
-      debugPrint('RideService: 🔄 Calculating preview split (fare > 0, earnings = 0)');
       final rideWithSplit = await _calculatePreviewSplit(ride);
-      debugPrint('RideService: ✅ After split - driverEarnings: ${rideWithSplit.driverEarnings}, platformFee: ${rideWithSplit.platformFee}');
       return rideWithSplit;
-    } else if (ride.fare == 0) {
-      debugPrint('RideService: ⚠️ Ride has fare = 0, cannot calculate split');
-    } else {
-      debugPrint('RideService: ✅ Ride already has driverEarnings: ${ride.driverEarnings}');
     }
     return ride;
   }
@@ -200,8 +185,6 @@ class RideService {
       throw Exception('Ride not found after accept');
     } catch (e) {
       // Fallback to direct update if function doesn't exist
-      debugPrint('RideService: accept_ride RPC failed, using fallback: $e');
-
       // Determine which table to update based on service type
       if (serviceType == 'carpool') {
         // Update share_ride_bookings for carpools
@@ -274,9 +257,7 @@ class RideService {
           'responded_at': DateTime.now().toIso8601String(),
         });
       }
-      debugPrint('RideService: Tracked ride response - $status for $referenceId');
     } catch (e) {
-      debugPrint('RideService: Error tracking ride response: $e');
       // Don't throw - this is non-critical for the ride flow
     }
   }
@@ -293,7 +274,6 @@ class RideService {
 
       return response['id'] as String;
     } catch (e) {
-      debugPrint('RideService: Error creating ride request: $e');
       return null;
     }
   }
@@ -359,7 +339,6 @@ class RideService {
           ride.pickupLocation.longitude,
         );
       }
-      debugPrint('RideService: Using stateCode=$stateCode for pricing');
 
       StatePricing statePricing;
       try {
@@ -367,8 +346,7 @@ class RideService {
           stateCode: stateCode,
           bookingType: BookingType.ride,
         );
-      } on NoPricingConfiguredError catch (e) {
-        debugPrint('RideService: ⚠️ ${e.message}');
+      } on NoPricingConfiguredError {
         rethrow; // Propagar error - no hay fallback
       }
 
@@ -376,8 +354,6 @@ class RideService {
       final platformFeePercent = statePricing.platformPercentage;
       final taxPercent = statePricing.taxPercentage;
       final insurancePercent = statePricing.insurancePercentage;
-
-      debugPrint('RideService: State=$stateCode, Driver=$driverCommissionPercent%, Platform=${platformFeePercent.toStringAsFixed(1)}%, Tax=${taxPercent.toStringAsFixed(1)}%, Insurance=${insurancePercent.toStringAsFixed(1)}%');
 
       // Calculate driver earnings using ADMIN-defined percentage + tip
       final fare = ride.fare > 0 ? ride.fare : statePricing.minimumFare;
@@ -429,10 +405,6 @@ class RideService {
       if (tip != null && tip > 0) {
         updateData['tip_amount'] = tip;
       }
-
-      debugPrint('RideService: Completing ride $rideId - State: $stateCode, Type: ${ride.type}');
-      debugPrint('  Fare: \$${fare.toStringAsFixed(2)} | Driver: \$${totalDriverEarnings.toStringAsFixed(2)} ($driverCommissionPercent%)');
-      debugPrint('  Platform: \$${platformAmount.toStringAsFixed(2)} | Tax: \$${taxAmount.toStringAsFixed(2)} | Insurance: \$${insuranceAmount.toStringAsFixed(2)}');
 
       // Update the correct table based on ride type
       Map<String, dynamic> response;
@@ -492,15 +464,10 @@ class RideService {
     String bookingType = 'ride',
   }) async {
     if (paymentIntentId == null || paymentIntentId.isEmpty) {
-      debugPrint('RideService: ⚠️ No payment_intent_id - skipping Stripe capture');
-      debugPrint('RideService: → This might be a test ride or payment was already processed');
       return;
     }
 
     try {
-      debugPrint('RideService: 💳 Capturing Stripe payment...');
-      debugPrint('  PaymentIntent: $paymentIntentId');
-      debugPrint('  Amount: \$${amount.toStringAsFixed(2)} + Tip: \$${tipAmount.toStringAsFixed(2)}');
 
       final captureResponse = await _client.functions.invoke(
         'stripe-capture-payment',
@@ -519,21 +486,10 @@ class RideService {
         },
       );
 
-      if (captureResponse.status == 200) {
-        final data = captureResponse.data;
-        debugPrint('RideService: ✅ Stripe payment captured successfully!');
-        debugPrint('  Charge ID: ${data['chargeId']}');
-        debugPrint('  Amount: \$${data['amountCaptured']}');
-        if (data['splitProcessed'] == true) {
-          debugPrint('  Split processed: ✅');
-        }
-      } else {
-        debugPrint('RideService: ⚠️ Stripe capture returned status ${captureResponse.status}');
-        debugPrint('  Response: ${captureResponse.data}');
+      if (captureResponse.status != 200) {
         // Don't throw - ride is already marked complete, payment can be retried
       }
     } catch (e) {
-      debugPrint('RideService: ❌ Error capturing Stripe payment: $e');
       // Don't throw - ride is already marked complete
       // Payment capture can be retried via admin or cron job
     }
@@ -555,7 +511,6 @@ class RideService {
         .select()
         .single();
 
-    debugPrint('RideService: ✅ Ride $rideId released back to pool (driver cancelled)');
     return RideModel.fromJson(response);
   }
 
@@ -576,7 +531,6 @@ class RideService {
       if (response == null) return null;
       return RideModel.fromJson(response);
     } catch (e) {
-      debugPrint('RideService: Error getting active ride: $e');
       return null;
     }
   }
@@ -609,7 +563,6 @@ class RideService {
 
       return (response as List).map((json) => RideModel.fromJson(json)).toList();
     } catch (e) {
-      debugPrint('RideService: Error getting ride history: $e');
       return [];
     }
   }
@@ -657,7 +610,6 @@ class RideService {
     // Apply time multiplier
     fare *= StatePricingService.instance.getTimeMultiplier(pricing);
 
-    debugPrint('RideService: Calculated fare for $resolvedStateCode: \$${fare.toStringAsFixed(2)}');
     return fare;
   }
 
@@ -684,8 +636,6 @@ class RideService {
   // FIX: Listen to ALL status changes to detect cancellations, then filter locally
   // FIX: Calculate preview split for each ride using pricing_config
   Stream<List<RideModel>> streamAvailableRides() {
-    debugPrint('RideService: Starting stream on table: ${SupabaseConfig.packageDeliveriesTable}');
-
     // Also fetch initial data to see if there are pending rides
     _fetchInitialPendingRides();
 
@@ -699,21 +649,10 @@ class RideService {
         .asyncMap((dynamic data) async {
           // Handle null or non-list data
           if (data == null) {
-            debugPrint('RideService: Stream returned null data');
             return <RideModel>[];
           }
 
           final List<dynamic> dataList = data is List ? data : [];
-          debugPrint('RideService: 🔥 STREAM DATA: ${dataList.length} total deliveries');
-
-          if (dataList.isNotEmpty) {
-            final statusCounts = <String, int>{};
-            for (var item in dataList) {
-              final status = item['status'] as String? ?? 'unknown';
-              statusCounts[status] = (statusCounts[status] ?? 0) + 1;
-            }
-            debugPrint('RideService: Status breakdown: $statusCounts');
-          }
 
           try {
             // FIXED: Filter locally for pending rides without driver
@@ -724,34 +663,21 @@ class RideService {
               return status == 'pending' && driverId == null;
             }).toList();
 
-            debugPrint('RideService: ✅ Available (pending + no driver): ${filtered.length} rides');
-
             // Parse rides and calculate preview split for each
             final rides = <RideModel>[];
             for (final json in filtered) {
               final ride = RideModel.fromJson(json as Map<String, dynamic>);
 
-              // DEBUG: Log raw JSON values for price fields
-              debugPrint('RideService: 📊 Raw JSON - estimated_price: ${json['estimated_price']}, total_price: ${json['total_price']}, fare: ${json['fare']}');
-              debugPrint('RideService: 📊 Parsed - fare: ${ride.fare}, driverEarnings: ${ride.driverEarnings}');
-
               // Calculate preview split if driverEarnings is 0
               if (ride.driverEarnings == 0 && ride.fare > 0) {
-                debugPrint('RideService: 🔄 Calculating preview split (fare > 0, earnings = 0)');
                 final rideWithSplit = await _calculatePreviewSplit(ride);
-                debugPrint('RideService: ✅ After split - driverEarnings: ${rideWithSplit.driverEarnings}');
                 rides.add(rideWithSplit);
-              } else if (ride.fare == 0) {
-                debugPrint('RideService: ⚠️ Ride has fare = 0, cannot calculate split');
-                rides.add(ride);
               } else {
-                debugPrint('RideService: ✅ Ride already has driverEarnings: ${ride.driverEarnings}');
                 rides.add(ride);
               }
             }
             return rides;
           } catch (e) {
-            debugPrint('RideService: Error parsing deliveries: $e');
             return <RideModel>[];
           }
         });
@@ -776,7 +702,7 @@ class RideService {
             ride.pickupLocation.longitude,
           );
         } catch (e) {
-          debugPrint('RideService: Error getting state code, using AZ: $e');
+          // Error getting state code, using AZ
         }
       }
 
@@ -795,17 +721,11 @@ class RideService {
       final driverEarnings = fareAfterTncTax * (pricing.driverPercentage / 100);
       final platformFee = fareAfterTncTax * (pricing.platformPercentage / 100);
 
-      debugPrint('RideService: 💰 Preview split calculated - Fare: \$${ride.fare.toStringAsFixed(2)}, '
-          'TNC Tax: \$${tncTax.toStringAsFixed(2)}, Fare after TNC: \$${fareAfterTncTax.toStringAsFixed(2)}, '
-          'Driver: \$${driverEarnings.toStringAsFixed(2)} (${pricing.driverPercentage}%), '
-          'Platform: \$${platformFee.toStringAsFixed(2)} (${pricing.platformPercentage}%)');
-
       return ride.copyWith(
         driverEarnings: driverEarnings,
         platformFee: platformFee,
       );
     } catch (e) {
-      debugPrint('RideService: ⚠️ Error calculating preview split: $e');
       // REGLA: NO hardcodear porcentajes. Reintentar con AZ como fallback.
       try {
         final fallbackPricing = await StatePricingService.instance.getPricing(
@@ -817,14 +737,12 @@ class RideService {
         final fareAfterTncTax = (ride.fare - tncTax).clamp(0.0, double.infinity);
         final driverEarnings = fareAfterTncTax * (fallbackPricing.driverPercentage / 100);
         final platformFee = fareAfterTncTax * (fallbackPricing.platformPercentage / 100);
-        debugPrint('RideService: 💰 Using AZ fallback pricing - TNC Tax: \$${tncTax.toStringAsFixed(2)}, Driver: ${fallbackPricing.driverPercentage}%');
         return ride.copyWith(
           driverEarnings: driverEarnings,
           platformFee: platformFee,
         );
       } catch (fallbackError) {
         // Si ni AZ funciona, retornar sin split (UI mostrará solo fare)
-        debugPrint('RideService: ❌ No pricing available, showing fare only');
         return ride;
       }
     }
@@ -833,30 +751,14 @@ class RideService {
   // Fetch initial pending rides to check database
   Future<void> _fetchInitialPendingRides() async {
     try {
-      debugPrint('RideService: 📦 Checking ALL deliveries in database...');
       // First fetch ALL to see what statuses exist
-      final allResponse = await _client
+      await _client
           .from(SupabaseConfig.packageDeliveriesTable)
           .select()
           .order('created_at', ascending: false)
           .limit(10);
-
-      final List<dynamic> allData = allResponse as List;
-      debugPrint('RideService: 📊 Total deliveries found: ${allData.length}');
-
-      for (var item in allData) {
-        debugPrint('RideService: → ID: ${item['id']}, Status: "${item['status']}", Driver: ${item['driver_id']}');
-      }
-
-      // Now filter for pending
-      final pendingCount = allData.where((d) => d['status'] == 'pending' && d['driver_id'] == null).length;
-      debugPrint('RideService: ✅ Available (pending, no driver): $pendingCount');
-
-      if (allData.isEmpty) {
-        debugPrint('RideService: ⚠️ No deliveries in table!');
-      }
     } catch (e) {
-      debugPrint('RideService: ❌ Error fetching rides: $e');
+      // Error fetching rides
     }
   }
 
@@ -888,7 +790,6 @@ class RideService {
 
       return (response as List).length;
     } catch (e) {
-      debugPrint('RideService: Error getting today rides count: $e');
       return 0;
     }
   }
@@ -909,8 +810,6 @@ class RideService {
   // ============================================================================
   Future<Map<String, dynamic>?> createTestDelivery() async {
     try {
-      debugPrint('RideService: 🧪 Creating test delivery...');
-
       // Only include columns that exist in the deliveries table
       final testData = {
         'user_id': null,
@@ -932,10 +831,8 @@ class RideService {
           .select()
           .single();
 
-      debugPrint('RideService: ✅ Test delivery created: ${response['id']}');
       return response;
     } catch (e) {
-      debugPrint('RideService: ❌ Error creating test delivery: $e');
       return null;
     }
   }
@@ -947,9 +844,8 @@ class RideService {
           .from(SupabaseConfig.packageDeliveriesTable)
           .delete()
           .eq('notes', 'Test delivery - Paquete de prueba');
-      debugPrint('RideService: 🗑️ Test deliveries deleted');
     } catch (e) {
-      debugPrint('RideService: Error deleting test deliveries: $e');
+      // Error deleting test deliveries
     }
   }
 }

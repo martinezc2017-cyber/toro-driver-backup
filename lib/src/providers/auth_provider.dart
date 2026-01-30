@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart' show kIsWeb, debugPrint, ChangeNotifier;
+import 'package:flutter/foundation.dart' show kIsWeb, ChangeNotifier;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/auth_service.dart';
 import '../models/driver_model.dart';
@@ -27,7 +27,6 @@ class AuthProvider with ChangeNotifier {
   String? get driverId => _driver?.id;
 
   AuthProvider() {
-    debugPrint('🔴 AUTH PROVIDER CONSTRUCTOR CALLED');
     _init();
   }
 
@@ -43,22 +42,15 @@ class AuthProvider with ChangeNotifier {
         final uri = Uri.base;
         final fragment = uri.fragment;
         hasOAuthCallback = fragment.contains('access_token=');
-        debugPrint('AUTH INIT -> URL fragment has access_token: $hasOAuthCallback');
-        debugPrint('AUTH INIT -> Full URL: ${uri.toString()}');
       } catch (e) {
-        debugPrint('AUTH INIT -> Error checking URL: $e');
+        // Ignore URL check errors
       }
     }
 
     // Wait longer if OAuth callback detected, as Supabase needs time to process the token
     final delay = hasOAuthCallback ? 1500 : 500;
-    debugPrint('AUTH INIT -> Waiting ${delay}ms for session...');
 
     Future.delayed(Duration(milliseconds: delay), () async {
-      debugPrint('AUTH INIT -> After delay, checking auth...');
-      debugPrint('AUTH INIT -> isAuthenticated: ${_authService.isAuthenticated}');
-      debugPrint('AUTH INIT -> currentUser: ${_authService.currentUser?.email ?? "null"}');
-
       if (_status == AuthStatus.initial) {
         // Check if already authenticated
         if (_authService.isAuthenticated) {
@@ -66,7 +58,6 @@ class AuthProvider with ChangeNotifier {
         } else {
           // If OAuth callback detected but still not authenticated, try to recover session
           if (hasOAuthCallback) {
-            debugPrint('AUTH INIT -> OAuth callback detected but not authenticated, retrying...');
             await Future.delayed(const Duration(milliseconds: 1000));
             if (_authService.isAuthenticated) {
               await _loadDriverProfile(caller: '_init_oauth_retry');
@@ -83,37 +74,24 @@ class AuthProvider with ChangeNotifier {
   Future<void> _handleAuthStateChange(AuthState authState) async {
     final session = authState.session;
     final event = authState.event;
-    debugPrint('AUTH STATE CHANGE -> session: ${session != null ? "EXISTS" : "NULL"}');
-    debugPrint('AUTH STATE CHANGE -> event: $event');
-    debugPrint('AUTH STATE CHANGE -> current status: $_status');
 
     if (session != null) {
-      debugPrint('AUTH STATE CHANGE -> userId: ${session.user.id}');
-      debugPrint('AUTH STATE CHANGE -> email: ${session.user.email}');
-
       // Prevent infinite loop - only load if not already authenticated with same user
       if (_status != AuthStatus.authenticated || _driver?.id != session.user.id) {
-        debugPrint('AUTH STATE CHANGE -> Loading driver profile...');
         await _loadDriverProfile(caller: '_handleAuthStateChange');
-      } else {
-        debugPrint('AUTH STATE CHANGE -> Already authenticated with this user, skipping load');
       }
     } else {
       // Only set unauthenticated on explicit sign out event
       // For other events (like initial), let the delayed check handle it
       if (event == AuthChangeEvent.signedOut) {
-        debugPrint('AUTH STATE CHANGE -> Signed out, clearing state');
         _status = AuthStatus.unauthenticated;
         _driver = null;
         notifyListeners();
-      } else {
-        debugPrint('AUTH STATE CHANGE -> Null session with event $event, ignoring (waiting for token processing)');
       }
     }
   }
 
   Future<void> _loadDriverProfile({String caller = 'unknown'}) async {
-    debugPrint('🟢 LOAD DRIVER PROFILE -> Starting from: $caller');
     try {
       // Only change to loading if not already authenticated (avoid unmounting screens during refresh)
       if (_status != AuthStatus.authenticated) {
@@ -122,16 +100,12 @@ class AuthProvider with ChangeNotifier {
       }
 
       _driver = await _authService.getCurrentDriverProfile();
-      debugPrint('LOAD DRIVER PROFILE -> driver: ${_driver != null ? "EXISTS" : "NULL"}');
-      debugPrint('LOAD DRIVER PROFILE -> isAuthenticated: ${_authService.isAuthenticated}');
 
       // User is authenticated even if driver profile doesn't exist yet
       // (new users need to register as driver)
       _status = _authService.isAuthenticated ? AuthStatus.authenticated : AuthStatus.unauthenticated;
-      debugPrint('LOAD DRIVER PROFILE -> final status: $_status');
       _error = null;
     } catch (e) {
-      debugPrint('LOAD DRIVER PROFILE -> ERROR: $e');
       _error = e.toString();
       _status = AuthStatus.unauthenticated;
     }

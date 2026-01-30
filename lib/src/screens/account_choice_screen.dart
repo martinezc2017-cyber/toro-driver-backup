@@ -41,7 +41,6 @@ class _AccountChoiceScreenState extends State<AccountChoiceScreen> {
         await context.read<AuthProvider>().refreshProfile();
       }
     } catch (e) {
-      debugPrint('Error creating driver record: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

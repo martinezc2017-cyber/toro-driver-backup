@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import '../config/supabase_config.dart';
 
 /// Service for logging audit events to Supabase
@@ -29,10 +28,10 @@ class AuditService {
         'created_at': DateTime.now().toIso8601String(),
       });
 
-      debugPrint('[AUDIT] Event logged: $eventType - $entityType - $entityId');
+      // [AUDIT] Event logged: $eventType - $entityType - $entityId');
     } catch (e) {
       // Don't throw - audit logging should never block the app
-      debugPrint('[AUDIT] Error logging event: $e');
+      // [AUDIT] Error logging event: $e');
     }
   }
 

@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -28,7 +28,7 @@ class DocumentOcrService {
   /// Extract text from an image file using ML Kit
   Future<InsuranceCardData?> extractFromImage(XFile image) async {
     if (!isAvailable) {
-      debugPrint('DocumentOCR: ML Kit not available on this platform');
+      // DocumentOCR: ML Kit not available on this platform');
       return null;
     }
 
@@ -37,16 +37,16 @@ class DocumentOcrService {
       final recognizedText = await _textRecognizer.processImage(inputImage);
 
       if (recognizedText.text.isEmpty) {
-        debugPrint('DocumentOCR: No text found in image');
+        // DocumentOCR: No text found in image');
         return null;
       }
 
-      debugPrint('DocumentOCR: Extracted ${recognizedText.text.length} characters');
+      // DocumentOCR: Extracted ${recognizedText.text.length} characters');
       final data = _parseInsuranceCard(recognizedText.text);
       lastExtractedData = data;
       return data;
     } catch (e) {
-      debugPrint('DocumentOCR Error: $e');
+      // DocumentOCR Error: $e');
       return null;
     }
   }
@@ -54,7 +54,7 @@ class DocumentOcrService {
   /// Extract text from driver's license
   Future<DriverLicenseData?> extractFromLicense(XFile image) async {
     if (!isAvailable) {
-      debugPrint('DocumentOCR: ML Kit not available on this platform');
+      // DocumentOCR: ML Kit not available on this platform');
       return null;
     }
 
@@ -63,16 +63,16 @@ class DocumentOcrService {
       final recognizedText = await _textRecognizer.processImage(inputImage);
 
       if (recognizedText.text.isEmpty) {
-        debugPrint('DocumentOCR: No text found in license image');
+        // DocumentOCR: No text found in license image');
         return null;
       }
 
-      debugPrint('DocumentOCR License: Extracted ${recognizedText.text.length} characters');
+      // DocumentOCR License: Extracted ${recognizedText.text.length} characters');
       final data = _parseDriverLicense(recognizedText.text);
       lastExtractedLicense = data;
       return data;
     } catch (e) {
-      debugPrint('DocumentOCR License Error: $e');
+      // DocumentOCR License Error: $e');
       return null;
     }
   }

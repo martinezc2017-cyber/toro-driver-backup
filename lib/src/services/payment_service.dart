@@ -1,5 +1,4 @@
 import 'dart:math';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
@@ -26,8 +25,6 @@ class PaymentService {
     }
 
     // ⚠️ NO FALLBACK - Si no hay driver_earnings, el Edge Function no procesó el split
-    // Esto indica un problema de datos que debe investigarse
-    debugPrint('PaymentService: ⚠️ WARNING - no driver_earnings for ${item['id']} - check stripe-process-split');
     return 0;
   }
 
@@ -405,7 +402,7 @@ class PaymentService {
       }
 
     } catch (e) {
-      debugPrint('PaymentService: Error getting earnings: $e');
+      // Error getting earnings
     }
 
     return EarningsSummary(
@@ -498,7 +495,6 @@ class PaymentService {
         );
       }).toList();
     } catch (e) {
-      debugPrint('PaymentService: Error getting earnings history: $e');
       return [];
     }
   }
@@ -777,7 +773,6 @@ class PaymentService {
         );
       }).toList();
     } catch (e) {
-      debugPrint('PaymentService: Error getting rankings: $e');
       return [];
     }
   }
@@ -803,7 +798,6 @@ class PaymentService {
         );
       }).toList();
     } catch (e) {
-      debugPrint('PaymentService: Error getting state rankings: $e');
       return [];
     }
   }
@@ -824,7 +818,6 @@ class PaymentService {
         driver: response['drivers'] as Map<String, dynamic>?,
       );
     } catch (e) {
-      debugPrint('PaymentService: Error getting driver ranking: $e');
       return null;
     }
   }

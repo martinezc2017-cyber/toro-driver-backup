@@ -81,14 +81,14 @@ class _RankingScreenState extends State<RankingScreen> with SingleTickerProvider
         final myStateFromDB = driver.state ?? 'Unknown';
 
         // Load rankings in parallel
-        final results = await Future.wait([
+        final results = await Future.wait<List<RankedDriver>>([
           RankingService.getRanking(period: 'alltime', stateFilter: myStateFromDB, limit: 100),  // All drivers from my state
           RankingService.getRanking(period: 'alltime', limit: 10),  // Top 10 USA
         ]);
 
         setState(() {
-          _stateDrivers = results[0] as List<RankedDriver>;
-          _usaTop10 = results[1] as List<RankedDriver>;
+          _stateDrivers = results[0];
+          _usaTop10 = results[1];
 
           // My position data
           _myState = myStateFromDB;
@@ -107,7 +107,7 @@ class _RankingScreenState extends State<RankingScreen> with SingleTickerProvider
         setState(() => _isLoading = false);
       }
     } catch (e) {
-      debugPrint('Error loading ranking data: $e');
+      //Error loading ranking data: $e');
       setState(() => _isLoading = false);
     }
   }

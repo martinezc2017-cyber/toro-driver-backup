@@ -143,7 +143,7 @@ class _DocumentsScreenState extends State<DocumentsScreen>
 
       setState(() => _isLoading = false);
     } catch (e) {
-      debugPrint('DocumentsScreen: Error loading documents: $e');
+      //DocumentsScreen: Error loading documents: $e');
       _personalDocs = [
         DocumentItem('doc_drivers_license'.tr(), 'doc_not_uploaded'.tr(), 'doc_required'.tr(), Icons.credit_card, DocumentStatus.missing),
       ];
@@ -255,7 +255,7 @@ class _DocumentsScreenState extends State<DocumentsScreen>
         }
       }
     } catch (e) {
-      debugPrint('Error checking driver activation: $e');
+      //Error checking driver activation: $e');
     }
   }
 

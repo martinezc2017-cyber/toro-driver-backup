@@ -46,7 +46,7 @@ class _RidesScreenState extends State<RidesScreen>
       }
     } catch (e) {
       // Keep default if config not available
-      debugPrint('Failed to load pricing config: $e');
+      //Failed to load pricing config: $e');
     }
   }
 

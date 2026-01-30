@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
 
@@ -34,7 +33,6 @@ class TicketService {
 
       return response;
     } catch (e) {
-      debugPrint('Error creating ticket: $e');
       return null;
     }
   }
@@ -51,7 +49,6 @@ class TicketService {
 
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
-      debugPrint('Error getting tickets: $e');
       return [];
     }
   }
@@ -67,7 +64,6 @@ class TicketService {
 
       return response;
     } catch (e) {
-      debugPrint('Error getting ticket: $e');
       return null;
     }
   }
@@ -101,7 +97,6 @@ class TicketService {
 
       return (response as List).length;
     } catch (e) {
-      debugPrint('Error getting open tickets count: $e');
       return 0;
     }
   }
@@ -119,7 +114,6 @@ class TicketService {
 
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
-      debugPrint('Error getting recent trips: $e');
       return [];
     }
   }

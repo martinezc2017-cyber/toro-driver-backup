@@ -288,7 +288,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
         }
       }
     } catch (e) {
-      debugPrint('OCR Error: $e');
+      //OCR Error: $e');
       // Don't show error to user - manual entry is still available
     } finally {
       if (mounted) {
@@ -321,7 +321,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
 
       return url;
     } catch (e) {
-      debugPrint('Upload error: $e');
+      //Upload error: $e');
       return null;
     }
   }

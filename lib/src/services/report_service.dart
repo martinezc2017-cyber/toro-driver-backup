@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
 
@@ -37,8 +36,6 @@ class ReportService {
 
       return response;
     } catch (e) {
-      // If table doesn't exist, try creating a minimal record
-      debugPrint('ReportService: Error submitting report: $e');
       rethrow;
     }
   }
@@ -54,7 +51,6 @@ class ReportService {
 
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
-      debugPrint('ReportService: Error getting reports: $e');
       return [];
     }
   }
@@ -70,7 +66,6 @@ class ReportService {
 
       return response;
     } catch (e) {
-      debugPrint('ReportService: Error getting report: $e');
       return null;
     }
   }

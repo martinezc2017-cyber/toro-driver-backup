@@ -80,7 +80,7 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      debugPrint('Error loading cash out data: $e');
+      //Error loading cash out data: $e');
       setState(() => _isLoading = false);
     }
   }

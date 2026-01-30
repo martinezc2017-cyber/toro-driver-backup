@@ -47,7 +47,7 @@ class _VehicleScreenState extends State<VehicleScreen> {
         });
       }
     } catch (e) {
-      debugPrint('VehicleScreen: Error loading vehicle: $e');
+      //VehicleScreen: Error loading vehicle: $e');
       setState(() => _isLoading = false);
     }
   }

@@ -80,7 +80,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
       setState(() => _isLoading = false);
       _scrollToBottom();
     } catch (e) {
-      debugPrint('Chat init error: $e');
+      //Chat init error: $e');
       setState(() => _isLoading = false);
     }
   }
@@ -120,7 +120,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
         content: text,
       );
     } catch (e) {
-      debugPrint('Send message error: $e');
+      //Send message error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Error sending message')),
@@ -151,7 +151,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
         responseType: type,
       );
     } catch (e) {
-      debugPrint('Quick response error: $e');
+      //Quick response error: $e');
     }
   }
 
@@ -190,7 +190,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
         longitude: position.longitude,
       );
     } catch (e) {
-      debugPrint('Send location error: $e');
+      //Send location error: $e');
     }
   }
 
@@ -208,7 +208,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
         await launchUrl(url);
       }
     } catch (e) {
-      debugPrint('Call error: $e');
+      //Call error: $e');
     }
   }
 
@@ -927,7 +927,7 @@ class _ReportBottomSheetState extends State<_ReportBottomSheet> {
         longitude: position?.longitude,
       );
 
-      debugPrint('Report submitted to Supabase: $_selectedReason');
+      //Report submitted to Supabase: $_selectedReason');
 
       if (mounted) {
         Navigator.pop(context);
@@ -939,7 +939,7 @@ class _ReportBottomSheetState extends State<_ReportBottomSheet> {
         );
       }
     } catch (e) {
-      debugPrint('Report error: $e');
+      //Report error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Error submitting report. Try again.')),

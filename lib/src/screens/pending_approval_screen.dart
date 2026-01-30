@@ -72,7 +72,7 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen>
         // AuthWrapper will detect the change and navigate automatically
       }
     } catch (e) {
-      debugPrint('Error checking approval status: $e');
+      //Error checking approval status: $e');
     } finally {
       if (mounted) {
         setState(() => _isChecking = false);

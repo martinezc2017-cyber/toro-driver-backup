@@ -6,9 +6,11 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:uuid/uuid.dart';
+import 'package:provider/provider.dart';
 import '../utils/app_colors.dart';
 import '../utils/haptic_service.dart';
 import '../config/supabase_config.dart';
+import '../providers/location_provider.dart';
 
 const String kAppVersion = '1.0.0'; // TODO: Get from pubspec.yaml
 
@@ -389,7 +391,7 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
         return data['ip'];
       }
     } catch (e) {
-      debugPrint('Could not get IP: $e');
+      //Could not get IP: $e');
     }
     return null;
   }
@@ -432,7 +434,7 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
         timeLimit: const Duration(seconds: 10),
       );
     } catch (e) {
-      debugPrint('Could not get location: $e');
+      //Could not get location: $e');
       return null;
     }
   }
@@ -454,6 +456,11 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
 
     setState(() => _isSubmitting = true);
     HapticService.mediumImpact();
+
+    // Get context-dependent objects FIRST (before any await)
+    final locationProvider = context.read<LocationProvider>();
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
 
     try {
       final user = SupabaseConfig.client.auth.currentUser;
@@ -502,7 +509,11 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
 
       if (mounted) {
         HapticService.success();
-        ScaffoldMessenger.of(context).showSnackBar(
+
+        // Initialize GPS immediately after signing agreement
+        await locationProvider.initialize();
+
+        scaffoldMessenger.showSnackBar(
           SnackBar(
             content: const Row(
               children: [
@@ -516,7 +527,7 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
-        Navigator.pop(context, true);
+        navigator.pop(true);
       }
     } catch (e) {
       if (mounted) {
@@ -570,7 +581,7 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
         }).eq('id', driverId);
       }
     } catch (e) {
-      debugPrint('Error checking driver activation: $e');
+      //Error checking driver activation: $e');
     }
   }
 

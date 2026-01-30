@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show ChangeNotifier;
 import '../services/driver_service.dart';
 import '../models/driver_model.dart';
 
@@ -28,7 +28,6 @@ class DriverProvider with ChangeNotifier {
 
   // Initialize with driver ID
   Future<void> initialize(String driverId) async {
-    debugPrint('DriverProvider: Initializing with driver ID: $driverId');
     _isLoading = true;
     notifyListeners();
 
@@ -38,7 +37,6 @@ class DriverProvider with ChangeNotifier {
       _stats = _createEmptyStats();
       _error = null;
       _isLoading = false;
-      debugPrint('DriverProvider: Mock driver created - isOnline: ${_driver?.isOnline}');
       notifyListeners();
       return;
     }
@@ -49,14 +47,11 @@ class DriverProvider with ChangeNotifier {
 
       // If driver doesn't exist in database, create one for testing
       if (_driver == null) {
-        debugPrint('DriverProvider: Driver not found in database, creating new driver');
         final newDriver = _createMockDriver(driverId);
         try {
           _driver = await _driverService.createDriver(newDriver);
-          debugPrint('DriverProvider: Driver created in database successfully');
         } catch (e) {
           // If creation fails (e.g., table doesn't exist), use mock locally
-          debugPrint('DriverProvider: Could not create driver in DB: $e - using local mock');
           _driver = newDriver;
         }
         _stats = _createEmptyStats();
@@ -75,7 +70,6 @@ class DriverProvider with ChangeNotifier {
       _error = null;
     } catch (e) {
       // On any error, fallback to mock driver for testing
-      debugPrint('DriverProvider: Error loading driver: $e - using mock driver');
       _driver = _createMockDriver(driverId);
       _stats = _createEmptyStats();
       _error = null;
@@ -158,12 +152,6 @@ class DriverProvider with ChangeNotifier {
           // CRITICAL: Auto-disconnect if driver is online but can no longer go online
           // This happens when admin disapproves, documents expire, account suspended, etc.
           if (wasOnline && driver.isOnline && !driver.canGoOnline) {
-            debugPrint('DriverProvider: [AUTO-DISCONNECT] Driver online but canGoOnline=false');
-            debugPrint('  - adminApproved: ${driver.adminApproved}');
-            debugPrint('  - allDocumentsSigned: ${driver.allDocumentsSigned}');
-            debugPrint('  - canReceiveRides: ${driver.canReceiveRides}');
-            debugPrint('  - onboardingStage: ${driver.onboardingStage}');
-
             // Determine reason for disconnect
             if (!driver.allDocumentsSigned) {
               _forceDisconnectReason = 'documents_incomplete';
@@ -184,19 +172,11 @@ class DriverProvider with ChangeNotifier {
           }
 
           // Also check if DB says offline but local says online (sync issue)
-          if (wasOnline && !driver.isOnline) {
-            debugPrint('DriverProvider: DB shows offline, syncing local state');
-            // Local state already updated via _driver = driver
-          }
+          // if wasOnline && !driver.isOnline: Local state already updated via _driver = driver
 
           // APPROVAL NOTIFICATION: Check if driver was just approved
           // This happens when canGoOnline changes from false to true
           if (!couldGoOnline && driver.canGoOnline) {
-            debugPrint('DriverProvider: [APPROVED] Driver can now go online!');
-            debugPrint('  - adminApproved: ${driver.adminApproved}');
-            debugPrint('  - allDocumentsSigned: ${driver.allDocumentsSigned}');
-            debugPrint('  - onboardingStage: ${driver.onboardingStage}');
-
             _wasJustApproved = true;
             _approvalMessage = '¡Tu cuenta ha sido aprobada! Ya puedes comenzar a recibir viajes.';
           }
@@ -206,7 +186,6 @@ class DriverProvider with ChangeNotifier {
       },
       onError: (e) {
         _error = 'Error en actualizaciones: $e';
-        debugPrint('DriverProvider: Stream error: $e');
         notifyListeners();
       },
     );
@@ -214,13 +193,10 @@ class DriverProvider with ChangeNotifier {
 
   // Force driver offline (internal method)
   Future<void> _forceOffline(String driverId) async {
-    debugPrint('DriverProvider: Forcing driver offline');
     try {
       await _driverService.updateOnlineStatus(driverId, false);
       _driver = _driver?.copyWith(isOnline: false);
-      debugPrint('DriverProvider: Driver forced offline successfully');
     } catch (e) {
-      debugPrint('DriverProvider: Error forcing offline: $e');
       // Still update local state even if DB fails
       _driver = _driver?.copyWith(isOnline: false);
     }
@@ -229,26 +205,18 @@ class DriverProvider with ChangeNotifier {
 
   // Update online status
   Future<void> setOnlineStatus(bool online) async {
-    debugPrint('DriverProvider: setOnlineStatus called with: $online');
-    debugPrint('DriverProvider: Current driver is null? ${_driver == null}');
-
-    if (_driver == null) {
-      debugPrint('DriverProvider: Driver is null, cannot change status');
-      return;
-    }
+    if (_driver == null) return;
 
     // Always try to update database first (even for mock drivers)
     // This ensures admin can see the driver's status
     try {
       await _driverService.updateOnlineStatus(_driver!.id, online);
-      debugPrint('DriverProvider: Database updated successfully');
     } catch (e) {
-      debugPrint('DriverProvider: Error updating DB (will continue with local): $e');
+      // Continue with local update even if DB fails
     }
 
     // Always update local state so UI works
     _driver = _driver!.copyWith(isOnline: online);
-    debugPrint('DriverProvider: Status changed to ${online ? "ONLINE" : "OFFLINE"}');
     notifyListeners();
   }
 

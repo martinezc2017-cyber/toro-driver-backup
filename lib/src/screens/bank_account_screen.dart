@@ -54,7 +54,7 @@ class _BankAccountScreenState extends State<BankAccountScreen> {
 
       setState(() => _isLoading = false);
     } catch (e) {
-      debugPrint('ERROR loading driver data: $e');
+      //ERROR loading driver data: $e');
       setState(() => _isLoading = false);
     }
   }
@@ -125,7 +125,7 @@ class _BankAccountScreenState extends State<BankAccountScreen> {
         await StripeConnectService.instance.openOnboardingLink(url);
       }
     } catch (e) {
-      debugPrint('ERROR opening dashboard: $e');
+      //ERROR opening dashboard: $e');
     } finally {
       if (mounted) setState(() => _isConnecting = false);
     }

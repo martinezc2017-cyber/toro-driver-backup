@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'dart:math';
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../config/supabase_config.dart';
@@ -143,7 +142,7 @@ class DriverService {
         }
       }
     } catch (e) {
-      debugPrint('Error tracking session: $e');
+      // Error tracking session: $e');
     }
   }
 
@@ -171,7 +170,7 @@ class DriverService {
       }
       return totalMinutes;
     } catch (e) {
-      debugPrint('Error getting weekly online minutes: $e');
+      // Error getting weekly online minutes: $e');
       return 0;
     }
   }
@@ -633,7 +632,7 @@ class DriverService {
         'daily_breakdown': dailyBreakdown,
       };
     } catch (e) {
-      debugPrint('Error getting earnings breakdown: $e');
+      // Error getting earnings breakdown: $e');
       return null;
     }
   }
@@ -673,7 +672,7 @@ class DriverService {
 
       return List<Map<String, dynamic>>.from(response as List);
     } catch (e) {
-      debugPrint('Error getting recent earnings: $e');
+      // Error getting recent earnings: $e');
       return [];
     }
   }
@@ -693,7 +692,7 @@ class DriverService {
 
       return response;
     } catch (e) {
-      debugPrint('Error getting weekly summary: $e');
+      // Error getting weekly summary: $e');
       return null;
     }
   }
@@ -713,7 +712,7 @@ class DriverService {
 
       return Map<String, dynamic>.from(response);
     } catch (e) {
-      debugPrint('Error getting financial stats: $e');
+      // Error getting financial stats: $e');
       return {
         'available_balance': 0.0,
         'pending_balance': 0.0,
@@ -772,7 +771,7 @@ class DriverService {
 
       return true;
     } catch (e) {
-      debugPrint('Error requesting instant payout: $e');
+      // Error requesting instant payout: $e');
       return false;
     }
   }
@@ -792,7 +791,7 @@ class DriverService {
 
       return List<Map<String, dynamic>>.from(response as List);
     } catch (e) {
-      debugPrint('Error getting payout history: $e');
+      // Error getting payout history: $e');
       return [];
     }
   }
@@ -808,7 +807,7 @@ class DriverService {
 
       return response;
     } catch (e) {
-      debugPrint('Error getting notification preferences: $e');
+      // Error getting notification preferences: $e');
       return null;
     }
   }
@@ -827,7 +826,7 @@ class DriverService {
             'updated_at': DateTime.now().toIso8601String(),
           });
     } catch (e) {
-      debugPrint('Error updating notification preferences: $e');
+      // Error updating notification preferences: $e');
     }
   }
 
@@ -861,7 +860,7 @@ class DriverService {
 
       return List<Map<String, dynamic>>.from(response as List);
     } catch (e) {
-      debugPrint('Error getting notifications: $e');
+      // Error getting notifications: $e');
       return [];
     }
   }
@@ -877,7 +876,7 @@ class DriverService {
           })
           .eq('id', notificationId);
     } catch (e) {
-      debugPrint('Error marking notification read: $e');
+      // Error marking notification read: $e');
     }
   }
 
@@ -897,7 +896,7 @@ class DriverService {
 
       return List<Map<String, dynamic>>.from(response as List);
     } catch (e) {
-      debugPrint('Error getting bank accounts: $e');
+      // Error getting bank accounts: $e');
       return [];
     }
   }
@@ -914,7 +913,7 @@ class DriverService {
 
       return List<Map<String, dynamic>>.from(response as List);
     } catch (e) {
-      debugPrint('Error getting debit cards: $e');
+      // Error getting debit cards: $e');
       return [];
     }
   }
@@ -942,7 +941,7 @@ class DriverService {
 
       return Map<String, dynamic>.from(response);
     } catch (e) {
-      debugPrint('Error adding bank account: $e');
+      // Error adding bank account: $e');
       return null;
     }
   }
@@ -970,7 +969,7 @@ class DriverService {
 
       return Map<String, dynamic>.from(response);
     } catch (e) {
-      debugPrint('Error adding debit card: $e');
+      // Error adding debit card: $e');
       return null;
     }
   }
@@ -996,7 +995,7 @@ class DriverService {
           .update({'is_default': true})
           .eq('id', methodId);
     } catch (e) {
-      debugPrint('Error setting default payment method: $e');
+      // Error setting default payment method: $e');
     }
   }
 
@@ -1013,7 +1012,7 @@ class DriverService {
           .update({'status': 'removed'})
           .eq('id', methodId);
     } catch (e) {
-      debugPrint('Error removing payment method: $e');
+      // Error removing payment method: $e');
     }
   }
 
@@ -1032,7 +1031,7 @@ class DriverService {
 
       return List<Map<String, dynamic>>.from(response as List);
     } catch (e) {
-      debugPrint('Error getting instant payout history: $e');
+      // Error getting instant payout history: $e');
       return [];
     }
   }

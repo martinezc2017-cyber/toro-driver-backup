@@ -28,7 +28,6 @@ class UpdateService {
   /// Initialize the service
   Future<void> initialize() async {
     _packageInfo = await PackageInfo.fromPlatform();
-    debugPrint('UpdateService: Current version ${_packageInfo?.version} (${_packageInfo?.buildNumber})');
   }
 
   /// Check if an update is available
@@ -48,14 +47,11 @@ class UpdateService {
           .maybeSingle();
 
       if (response == null) {
-        debugPrint('UpdateService: No version info in database');
         return null;
       }
 
       _latestVersion = AppVersion.fromJson(response);
       final currentBuild = int.tryParse(_packageInfo?.buildNumber ?? '0') ?? 0;
-
-      debugPrint('UpdateService: Current build $currentBuild, Latest build ${_latestVersion!.buildNumber}');
 
       if (_latestVersion!.buildNumber > currentBuild) {
         // Update available
@@ -74,10 +70,8 @@ class UpdateService {
         );
       }
 
-      debugPrint('UpdateService: App is up to date');
       return null;
     } catch (e) {
-      debugPrint('UpdateService: Error checking for update: $e');
       return null;
     }
   }
@@ -88,7 +82,6 @@ class UpdateService {
   }) async {
     if (_isDownloading) return false;
     if (!Platform.isAndroid) {
-      debugPrint('UpdateService: OTA updates only supported on Android');
       return false;
     }
 
@@ -96,8 +89,6 @@ class UpdateService {
     _downloadProgress = 0;
 
     try {
-      debugPrint('UpdateService: Downloading APK from $apkUrl');
-
       // Get download directory
       final dir = await getApplicationDocumentsDirectory();
       final filePath = '${dir.path}/toro_driver_update.apk';
@@ -122,18 +113,15 @@ class UpdateService {
       }
 
       await file.writeAsBytes(bytes);
-      debugPrint('UpdateService: APK downloaded to $filePath');
 
       _isDownloading = false;
       _downloadProgress = 1;
 
       // Open APK for installation
       final result = await OpenFilex.open(filePath);
-      debugPrint('UpdateService: Open result: ${result.message}');
 
       return result.type == ResultType.done;
     } catch (e) {
-      debugPrint('UpdateService: Error downloading update: $e');
       _isDownloading = false;
       return false;
     }

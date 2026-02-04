@@ -1,17 +1,25 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui' show Color;
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import '../config/supabase_config.dart';
 
-// Firebase disabled for Windows build - uncomment for mobile release
-// import 'package:firebase_core/firebase_core.dart';
-// import 'package:firebase_messaging/firebase_messaging.dart';
+/// Top-level background message handler (must be top-level function)
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  debugPrint('🔔 FCM Background message: ${message.messageId}');
+}
 
 class NotificationService {
   final SupabaseClient _client = SupabaseConfig.client;
   final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
+  final FirebaseMessaging _messaging = FirebaseMessaging.instance;
+  StreamSubscription<RemoteMessage>? _foregroundSub;
+  StreamSubscription<RemoteMessage>? _openedAppSub;
 
   // Notification channels
   static const String rideChannel = 'ride_notifications';
@@ -24,10 +32,9 @@ class NotificationService {
     // Initialize local notifications
     await _initializeLocalNotifications();
 
-    // Firebase disabled for Windows - uncomment for mobile release
-    // await _requestPermissions();
-    // await _setupFirebaseMessaging();
-    // await _updateFCMToken();
+    // Firebase Cloud Messaging
+    await _requestPermissions();
+    await _setupFirebaseMessaging();
   }
 
   // Initialize local notifications
@@ -122,6 +129,8 @@ class NotificationService {
       importance: Importance.high,
       priority: Priority.high,
       showWhen: true,
+      icon: '@drawable/ic_notification',
+      color: const Color(0xFFFFD700),
     );
 
     const iosDetails = DarwinNotificationDetails(
@@ -298,8 +307,117 @@ class NotificationService {
     await _localNotifications.cancel(id);
   }
 
+  // =========================================================================
+  // FIREBASE CLOUD MESSAGING
+  // =========================================================================
+
+  /// Request notification permissions (iOS + Android 13+)
+  Future<void> _requestPermissions() async {
+    try {
+      final settings = await _messaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+        provisional: false,
+      );
+      debugPrint('🔔 FCM permission: ${settings.authorizationStatus}');
+    } catch (e) {
+      debugPrint('🔔 FCM permission error: $e');
+    }
+  }
+
+  /// Setup Firebase Messaging handlers
+  Future<void> _setupFirebaseMessaging() async {
+    try {
+      // Background handler (top-level)
+      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+      // Foreground messages → show local notification
+      _foregroundSub = FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+        debugPrint('🔔 FCM Foreground: ${message.notification?.title}');
+        final notification = message.notification;
+        if (notification != null) {
+          final channelId = _channelFromData(message.data);
+          _showLocalNotification(
+            title: notification.title ?? 'Toro Driver',
+            body: notification.body ?? '',
+            payload: jsonEncode(message.data),
+            channelId: channelId,
+          );
+        }
+      });
+
+      // When user taps notification that opened the app from background
+      _openedAppSub = FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+        debugPrint('🔔 FCM Opened app: ${message.data}');
+        _handleNotificationTap(Map<String, dynamic>.from(message.data));
+      });
+
+      // Check if app was opened from a terminated state via notification
+      final initialMessage = await _messaging.getInitialMessage();
+      if (initialMessage != null) {
+        debugPrint('🔔 FCM Initial message: ${initialMessage.data}');
+        _handleNotificationTap(Map<String, dynamic>.from(initialMessage.data));
+      }
+    } catch (e) {
+      debugPrint('🔔 FCM setup error: $e');
+    }
+  }
+
+  /// Get FCM token and save to Supabase drivers table
+  Future<void> updateFCMToken(String driverId) async {
+    try {
+      final token = await _messaging.getToken();
+      if (token == null) return;
+
+      debugPrint('🔔 FCM Token: ${token.substring(0, 20)}...');
+
+      // Save to drivers table
+      await _client.from(SupabaseConfig.driversTable).update({
+        'fcm_token': token,
+        'fcm_token_updated_at': DateTime.now().toIso8601String(),
+      }).eq('id', driverId);
+
+      debugPrint('🔔 FCM Token saved for driver $driverId');
+
+      // Listen for token refresh
+      _messaging.onTokenRefresh.listen((newToken) async {
+        debugPrint('🔔 FCM Token refreshed');
+        await _client.from(SupabaseConfig.driversTable).update({
+          'fcm_token': newToken,
+          'fcm_token_updated_at': DateTime.now().toIso8601String(),
+        }).eq('id', driverId);
+      });
+    } catch (e) {
+      debugPrint('🔔 FCM Token error: $e');
+    }
+  }
+
+  /// Clear FCM token on logout
+  Future<void> clearFCMToken(String driverId) async {
+    try {
+      await _client.from(SupabaseConfig.driversTable).update({
+        'fcm_token': null,
+      }).eq('id', driverId);
+      await _messaging.deleteToken();
+      debugPrint('🔔 FCM Token cleared for driver $driverId');
+    } catch (e) {
+      debugPrint('🔔 FCM Token clear error: $e');
+    }
+  }
+
+  /// Map FCM data to notification channel
+  String _channelFromData(Map<String, dynamic> data) {
+    final type = data['type'] as String? ?? '';
+    if (type.contains('ride') || type.contains('trip')) return rideChannel;
+    if (type.contains('message') || type.contains('chat')) return chatChannel;
+    if (type.contains('earning') || type.contains('payment') || type.contains('payout')) return earningsChannel;
+    return generalChannel;
+  }
+
   // Dispose
   void dispose() {
-    // Firebase subscriptions disabled
+    _foregroundSub?.cancel();
+    _openedAppSub?.cancel();
   }
 }

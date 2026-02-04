@@ -1,7 +1,7 @@
 name: toro_driver
 description: "Toro Driver - Rideshare Driver App"
 publish_to: 'none'
-version: 1.1.0+4
+version: 1.2.0+4009
 
 environment:
   sdk: ^3.10.4
@@ -39,10 +39,10 @@ dependencies:
   # Payments
   flutter_stripe: ^10.1.1
 
-  # Push Notifications (Firebase disabled for Windows - re-enable for mobile release)
-  # firebase_core: ^2.25.4
-  # firebase_messaging: ^14.7.15
-  flutter_local_notifications: ^17.0.0
+  # Push Notifications
+  firebase_core: ^3.8.1
+  firebase_messaging: ^15.1.6
+  flutter_local_notifications: ^18.0.1
 
   # Storage & Cache
   path_provider: ^2.1.1
@@ -105,6 +105,15 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.3
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/app_icon.png"
+  adaptive_icon_background: "#000B1E"
+  adaptive_icon_foreground: "assets/icon/app_icon.png"
+  min_sdk_android: 21
 
 flutter:
   uses-material-design: true

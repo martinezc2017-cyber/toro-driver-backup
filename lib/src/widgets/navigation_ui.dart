@@ -11,7 +11,13 @@ class NavigationUI extends StatelessWidget {
   final VoidCallback? onMute;
   final VoidCallback? onOverview;
   final VoidCallback? onShowSteps;
-  final VoidCallback? onCallPassenger; // Llamar al pasajero
+  final VoidCallback? onCallPassenger;
+  // Ride action callbacks
+  final VoidCallback? onArriveAtPickup;
+  final VoidCallback? onStartRide;
+  final VoidCallback? onCompleteRide;
+  final VoidCallback? onCancelRide;
+  final VoidCallback? onLaunchExternalNav;
   final bool isMuted;
   final bool isOverviewMode;
   final double? currentSpeed;
@@ -21,10 +27,10 @@ class NavigationUI extends StatelessWidget {
   final String? gpsHighwayShield;
   final bool hasTolls;
   final int incidentCount;
-  // Información del viaje
   final RideModel? ride;
+  final int waitSeconds;
+  final bool hideBottomPanel;
 
-  // Distancia en metros para mostrar la sub-maniobra "Después"
   static const double _subManeuverDistance = 100.0;
 
   const NavigationUI({
@@ -35,6 +41,11 @@ class NavigationUI extends StatelessWidget {
     this.onOverview,
     this.onShowSteps,
     this.onCallPassenger,
+    this.onArriveAtPickup,
+    this.onStartRide,
+    this.onCompleteRide,
+    this.onCancelRide,
+    this.onLaunchExternalNav,
     this.isMuted = false,
     this.isOverviewMode = false,
     this.currentSpeed,
@@ -45,6 +56,8 @@ class NavigationUI extends StatelessWidget {
     this.hasTolls = false,
     this.incidentCount = 0,
     this.ride,
+    this.waitSeconds = 0,
+    this.hideBottomPanel = false,
   });
 
   /// Determina si el nivel 2 (sub-maniobra "Después") debe mostrarse
@@ -111,19 +124,20 @@ class NavigationUI extends StatelessWidget {
         // Nivel 3: Nombre de calle actual (GPS) - arriba del panel inferior
         if ((currentStreetName != null && currentStreetName!.isNotEmpty) || currentCounty != null)
           Positioned(
-            bottom: ride != null ? 145 : 70, // Más arriba si hay info de ride
+            bottom: hideBottomPanel ? 10 : (ride != null ? 145 : 70),
             left: 0,
             right: 0,
             child: _buildStreetNameBar(),
           ),
 
-        // Panel inferior COMPACTO
-        Positioned(
-          bottom: 0,
-          left: 0,
-          right: 0,
-          child: _buildCompactBottomPanel(),
-        ),
+        // Panel inferior COMPACTO (hidden when Uber panel handles controls)
+        if (!hideBottomPanel)
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: _buildCompactBottomPanel(),
+          ),
       ],
     );
   }
@@ -531,6 +545,14 @@ class NavigationUI extends StatelessWidget {
               if (ride != null) _buildRideInfoRow(),
               if (ride != null) const SizedBox(height: 10),
 
+              // Ride action button (Llegué / Iniciar / Finalizar)
+              if (ride != null) _buildRideActionButton(),
+              if (ride != null) const SizedBox(height: 8),
+
+              // Wait timer at pickup
+              if (ride != null && ride!.status == RideStatus.arrivedAtPickup && waitSeconds > 0)
+                _buildWaitTimer(),
+
               // Fila inferior: ETA + controles
               Row(
                 children: [
@@ -578,6 +600,12 @@ class NavigationUI extends StatelessWidget {
                     ),
                   ),
 
+                  // External nav button
+                  _buildCompactButton(
+                    icon: Icons.open_in_new,
+                    onTap: onLaunchExternalNav,
+                  ),
+                  const SizedBox(width: 8),
                   // Controles
                   _buildCompactButton(
                     icon: isMuted ? Icons.volume_off : Icons.volume_up,
@@ -589,18 +617,16 @@ class NavigationUI extends StatelessWidget {
                     onTap: onOverview,
                   ),
                   const SizedBox(width: 8),
+                  // Cancel ride button
                   GestureDetector(
-                    onTap: onClose,
+                    onTap: onCancelRide,
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                       decoration: BoxDecoration(
                         color: const Color(0xFFE53935),
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: const Text(
-                        'End',
-                        style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
-                      ),
+                      child: const Icon(Icons.close, color: Colors.white, size: 18),
                     ),
                   ),
                 ],
@@ -703,6 +729,9 @@ class NavigationUI extends StatelessWidget {
                         style: TextStyle(color: Colors.grey[400], fontSize: 12),
                       ),
                     ],
+                    // Payment method badge
+                    const SizedBox(width: 6),
+                    _buildPaymentMethodBadge(r.paymentMethod),
                     // Good tipper indicator
                     if (r.isGoodTipper) ...[
                       const SizedBox(width: 6),
@@ -725,16 +754,31 @@ class NavigationUI extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 4),
-                // Nombre
-                Text(
-                  r.displayName,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                // Nombre + rating
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        r.displayName,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (r.passengerRating > 0) ...[
+                      const SizedBox(width: 6),
+                      const Icon(Icons.star, color: Colors.amber, size: 14),
+                      const SizedBox(width: 2),
+                      Text(
+                        r.passengerRating.toStringAsFixed(1),
+                        style: const TextStyle(color: Colors.amber, fontSize: 12, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ],
                 ),
                 // Notas (si hay y no es JSON)
                 if (r.notes != null &&
@@ -787,6 +831,122 @@ class NavigationUI extends StatelessWidget {
                 child: const Icon(Icons.phone, color: Colors.white, size: 20),
               ),
             ),
+        ],
+      ),
+    );
+  }
+
+  /// Botón de acción principal según el estado del viaje
+  Widget _buildRideActionButton() {
+    if (ride == null) return const SizedBox.shrink();
+
+    String label;
+    IconData icon;
+    Color color;
+    VoidCallback? onTap;
+
+    switch (ride!.status) {
+      case RideStatus.accepted:
+      case RideStatus.pending:
+        label = 'LLEGUÉ';
+        icon = Icons.location_on;
+        color = const Color(0xFF2196F3);
+        onTap = onArriveAtPickup;
+        break;
+      case RideStatus.arrivedAtPickup:
+        label = 'INICIAR VIAJE';
+        icon = Icons.play_arrow_rounded;
+        color = const Color(0xFF4CAF50);
+        onTap = onStartRide;
+        break;
+      case RideStatus.inProgress:
+        label = 'FINALIZAR VIAJE';
+        icon = Icons.flag_rounded;
+        color = const Color(0xFFFF9800);
+        onTap = onCompleteRide;
+        break;
+      default:
+        return const SizedBox.shrink();
+    }
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: color.withAlpha(100),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: Colors.white, size: 22),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Timer de espera en pickup (2 min gratis, después cobro)
+  Widget _buildWaitTimer() {
+    final minutes = waitSeconds ~/ 60;
+    final seconds = waitSeconds % 60;
+    final isFreeTime = waitSeconds <= 120; // 2 min gratis
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      margin: const EdgeInsets.only(bottom: 6),
+      decoration: BoxDecoration(
+        color: isFreeTime
+            ? Colors.blue.withAlpha(30)
+            : Colors.red.withAlpha(30),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isFreeTime ? Colors.blue.withAlpha(80) : Colors.red.withAlpha(80),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.timer,
+            color: isFreeTime ? Colors.blue : Colors.red,
+            size: 18,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            'Esperando: ${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}',
+            style: TextStyle(
+              color: isFreeTime ? Colors.blue : Colors.red,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const Spacer(),
+          Text(
+            isFreeTime ? 'Gratis' : 'Cobro activo',
+            style: TextStyle(
+              color: isFreeTime ? Colors.blue.withAlpha(180) : Colors.red,
+              fontSize: 12,
+            ),
+          ),
         ],
       ),
     );
@@ -849,6 +1009,41 @@ class NavigationUI extends StatelessWidget {
       default:
         return Icons.straight;
     }
+  }
+
+  /// Build payment method badge with appropriate icon and color
+  /// Cash = green/orange with bills icon
+  /// Card = blue with card icon
+  Widget _buildPaymentMethodBadge(PaymentMethod method) {
+    final isCash = method == PaymentMethod.cash;
+    final color = isCash ? const Color(0xFF4CAF50) : const Color(0xFF2196F3);
+    final bgColor = isCash ? const Color(0xFF4CAF50) : const Color(0xFF2196F3);
+    final icon = isCash ? Icons.payments_outlined : Icons.credit_card_rounded;
+    final text = isCash ? 'CASH' : 'CARD';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+      decoration: BoxDecoration(
+        color: bgColor.withAlpha(50),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: color.withAlpha(100), width: 0.5),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 10),
+          const SizedBox(width: 3),
+          Text(
+            text,
+            style: TextStyle(
+              color: color,
+              fontSize: 8,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

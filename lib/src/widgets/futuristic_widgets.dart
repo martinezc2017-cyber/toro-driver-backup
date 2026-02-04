@@ -1125,6 +1125,7 @@ class FireGlowButton extends StatefulWidget {
   final IconData? activeIcon;
   final String label;
   final bool isSelected;
+  final bool hasActiveGlow; // Green glow for active ride
   final VoidCallback onTap;
 
   const FireGlowButton({
@@ -1133,6 +1134,7 @@ class FireGlowButton extends StatefulWidget {
     this.activeIcon,
     required this.label,
     required this.isSelected,
+    this.hasActiveGlow = false,
     required this.onTap,
   });
 
@@ -1151,6 +1153,10 @@ class _FireGlowButtonState extends State<FireGlowButton>
   static const Color _neonBright = Color(0xFF60A5FA);
   static const Color _neonLight = Color(0xFF00BFFF);
 
+  // Green colors for active ride glow
+  static const Color _activeGreen = Color(0xFF10B981);
+  static const Color _activeGreenBright = Color(0xFF34D399);
+
   @override
   void initState() {
     super.initState();
@@ -1163,7 +1169,8 @@ class _FireGlowButtonState extends State<FireGlowButton>
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
 
-    if (widget.isSelected) {
+    // Animate if selected OR has active glow (for active ride)
+    if (widget.isSelected || widget.hasActiveGlow) {
       _controller.repeat(reverse: true);
     }
   }
@@ -1171,9 +1178,12 @@ class _FireGlowButtonState extends State<FireGlowButton>
   @override
   void didUpdateWidget(FireGlowButton oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.isSelected && !oldWidget.isSelected) {
+    final shouldAnimate = widget.isSelected || widget.hasActiveGlow;
+    final wasAnimating = oldWidget.isSelected || oldWidget.hasActiveGlow;
+
+    if (shouldAnimate && !wasAnimating) {
       _controller.repeat(reverse: true);
-    } else if (!widget.isSelected && oldWidget.isSelected) {
+    } else if (!shouldAnimate && wasAnimating) {
       _controller.stop();
       _controller.value = 0;
     }
@@ -1204,45 +1214,67 @@ class _FireGlowButtonState extends State<FireGlowButton>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Icon with neon glow border
+                // Icon with neon glow border (green for active ride, blue for selected)
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: widget.isSelected
-                        ? _neonPrimary.withValues(alpha: 0.12)
-                        : _isPressed
-                            ? AppColors.cardHover
-                            : Colors.transparent,
+                    color: widget.hasActiveGlow
+                        ? _activeGreen.withValues(alpha: 0.15)
+                        : widget.isSelected
+                            ? _neonPrimary.withValues(alpha: 0.12)
+                            : _isPressed
+                                ? AppColors.cardHover
+                                : Colors.transparent,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: widget.isSelected
-                          ? _neonBright.withValues(alpha: 0.4 + _glowAnimation.value * 0.4)
-                          : Colors.transparent,
-                      width: 1.5,
+                      color: widget.hasActiveGlow
+                          ? _activeGreenBright.withValues(alpha: 0.5 + _glowAnimation.value * 0.5)
+                          : widget.isSelected
+                              ? _neonBright.withValues(alpha: 0.4 + _glowAnimation.value * 0.4)
+                              : Colors.transparent,
+                      width: widget.hasActiveGlow ? 2 : 1.5,
                     ),
-                    boxShadow: widget.isSelected
+                    boxShadow: widget.hasActiveGlow
                         ? [
-                            // Inner neon glow
+                            // Green pulsing glow for active ride
                             BoxShadow(
-                              color: _neonPrimary.withValues(alpha: _glowAnimation.value * 0.5),
-                              blurRadius: 14,
-                              spreadRadius: 1,
+                              color: _activeGreen.withValues(alpha: _glowAnimation.value * 0.7),
+                              blurRadius: 18,
+                              spreadRadius: 2,
                             ),
-                            // Outer cyan glow (stronger)
                             BoxShadow(
-                              color: _neonLight.withValues(alpha: _glowAnimation.value * 0.35),
-                              blurRadius: 24,
-                              spreadRadius: -1,
+                              color: _activeGreenBright.withValues(alpha: _glowAnimation.value * 0.5),
+                              blurRadius: 30,
+                              spreadRadius: 0,
                             ),
                           ]
-                        : null,
+                        : widget.isSelected
+                            ? [
+                                // Inner neon glow
+                                BoxShadow(
+                                  color: _neonPrimary.withValues(alpha: _glowAnimation.value * 0.5),
+                                  blurRadius: 14,
+                                  spreadRadius: 1,
+                                ),
+                                // Outer cyan glow (stronger)
+                                BoxShadow(
+                                  color: _neonLight.withValues(alpha: _glowAnimation.value * 0.35),
+                                  blurRadius: 24,
+                                  spreadRadius: -1,
+                                ),
+                              ]
+                            : null,
                   ),
                   child: Icon(
-                    widget.isSelected
+                    widget.isSelected || widget.hasActiveGlow
                         ? (widget.activeIcon ?? widget.icon)
                         : widget.icon,
-                    color: widget.isSelected ? _neonBright : AppColors.textTertiary,
+                    color: widget.hasActiveGlow
+                        ? _activeGreenBright
+                        : widget.isSelected
+                            ? _neonBright
+                            : AppColors.textTertiary,
                     size: 24,
                   ),
                 ),
@@ -1251,36 +1283,54 @@ class _FireGlowButtonState extends State<FireGlowButton>
                 Text(
                   widget.label,
                   style: TextStyle(
-                    color: widget.isSelected ? _neonBright : AppColors.textTertiary,
+                    color: widget.hasActiveGlow
+                        ? _activeGreenBright
+                        : widget.isSelected
+                            ? _neonBright
+                            : AppColors.textTertiary,
                     fontSize: 9,
-                    fontWeight: widget.isSelected ? FontWeight.w600 : FontWeight.w400,
+                    fontWeight: (widget.isSelected || widget.hasActiveGlow) ? FontWeight.w600 : FontWeight.w400,
                     letterSpacing: 0.2,
                   ),
                 ),
                 const SizedBox(height: 4),
-                // Neon indicator dot
+                // Neon indicator dot (green for active ride, blue for selected)
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
-                  width: widget.isSelected ? 6 : 0,
+                  width: (widget.isSelected || widget.hasActiveGlow) ? 6 : 0,
                   height: 6,
                   decoration: BoxDecoration(
-                    gradient: widget.isSelected
+                    gradient: widget.hasActiveGlow
                         ? LinearGradient(
-                            colors: [_neonPrimary, _neonLight],
+                            colors: [_activeGreen, _activeGreenBright],
                             begin: Alignment.bottomCenter,
                             end: Alignment.topCenter,
                           )
-                        : null,
+                        : widget.isSelected
+                            ? LinearGradient(
+                                colors: [_neonPrimary, _neonLight],
+                                begin: Alignment.bottomCenter,
+                                end: Alignment.topCenter,
+                              )
+                            : null,
                     borderRadius: BorderRadius.circular(3),
-                    boxShadow: widget.isSelected
+                    boxShadow: widget.hasActiveGlow
                         ? [
                             BoxShadow(
-                              color: _neonLight.withValues(alpha: 0.6),
-                              blurRadius: 6,
+                              color: _activeGreenBright.withValues(alpha: 0.8),
+                              blurRadius: 8,
                               spreadRadius: 0,
                             ),
                           ]
-                        : null,
+                        : widget.isSelected
+                            ? [
+                                BoxShadow(
+                                  color: _neonLight.withValues(alpha: 0.6),
+                                  blurRadius: 6,
+                                  spreadRadius: 0,
+                                ),
+                              ]
+                            : null,
                   ),
                 ),
               ],
@@ -1347,6 +1397,7 @@ class FireGlowBottomNavBar extends StatelessWidget {
                 activeIcon: item.activeIcon,
                 label: item.label,
                 isSelected: index == currentIndex,
+                hasActiveGlow: item.hasActiveGlow,
                 onTap: () => onTap(index),
               );
             }).toList(),
@@ -1361,11 +1412,13 @@ class FireGlowNavItem {
   final IconData icon;
   final IconData? activeIcon;
   final String label;
+  final bool hasActiveGlow; // Green glow for active ride
 
   const FireGlowNavItem({
     required this.icon,
     this.activeIcon,
     required this.label,
+    this.hasActiveGlow = false,
   });
 }
 

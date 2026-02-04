@@ -79,6 +79,28 @@ RideType parseServiceType(String? serviceType) {
 enum PaymentMethod {
   card,
   wallet,
+  cash,
+}
+
+/// Helper to parse payment method from string (handles various formats)
+PaymentMethod parsePaymentMethod(String? method) {
+  if (method == null) return PaymentMethod.card;
+  final lower = method.toLowerCase();
+  if (lower == 'cash' || lower == 'efectivo') return PaymentMethod.cash;
+  if (lower == 'wallet') return PaymentMethod.wallet;
+  return PaymentMethod.card;
+}
+
+/// Get display text for payment method
+String paymentMethodDisplayText(PaymentMethod method, {bool spanish = false}) {
+  switch (method) {
+    case PaymentMethod.cash:
+      return spanish ? 'Efectivo' : 'Cash';
+    case PaymentMethod.wallet:
+      return spanish ? 'Wallet' : 'Wallet';
+    case PaymentMethod.card:
+      return spanish ? 'Tarjeta' : 'Card';
+  }
 }
 
 class LocationPoint {
@@ -310,7 +332,8 @@ class RideModel {
       ),
       pickupLocation: pickupLocation,
       dropoffLocation: dropoffLocation,
-      distanceKm: (json['distance_km'] as num?)?.toDouble() ?? 0.0,
+      distanceKm: (json['distance_km'] as num?)?.toDouble() ??
+                  ((json['distance_miles'] as num?)?.toDouble() ?? 0.0) / 0.621371,
       estimatedMinutes: (json['estimated_minutes'] as num?)?.toInt() ?? 0,
       fare: (json['estimated_price'] as num?)?.toDouble() ??
             (json['total_price'] as num?)?.toDouble() ??
@@ -318,10 +341,7 @@ class RideModel {
       tip: (json['tip'] as num?)?.toDouble() ?? 0.0,
       platformFee: (json['platform_fee'] as num?)?.toDouble() ?? 0.0,
       driverEarnings: (json['driver_earnings'] as num?)?.toDouble() ?? 0.0,
-      paymentMethod: PaymentMethod.values.firstWhere(
-        (e) => e.name == json['payment_method'],
-        orElse: () => PaymentMethod.card,
-      ),
+      paymentMethod: parsePaymentMethod(json['payment_method'] as String?),
       isPaid: json['is_paid'] as bool? ?? false,
       notes: json['notes'] as String?,
       isUrgent: json['is_urgent'] as bool? ?? false,

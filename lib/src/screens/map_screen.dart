@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -831,12 +832,19 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
       onTap: () async {
         HapticService.mediumImpact();
         final driverId = driverProvider.driver?.id;
-        if (driverId != null) {
-          final success = await rideProvider.acceptRide(ride.id, driverId);
-          if (mounted && success) {
-            // Close map screen - HomeScreen will detect active ride via RideProvider
-            Navigator.pop(context);
-          }
+        debugPrint('🔵 Map accept tapped: rideId=${ride.id}, driverId=$driverId');
+        if (driverId == null) {
+          debugPrint('🔴 driverId is NULL in map_screen');
+          return;
+        }
+        final success = await rideProvider.acceptRide(ride.id, driverId);
+        debugPrint('🔵 Map acceptRide result: $success');
+        if (mounted && success) {
+          Navigator.pop(context);
+        } else if (mounted && !success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(rideProvider.error ?? 'Error accepting ride'), backgroundColor: Colors.red),
+          );
         }
       },
       child: Container(

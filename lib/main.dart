@@ -3,14 +3,16 @@ import 'package:flutter/services.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:provider/provider.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
-// Firebase disabled for Windows build - uncomment for mobile release
-// import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 // Config
 import 'src/config/supabase_config.dart';
 import 'src/services/payment_service.dart';
 import 'src/services/mapbox_navigation_service.dart';
 import 'src/services/update_service.dart';
+import 'src/services/app_state_validator.dart';
+import 'src/services/notification_service.dart';
 
 // Theme
 import 'src/utils/app_theme.dart';
@@ -50,6 +52,17 @@ import 'src/screens/bank_account_screen.dart';
 import 'src/screens/add_vehicle_screen.dart';
 import 'src/screens/driver_agreement_screen.dart';
 import 'src/widgets/animated_splash.dart';
+// Mexico screens
+import 'src/screens/mexico_documents_screen.dart';
+import 'src/screens/mexico_tax_screen.dart';
+import 'src/screens/mexico_invoices_screen.dart';
+
+/// FCM background handler - must be top-level function
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  debugPrint('FCM Background message: ${message.messageId}');
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -74,32 +87,43 @@ void main() async {
 
   runApp(
     EasyLocalization(
-      supportedLocales: const [Locale('en'), Locale('es')],
+      supportedLocales: const [Locale('en'), Locale('es'), Locale('es', 'MX')],
       path: 'assets/lang',
       fallbackLocale: const Locale('es'),
       saveLocale: true,
-      useOnlyLangCode: true,
+      useOnlyLangCode: false, // Allow country codes for es-MX
       child: const ToroDriverApp(),
     ),
   );
 }
 
 Future<void> _initializeServices() async {
-  // Firebase disabled for Windows build - uncomment for mobile release
-  // try {
-  //   await Firebase.initializeApp();
-  // } catch (e) {
-  //   debugPrint('Firebase not configured, skipping: $e');
-  // }
+  try {
+    await Firebase.initializeApp();
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  } catch (e) {
+    debugPrint('Firebase not configured, skipping: $e');
+  }
 
   // Initialize Supabase
   await SupabaseConfig.initialize();
+
+  // Validate app state - clears stale state on version change
+  // Also syncs local state with server to prevent ghost rides
+  await AppStateValidator.instance.initialize();
 
   // Initialize Stripe (optional - skip if not configured)
   try {
     await PaymentService.initialize();
   } catch (e) {
     // Stripe not configured, skipping
+  }
+
+  // Initialize push notifications early so background handler is registered
+  try {
+    await NotificationService().initialize();
+  } catch (e) {
+    debugPrint('Notification init error: $e');
   }
 
   // Initialize Haptic Service
@@ -157,6 +181,10 @@ class ToroDriverApp extends StatelessWidget {
           '/bank-account': (context) => const BankAccountScreen(),
           '/add-vehicle': (context) => const AddVehicleScreen(),
           '/driver-agreement': (context) => const DriverAgreementScreen(),
+          // Mexico routes
+          '/mexico-documents': (context) => const MexicoDocumentsScreen(),
+          '/mexico-tax': (context) => const MexicoTaxScreen(),
+          '/mexico-invoices': (context) => const MexicoInvoicesScreen(),
           '/logout': (context) => _buildLogoutScreen(context),
         },
       ),

@@ -32,6 +32,11 @@ class AppColors {
   static const Color warningLight = Color(0xFFFFB340);
   static const Color warningDark = Color(0xFFFF6B00);
 
+  // Info - Neon Blue lighter
+  static const Color info = Color(0xFF38BDF8);
+  static const Color infoLight = Color(0xFF7DD3FC);
+  static const Color infoDark = Color(0xFF0EA5E9);
+
   // ═══════════════════════════════════════════════════════════════════════════
   // DARK THEME BASE COLORS
   // ═══════════════════════════════════════════════════════════════════════════

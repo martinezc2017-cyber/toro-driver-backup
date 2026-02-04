@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart' show ChangeNotifier;
+import 'package:flutter/foundation.dart' show ChangeNotifier, debugPrint;
 import '../services/ride_service.dart';
 import '../services/driver_service.dart';
 import '../models/ride_model.dart';
@@ -63,7 +63,7 @@ class RideProvider with ChangeNotifier {
 
       if (_activeRide != null) {
         _status = RideProviderStatus.hasActiveRide;
-        _subscribeToActiveRide(_activeRide!.id);
+        _subscribeToActiveRide(_activeRide!.id, rideType: _activeRide!.type);
       } else {
         _status = RideProviderStatus.idle;
         // Only subscribe to available rides if driver is active
@@ -141,20 +141,18 @@ class RideProvider with ChangeNotifier {
     _startPeriodicRefresh();
   }
 
-  // Periodic refresh to ensure cancelled rides are removed
+  // Periodic refresh to ensure rides list stays current
+  // Always applies enriched data (profile names, split calculations)
   void _startPeriodicRefresh() {
     _refreshTimer?.cancel();
-    _refreshTimer = Timer.periodic(const Duration(seconds: 10), (timer) async {
+    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (timer) async {
       if (_status == RideProviderStatus.hasActiveRide) {
-        // Don't refresh if driver has active ride
         return;
       }
       try {
         final freshRides = await _rideService.getAvailableRides();
-        if (_availableRides.length != freshRides.length) {
-          _availableRides = freshRides;
-          notifyListeners();
-        }
+        _availableRides = freshRides;
+        notifyListeners();
       } catch (e) {
         // Ignore periodic refresh errors
       }
@@ -168,14 +166,23 @@ class RideProvider with ChangeNotifier {
   }
 
   // Subscribe to active ride updates
-  void _subscribeToActiveRide(String rideId) {
+  // Uses the correct stream based on ride type (delivery vs carpool)
+  void _subscribeToActiveRide(String rideId, {RideType? rideType}) {
     _activeRideSubscription?.cancel();
-    _activeRideSubscription = _rideService.streamRide(rideId).listen(
+    _activeRidePollTimer?.cancel();
+
+    // Use carpool stream if it's a carpool, otherwise use deliveries stream
+    final stream = rideType == RideType.carpool
+        ? _rideService.streamCarpoolRide(rideId)
+        : _rideService.streamRide(rideId);
+
+    _activeRideSubscription = stream.listen(
       (ride) {
         _activeRide = ride;
         if (ride == null || ride.status == RideStatus.completed || ride.status == RideStatus.cancelled) {
           _status = RideProviderStatus.idle;
           _activeRide = null;
+          _activeRidePollTimer?.cancel();
           _subscribeToAvailableRides();
         }
         notifyListeners();
@@ -185,7 +192,34 @@ class RideProvider with ChangeNotifier {
         notifyListeners();
       },
     );
+
+    // FALLBACK: Poll every 5 seconds to detect cancelled rides
+    // This catches cases where realtime misses the cancellation
+    _activeRidePollTimer = Timer.periodic(const Duration(seconds: 5), (timer) async {
+      if (_activeRide == null) {
+        timer.cancel();
+        return;
+      }
+      try {
+        final freshRide = await _rideService.getRide(rideId);
+        if (freshRide == null ||
+            freshRide.status == RideStatus.cancelled ||
+            freshRide.status == RideStatus.completed) {
+          // Ride was cancelled or completed - clear state
+          _activeRide = null;
+          _status = RideProviderStatus.idle;
+          timer.cancel();
+          _activeRideSubscription?.cancel();
+          _subscribeToAvailableRides();
+          notifyListeners();
+        }
+      } catch (e) {
+        // Ignore poll errors
+      }
+    });
   }
+
+  Timer? _activeRidePollTimer;
 
   // Accept a ride
   Future<bool> acceptRide(String rideId, String driverId) async {
@@ -193,30 +227,37 @@ class RideProvider with ChangeNotifier {
       _status = RideProviderStatus.loading;
       notifyListeners();
 
+      debugPrint('🚗 RideProvider: Accepting ride $rideId for driver $driverId');
+
       // Get service type from the ride being accepted
-      final ride = _availableRides.firstWhere(
-        (r) => r.id == rideId,
-        orElse: () => _availableRides.first,
-      );
-      final serviceType = ride.type == RideType.package ? 'delivery'
-          : ride.type == RideType.carpool ? 'carpool'
-          : 'ride';
+      String serviceType = 'ride';
+      try {
+        final ride = _availableRides.firstWhere((r) => r.id == rideId);
+        serviceType = ride.type == RideType.package ? 'delivery'
+            : ride.type == RideType.carpool ? 'carpool'
+            : 'ride';
+      } catch (e) {
+        debugPrint('🚗 Ride not in available list, using default service type');
+      }
 
       _activeRide = await _rideService.acceptRide(rideId, driverId, serviceType: serviceType);
       _status = RideProviderStatus.hasActiveRide;
+
+      debugPrint('🚗 RideProvider: Ride accepted! Active ride: ${_activeRide?.id}, status: ${_activeRide?.status}');
 
       // Stop listening to available rides and periodic refresh
       _availableRidesSubscription?.cancel();
       _stopPeriodicRefresh();
       _availableRides = [];
 
-      // Start listening to active ride
-      _subscribeToActiveRide(rideId);
+      // Start listening to active ride (pass ride type for correct stream)
+      _subscribeToActiveRide(rideId, rideType: _activeRide?.type);
 
       _error = null;
       notifyListeners();
       return true;
     } catch (e) {
+      debugPrint('🚗 RideProvider: ERROR accepting ride: $e');
       _error = 'Error al aceptar viaje: $e';
       _status = RideProviderStatus.error;
       notifyListeners();
@@ -304,6 +345,83 @@ class RideProvider with ChangeNotifier {
     }
   }
 
+  // ============================================================================
+  // CASH PAYMENT CONFIRMATION
+  // ============================================================================
+
+  /// Check if the active ride requires cash payment confirmation
+  bool get requiresCashPaymentConfirmation {
+    if (_activeRide == null) return false;
+    return _rideService.requiresCashPaymentConfirmation(_activeRide!);
+  }
+
+  /// Check if the active ride is a cash payment
+  bool get isCashPayment {
+    if (_activeRide == null) return false;
+    return _activeRide!.paymentMethod == PaymentMethod.cash;
+  }
+
+  /// Get the amount to collect for cash payment
+  double get cashAmountToCollect {
+    if (_activeRide == null) return 0;
+    return _activeRide!.fare;
+  }
+
+  /// Confirm cash payment received from rider
+  /// This should be called BEFORE completing the ride for cash payments
+  Future<bool> confirmCashPayment({required String driverId}) async {
+    if (_activeRide == null) return false;
+
+    try {
+      _status = RideProviderStatus.loading;
+      notifyListeners();
+
+      final updatedRide = await _rideService.confirmCashPayment(
+        rideId: _activeRide!.id,
+        driverId: driverId,
+        amount: _activeRide!.fare,
+      );
+
+      // Update the active ride with confirmed payment
+      _activeRide = updatedRide;
+      _status = RideProviderStatus.hasActiveRide;
+      _error = null;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = 'Error al confirmar pago en efectivo: $e';
+      _status = RideProviderStatus.hasActiveRide;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Complete ride with cash payment confirmation
+  /// This is a combined flow that first confirms the cash payment, then completes the ride
+  Future<bool> completeRideWithCashConfirmation({
+    double? tip,
+    required String driverId,
+  }) async {
+    if (_activeRide == null) return false;
+
+    try {
+      // First confirm cash payment if needed
+      if (requiresCashPaymentConfirmation) {
+        final cashConfirmed = await confirmCashPayment(driverId: driverId);
+        if (!cashConfirmed) {
+          return false;
+        }
+      }
+
+      // Then complete the ride
+      return await completeRide(tip: tip, driverId: driverId);
+    } catch (e) {
+      _error = 'Error al completar viaje con pago en efectivo: $e';
+      notifyListeners();
+      return false;
+    }
+  }
+
   // Cancel ride
   Future<bool> cancelRide(String reason) async {
     if (_activeRide == null) return false;
@@ -311,8 +429,15 @@ class RideProvider with ChangeNotifier {
     try {
       await _rideService.cancelRide(_activeRide!.id, reason);
 
+      // CRITICAL: Cancel ALL timers and subscriptions FIRST to stop loops
+      _activeRidePollTimer?.cancel();
+      _activeRidePollTimer = null;
+      _activeRideSubscription?.cancel();
+      _activeRideSubscription = null;
+
       _activeRide = null;
       _status = RideProviderStatus.idle;
+      _error = null;
 
       // Resume listening to available rides
       _subscribeToAvailableRides();
@@ -320,7 +445,41 @@ class RideProvider with ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
+      // Even on error, stop the loops
+      _activeRidePollTimer?.cancel();
+      _activeRidePollTimer = null;
+      _activeRideSubscription?.cancel();
+      _activeRideSubscription = null;
+      _activeRide = null;
+      _status = RideProviderStatus.idle;
+
       _error = 'Error al cancelar viaje: $e';
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // Force release ALL active rides - for stuck/ghost rides
+  Future<bool> forceReleaseAllRides(String driverId) async {
+    try {
+      final success = await _rideService.forceReleaseAllActiveRides(driverId);
+
+      // Clear local state regardless of DB result
+      _activeRide = null;
+      _status = RideProviderStatus.idle;
+      _activeRideSubscription?.cancel();
+
+      // Resume listening to available rides
+      _subscribeToAvailableRides();
+
+      _error = null;
+      notifyListeners();
+      return success;
+    } catch (e) {
+      // Still clear local state even on error
+      _activeRide = null;
+      _status = RideProviderStatus.idle;
+      _subscribeToAvailableRides();
       notifyListeners();
       return false;
     }
@@ -412,6 +571,7 @@ class RideProvider with ChangeNotifier {
   void dispose() {
     _availableRidesSubscription?.cancel();
     _activeRideSubscription?.cancel();
+    _activeRidePollTimer?.cancel();
     _stopPeriodicRefresh();
     super.dispose();
   }

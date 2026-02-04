@@ -14,3 +14,9 @@ export 'document_ocr_service.dart';
 export 'split_calculator.dart';
 export 'ticket_service.dart';
 export 'audit_service.dart';
+
+// Mexico services
+export 'mexico_tax_service.dart';
+export 'mexico_documents_service.dart';
+export 'mexico_pricing_service.dart';
+export 'mexico_cfdi_service.dart';

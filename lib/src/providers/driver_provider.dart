@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'dart:io';
-import 'package:flutter/foundation.dart' show ChangeNotifier;
+import 'package:flutter/foundation.dart' show ChangeNotifier, debugPrint;
 import '../services/driver_service.dart';
+import '../services/notification_service.dart';
 import '../models/driver_model.dart';
 
 class DriverProvider with ChangeNotifier {
@@ -66,6 +67,15 @@ class DriverProvider with ChangeNotifier {
 
       // Subscribe to real-time updates
       _subscribeToDriverUpdates(driverId);
+
+      // Register FCM token for push notifications
+      try {
+        final notifService = NotificationService();
+        await notifService.initialize();
+        await notifService.updateFCMToken(driverId);
+      } catch (e) {
+        debugPrint('FCM token registration error: $e');
+      }
 
       _error = null;
     } catch (e) {

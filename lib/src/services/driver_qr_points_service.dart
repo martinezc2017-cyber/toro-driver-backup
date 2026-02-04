@@ -305,10 +305,53 @@ class DriverQRPointsService extends ChangeNotifier {
     AppLogger.log('DRIVER_QR_POINTS -> Subscribed to real-time updates');
   }
 
+  /// Validate that a trip meets minimum requirements for QR point awarding
+  /// Requires: distance >= 0.8km AND duration >= 3 minutes
+  Future<bool> validateCompletedTrip({
+    required double distanceKm,
+    required double durationMin,
+  }) async {
+    try {
+      final result = await _client.rpc('validate_completed_trip', params: {
+        'p_distance_km': distanceKm,
+        'p_duration_min': durationMin,
+      });
+
+      final isValid = result as bool? ?? false;
+      AppLogger.log(
+        'DRIVER_QR_POINTS -> Trip validation: distance=${distanceKm}km, duration=${durationMin}min, valid=$isValid',
+      );
+      return isValid;
+    } catch (e) {
+      AppLogger.log('DRIVER_QR_POINTS -> Trip validation error: $e');
+      // If validation fails due to error, don't award points (fail safe)
+      return false;
+    }
+  }
+
   /// Increment level when a referral completes first ride or is approved as driver
   /// This should be called by the backend/admin when the condition is met
-  Future<void> incrementLevel() async {
+  /// IMPORTANT: Call validateCompletedTrip() BEFORE calling this method!
+  Future<void> incrementLevel({
+    double? distanceKm,
+    double? durationMin,
+  }) async {
     if (_driverId == null) return;
+
+    // If trip data is provided, validate before awarding points
+    if (distanceKm != null && durationMin != null) {
+      final isValidTrip = await validateCompletedTrip(
+        distanceKm: distanceKm,
+        durationMin: durationMin,
+      );
+
+      if (!isValidTrip) {
+        AppLogger.log(
+          'DRIVER_QR_POINTS -> Trip validation failed - not awarding points',
+        );
+        return;
+      }
+    }
 
     final weekStartStr = _currentLevel.weekStart.toIso8601String().split(
       'T',

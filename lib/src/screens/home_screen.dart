@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:geolocator/geolocator.dart';
 // ignore: depend_on_referenced_packages
 import 'package:url_launcher/url_launcher_string.dart';
@@ -26,11 +26,13 @@ import '../utils/app_theme.dart';
 import '../utils/haptic_service.dart';
 import '../widgets/futuristic_widgets.dart' hide NeonButton, NeonSwitch;
 import '../widgets/neon_widgets.dart';
+import '../config/supabase_config.dart';
 import '../services/audit_service.dart';
 import '../services/mapbox_navigation_service.dart';
 import 'earnings_screen.dart';
 import 'rides_screen.dart';
 import 'profile_screen.dart';
+import 'map_screen.dart';
 import 'navigation_map_screen.dart';
 import '../widgets/toro_3d_pin.dart';
 
@@ -47,15 +49,15 @@ class _HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   int _selectedNavIndex = 0;
 
-  // Collapsible earnings states
+  // Collapsible section states
   bool _showDailyEarnings = true;
   bool _showWeeklyEarnings = true;
+  bool _showRentalSection = false; // Collapsed by default
 
   // === APP LIFECYCLE OPTIMIZATION ===
   bool _isAppInBackground = false;
 
-  // Navigation mode - user must explicitly enter
-  bool _isInNavigationMode = false;
+  // Navigation mode removed - using NavigationMapScreen on tab 1 instead
 
   // Maximum width for web to look like mobile
   static const double _maxWebWidth = 480;
@@ -82,10 +84,29 @@ class _HomeScreenState extends State<HomeScreen>
         break;
       case AppLifecycleState.resumed:
         _isAppInBackground = false;
-        if (mounted) setState(() {});
+        if (mounted) {
+          setState(() {});
+          // Force refresh available rides when app comes back to foreground
+          _refreshRidesOnResume();
+        }
         break;
       case AppLifecycleState.detached:
         break;
+    }
+  }
+
+  // Force refresh rides when app resumes from background
+  void _refreshRidesOnResume() {
+    try {
+      final rideProvider = Provider.of<RideProvider>(context, listen: false);
+      final locationProvider = Provider.of<LocationProvider>(context, listen: false);
+      final pos = locationProvider.currentPosition;
+      rideProvider.refreshAvailableRides(
+        latitude: pos?.latitude,
+        longitude: pos?.longitude,
+      );
+    } catch (e) {
+      // Ignore refresh errors on resume
     }
   }
 
@@ -308,8 +329,7 @@ class _HomeScreenState extends State<HomeScreen>
       child: Scaffold(
         backgroundColor: AppColors.background,
         body: _buildBody(),
-        // Hide bottom nav ONLY when in full-screen navigation mode
-        bottomNavigationBar: (_isInNavigationMode || _selectedNavIndex == 1) ? null : _buildBottomNav(),
+        bottomNavigationBar: _selectedNavIndex == 1 ? null : _buildBottomNav(),
       ),
     );
 
@@ -327,7 +347,11 @@ class _HomeScreenState extends State<HomeScreen>
   Widget _buildBody() {
     switch (_selectedNavIndex) {
       case 1:
-        return const NavigationMapScreen();
+        return NavigationMapScreen(
+          onBack: () {
+            setState(() => _selectedNavIndex = 0);
+          },
+        );
       case 2:
         return const EarningsScreen();
       case 3:
@@ -337,19 +361,6 @@ class _HomeScreenState extends State<HomeScreen>
       default:
         return Consumer<RideProvider>(
           builder: (context, rideProvider, child) {
-            // Show navigation/map when user explicitly entered navigation mode
-            if (_isInNavigationMode) {
-              // Key forces complete rebuild when ride changes (avoids ghost map state)
-              return _ActiveRideNavigation(
-                key: ValueKey('nav_${rideProvider.activeRide?.id ?? 'idle'}'),
-                ride:
-                    rideProvider.activeRide, // Can be null - will just show map
-                onExitNavigation: () {
-                  setState(() => _isInNavigationMode = false);
-                },
-              );
-            }
-
             // Normal home screen
             return SafeArea(
               child: Column(
@@ -371,8 +382,6 @@ class _HomeScreenState extends State<HomeScreen>
                           _buildTodayActivity(),
                           const SizedBox(height: 12),
                           _buildQuickActionButtons(),
-                          const SizedBox(height: 12),
-                          _buildMapButton(),
                           const SizedBox(height: 60),
                         ],
                       ),
@@ -395,7 +404,8 @@ class _HomeScreenState extends State<HomeScreen>
 
     return GestureDetector(
       onTap: () {
-        setState(() => _isInNavigationMode = true);
+        // Go to NavigationMapScreen (tab Mapa)
+        setState(() => _selectedNavIndex = 1);
       },
       child: Container(
         margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
@@ -983,12 +993,22 @@ class _HomeScreenState extends State<HomeScreen>
                       onAccept: () async {
                         HapticService.mediumImpact();
                         final driverId = driverProvider.driver?.id;
-                        if (driverId != null) {
-                          // Accept ride - UI will auto-switch to navigation mode via rideProvider.hasActiveRide
-                          await rideProvider.acceptRide(ride.id, driverId);
-                          // Close the preview sheet
-                          if (context.mounted) {
+                        debugPrint('🔵 ACEPTAR (preview) tapped: rideId=${ride.id}, driverId=$driverId');
+                        if (driverId == null) {
+                          debugPrint('🔴 driverId is NULL - cannot accept ride');
+                          return;
+                        }
+                        final success = await rideProvider.acceptRide(ride.id, driverId);
+                        debugPrint('🔵 acceptRide (preview) result: $success');
+                        if (context.mounted) {
+                          if (success) {
                             Navigator.pop(context);
+                            // Switch to NavigationMapScreen tab
+                            setState(() => _selectedNavIndex = 1);
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(rideProvider.error ?? 'Error accepting ride'), backgroundColor: Colors.red),
+                            );
                           }
                         }
                       },
@@ -997,10 +1017,25 @@ class _HomeScreenState extends State<HomeScreen>
                   onAccept: () async {
                     HapticService.mediumImpact();
                     final driverId = driverProvider.driver?.id;
-                    if (driverId != null) {
-                      // Accept ride - UI will auto-switch to navigation mode via rideProvider.hasActiveRide
-                      await rideProvider.acceptRide(ride.id, driverId);
-                      // No navigation - same screen transforms to show navigation UI
+                    debugPrint('🔵 ACEPTAR VIAJE tapped: rideId=${ride.id}, driverId=$driverId');
+                    if (driverId == null) {
+                      debugPrint('🔴 driverId is NULL - cannot accept ride');
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Error: Driver profile not loaded'), backgroundColor: Colors.red),
+                        );
+                      }
+                      return;
+                    }
+                    final success = await rideProvider.acceptRide(ride.id, driverId);
+                    debugPrint('🔵 acceptRide result: $success, error: ${rideProvider.error}');
+                    if (success && context.mounted) {
+                      // Switch to NavigationMapScreen tab
+                      setState(() => _selectedNavIndex = 1);
+                    } else if (!success && context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(rideProvider.error ?? 'Error accepting ride'), backgroundColor: Colors.red),
+                      );
                     }
                   },
                   onReject: () async {
@@ -1292,134 +1327,265 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // QUICK ACTION BUTTONS - Messages & Ride History
+  // RENTA TU VEHICULO - Vehicle rental section
   // ═══════════════════════════════════════════════════════════════════════════
 
   Widget _buildQuickActionButtons() {
-    return Row(
-      children: [
-        Expanded(
-          child: _LuxuryActionButton(
-            icon: Icons.chat_bubble_outline_rounded,
-            label: 'messages'.tr(),
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0xFF8B5CF6).withValues(alpha: 0.25),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF8B5CF6).withValues(alpha: 0.08),
+            blurRadius: 20,
+            spreadRadius: -4,
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header - tappable to expand/collapse
+          GestureDetector(
             onTap: () {
               HapticService.lightImpact();
-              Navigator.pushNamed(context, '/messages');
+              setState(() => _showRentalSection = !_showRentalSection);
             },
+            behavior: HitTestBehavior.opaque,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF8B5CF6).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.car_rental_rounded,
+                      color: Color(0xFF8B5CF6),
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Renta tu Vehiculo',
+                          style: TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Publica tu vehiculo y gana dinero',
+                          style: TextStyle(
+                            color: AppColors.textTertiary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  AnimatedRotation(
+                    turns: _showRentalSection ? 0.5 : 0.0,
+                    duration: const Duration(milliseconds: 200),
+                    child: Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      color: AppColors.textTertiary,
+                      size: 24,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Collapsible content
+          AnimatedCrossFade(
+            firstChild: const SizedBox.shrink(),
+            secondChild: Column(
+              children: [
+                Divider(
+                  color: AppColors.border.withValues(alpha: 0.5),
+                  height: 1,
+                ),
+                _buildRentalActionItem(
+                  icon: Icons.directions_car_rounded,
+                  label: 'Publicar Vehiculo',
+                  subtitle: 'Crea un anuncio de renta',
+                  onTap: () {
+                    HapticService.lightImpact();
+                    _showPublishVehicleSheet();
+                  },
+                ),
+                Divider(
+                  color: AppColors.border.withValues(alpha: 0.3),
+                  height: 1,
+                  indent: 56,
+                ),
+                _buildRentalActionItem(
+                  icon: Icons.receipt_long_rounded,
+                  label: 'Mis Rentas',
+                  subtitle: 'Acuerdos de renta activos',
+                  onTap: () {
+                    HapticService.lightImpact();
+                    _showMyRentalsSheet();
+                  },
+                ),
+                Divider(
+                  color: AppColors.border.withValues(alpha: 0.3),
+                  height: 1,
+                  indent: 56,
+                ),
+                _buildRentalActionItem(
+                  icon: Icons.gps_fixed_rounded,
+                  label: 'GPS Tracking',
+                  subtitle: 'Rastreo de vehiculos rentados',
+                  onTap: () {
+                    HapticService.lightImpact();
+                    _showGpsTrackingSheet();
+                  },
+                ),
+                const SizedBox(height: 4),
+              ],
+            ),
+            crossFadeState: _showRentalSection
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+            duration: const Duration(milliseconds: 250),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRentalActionItem({
+    required IconData icon,
+    required String label,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        splashColor: const Color(0xFF8B5CF6).withValues(alpha: 0.08),
+        highlightColor: const Color(0xFF8B5CF6).withValues(alpha: 0.04),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppColors.cardHover,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: const Color(0xFF8B5CF6).withValues(alpha: 0.2),
+                    width: 1,
+                  ),
+                ),
+                child: Icon(icon, color: const Color(0xFF8B5CF6), size: 18),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        color: AppColors.textTertiary,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: AppColors.textTertiary,
+                size: 20,
+              ),
+            ],
           ),
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _LuxuryActionButton(
-            icon: Icons.history_rounded,
-            label: 'ride_history'.tr(),
-            onTap: () {
-              HapticService.lightImpact();
-              Navigator.pushNamed(context, '/rides');
-            },
-          ),
-        ),
-      ],
+      ),
     );
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // MAP BUTTON - Go to Map
+  // PUBLISH VEHICLE BOTTOM SHEET
   // ═══════════════════════════════════════════════════════════════════════════
 
-  Widget _buildMapButton() {
-    return Consumer<RideProvider>(
-      builder: (context, rideProvider, child) {
-        final hasActiveRide =
-            rideProvider.hasActiveRide && rideProvider.activeRide != null;
+  void _showPublishVehicleSheet() {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final userId = authProvider.driverId;
 
-        return Stack(
-          clipBehavior: Clip.none,
-          children: [
-            // Main button with dynamic glow
-            Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: hasActiveRide
-                    ? [
-                        BoxShadow(
-                          color: const Color(0xFF10B981).withOpacity(0.5),
-                          blurRadius: 20,
-                          spreadRadius: 2,
-                        ),
-                        BoxShadow(
-                          color: const Color(0xFF10B981).withOpacity(0.3),
-                          blurRadius: 40,
-                          spreadRadius: 5,
-                        ),
-                      ]
-                    : null,
-              ),
-              child: NeonButton(
-                text: 'go_to_map'.tr(),
-                icon: hasActiveRide
-                    ? Icons.navigation_rounded
-                    : Icons.map_outlined,
-                onPressed: () {
-                  HapticService.lightImpact();
-                  setState(() => _isInNavigationMode = true);
-                },
-                style: hasActiveRide
-                    ? NeonButtonStyle.success
-                    : NeonButtonStyle.primary,
-              ),
-            ),
-            // Notification badge when active ride
-            if (hasActiveRide)
-              Positioned(
-                top: -8,
-                right: -8,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF10B981), Color(0xFF059669)],
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF10B981).withOpacity(0.5),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 6,
-                        height: 6,
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      const Text(
-                        'VIAJE ACTIVO',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 9,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-          ],
-        );
-      },
+    if (userId == null) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _PublishVehicleSheet(userId: userId),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // MY RENTALS BOTTOM SHEET
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  void _showMyRentalsSheet() {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final userId = authProvider.driverId;
+
+    if (userId == null) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _MyRentalsSheet(userId: userId),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // GPS TRACKING BOTTOM SHEET
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  void _showGpsTrackingSheet() {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final userId = authProvider.driverId;
+
+    if (userId == null) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _GpsTrackingSheet(userId: userId),
     );
   }
 
@@ -1445,38 +1611,46 @@ class _HomeScreenState extends State<HomeScreen>
   // ═══════════════════════════════════════════════════════════════════════════
 
   Widget _buildBottomNav() {
-    return FireGlowBottomNavBar(
-      currentIndex: _selectedNavIndex,
-      onTap: (index) {
-        setState(() => _selectedNavIndex = index);
+    return Consumer<RideProvider>(
+      builder: (context, rideProvider, child) {
+        final hasActiveRide = rideProvider.hasActiveRide && rideProvider.activeRide != null;
+
+        return FireGlowBottomNavBar(
+          currentIndex: _selectedNavIndex,
+          onTap: (index) {
+            // Always go to NavigationMapScreen (the good Mapbox map) for index 1
+            setState(() => _selectedNavIndex = index);
+          },
+          items: [
+            FireGlowNavItem(
+              icon: Icons.home_outlined,
+              activeIcon: Icons.home_rounded,
+              label: 'nav_home'.tr(),
+            ),
+            FireGlowNavItem(
+              icon: Icons.map_outlined,
+              activeIcon: Icons.navigation_rounded, // Navigation icon when active
+              label: hasActiveRide ? 'Viaje' : 'Mapa',
+              hasActiveGlow: hasActiveRide, // Green glow when there's an active ride
+            ),
+            FireGlowNavItem(
+              icon: Icons.attach_money_outlined,
+              activeIcon: Icons.attach_money_rounded,
+              label: 'nav_earnings'.tr(),
+            ),
+            FireGlowNavItem(
+              icon: Icons.directions_car_outlined,
+              activeIcon: Icons.directions_car_rounded,
+              label: 'nav_trips'.tr(),
+            ),
+            FireGlowNavItem(
+              icon: Icons.person_outline_rounded,
+              activeIcon: Icons.person_rounded,
+              label: 'nav_profile'.tr(),
+            ),
+          ],
+        );
       },
-      items: [
-        FireGlowNavItem(
-          icon: Icons.home_outlined,
-          activeIcon: Icons.home_rounded,
-          label: 'nav_home'.tr(),
-        ),
-        FireGlowNavItem(
-          icon: Icons.map_outlined,
-          activeIcon: Icons.map_rounded,
-          label: 'Mapa',
-        ),
-        FireGlowNavItem(
-          icon: Icons.attach_money_outlined,
-          activeIcon: Icons.attach_money_rounded,
-          label: 'nav_earnings'.tr(),
-        ),
-        FireGlowNavItem(
-          icon: Icons.directions_car_outlined,
-          activeIcon: Icons.directions_car_rounded,
-          label: 'nav_trips'.tr(),
-        ),
-        FireGlowNavItem(
-          icon: Icons.person_outline_rounded,
-          activeIcon: Icons.person_rounded,
-          label: 'nav_profile'.tr(),
-        ),
-      ],
     );
   }
 }
@@ -1997,15 +2171,15 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                         children: [
                           Text(
                             _getRideTypeIcon(),
-                            style: const TextStyle(fontSize: 12),
+                            style: const TextStyle(fontSize: 18),
                           ),
-                          const SizedBox(width: 3),
+                          const SizedBox(width: 4),
                           Text(
                             _getRideTypeLabel(),
                             style: TextStyle(
                               color: _fireColor,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
                         ],
@@ -2013,7 +2187,7 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                     ),
                     if (widget.ride.isGoodTipper) ...[
                       const SizedBox(width: 4),
-                      Text('💰', style: const TextStyle(fontSize: 10)),
+                      Text('💰', style: const TextStyle(fontSize: 14)),
                     ],
                     // Round Trip badge for carpool
                     if (widget.ride.isRoundTrip) ...[
@@ -2042,7 +2216,7 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                     const SizedBox(width: 8),
                     // Client avatar + name
                     CircleAvatar(
-                      radius: 12,
+                      radius: 16,
                       backgroundColor: _fireColor.withValues(alpha: 0.2),
                       backgroundImage: widget.ride.passengerImageUrl != null
                           ? NetworkImage(widget.ride.passengerImageUrl!)
@@ -2054,30 +2228,33 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                                   : 'C',
                               style: TextStyle(
                                 color: _fireColor,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14,
                               ),
                             )
                           : null,
                     ),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         widget.ride.passengerName,
                         style: TextStyle(
                           color: AppColors.textPrimary,
-                          fontSize: 12,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     if (widget.ride.passengerRating > 0) ...[
-                      Icon(Icons.star_rounded, color: Colors.amber, size: 12),
+                      Icon(Icons.star_rounded, color: Colors.amber, size: 18),
+                      const SizedBox(width: 2),
                       Text(
                         widget.ride.passengerRating.toStringAsFixed(1),
                         style: TextStyle(
                           color: AppColors.textSecondary,
-                          fontSize: 11,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
@@ -2091,21 +2268,21 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                     Column(
                       children: [
                         Container(
-                          width: 8,
-                          height: 8,
+                          width: 10,
+                          height: 10,
                           decoration: BoxDecoration(
                             color: AppColors.success,
                             shape: BoxShape.circle,
                           ),
                         ),
                         Container(
-                          width: 1,
-                          height: 16,
+                          width: 2,
+                          height: 20,
                           color: AppColors.textTertiary.withValues(alpha: 0.3),
                         ),
                         Container(
-                          width: 8,
-                          height: 8,
+                          width: 10,
+                          height: 10,
                           decoration: BoxDecoration(
                             color: _fireColor,
                             shape: BoxShape.circle,
@@ -2113,7 +2290,7 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                         ),
                       ],
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2123,18 +2300,18 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                                 'pickup_location'.tr(),
                             style: TextStyle(
                               color: AppColors.textPrimary,
-                              fontSize: 11,
+                              fontSize: 16,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          const SizedBox(height: 6),
+                          const SizedBox(height: 8),
                           Text(
                             widget.ride.dropoffLocation.address ??
                                 'destination'.tr(),
                             style: TextStyle(
                               color: AppColors.textPrimary,
-                              fontSize: 11,
+                              fontSize: 16,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -2175,14 +2352,15 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                             'Total viaje',
                             style: TextStyle(
                               color: AppColors.textTertiary,
-                              fontSize: 9,
+                              fontSize: 14,
                             ),
                           ),
                           Text(
                             '\$${widget.ride.fare.toStringAsFixed(2)}',
                             style: TextStyle(
                               color: AppColors.textSecondary,
-                              fontSize: 12,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ],
@@ -2191,7 +2369,7 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                       Icon(
                         Icons.arrow_forward_rounded,
                         color: AppColors.textTertiary,
-                        size: 14,
+                        size: 18,
                       ),
                       // Driver earnings (green - prominent)
                       Column(
@@ -2201,7 +2379,7 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                             'Tu ganancia',
                             style: TextStyle(
                               color: AppColors.success,
-                              fontSize: 9,
+                              fontSize: 14,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -2209,7 +2387,7 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                             '\$${widget.ride.driverEarnings.toStringAsFixed(2)}',
                             style: TextStyle(
                               color: AppColors.success,
-                              fontSize: 16,
+                              fontSize: 26,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -2224,51 +2402,53 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                   children: [
                     // Pickup distance (miles away from driver)
                     if (widget.pickupDistanceMiles != null) ...[
-                      Icon(Icons.near_me, color: Colors.cyan, size: 12),
-                      const SizedBox(width: 2),
+                      Icon(Icons.near_me, color: Colors.cyan, size: 18),
+                      const SizedBox(width: 4),
                       Text(
                         '${widget.pickupDistanceMiles!.toStringAsFixed(1)} mi',
                         style: TextStyle(
                           color: Colors.cyan,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 10),
                       Container(
                         width: 1,
-                        height: 12,
+                        height: 16,
                         color: AppColors.textTertiary.withValues(alpha: 0.3),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 10),
                     ],
                     // Trip distance
                     Icon(
                       Icons.route_outlined,
                       color: AppColors.textTertiary,
-                      size: 12,
+                      size: 18,
                     ),
-                    const SizedBox(width: 2),
+                    const SizedBox(width: 4),
                     Text(
                       '${(widget.ride.distanceKm * 0.621371).toStringAsFixed(1)} mi',
                       style: TextStyle(
                         color: AppColors.textSecondary,
-                        fontSize: 10,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 14),
                     // Trip time
                     Icon(
                       Icons.schedule_outlined,
                       color: AppColors.textTertiary,
-                      size: 12,
+                      size: 18,
                     ),
-                    const SizedBox(width: 2),
+                    const SizedBox(width: 4),
                     Text(
                       '~${widget.ride.estimatedMinutes} min',
                       style: TextStyle(
                         color: AppColors.textSecondary,
-                        fontSize: 10,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
@@ -3354,3713 +3534,7 @@ class _TamagotchiPetState extends State<_TamagotchiPet>
   }
 }
 
-/// ═══════════════════════════════════════════════════════════════════════════════
-/// ACTIVE RIDE NAVIGATION - Inline navigation UI (replaces NavigationMapScreen)
-/// Shows map with route, status, and action buttons on the same screen
-/// If ride is null, just shows the map with driver location
-/// ═══════════════════════════════════════════════════════════════════════════════
-class _ActiveRideNavigation extends StatefulWidget {
-  final RideModel? ride; // Nullable - if null, just show map
-  final VoidCallback? onExitNavigation;
-
-  const _ActiveRideNavigation({super.key, this.ride, this.onExitNavigation});
-
-  @override
-  State<_ActiveRideNavigation> createState() => _ActiveRideNavigationState();
-}
-
-class _ActiveRideNavigationState extends State<_ActiveRideNavigation>
-    with TickerProviderStateMixin, WidgetsBindingObserver {
-  final MapController _mapController = MapController();
-  List<LatLng> _routePoints = [];
-  LatLng? _driverLocation;
-  bool _isLoading = true;
-  String? _routeDistance;
-  String? _routeDuration;
-
-  // === APP LIFECYCLE OPTIMIZATION ===
-  bool _isAppInBackground = false;
-
-  // Real-time GPS tracking
-  StreamSubscription<Position>? _locationSubscription;
-  double _heading = 0; // Direction driver is facing (degrees from GPS)
-  double _bearingToTarget = 0; // Direction TO the destination
-  bool _isTrackingMode = true; // Follow driver with map rotation
-  DateTime? _lastRouteUpdate;
-
-  // Navigation optimization (smooth bearing along route)
-  int _lastRouteIndex = 0; // Last visited route point index
-  double _lastCalculatedBearing = 0; // For smooth bearing transitions
-
-  // === CAMERA INTERPOLATION (smooth between GPS updates) ===
-  Timer? _interpolationTimer;
-  LatLng? _lastGpsPosition;
-  LatLng? _currentGpsPosition;
-  final double _lastGpsBearing = 0;
-  final double _currentGpsBearing = 0;
-  DateTime? _lastGpsTimestamp;
-  final double _gpsSpeedMps = 0; // Speed in meters per second
-  double _currentZoom = 17.5; // Zoom dinámico según velocidad (backup style)
-  final double _currentPitch = 60.0; // Pitch 3D del mapa
-  static const int _interpolationIntervalMs =
-      16; // 16ms = 60fps (máxima fluidez)
-
-  // === DEBUG VISUAL OVERLAY ===
-  int _debugBuildCount = 0;
-  DateTime? _debugLastBuildTime;
-  int _debugLastBuildIntervalMs = 0;
-  Timer? _debugTimer;
-
-  // === DISTANCIA EN METROS AL TARGET (para lógica de ≤100m) ===
-  double _distanceToTargetMeters = double.infinity;
-
-  // === UBER-STYLE WAIT TIMER (2 min gratis) ===
-  DateTime? _arrivedAtPickupTime; // Cuando llegó al pickup
-  Timer? _waitTimer; // Timer que actualiza cada segundo
-  int _waitSeconds = 0; // Segundos esperando
-  static const int _freeWaitMinutes = 2; // 2 minutos gratis
-
-  late AnimationController _pulseController;
-  late Animation<double> _pulseAnimation;
-
-  // Mapbox 3D navigation (when ride is active)
-  mapbox.MapboxMap? _mapboxMap;
-  mapbox.PolylineAnnotationManager? _polylineManager;
-  mapbox.PointAnnotationManager? _pointManager;
-  List<List<double>> _mapboxRouteGeometry = [];
-  List<String> _routeCongestion =
-      []; // Congestion per segment (severe/heavy/moderate/low)
-  int _lastVanishIndex = 0; // Para vanish line
-  final List<mapbox.PolylineAnnotation> _fadeSegments = []; // Segmentos de fade
-  bool _mapboxUserInteracting = false; // Usuario tocando el mapa
-  Timer? _returnToNavTimer; // Timer para volver a navegación automática
-
-  // === TURN-BY-TURN NAVIGATION ===
-  List<NavigationStep> _navigationSteps = [];
-  int _currentStepIndex = 0;
-  NavigationStep? get _currentStep =>
-      _currentStepIndex < _navigationSteps.length
-      ? _navigationSteps[_currentStepIndex]
-      : null;
-  NavigationStep? get _nextStep =>
-      _currentStepIndex + 1 < _navigationSteps.length
-      ? _navigationSteps[_currentStepIndex + 1]
-      : null;
-
-  // === POSICIONES DE PANTALLA PARA PINS 3D OVERLAY ===
-  Offset? _pickupScreenPos;
-  Offset? _destinationScreenPos;
-  Offset? _riderGpsScreenPos;
-  List<Offset?> _waypointScreenPositions = [];
-
-  // Check if there's an active ride
-  bool get _hasRide => widget.ride != null;
-
-  // Determine target based on ride status
-  // Pickup: pending, accepted, arrivedAtPickup
-  // Destination: inProgress
-  bool get _isGoingToPickup =>
-      _hasRide &&
-      (widget.ride!.status == RideStatus.accepted ||
-          widget.ride!.status == RideStatus.pending ||
-          widget.ride!.status == RideStatus.arrivedAtPickup);
-
-  LatLng? get _targetLocation => _hasRide
-      ? (_isGoingToPickup
-            ? LatLng(
-                widget.ride!.pickupLocation.latitude,
-                widget.ride!.pickupLocation.longitude,
-              )
-            : LatLng(
-                widget.ride!.dropoffLocation.latitude,
-                widget.ride!.dropoffLocation.longitude,
-              ))
-      : null;
-
-  String get _targetAddress => _hasRide
-      ? (_isGoingToPickup
-            ? widget.ride!.pickupLocation.address ?? 'Punto de recogida'
-            : widget.ride!.dropoffLocation.address ?? 'Destino')
-      : 'Tu ubicación';
-
-  // === CERCA DEL TARGET (≤100m) - para mostrar botón "Llegué" ===
-  bool get _isNearTarget => _distanceToTargetMeters <= 100;
-
-  @override
-  void initState() {
-    super.initState();
-    // Register lifecycle observer for background optimization
-    WidgetsBinding.instance.addObserver(this);
-
-    _pulseController = AnimationController(
-      duration: const Duration(milliseconds: 1500),
-      vsync: this,
-    )..repeat(reverse: true);
-
-    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.4).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-    );
-
-    // === DEBUG: Timer DESHABILITADO - interfiere con rendering de Mapbox ===
-    // El setState() cada 100ms compite con el render loop de Mapbox
-    // _debugTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
-    //   if (mounted && !_isAppInBackground) {
-    //     setState(() {
-    //       // Forzar rebuild para medir FPS
-    //     });
-    //   }
-    // });
-
-    _initializeMap();
-
-    // Si el ride ya está en arrivedAtPickup, iniciar timer de espera
-    if (widget.ride?.status == RideStatus.arrivedAtPickup) {
-      // Usar arrived_at del ride si está disponible, sino usar ahora
-      final arrivedAt = widget.ride?.arrivedAt;
-      if (arrivedAt != null) {
-        _arrivedAtPickupTime = arrivedAt;
-        _waitSeconds = DateTime.now().difference(arrivedAt).inSeconds;
-      }
-      _startWaitTimer();
-    }
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    super.didChangeAppLifecycleState(state);
-    switch (state) {
-      case AppLifecycleState.paused:
-      case AppLifecycleState.inactive:
-      case AppLifecycleState.hidden:
-        _isAppInBackground = true;
-        break;
-      case AppLifecycleState.resumed:
-        _isAppInBackground = false;
-        if (mounted) setState(() {});
-        break;
-      case AppLifecycleState.detached:
-        break;
-    }
-  }
-
-  Future<void> _initializeMap() async {
-    final locationProvider = Provider.of<LocationProvider>(
-      context,
-      listen: false,
-    );
-
-    // Reset navigation state for new ride
-    _lastRouteIndex = 0;
-    _lastCalculatedBearing = 0;
-    _routePoints = [];
-    _navigationSteps = [];
-    _currentStepIndex = 0;
-
-    if (locationProvider.currentPosition != null) {
-      _driverLocation = LatLng(
-        locationProvider.currentPosition!.latitude,
-        locationProvider.currentPosition!.longitude,
-      );
-    } else {
-      final position = await locationProvider.getCurrentPosition();
-      if (position != null) {
-        _driverLocation = LatLng(position.latitude, position.longitude);
-      }
-    }
-
-    // Calculate initial bearing to target BEFORE fetching route
-    if (_driverLocation != null && _targetLocation != null) {
-      _bearingToTarget = _calculateBearing(_driverLocation!, _targetLocation!);
-      _lastCalculatedBearing = _bearingToTarget;
-    }
-
-    // Only fetch route if there's an active ride
-    if (_hasRide) {
-      await _fetchRouteFromMapbox();
-    }
-
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-
-    // Start real-time GPS tracking
-    _startLocationTracking();
-  }
-
-  @override
-  void didUpdateWidget(covariant _ActiveRideNavigation oldWidget) {
-    super.didUpdateWidget(oldWidget);
-
-    // Si el ride cambió (de tener ride a no tener, o viceversa)
-    final hadRide = oldWidget.ride != null;
-    final hasRide = widget.ride != null;
-    final rideIdChanged = oldWidget.ride?.id != widget.ride?.id;
-
-    if (hadRide != hasRide || rideIdChanged) {
-      // Limpiar estado del mapa anterior
-      _cleanupMapboxResources();
-
-      // Reset navigation state
-      _lastRouteIndex = 0;
-      _lastCalculatedBearing = 0;
-      _currentStepIndex = 0;
-      _pickupScreenPos = null;
-      _destinationScreenPos = null;
-      _riderGpsScreenPos = null;
-      _waypointScreenPositions = [];
-      _mapboxUserInteracting = false;
-
-      // Si hay nuevo ride, obtener nueva ruta
-      if (hasRide) {
-        setState(() => _isLoading = true);
-        _fetchRouteFromMapbox();
-      }
-    }
-  }
-
-  /// Calculate bearing from point A to point B (in degrees)
-  /// Returns 0-360 where 0=North, 90=East, 180=South, 270=West
-  double _calculateBearing(LatLng from, LatLng to) {
-    final lat1 = from.latitude * math.pi / 180;
-    final lat2 = to.latitude * math.pi / 180;
-    final dLon = (to.longitude - from.longitude) * math.pi / 180;
-
-    final y = math.sin(dLon) * math.cos(lat2);
-    final x =
-        math.cos(lat1) * math.sin(lat2) -
-        math.sin(lat1) * math.cos(lat2) * math.cos(dLon);
-
-    var bearing = math.atan2(y, x) * 180 / math.pi;
-    return (bearing + 360) % 360; // Normalize to 0-360
-  }
-
-  /// Calcular distancia mínima del driver a la ruta (en metros)
-  /// Usa la fórmula haversine para calcular distancia a cada punto
-  double _calculateDistanceToRoute(LatLng driverPos) {
-    if (_routePoints.isEmpty) return 0;
-
-    double minDistance = double.infinity;
-    const earthRadius = 6371000.0; // metros
-
-    for (final point in _routePoints) {
-      final lat1 = driverPos.latitude * math.pi / 180;
-      final lat2 = point.latitude * math.pi / 180;
-      final dLat = (point.latitude - driverPos.latitude) * math.pi / 180;
-      final dLon = (point.longitude - driverPos.longitude) * math.pi / 180;
-
-      final a =
-          math.sin(dLat / 2) * math.sin(dLat / 2) +
-          math.cos(lat1) *
-              math.cos(lat2) *
-              math.sin(dLon / 2) *
-              math.sin(dLon / 2);
-      final c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
-      final distance = earthRadius * c;
-
-      if (distance < minDistance) {
-        minDistance = distance;
-      }
-
-      // Optimización: si encontramos un punto muy cercano, no seguir buscando
-      if (minDistance < 10) break;
-    }
-
-    return minDistance;
-  }
-
-  /// Calculate bearing ALONG the route (not straight to destination)
-  /// Optimized for smooth Uber/Google Maps style navigation
-  int _bearingCalcCount = 0;
-  double _calculateBearingAlongRoute(LatLng driverPos) {
-    _bearingCalcCount++;
-
-    if (_routePoints.length < 2) {
-      if (_targetLocation != null) {
-        return _calculateBearing(driverPos, _targetLocation!);
-      }
-      return _bearingToTarget;
-    }
-
-    // 1. Encontrar el punto más cercano SOLO HACIA ADELANTE (no retroceder)
-    int closestIndex = _lastRouteIndex;
-    double minDistance = double.infinity;
-
-    // Buscar solo desde el último índice hasta +20 puntos adelante
-    final searchEnd = math.min(_lastRouteIndex + 20, _routePoints.length);
-
-    for (int i = _lastRouteIndex; i < searchEnd; i++) {
-      final distance = _haversineDistance(driverPos, _routePoints[i]);
-      if (distance < minDistance) {
-        minDistance = distance;
-        closestIndex = i;
-      }
-    }
-
-    // Si estamos muy lejos de la ruta (>100m), buscar en toda la ruta
-    if (minDistance > 100) {
-      for (int i = 0; i < _routePoints.length; i++) {
-        final distance = _haversineDistance(driverPos, _routePoints[i]);
-        if (distance < minDistance) {
-          minDistance = distance;
-          closestIndex = i;
-        }
-      }
-    }
-
-    // Actualizar el último índice (nunca retroceder)
-    if (closestIndex > _lastRouteIndex) {
-      _lastRouteIndex = closestIndex;
-    }
-
-    // 2. Look-ahead: encontrar punto ~80 metros adelante en la ruta
-    const lookAheadDistance = 80.0; // metros
-    double accumulatedDistance = 0;
-    int lookAheadIndex = closestIndex;
-
-    for (int i = closestIndex; i < _routePoints.length - 1; i++) {
-      accumulatedDistance += _haversineDistance(
-        _routePoints[i],
-        _routePoints[i + 1],
-      );
-      lookAheadIndex = i + 1;
-      if (accumulatedDistance >= lookAheadDistance) break;
-    }
-
-    // 3. Calcular bearing desde posición actual hacia el punto look-ahead
-    final lookAheadPoint = _routePoints[lookAheadIndex];
-    double newBearing = _calculateBearing(driverPos, lookAheadPoint);
-
-    _lastCalculatedBearing = newBearing;
-    return newBearing;
-  }
-
-  /// Haversine distance in meters between two points
-  double _haversineDistance(LatLng p1, LatLng p2) {
-    const earthRadius = 6371000.0;
-    final lat1 = p1.latitude * math.pi / 180;
-    final lat2 = p2.latitude * math.pi / 180;
-    final dLat = (p2.latitude - p1.latitude) * math.pi / 180;
-    final dLon = (p2.longitude - p1.longitude) * math.pi / 180;
-
-    final a =
-        math.sin(dLat / 2) * math.sin(dLat / 2) +
-        math.cos(lat1) *
-            math.cos(lat2) *
-            math.sin(dLon / 2) *
-            math.sin(dLon / 2);
-    final c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
-    return earthRadius * c;
-  }
-
-  /// Smooth bearing transition to avoid jumps (max 15° per update)
-  double _smoothBearing(double current, double target) {
-    // Normalizar ambos a 0-360
-    current = (current + 360) % 360;
-    target = (target + 360) % 360;
-
-    // Calcular la diferencia más corta
-    double diff = target - current;
-    if (diff > 180) diff -= 360;
-    if (diff < -180) diff += 360;
-
-    // Limitar cambio máximo a 15° por actualización (suaviza las curvas)
-    const maxChange = 15.0;
-    if (diff.abs() > maxChange) {
-      diff = diff.sign * maxChange;
-    }
-
-    return (current + diff + 360) % 360;
-  }
-
-  // === GPS TRACKING OPTIMIZATION ===
-  final int _gpsUpdateCount = 0;
-  DateTime? _lastGpsLogTime;
-  DateTime? _lastGpsUpdate;
-
-  // === UI REFRESH THROTTLING ===
-  DateTime? _lastUiRefresh;
-  LatLng? _lastUiLocation;
-  final double _lastUiBearing = 0;
-  final int _lastUiStepIndex = 0;
-  static const int _minUiRefreshMs =
-      300; // Minimum 300ms between UI refreshes (más responsivo)
-  static const double _minLocationChangeM =
-      10; // Minimum 10m movement for UI refresh
-  static const double _minBearingChangeDeg =
-      5; // Minimum 5° bearing change for UI refresh
-
-  /// === CAMERA INTERPOLATION TIMER === DISABLED - FollowPuckViewportState maneja todo
-  /// Timer de cámara a 60fps - DESHABILITADO para performance
-  final int _frameCount = 0;
-  void _startInterpolationTimer() {
-    // DISABLED: FollowPuckViewportState ya maneja el seguimiento suave automáticamente
-    // No necesitamos timer de interpolación, solo carga la CPU innecesariamente
-    _interpolationTimer?.cancel();
-    return;
-
-    // El código de abajo está DESHABILITADO permanentemente
-    /*
-    _interpolationTimer = Timer.periodic(
-      Duration(milliseconds: _interpolationIntervalMs),
-      (timer) {
-        if (!mounted || _isAppInBackground) return;
-        if (_mapboxMap == null || _mapboxUserInteracting) return;
-        if (!_hasRide || !_isTrackingMode) return;
-        if (_driverLocation == null) return;
-
-        _frameCount++;
-        final now = DateTime.now();
-        final msSinceGps = _lastGpsTimestamp != null
-            ? now.difference(_lastGpsTimestamp!).inMilliseconds
-            : 0;
-
-        if (_currentGpsPosition != null &&
-            _gpsSpeedMps > 0.5 &&
-            msSinceGps > 50 &&
-            msSinceGps < 8000) {
-          final distanceM = _gpsSpeedMps * (msSinceGps / 1000.0);
-          final bearingRad = _bearingToTarget * (3.14159265359 / 180.0);
-          final latOffset = (distanceM / 111111.0) * math.cos(bearingRad);
-          final lngOffset =
-              (distanceM /
-                  (111111.0 *
-                      math.cos(
-                        _currentGpsPosition!.latitude * 3.14159265359 / 180.0,
-                      ))) *
-              math.sin(bearingRad);
-          _driverLocation = LatLng(
-            _currentGpsPosition!.latitude + latOffset,
-            _currentGpsPosition!.longitude + lngOffset,
-          );
-        }
-      },
-    );
-    */
-  }
-
-  /// Start real-time GPS tracking with heading for Uber-style navigation
-  void _startLocationTracking() {
-    _locationSubscription?.cancel();
-    _startInterpolationTimer(); // Start smooth camera updates
-
-    _locationSubscription =
-        Geolocator.getPositionStream(
-          locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.high,
-            distanceFilter: 3, // 3 metros para máxima frecuencia
-          ),
-        ).listen(
-          (Position position) {
-            if (!mounted) return;
-
-            final now = DateTime.now();
-            final newLocation = LatLng(position.latitude, position.longitude);
-
-            // === BACKGROUND MODE: Minimal processing ===
-            if (_isAppInBackground) {
-              _driverLocation = newLocation;
-              if (position.heading > 0) _heading = position.heading;
-              return;
-            }
-
-            // === UPDATE INTERNAL STATE ===
-            _currentGpsPosition = newLocation;
-            _lastGpsTimestamp = now;
-            _lastGpsUpdate = now;
-            _driverLocation = newLocation;
-
-            if (position.heading > 0) {
-              _heading = position.heading;
-            }
-
-            // === ZOOM ADAPTATIVO (backup style) ===
-            if (_hasRide) {
-              _updateAdaptiveZoom();
-            }
-
-            // Simple bearing update (sin cálculos pesados)
-            if (_targetLocation != null) {
-              _bearingToTarget = _calculateBearing(newLocation, _targetLocation!);
-            }
-
-            // === VANISHING ROUTE: cada 2 segundos (como backup) ===
-            if (_hasRide && _mapboxMap != null && !_mapboxUserInteracting) {
-              if (_mapboxRouteGeometry.isNotEmpty &&
-                  (_lastRouteUpdate == null ||
-                   now.difference(_lastRouteUpdate!).inMilliseconds >= 2000)) {
-                _lastRouteUpdate = now;
-                _redrawRouteWithVanish(position.latitude, position.longitude);
-              }
-            }
-
-            // NO setState() - FollowPuckViewportState actualiza el mapa automáticamente
-            // NO _fetchRouteFromMapbox() aquí - se debe llamar solo cuando sea necesario
-          },
-          onError: (error) {
-            // Location stream error
-          },
-        );
-  }
-
-  // === NAVIGATION OPTIMIZATION: Tracking variables ===
-  bool _isRouteFetching = false; // Prevent concurrent route fetches
-  LatLng? _lastFetchLocation; // Last location where route was fetched
-  DateTime? _lastFetchTime; // Last time route was fetched
-  int _routeFetchCount = 0; // Counter for debugging
-
-  Future<void> _fetchRouteFromMapbox() async {
-    if (_driverLocation == null || _targetLocation == null) return;
-
-    // === OPTIMIZATION 1: Prevent concurrent fetches ===
-    if (_isRouteFetching) {
-      return;
-    }
-
-    // === OPTIMIZATION 2: Skip if driver hasn't moved significantly (50m) ===
-    if (_lastFetchLocation != null) {
-      final distanceMoved = _haversineDistance(
-        _driverLocation!,
-        _lastFetchLocation!,
-      );
-      if (distanceMoved < 50 && _routePoints.isNotEmpty) {
-        return; // Silent skip - driver hasn't moved enough
-      }
-    }
-
-    // === OPTIMIZATION 3: Rate limiting (min 8 seconds between fetches) ===
-    if (_lastFetchTime != null) {
-      final elapsed = DateTime.now().difference(_lastFetchTime!).inSeconds;
-      if (elapsed < 8 && _routePoints.isNotEmpty) {
-        return; // Silent skip - too soon
-      }
-    }
-
-    _isRouteFetching = true;
-    _routeFetchCount++;
-    final fetchStart = DateTime.now();
-
-    try {
-      final route = await MapboxNavigationService().getRoute(
-        originLat: _driverLocation!.latitude,
-        originLng: _driverLocation!.longitude,
-        destinationLat: _targetLocation!.latitude,
-        destinationLng: _targetLocation!.longitude,
-      );
-
-      // Update tracking variables
-      _lastFetchLocation = _driverLocation;
-      _lastFetchTime = DateTime.now();
-
-      if (route != null && route.geometry.isNotEmpty) {
-        // Convert [lng, lat] to LatLng
-        final newRoutePoints = route.geometry
-            .map((coord) => LatLng(coord[1], coord[0]))
-            .toList();
-
-        // Solo resetear índice si la ruta cambió significativamente
-        if (_routePoints.isEmpty ||
-            _haversineDistance(
-                  newRoutePoints.first,
-                  _routePoints.isEmpty
-                      ? newRoutePoints.first
-                      : _routePoints[_lastRouteIndex.clamp(
-                          0,
-                          _routePoints.length - 1,
-                        )],
-                ) >
-                50) {
-          _lastRouteIndex = 0;
-          _lastCalculatedBearing = _bearingToTarget;
-        }
-
-        _routePoints = newRoutePoints;
-
-        // Store for Mapbox drawing
-        _mapboxRouteGeometry = route.geometry;
-        _routeCongestion = route.congestion;
-
-        if (mounted) {
-          setState(() {
-            _distanceToTargetMeters =
-                route.distance; // metros para lógica ≤100m
-            _routeDistance = _formatDistance(route.distance);
-            _routeDuration = _formatDuration(route.duration);
-
-            // === TURN-BY-TURN: Guardar steps de navegación ===
-            if (route.steps.isNotEmpty) {
-              _navigationSteps = route.steps;
-              // Actualizar el step actual basado en la ubicación
-              _updateCurrentNavigationStep();
-            }
-          });
-
-          // Update Mapbox route if map exists
-          _drawMapboxRoute();
-        }
-
-        _isRouteFetching = false;
-        return;
-      }
-
-      // Fallback: calcular distancia haversine si Mapbox falla
-      _setFallbackDistance();
-    } catch (e) {
-      _setFallbackDistance();
-    }
-
-    _isRouteFetching = false;
-  }
-
-  /// Calcula distancia haversine como fallback cuando la API de rutas falla
-  void _setFallbackDistance() {
-    if (_driverLocation == null || _targetLocation == null) return;
-
-    final haversine = _haversineDistance(_driverLocation!, _targetLocation!);
-    _routePoints = [_driverLocation!, _targetLocation!];
-
-    if (mounted) {
-      setState(() {
-        _distanceToTargetMeters = haversine;
-        _routeDistance = _formatDistance(haversine);
-        _routeDuration = null; // No tenemos duración sin ruta
-      });
-    }
-  }
-
-  /// Actualiza el step de navegación actual basado en la ubicación del conductor
-  void _updateCurrentNavigationStep() {
-    if (_driverLocation == null || _navigationSteps.isEmpty) return;
-    if (_currentStepIndex >= _navigationSteps.length - 1) return;
-
-    final nextStep = _navigationSteps[_currentStepIndex + 1];
-    if (nextStep.maneuverLocation != null) {
-      final distanceToNextManeuver = _haversineDistance(
-        _driverLocation!,
-        LatLng(
-          nextStep.maneuverLocation!.latitude,
-          nextStep.maneuverLocation!.longitude,
-        ),
-      );
-
-      // Si estamos a menos de 30m de la próxima maniobra, avanzar al siguiente step
-      if (distanceToNextManeuver < 30) {
-        _currentStepIndex++;
-      }
-    }
-  }
-
-  /// Construye el banner de navegación turn-by-turn
-  Widget _buildNavigationBanner() {
-    if (_currentStep == null) return const SizedBox.shrink();
-
-    final step = _currentStep!;
-    final distanceToManeuver = step.distance > 0
-        ? _formatDistance(step.distance)
-        : '';
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1A1A2E),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          // Icono de maniobra
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: const Color(0xFF00C853),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(step.maneuverIcon, color: Colors.white, size: 32),
-          ),
-          const SizedBox(width: 16),
-          // Instrucción
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (distanceToManeuver.isNotEmpty)
-                  Text(
-                    distanceToManeuver,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                Text(
-                  step.bannerInstruction ?? step.instruction,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.9),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  List<LatLng> _decodePolyline(String encoded) {
-    List<LatLng> points = [];
-    int index = 0;
-    int lat = 0;
-    int lng = 0;
-
-    while (index < encoded.length) {
-      int shift = 0;
-      int result = 0;
-      int byte;
-
-      do {
-        byte = encoded.codeUnitAt(index++) - 63;
-        result |= (byte & 0x1F) << shift;
-        shift += 5;
-      } while (byte >= 0x20);
-
-      int dlat = (result & 1) != 0 ? ~(result >> 1) : (result >> 1);
-      lat += dlat;
-
-      shift = 0;
-      result = 0;
-      do {
-        byte = encoded.codeUnitAt(index++) - 63;
-        result |= (byte & 0x1F) << shift;
-        shift += 5;
-      } while (byte >= 0x20);
-
-      int dlng = (result & 1) != 0 ? ~(result >> 1) : (result >> 1);
-      lng += dlng;
-
-      points.add(LatLng(lat / 1e5, lng / 1e5));
-    }
-
-    return points;
-  }
-
-  String _formatDistance(double meters) {
-    if (meters >= 1609) {
-      return '${(meters / 1609.34).toStringAsFixed(1)} mi';
-    }
-    return '${(meters * 3.28084).toInt()} ft';
-  }
-
-  String _formatDuration(double seconds) {
-    final minutes = (seconds / 60).round();
-    if (minutes >= 60) {
-      final hours = minutes ~/ 60;
-      final mins = minutes % 60;
-      return '${hours}h ${mins}min';
-    }
-    return '$minutes min';
-  }
-
-  void _fitBounds() {
-    // Mobile: FollowPuckViewportState handles camera automatically
-    if (!kIsWeb) return;
-
-    if (_driverLocation == null) return;
-
-    // If no target (no ride), just center on driver
-    if (_targetLocation == null) {
-      _mapController.move(_driverLocation!, 16);
-      return;
-    }
-
-    final minLat = math.min(
-      _driverLocation!.latitude,
-      _targetLocation!.latitude,
-    );
-    final maxLat = math.max(
-      _driverLocation!.latitude,
-      _targetLocation!.latitude,
-    );
-    final minLng = math.min(
-      _driverLocation!.longitude,
-      _targetLocation!.longitude,
-    );
-    final maxLng = math.max(
-      _driverLocation!.longitude,
-      _targetLocation!.longitude,
-    );
-
-    final bounds = LatLngBounds(LatLng(minLat, minLng), LatLng(maxLat, maxLng));
-
-    _mapController.fitCamera(
-      CameraFit.bounds(bounds: bounds, padding: const EdgeInsets.all(80)),
-    );
-  }
-
-  void _centerOnDriver() {
-    if (_driverLocation == null) return;
-
-    // Mobile (Mapbox): FollowPuckViewportState handles centering automatically
-    if (!kIsWeb) {
-      // Just re-enable tracking mode - viewport will follow puck
-      setState(() => _isTrackingMode = true);
-      return;
-    }
-
-    // Web (FlutterMap): manual camera control
-    if (_isTrackingMode) {
-      // Destination UP: center and rotate so destination is at top
-      _mapController.moveAndRotate(_driverLocation!, 16, -_bearingToTarget);
-    } else {
-      // North-up: just center without rotation
-      _mapController.move(_driverLocation!, 16);
-    }
-    // Re-enable tracking mode when centering
-    setState(() => _isTrackingMode = true);
-  }
-
-  /// Initialize Mapbox map when created
-  Future<void> _onMapboxMapCreated(mapbox.MapboxMap map) async {
-    _mapboxMap = map;
-
-    try {
-      // Ocultar controles del mapa (reduce rendering overhead)
-      await map.compass.updateSettings(mapbox.CompassSettings(enabled: false));
-      await map.scaleBar.updateSettings(mapbox.ScaleBarSettings(enabled: false));
-      await map.attribution.updateSettings(mapbox.AttributionSettings(enabled: false));
-      await map.logo.updateSettings(mapbox.LogoSettings(enabled: false));
-
-      // Puck 2D con bearing (más confiable y performante)
-      await map.location.updateSettings(
-        mapbox.LocationComponentSettings(
-          enabled: true,
-          puckBearingEnabled: true,
-          pulsingEnabled: false, // Disable pulsing for better performance
-          showAccuracyRing: false,
-          puckBearing: mapbox.PuckBearing.COURSE,
-        ),
-      );
-
-      // Habilitar gestos
-      await map.gestures.updateSettings(
-        mapbox.GesturesSettings(
-          scrollEnabled: true,
-          rotateEnabled: true,
-          pitchEnabled: true,
-          doubleTapToZoomInEnabled: true,
-          doubleTouchToZoomOutEnabled: true,
-          quickZoomEnabled: true,
-          pinchToZoomEnabled: true,
-          pinchPanEnabled: true,
-        ),
-      );
-
-      // Create annotation managers (solo para ruta y walking pad)
-      _polylineManager = await map.annotations
-          .createPolylineAnnotationManager();
-      _pointManager = await map.annotations.createPointAnnotationManager();
-
-      // Draw route if available
-      await _drawMapboxRoute();
-
-      // Calcular posiciones de pantalla para los PINs 3D overlay - DISABLED FOR PERFORMANCE
-      // await _updatePinScreenPositions();
-
-      // === FollowPuckViewportState maneja el centrado automáticamente ===
-      if (_driverLocation == null) {
-        // Si no hay GPS aún, obtenerlo
-        if (!mounted) return;
-        final locationProvider = Provider.of<LocationProvider>(
-          context,
-          listen: false,
-        );
-        final position = await locationProvider.getCurrentPosition();
-        if (position != null) {
-          _driverLocation = LatLng(position.latitude, position.longitude);
-        }
-      }
-    } catch (e) {
-      // Mapbox setup error
-    }
-  }
-
-  /// Llamado cuando el usuario interactúa con el mapa Mapbox
-  void _onMapboxScroll(mapbox.MapContentGestureContext context) {
-    if (!_mapboxUserInteracting) {
-      setState(() => _mapboxUserInteracting = true);
-      _returnToNavTimer?.cancel();
-    }
-  }
-
-  /// Llamado cuando la cámara del mapa cambia (en tiempo real)
-  /// THROTTLED: No actualizar pins en cada frame - causa lag
-  DateTime? _lastPinUpdateTime;
-  void _onMapboxCameraChange(mapbox.CameraChangedEventData data) {
-    // Throttle pin updates to max 5fps (200ms) to avoid main thread overload
-    final now = DateTime.now();
-    if (_lastPinUpdateTime != null &&
-        now.difference(_lastPinUpdateTime!).inMilliseconds < 200) {
-      return; // Skip this update
-    }
-    _lastPinUpdateTime = now;
-    // _updatePinScreenPositions(); // DISABLED FOR PERFORMANCE
-  }
-
-  /// Llamado cuando el mapa deja de moverse (usuario soltó)
-  void _onMapboxIdle(mapbox.MapIdleEventData data) {
-    // Actualizar posiciones finales de los PINs - DISABLED FOR PERFORMANCE
-    // _updatePinScreenPositions();
-
-    if (_mapboxUserInteracting) {
-      _returnToNavTimer?.cancel();
-      _returnToNavTimer = Timer(const Duration(seconds: 3), () {
-        if (mounted && _hasRide) {
-          setState(() => _mapboxUserInteracting = false);
-          // FollowPuckViewportState regresa automáticamente al seguimiento
-        }
-      });
-    }
-  }
-
-  /// Draw route on Mapbox map (ruta de conducción)
-  Future<void> _drawMapboxRoute() async {
-    if (_polylineManager == null || _mapboxRouteGeometry.isEmpty) return;
-
-    // Reset vanish index when drawing new route
-    _lastVanishIndex = 0;
-    _fadeSegments.clear();
-
-    // IMPORTANTE: Limpiar todas las anotaciones anteriores antes de dibujar
-    try {
-      await _polylineManager!.deleteAll();
-    } catch (e) {
-      // Error clearing polylines
-    }
-
-    final points = _mapboxRouteGeometry.map((coord) {
-      return mapbox.Point(coordinates: mapbox.Position(coord[0], coord[1]));
-    }).toList();
-
-    if (points.isEmpty) return;
-
-    // Ruta de conducción - línea azul gruesa (12.0 como backup)
-    await _polylineManager!.create(
-      mapbox.PolylineAnnotationOptions(
-        geometry: mapbox.LineString(
-          coordinates: points.map((p) => p.coordinates).toList(),
-        ),
-        lineColor: const Color(0xFF4285F4).toARGB32(), // Azul tipo Google Maps
-        lineWidth: 12.0, // Grosor del backup
-        lineOpacity: 1.0,
-      ),
-    );
-
-    // Si hay walking pad del rider, dibujarlo
-    await _drawRiderWalkingPad();
-  }
-
-  /// Redraw route with vanish effect: GAP (50m) + FADE (150m) + SOLID
-  Future<void> _redrawRouteWithVanish(
-    double driverLat,
-    double driverLng,
-  ) async {
-    if (_polylineManager == null || _mapboxRouteGeometry.isEmpty) return;
-
-    // Find closest point on route
-    int closestIdx = 0;
-    double minDist = double.infinity;
-    for (int i = 0; i < _mapboxRouteGeometry.length; i++) {
-      final coord = _mapboxRouteGeometry[i];
-      final dist = _quickDistance(driverLat, driverLng, coord[1], coord[0]);
-      if (dist < minDist) {
-        minDist = dist;
-        closestIdx = i;
-      }
-    }
-
-    // Only move forward (don't jump back)
-    if (closestIdx < _lastVanishIndex) {
-      closestIdx = _lastVanishIndex;
-    } else {
-      _lastVanishIndex = closestIdx;
-    }
-
-    // Delete all and redraw
-    try {
-      await _polylineManager!.deleteAll();
-    } catch (_) {}
-    _fadeSegments.clear();
-
-    // Get remaining route from closest point
-    final remainingCoords = _mapboxRouteGeometry.sublist(closestIdx);
-    if (remainingCoords.length < 2) return;
-
-    // Vanish distances
-    const double gapMeters = 5.0; // 5m sin línea (puck)
-    const double fadeMeters = 50.0; // 50m de fade gradual (0% → 100%)
-
-    double accumulatedDist = 0.0;
-    int gapEndIdx = 0;
-    int fadeEndIdx = 0;
-
-    // Calculate gap and fade end indices
-    for (int i = 0; i < remainingCoords.length - 1; i++) {
-      final c1 = remainingCoords[i];
-      final c2 = remainingCoords[i + 1];
-      accumulatedDist += _quickDistance(c1[1], c1[0], c2[1], c2[0]);
-
-      if (gapEndIdx == 0 && accumulatedDist >= gapMeters) {
-        gapEndIdx = i + 1;
-      }
-      if (fadeEndIdx == 0 && accumulatedDist >= gapMeters + fadeMeters) {
-        fadeEndIdx = i + 1;
-        break;
-      }
-    }
-
-    // Fallback for short routes
-    if (gapEndIdx == 0)
-      gapEndIdx = (remainingCoords.length * 0.1).round().clamp(
-        1,
-        remainingCoords.length - 1,
-      );
-    if (fadeEndIdx == 0)
-      fadeEndIdx = (gapEndIdx + 10).clamp(
-        gapEndIdx + 1,
-        remainingCoords.length - 1,
-      );
-
-    // Draw FADE section (10 segments from 0.1 to 1.0 opacity)
-    if (gapEndIdx < fadeEndIdx) {
-      final fadeCoords = remainingCoords.sublist(
-        gapEndIdx,
-        (fadeEndIdx + 1).clamp(0, remainingCoords.length),
-      );
-      if (fadeCoords.length >= 2) {
-        final numFadeSegments = 10.clamp(1, fadeCoords.length - 1);
-        final pointsPerSeg = (fadeCoords.length / numFadeSegments).ceil().clamp(
-          1,
-          fadeCoords.length,
-        );
-
-        for (int seg = 0; seg < numFadeSegments; seg++) {
-          final start = seg * pointsPerSeg;
-          var end = (seg + 1) * pointsPerSeg + 1;
-          if (seg == numFadeSegments - 1) end = fadeCoords.length;
-          if (start >= fadeCoords.length - 1) break;
-          if (end > fadeCoords.length) end = fadeCoords.length;
-
-          final segCoords = fadeCoords.sublist(start, end);
-          if (segCoords.length < 2) continue;
-
-          final opacity = ((seg + 1) / numFadeSegments).clamp(0.1, 1.0);
-          final points = segCoords
-              .map((c) => mapbox.Position(c[0], c[1]))
-              .toList();
-
-          // Get congestion level for this segment
-          final congIdx = closestIdx + gapEndIdx + start;
-          String level = congIdx < _routeCongestion.length
-              ? _routeCongestion[congIdx]
-              : 'low';
-          final color = _getCongestionColor(level);
-
-          try {
-            final fadeSegment = await _polylineManager!.create(
-              mapbox.PolylineAnnotationOptions(
-                geometry: mapbox.LineString(coordinates: points),
-                lineColor: color,
-                lineWidth: 12.0,
-                lineOpacity: opacity,
-              ),
-            );
-            _fadeSegments.add(fadeSegment);
-          } catch (_) {}
-        }
-      }
-    }
-
-    // Draw SOLID section (100% opacity from fade end to destination)
-    // Use blue if no congestion data, otherwise use congestion colors
-    if (fadeEndIdx < remainingCoords.length - 1) {
-      final solidCoords = remainingCoords.sublist(fadeEndIdx);
-      if (solidCoords.length >= 2) {
-        if (_routeCongestion.isEmpty) {
-          // No congestion data - draw simple blue line
-          final points = solidCoords
-              .map((c) => mapbox.Position(c[0], c[1]))
-              .toList();
-          try {
-            await _polylineManager!.create(
-              mapbox.PolylineAnnotationOptions(
-                geometry: mapbox.LineString(coordinates: points),
-                lineColor: const Color(0xFF4285F4).toARGB32(),
-                lineWidth: 12.0,
-                lineOpacity: 1.0,
-              ),
-            );
-          } catch (_) {}
-        } else {
-          // Has congestion data - draw with colors
-          final solidStartIdx = closestIdx + fadeEndIdx;
-          await _drawSolidWithCongestion(solidCoords, solidStartIdx);
-        }
-      }
-    }
-
-    // Redraw walking pad if needed
-    await _drawRiderWalkingPad();
-  }
-
-  /// Quick distance calculation in meters
-  double _quickDistance(double lat1, double lng1, double lat2, double lng2) {
-    const double earthRadius = 6371000;
-    final dLat = (lat2 - lat1) * 0.017453292519943295;
-    final dLng = (lng2 - lng1) * 0.017453292519943295;
-    final a =
-        math.sin(dLat / 2) * math.sin(dLat / 2) +
-        math.cos(lat1 * 0.017453292519943295) *
-            math.cos(lat2 * 0.017453292519943295) *
-            math.sin(dLng / 2) *
-            math.sin(dLng / 2);
-    return earthRadius * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
-  }
-
-  /// Get congestion color based on traffic level
-  int _getCongestionColor(String level) {
-    switch (level) {
-      case 'severe':
-        return 0xFFB71C1C; // Dark red
-      case 'heavy':
-        return 0xFFE53935; // Red
-      case 'moderate':
-        return 0xFFFFA726; // Orange
-      case 'low':
-      case 'unknown':
-      default:
-        return 0xFF4285F4; // Blue (no traffic)
-    }
-  }
-
-  /// Draw solid section with congestion colors
-  Future<void> _drawSolidWithCongestion(
-    List<List<double>> coords,
-    int startIndex,
-  ) async {
-    if (_polylineManager == null || coords.length < 2) return;
-
-    // Group consecutive segments with same congestion level
-    String currentLevel = startIndex < _routeCongestion.length
-        ? _routeCongestion[startIndex]
-        : 'low';
-    List<mapbox.Position> currentSegment = [
-      mapbox.Position(coords[0][0], coords[0][1]),
-    ];
-
-    for (int i = 1; i < coords.length; i++) {
-      final congIdx = startIndex + i;
-      final level = congIdx < _routeCongestion.length
-          ? _routeCongestion[congIdx]
-          : 'low';
-
-      if (level == currentLevel) {
-        // Same level, add to current segment
-        currentSegment.add(mapbox.Position(coords[i][0], coords[i][1]));
-      } else {
-        // Level changed, draw current segment
-        if (currentSegment.length >= 2) {
-          final color = _getCongestionColor(currentLevel);
-          try {
-            await _polylineManager!.create(
-              mapbox.PolylineAnnotationOptions(
-                geometry: mapbox.LineString(coordinates: currentSegment),
-                lineColor: color,
-                lineWidth: 12.0,
-                lineOpacity: 1.0,
-              ),
-            );
-          } catch (_) {}
-        }
-
-        // Start new segment
-        currentLevel = level;
-        currentSegment = [
-          currentSegment.last, // Keep connection
-          mapbox.Position(coords[i][0], coords[i][1]),
-        ];
-      }
-    }
-
-    // Draw final segment
-    if (currentSegment.length >= 2) {
-      final color = _getCongestionColor(currentLevel);
-      try {
-        await _polylineManager!.create(
-          mapbox.PolylineAnnotationOptions(
-            geometry: mapbox.LineString(coordinates: currentSegment),
-            lineColor: color,
-            lineWidth: 12.0,
-            lineOpacity: 1.0,
-          ),
-        );
-      } catch (_) {}
-    }
-  }
-
-  /// Dibujar walking pad del rider (caminando del GPS al PIN)
-  Future<void> _drawRiderWalkingPad() async {
-    if (_polylineManager == null || widget.ride == null) return;
-    final ride = widget.ride!;
-
-    // Solo durante pickup y si no es para otra persona
-    if (!_isGoingToPickup || ride.isBookingForSomeoneElse) return;
-
-    // Necesita tener walking pad
-    if (!ride.hasWalkingPad) return;
-
-    // Decodificar walking pad polyline
-    final walkingPoints = _decodePolyline(ride.riderWalkingPad!);
-    if (walkingPoints.isEmpty) return;
-
-    // Convertir a formato Mapbox
-    final mapboxPoints = walkingPoints.map((p) {
-      return mapbox.Position(p.longitude, p.latitude);
-    }).toList();
-
-    // Walking pad - línea punteada naranja
-    await _polylineManager!.create(
-      mapbox.PolylineAnnotationOptions(
-        geometry: mapbox.LineString(coordinates: mapboxPoints),
-        lineColor: const Color(0xFFFF9500).toARGB32(), // Naranja
-        lineWidth: 3.0,
-        lineOpacity: 0.8,
-      ),
-    );
-  }
-
-  /// Actualiza las posiciones de pantalla de los PINs 3D
-  /// OPTIMIZADO: Ejecuta llamadas en paralelo y evita setState innecesarios
-  bool _pinUpdateInProgress = false;
-  Future<void> _updatePinScreenPositions() async {
-    if (_mapboxMap == null || widget.ride == null) return;
-    if (_pinUpdateInProgress) return; // Evitar llamadas concurrentes
-
-    _pinUpdateInProgress = true;
-    final ride = widget.ride!;
-
-    try {
-      // Preparar todas las coordenadas a convertir
-      final futures = <Future<mapbox.ScreenCoordinate>>[];
-      final labels = <String>[];
-
-      // === 1. PICKUP ===
-      if (_isGoingToPickup) {
-        futures.add(
-          _mapboxMap!.pixelForCoordinate(
-            mapbox.Point(
-              coordinates: mapbox.Position(
-                ride.pickupLocation.longitude,
-                ride.pickupLocation.latitude,
-              ),
-            ),
-          ),
-        );
-        labels.add('pickup');
-
-        // === 2. RIDER GPS ===
-        if (ride.hasRiderGps) {
-          futures.add(
-            _mapboxMap!.pixelForCoordinate(
-              mapbox.Point(
-                coordinates: mapbox.Position(
-                  ride.riderGpsLng!,
-                  ride.riderGpsLat!,
-                ),
-              ),
-            ),
-          );
-          labels.add('riderGps');
-        }
-      }
-
-      // === 3. DESTINO ===
-      if (!_isGoingToPickup || ride.status == RideStatus.inProgress) {
-        futures.add(
-          _mapboxMap!.pixelForCoordinate(
-            mapbox.Point(
-              coordinates: mapbox.Position(
-                ride.dropoffLocation.longitude,
-                ride.dropoffLocation.latitude,
-              ),
-            ),
-          ),
-        );
-        labels.add('destination');
-      }
-
-      // Ejecutar todas las conversiones EN PARALELO
-      if (futures.isEmpty) {
-        _pickupScreenPos = null;
-        _riderGpsScreenPos = null;
-        _destinationScreenPos = null;
-        _pinUpdateInProgress = false;
-        return;
-      }
-
-      final results = await Future.wait(futures);
-
-      // Asignar resultados
-      for (int i = 0; i < labels.length; i++) {
-        final pixel = results[i];
-        final offset = Offset(pixel.x, pixel.y);
-        switch (labels[i]) {
-          case 'pickup':
-            _pickupScreenPos = offset;
-            break;
-          case 'riderGps':
-            _riderGpsScreenPos = offset;
-            break;
-          case 'destination':
-            _destinationScreenPos = offset;
-            break;
-        }
-      }
-
-      // Limpiar posiciones no usadas
-      if (!_isGoingToPickup) {
-        _pickupScreenPos = null;
-        _riderGpsScreenPos = null;
-      }
-      if (_isGoingToPickup && ride.status != RideStatus.inProgress) {
-        _destinationScreenPos = null;
-      }
-      if (!ride.hasRiderGps) {
-        _riderGpsScreenPos = null;
-      }
-
-      // === 4. WAYPOINTS - Solo si los hay (raro) ===
-      if (ride.waypoints != null && ride.waypoints!.isNotEmpty) {
-        final wpFutures = <Future<mapbox.ScreenCoordinate>>[];
-        for (final wp in ride.waypoints!) {
-          final lat = (wp['lat'] as num?)?.toDouble();
-          final lng = (wp['lng'] as num?)?.toDouble();
-          if (lat != null && lng != null) {
-            wpFutures.add(
-              _mapboxMap!.pixelForCoordinate(
-                mapbox.Point(coordinates: mapbox.Position(lng, lat)),
-              ),
-            );
-          }
-        }
-        if (wpFutures.isNotEmpty) {
-          final wpResults = await Future.wait(wpFutures);
-          _waypointScreenPositions = wpResults
-              .map((p) => Offset(p.x, p.y))
-              .toList();
-        }
-      } else {
-        _waypointScreenPositions = [];
-      }
-
-      // NO llamar setState aquí - los pins se actualizan con el siguiente rebuild natural
-      // Esto evita rebuilds excesivos
-    } catch (e) {
-      // Silenciar errores durante navegación
-    } finally {
-      _pinUpdateInProgress = false;
-    }
-  }
-
-  /// Construye los widgets de PIN 3D como overlays sobre el mapa
-  List<Widget> _buildPinOverlays() {
-    final pins = <Widget>[];
-    const pinSize = 48.0;
-    const pinHeight = pinSize * 1.25;
-
-    // === PICKUP PIN ===
-    if (_pickupScreenPos != null) {
-      pins.add(
-        Positioned(
-          left: _pickupScreenPos!.dx - pinSize / 2,
-          top: _pickupScreenPos!.dy - pinHeight, // Ancla en la punta del pin
-          child: const Toro3DPin(
-            kind: ToroPinKind.pickup,
-            size: pinSize,
-            label: 'PICKUP',
-          ),
-        ),
-      );
-    }
-
-    // === RIDER GPS PIN ===
-    if (_riderGpsScreenPos != null) {
-      pins.add(
-        Positioned(
-          left: _riderGpsScreenPos!.dx - 20,
-          top: _riderGpsScreenPos!.dy - 50,
-          child: const Toro3DPin(
-            kind: ToroPinKind.riderGps,
-            size: 40,
-            label: 'RIDER',
-          ),
-        ),
-      );
-    }
-
-    // === DESTINO PIN ===
-    if (_destinationScreenPos != null) {
-      pins.add(
-        Positioned(
-          left: _destinationScreenPos!.dx - pinSize / 2,
-          top: _destinationScreenPos!.dy - pinHeight,
-          child: const Toro3DPin(
-            kind: ToroPinKind.destination,
-            size: pinSize,
-            label: 'DESTINO',
-          ),
-        ),
-      );
-    }
-
-    // === WAYPOINT PINS ===
-    for (var i = 0; i < _waypointScreenPositions.length; i++) {
-      final pos = _waypointScreenPositions[i];
-      if (pos != null) {
-        final wpName =
-            widget.ride?.waypoints?[i]['name'] as String? ?? 'Parada ${i + 1}';
-        pins.add(
-          Positioned(
-            left: pos.dx - 22,
-            top: pos.dy - 55,
-            child: Toro3DPin(
-              kind: ToroPinKind.waypoint,
-              size: 44,
-              label: wpName,
-            ),
-          ),
-        );
-      }
-    }
-
-    return pins;
-  }
-
-  /// Update Mapbox camera to follow driver
-  /// UBER-STYLE: Driver stays at fixed screen position (lower 1/3)
-  /// Map moves and rotates around the driver's position
-  DateTime? _lastMapboxCameraUpdate;
-
-  // === CAMERA DIAGNOSTICS ===
-  int _cameraUpdateCount = 0;
-  DateTime? _lastCameraLogTime;
-
-  /// Zoom adaptativo suave según velocidad (backup style)
-  void _updateAdaptiveZoom() {
-    final kmh = _gpsSpeedMps * 3.6;
-
-    // Calcular zoom objetivo según velocidad
-    double targetZoom;
-    if (kmh < 10) {
-      targetZoom = 17.5; // Parado/muy lento - cerca
-    } else if (kmh < 30) {
-      // Interpolar entre 17.5 y 16.8
-      targetZoom = 17.5 - ((kmh - 10) / 20) * 0.7;
-    } else if (kmh < 60) {
-      // Interpolar entre 16.8 y 16.0
-      targetZoom = 16.8 - ((kmh - 30) / 30) * 0.8;
-    } else if (kmh < 100) {
-      // Interpolar entre 16.0 y 15.2
-      targetZoom = 16.0 - ((kmh - 60) / 40) * 0.8;
-    } else {
-      targetZoom = 15.2; // Muy rápido - lejos
-    }
-
-    // Suavizar el cambio (interpolación lenta)
-    _currentZoom = _currentZoom + (targetZoom - _currentZoom) * 0.1;
-  }
-
-  // === SMOOTH CAMERA CON PREDICCIÓN ===
-  // Predice posiciones futuras para que Mapbox anime sin esperar
-  double _smoothedBearing = 0;
-  double _smoothedLat = 0;
-  double _smoothedLng = 0;
-  bool _smoothedPositionInitialized = false;
-
-  // === PREDICCIÓN DE POSICIÓN ===
-  // Predecir 100ms hacia adelante basado en velocidad
-  static const int _predictionMs = 100;
-  static const int _mapboxAnimationMs = 80; // Animación que cubre el gap
-
-  // === SMOOTHING PARAMS ===
-  static const double _bearingSmoothing = 0.90; // 90% - muy rápido
-  static const double _positionSmoothing = 0.80; // 80% - responsivo
-  static const double _maxBearingChangePerFrame = 5.0; // 5°/frame = 300°/seg
-
-  void _updateMapboxCamera() {
-    if (_mapboxMap == null || _driverLocation == null) return;
-    if (_mapboxUserInteracting) return;
-
-    _cameraUpdateCount++;
-
-    // === INICIALIZAR ===
-    if (!_smoothedPositionInitialized) {
-      _smoothedLat = _driverLocation!.latitude;
-      _smoothedLng = _driverLocation!.longitude;
-      _smoothedBearing = _bearingToTarget;
-      _smoothedPositionInitialized = true;
-    }
-
-    // === PREDECIR POSICIÓN FUTURA ===
-    // Calcular dónde estaremos en _predictionMs basado en velocidad actual
-    double predictedLat = _driverLocation!.latitude;
-    double predictedLng = _driverLocation!.longitude;
-
-    if (_gpsSpeedMps > 0.5) {
-      final distanceM = _gpsSpeedMps * (_predictionMs / 1000.0);
-      final bearingRad = _bearingToTarget * (3.14159265359 / 180.0);
-      predictedLat += (distanceM / 111111.0) * math.cos(bearingRad);
-      predictedLng +=
-          (distanceM /
-              (111111.0 *
-                  math.cos(
-                    _driverLocation!.latitude * 3.14159265359 / 180.0,
-                  ))) *
-          math.sin(bearingRad);
-    }
-
-    // === SUAVIZADO DE BEARING ===
-    double bearingDiff = _bearingToTarget - _smoothedBearing;
-    while (bearingDiff > 180) bearingDiff -= 360;
-    while (bearingDiff < -180) bearingDiff += 360;
-
-    // LOG cuando detectamos una vuelta (diff > 20°)
-    if (bearingDiff.abs() > _maxBearingChangePerFrame) {
-      bearingDiff = bearingDiff.sign * _maxBearingChangePerFrame;
-    }
-    _smoothedBearing += bearingDiff * _bearingSmoothing;
-    while (_smoothedBearing < 0) _smoothedBearing += 360;
-    while (_smoothedBearing >= 360) _smoothedBearing -= 360;
-
-    // === SUAVIZADO DE POSICIÓN PREDICHA ===
-    _smoothedLat += (predictedLat - _smoothedLat) * _positionSmoothing;
-    _smoothedLng += (predictedLng - _smoothedLng) * _positionSmoothing;
-
-    _lastMapboxCameraUpdate = DateTime.now();
-
-    final screenSize = MediaQuery.of(context).size;
-    final topPadding = screenSize.height * 0.35;
-
-    final cameraOptions = mapbox.CameraOptions(
-      center: mapbox.Point(
-        coordinates: mapbox.Position(_smoothedLng, _smoothedLat),
-      ),
-      zoom: _currentZoom,
-      bearing: _smoothedBearing,
-      pitch: _currentPitch,
-      padding: mapbox.MbxEdgeInsets(
-        top: topPadding,
-        left: 0,
-        bottom: 0,
-        right: 0,
-      ),
-    );
-
-    // === ANIMACIÓN PREDICTIVA ===
-    // easeTo con 80ms cubre el gap de predicción (100ms) para fluidez total
-    _mapboxMap!.easeTo(
-      cameraOptions,
-      mapbox.MapAnimationOptions(duration: _mapboxAnimationMs),
-    );
-  }
-
-  /// Card informativo del rider durante el pickup - COMPACTO
-  /// Muestra: nombre, GPS status, dirección abreviada
-  Widget _buildRiderInfoCard() {
-    final ride = widget.ride!;
-    final hasGps = ride.hasRiderGps;
-    final isForSomeoneElse = ride.isBookingForSomeoneElse;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.8),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFFF9500).withOpacity(0.4)),
-      ),
-      child: Row(
-        children: [
-          // Icono persona
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: const Color(0xFFFF9500).withOpacity(0.2),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(Icons.person, color: Color(0xFFFF9500), size: 18),
-          ),
-          const SizedBox(width: 10),
-          // Info del rider
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  ride.displayName,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  isForSomeoneElse
-                      ? 'Para otra persona'
-                      : (ride.pickupLocation.address ?? 'Pickup'),
-                  style: TextStyle(
-                    color: isForSomeoneElse ? Colors.orange : Colors.white60,
-                    fontSize: 11,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-          // GPS Badge (solo si no es para otra persona)
-          if (!isForSomeoneElse)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-              decoration: BoxDecoration(
-                color: hasGps
-                    ? const Color(0xFF34C759).withOpacity(0.2)
-                    : Colors.grey.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    hasGps ? Icons.gps_fixed : Icons.gps_off,
-                    color: hasGps ? const Color(0xFF34C759) : Colors.grey,
-                    size: 12,
-                  ),
-                  const SizedBox(width: 3),
-                  Text(
-                    hasGps ? 'GPS' : 'OFF',
-                    style: TextStyle(
-                      color: hasGps ? const Color(0xFF34C759) : Colors.grey,
-                      fontSize: 9,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  /// Card vertical compacto del rider - LADO IZQUIERDO del mapa
-  /// No se encima con el banner de distancia de arriba
-  Widget _buildRiderInfoCardVertical() {
-    final ride = widget.ride!;
-    final hasGps = ride.hasRiderGps;
-    final isForSomeoneElse = ride.isBookingForSomeoneElse;
-
-    return Container(
-      width: 55,
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.85),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: const Color(0xFFFF9500).withValues(alpha: 0.5),
-        ),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Icono persona naranja
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: const Color(0xFFFF9500).withValues(alpha: 0.3),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(Icons.person, color: Color(0xFFFF9500), size: 24),
-          ),
-          const SizedBox(height: 6),
-          // Nombre corto
-          Text(
-            ride.displayName.split(' ').first, // Solo primer nombre
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w600,
-              fontSize: 10,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 4),
-          // GPS Badge
-          if (!isForSomeoneElse)
-            Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: hasGps
-                    ? const Color(0xFF34C759).withValues(alpha: 0.3)
-                    : Colors.grey.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Icon(
-                hasGps ? Icons.gps_fixed : Icons.gps_off,
-                color: hasGps ? const Color(0xFF34C759) : Colors.grey,
-                size: 16,
-              ),
-            ),
-          // Badge "otra persona"
-          if (isForSomeoneElse)
-            Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: Colors.orange.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: const Icon(
-                Icons.person_outline,
-                color: Colors.orange,
-                size: 16,
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  /// WEB COMPLETE: FlutterMap with all navigation UI (no duplicates)
-  Widget _buildWebNavigationMapComplete() {
-    final ride = widget.ride;
-    final driverLat = _driverLocation?.latitude ?? 33.4484;
-    final driverLng = _driverLocation?.longitude ?? -112.0740;
-
-    // Build markers
-    final markers = <Marker>[];
-
-    // Target marker (pickup or destination)
-    if (ride != null) {
-      final targetLat = _isGoingToPickup
-          ? ride.pickupLocation.latitude
-          : ride.dropoffLocation.latitude;
-      final targetLng = _isGoingToPickup
-          ? ride.pickupLocation.longitude
-          : ride.dropoffLocation.longitude;
-      final targetColor = _isGoingToPickup
-          ? const Color(0xFF26A69A) // Teal for pickup
-          : const Color(0xFFFF0066); // Magenta for destination
-      final targetIcon = _isGoingToPickup ? Icons.person : Icons.flag;
-
-      markers.add(
-        Marker(
-          point: LatLng(targetLat, targetLng),
-          width: 48,
-          height: 60,
-          alignment: Alignment.bottomCenter,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: targetColor,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 3),
-                  boxShadow: [
-                    BoxShadow(
-                      color: targetColor.withOpacity(0.6),
-                      blurRadius: 12,
-                      spreadRadius: 4,
-                    ),
-                  ],
-                ),
-                child: Icon(targetIcon, color: Colors.white, size: 22),
-              ),
-              Container(
-                width: 4,
-                height: 14,
-                decoration: BoxDecoration(
-                  color: targetColor,
-                  borderRadius: const BorderRadius.only(
-                    bottomLeft: Radius.circular(2),
-                    bottomRight: Radius.circular(2),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    // Driver marker - navigation arrow that rotates with heading
-    markers.add(
-      Marker(
-        point: LatLng(driverLat, driverLng),
-        width: 60,
-        height: 60,
-        rotate: false, // We handle rotation manually
-        child: Transform.rotate(
-          angle: (_heading - _bearingToTarget) * math.pi / 180,
-          child: Container(
-            width: 50,
-            height: 50,
-            decoration: BoxDecoration(
-              color: const Color(0xFF4285F4),
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 3),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF4285F4).withOpacity(0.5),
-                  blurRadius: 12,
-                  spreadRadius: 4,
-                ),
-              ],
-            ),
-            child: const Icon(Icons.navigation, color: Colors.white, size: 28),
-          ),
-        ),
-      ),
-    );
-
-    // Route polyline with glow effect
-    final polylines = <Polyline>[];
-    if (_routePoints.isNotEmpty) {
-      // Outer glow
-      polylines.add(
-        Polyline(
-          points: _routePoints,
-          strokeWidth: 12,
-          color: const Color(0xFF00BFFF).withOpacity(0.2),
-        ),
-      );
-      // Inner line
-      polylines.add(
-        Polyline(
-          points: _routePoints,
-          strokeWidth: 5,
-          color: const Color(0xFF00BFFF),
-        ),
-      );
-    }
-
-    return Stack(
-      children: [
-        // === MAP ===
-        FlutterMap(
-          mapController: _mapController,
-          options: MapOptions(
-            initialCenter: LatLng(driverLat, driverLng),
-            initialZoom: 16.0,
-            initialRotation: _bearingToTarget,
-            onPositionChanged: (position, hasGesture) {
-              if (hasGesture && _isTrackingMode) {
-                setState(() => _isTrackingMode = false);
-              }
-            },
-          ),
-          children: [
-            // Mapbox dark tiles
-            TileLayer(
-              urlTemplate:
-                  'https://api.mapbox.com/styles/v1/mapbox/navigation-night-v1/tiles/256/{z}/{x}/{y}@2x?access_token=pk.eyJ1IjoibWFydGluZXpjMjAxNyIsImEiOiJjbWtocWtoZHIwbW1iM2dvdXZ3bmp0ZjBiIn0.MjYgv6DuvLTkrBVbrhtFbg',
-              userAgentPackageName: 'com.toro.driver',
-              maxZoom: 19,
-            ),
-            if (polylines.isNotEmpty) PolylineLayer(polylines: polylines),
-            MarkerLayer(markers: markers),
-          ],
-        ),
-
-        // === NAVIGATION BANNER (top) ===
-        Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          child: SafeArea(child: _buildWebNavigationBanner()),
-        ),
-
-        // === RIDER INFO (left side, if going to pickup) ===
-        if (_isGoingToPickup && ride != null)
-          Positioned(top: 100, left: 12, child: _buildRiderInfoCardVertical()),
-
-        // === RE-CENTER BUTTON (if not tracking) ===
-        if (!_isTrackingMode)
-          Positioned(
-            right: 16,
-            bottom: 240,
-            child: GestureDetector(
-              onTap: () {
-                HapticService.lightImpact();
-                setState(() => _isTrackingMode = true);
-                if (kIsWeb && _driverLocation != null) {
-                  _mapController.moveAndRotate(
-                    _driverLocation!,
-                    16,
-                    _bearingToTarget,
-                  );
-                }
-              },
-              child: Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1A1A1A),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: const Color(0xFF3A3A3A)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.4),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.gps_fixed,
-                  color: Color(0xFF4285F4),
-                  size: 24,
-                ),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
-  /// Web navigation banner - clean, professional
-  Widget _buildWebNavigationBanner() {
-    final ride = widget.ride;
-    if (ride == null) return const SizedBox.shrink();
-
-    // Get current navigation step
-    final currentStep =
-        _navigationSteps.isNotEmpty &&
-            _currentStepIndex < _navigationSteps.length
-        ? _navigationSteps[_currentStepIndex]
-        : null;
-
-    // Use pre-formatted strings from route calculation
-    final distanceText = _routeDistance ?? '';
-    final etaText = _routeDuration ?? '';
-
-    // Get maneuver icon and instruction from NavigationStep class
-    IconData maneuverIcon = Icons.straight;
-    String instruction = _isGoingToPickup
-        ? 'Hacia el pickup'
-        : 'Hacia el destino';
-
-    if (currentStep != null) {
-      instruction = currentStep.bannerInstruction ?? currentStep.instruction;
-      maneuverIcon = currentStep.maneuverIcon;
-    }
-
-    return Container(
-      margin: const EdgeInsets.all(8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1A1A2E),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF2A2A4A)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.4),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          // Maneuver icon - compacto
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: const Color(0xFF4285F4),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(maneuverIcon, color: Colors.white, size: 26),
-          ),
-          const SizedBox(width: 12),
-          // Instructions - compacto
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (distanceText.isNotEmpty || etaText.isNotEmpty)
-                  Row(
-                    children: [
-                      if (distanceText.isNotEmpty)
-                        Text(
-                          distanceText,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      if (distanceText.isNotEmpty && etaText.isNotEmpty)
-                        const Text(
-                          ' • ',
-                          style: TextStyle(color: Colors.white54, fontSize: 16),
-                        ),
-                      if (etaText.isNotEmpty)
-                        Text(
-                          etaText,
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                    ],
-                  ),
-                const SizedBox(height: 2),
-                Text(
-                  instruction,
-                  style: const TextStyle(color: Colors.white70, fontSize: 12),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-          // External navigation button - compacto
-          GestureDetector(
-            onTap: _openExternalNavigation,
-            child: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: const Color(0xFF2A2A4A),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(
-                Icons.open_in_new,
-                color: Colors.white70,
-                size: 18,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Open external GPS apps (Google Maps / Waze)
-  void _openExternalGPS() {
-    if (_targetLocation == null) return;
-    HapticService.lightImpact();
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.card,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => Container(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.border,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Abrir en app externa',
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () async {
-                      Navigator.pop(ctx);
-                      final url =
-                          'https://www.google.com/maps/dir/?api=1&destination=${_targetLocation!.latitude},${_targetLocation!.longitude}&travelmode=driving';
-                      try {
-                        await launchUrlString(url);
-                      } catch (e) {
-                        // Error opening Google Maps
-                      }
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF4285F4).withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: const Color(0xFF4285F4).withValues(alpha: 0.5),
-                        ),
-                      ),
-                      child: Column(
-                        children: [
-                          Icon(
-                            Icons.map,
-                            color: const Color(0xFF4285F4),
-                            size: 28,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Google Maps',
-                            style: TextStyle(
-                              color: AppColors.textPrimary,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () async {
-                      Navigator.pop(ctx);
-                      final url =
-                          'https://waze.com/ul?ll=${_targetLocation!.latitude},${_targetLocation!.longitude}&navigate=yes';
-                      try {
-                        await launchUrlString(url);
-                      } catch (e) {
-                        // Error opening Waze
-                      }
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF33CCFF).withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: const Color(0xFF33CCFF).withValues(alpha: 0.5),
-                        ),
-                      ),
-                      child: Column(
-                        children: [
-                          Icon(
-                            Icons.directions,
-                            color: const Color(0xFF33CCFF),
-                            size: 28,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Waze',
-                            style: TextStyle(
-                              color: AppColors.textPrimary,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _openExternalNavigation() async {
-    HapticService.mediumImpact();
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.card,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => Container(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.border,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Abrir navegación',
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _targetAddress,
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            // Mapbox turn-by-turn navigation (featured - full width)
-            _NavOptionButton(
-              icon: Icons.navigation_rounded,
-              label: 'Navegación 3D',
-              sublabel: 'Turn-by-turn profesional',
-              color: const Color(0xFF4264FB), // Mapbox blue
-              featured: true,
-              onTap: () {
-                // Navegación ya integrada en HomeScreen - solo cerrar diálogo
-                Navigator.pop(ctx);
-              },
-            ),
-            const SizedBox(height: 16),
-            // Google Maps and Waze row
-            Row(
-              children: [
-                Expanded(
-                  child: _NavOptionButton(
-                    icon: Icons.map,
-                    label: 'Google Maps',
-                    color: const Color(0xFF4285F4),
-                    onTap: () async {
-                      Navigator.pop(ctx);
-                      if (_targetLocation == null) return;
-                      final fallbackUrl = Uri.parse(
-                        'https://www.google.com/maps/dir/?api=1&destination=${_targetLocation!.latitude},${_targetLocation!.longitude}&travelmode=driving',
-                      );
-                      try {
-                        await launchUrlString(fallbackUrl.toString());
-                      } catch (e) {
-                        // Error opening Maps
-                      }
-                    },
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _NavOptionButton(
-                    icon: Icons.navigation,
-                    label: 'Waze',
-                    color: const Color(0xFF33CCFF),
-                    onTap: () async {
-                      Navigator.pop(ctx);
-                      if (_targetLocation == null) return;
-                      final url = Uri.parse(
-                        'https://waze.com/ul?ll=${_targetLocation!.latitude},${_targetLocation!.longitude}&navigate=yes',
-                      );
-                      try {
-                        await launchUrlString(url.toString());
-                      } catch (e) {
-                        // Error opening Waze
-                      }
-                    },
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Color _getStatusColor(RideStatus status) {
-    switch (status) {
-      case RideStatus.pending:
-      case RideStatus.accepted:
-        return const Color(0xFFFF9500);
-      case RideStatus.arrivedAtPickup:
-        return const Color(0xFF4285F4);
-      case RideStatus.inProgress:
-        return Colors.green;
-      case RideStatus.completed:
-        return Colors.green;
-      case RideStatus.cancelled:
-        return Colors.red;
-    }
-  }
-
-  String _getStatusLabel(RideStatus status) {
-    switch (status) {
-      case RideStatus.pending:
-      case RideStatus.accepted:
-        return '📦 IR A RECOGER';
-      case RideStatus.arrivedAtPickup:
-        return '⏳ ESPERANDO PASAJERO';
-      case RideStatus.inProgress:
-        return '🚗 EN CAMINO AL DESTINO';
-      case RideStatus.completed:
-        return '✅ COMPLETADO';
-      case RideStatus.cancelled:
-        return '❌ CANCELADO';
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // === DEBUG: Track build intervals ===
-    final now = DateTime.now();
-    _debugBuildCount++;
-    if (_debugLastBuildTime != null) {
-      _debugLastBuildIntervalMs = now
-          .difference(_debugLastBuildTime!)
-          .inMilliseconds;
-    }
-    _debugLastBuildTime = now;
-
-    return SafeArea(
-      child: Stack(
-        children: [
-          // Map - Mapbox 3D when ride active, FlutterMap otherwise
-          if (_isLoading)
-            const Center(
-              child: CircularProgressIndicator(color: Color(0xFFFF9500)),
-            )
-          else if (_hasRide)
-            Container(
-              color: AppColors.card,
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.map_outlined, size: 64, color: Colors.white38),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Usa el tab "Mapa" para navegación',
-                      style: TextStyle(color: Colors.white70, fontSize: 16),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          else
-            FlutterMap(
-              mapController: _mapController,
-              options: MapOptions(
-                initialCenter:
-                    _driverLocation ??
-                    _targetLocation ??
-                    const LatLng(33.4484, -112.0740),
-                initialZoom: 16,
-                // Start with destination UP if tracking mode
-                initialRotation: _isTrackingMode ? -_bearingToTarget : 0,
-                onMapReady: () {
-                  if (!kIsWeb) return; // Mobile uses Mapbox, not FlutterMap
-                  Future.delayed(const Duration(milliseconds: 500), () {
-                    if (_isTrackingMode && _driverLocation != null) {
-                      // Apply rotation so destination is UP
-                      _mapController.moveAndRotate(
-                        _driverLocation!,
-                        16,
-                        -_bearingToTarget,
-                      );
-                    } else {
-                      _fitBounds();
-                    }
-                  });
-                },
-                // Disable tracking when user manually interacts with map
-                onPositionChanged: (position, hasGesture) {
-                  if (hasGesture && _isTrackingMode) {
-                    setState(() => _isTrackingMode = false);
-                  }
-                },
-              ),
-              children: [
-                TileLayer(
-                  urlTemplate:
-                      'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-                  subdomains: const ['a', 'b', 'c', 'd'],
-                  userAgentPackageName: 'com.toro.driver',
-                ),
-                if (_routePoints.isNotEmpty)
-                  PolylineLayer(
-                    polylines: [
-                      Polyline(
-                        points: _routePoints,
-                        color: const Color(0xFFFF9500),
-                        strokeWidth: 5,
-                      ),
-                    ],
-                  ),
-                MarkerLayer(
-                  markers: [
-                    if (_driverLocation != null)
-                      Marker(
-                        point: _driverLocation!,
-                        width: 60,
-                        height: 60,
-                        // Don't let flutter_map rotate the marker
-                        rotate: false,
-                        child: AnimatedBuilder(
-                          animation: _pulseAnimation,
-                          builder: (context, child) {
-                            // Calculate rotation for driver icon
-                            // In tracking mode: show heading relative to destination
-                            // (if heading == bearing, icon points UP toward destination)
-                            // In north-up mode: show absolute heading
-                            final iconRotation = _isTrackingMode
-                                ? (_heading - _bearingToTarget) * math.pi / 180
-                                : _heading * math.pi / 180;
-
-                            return Transform.rotate(
-                              angle: iconRotation,
-                              child: Stack(
-                                alignment: Alignment.center,
-                                children: [
-                                  // Pulse ring
-                                  Container(
-                                    width: 50 * _pulseAnimation.value,
-                                    height: 50 * _pulseAnimation.value,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: const Color(
-                                        0xFF4285F4,
-                                      ).withValues(alpha: 0.3),
-                                    ),
-                                  ),
-                                  // Driver icon (navigation arrow)
-                                  Container(
-                                    width: 44,
-                                    height: 44,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: const Color(0xFF4285F4),
-                                      border: Border.all(
-                                        color: Colors.white,
-                                        width: 3,
-                                      ),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: const Color(
-                                            0xFF4285F4,
-                                          ).withValues(alpha: 0.6),
-                                          blurRadius: 12,
-                                          spreadRadius: 3,
-                                        ),
-                                      ],
-                                    ),
-                                    child: const Icon(
-                                      Icons.navigation_rounded,
-                                      color: Colors.white,
-                                      size: 26,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    // Target marker (only if there's a ride)
-                    if (_targetLocation != null)
-                      Marker(
-                        point: _targetLocation!,
-                        width: 50,
-                        height: 50,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: _isGoingToPickup
-                                ? const Color(0xFFFF9500)
-                                : Colors.green,
-                            border: Border.all(color: Colors.white, width: 3),
-                            boxShadow: [
-                              BoxShadow(
-                                color:
-                                    (_isGoingToPickup
-                                            ? const Color(0xFFFF9500)
-                                            : Colors.green)
-                                        .withValues(alpha: 0.5),
-                                blurRadius: 10,
-                                spreadRadius: 2,
-                              ),
-                            ],
-                          ),
-                          child: Icon(
-                            _isGoingToPickup
-                                ? Icons.location_on
-                                : Icons.flag_rounded,
-                            color: Colors.white,
-                            size: 26,
-                          ),
-                        ),
-                      ),
-                    // Dropoff marker when going to pickup (only if there's a ride)
-                    if (_isGoingToPickup && widget.ride != null)
-                      Marker(
-                        point: LatLng(
-                          widget.ride!.dropoffLocation.latitude,
-                          widget.ride!.dropoffLocation.longitude,
-                        ),
-                        width: 40,
-                        height: 40,
-                        child: Opacity(
-                          opacity: 0.6,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.green,
-                              border: Border.all(color: Colors.white, width: 2),
-                            ),
-                            child: const Icon(
-                              Icons.flag_rounded,
-                              color: Colors.white,
-                              size: 20,
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ],
-            ),
-
-          // === NAVIGATION BANNER (EXPANDED) ===
-          Positioned(
-            top: 16,
-            left: 16,
-            right: 16,
-            child: Column(
-              children: [
-                // === ROW 1: Back button + Navigation Banner ===
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColors.card,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.4),
-                        blurRadius: 15,
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      // Turn icon + Distance + ETA row
-                      Row(
-                        children: [
-                          // Back button
-                          if (widget.onExitNavigation != null)
-                            GestureDetector(
-                              onTap: () {
-                                HapticService.lightImpact();
-                                widget.onExitNavigation!();
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: const Icon(
-                                  Icons.arrow_back_rounded,
-                                  color: Colors.white,
-                                  size: 20,
-                                ),
-                              ),
-                            ),
-                          if (widget.onExitNavigation != null)
-                            const SizedBox(width: 12),
-                          // Turn icon (large)
-                          Container(
-                            width: 56,
-                            height: 56,
-                            decoration: BoxDecoration(
-                              color: _currentStep != null
-                                  ? const Color(0xFF00C853)
-                                  : const Color(0xFFFF9500),
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            child: Icon(
-                              _currentStep?.maneuverIcon ??
-                                  Icons.directions_car,
-                              color: Colors.white,
-                              size: 32,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          // Distance + ETA
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Distance (large)
-                                Text(
-                                  _routeDistance ?? '...',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 28,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                // ETA
-                                if (_routeDuration != null)
-                                  Text(
-                                    _routeDuration!,
-                                    style: TextStyle(
-                                      color: Colors.white.withValues(
-                                        alpha: 0.7,
-                                      ),
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      // Turn instruction (if available)
-                      if (_currentStep != null) ...[
-                        const SizedBox(height: 12),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(
-                            vertical: 10,
-                            horizontal: 14,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            _currentStep!.bannerInstruction ??
-                                _currentStep!.instruction,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                // === ROW 2: Action Buttons (below banner) ===
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Tracking mode toggle
-                    GestureDetector(
-                      onTap: () {
-                        HapticService.lightImpact();
-                        setState(() {
-                          _isTrackingMode = !_isTrackingMode;
-                          if (kIsWeb) {
-                            if (_isTrackingMode && _driverLocation != null) {
-                              _mapController.moveAndRotate(
-                                _driverLocation!,
-                                _mapController.camera.zoom,
-                                -_bearingToTarget,
-                              );
-                            } else {
-                              _mapController.rotate(0);
-                            }
-                          }
-                        });
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: _isTrackingMode
-                              ? const Color(0xFF4285F4)
-                              : AppColors.card,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.3),
-                              blurRadius: 8,
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              _isTrackingMode
-                                  ? Icons.navigation_rounded
-                                  : Icons.explore_rounded,
-                              color: _isTrackingMode
-                                  ? Colors.white
-                                  : const Color(0xFFFF9500),
-                              size: 18,
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              _isTrackingMode ? 'AUTO' : 'NORTH',
-                              style: TextStyle(
-                                color: _isTrackingMode
-                                    ? Colors.white
-                                    : Colors.white70,
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    // Center on driver
-                    GestureDetector(
-                      onTap: () {
-                        HapticService.lightImpact();
-                        _centerOnDriver();
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: AppColors.card,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.3),
-                              blurRadius: 8,
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.my_location_rounded,
-                          color: Color(0xFFFF9500),
-                          size: 18,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    // External GPS
-                    GestureDetector(
-                      onTap: _openExternalGPS,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.card,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.3),
-                              blurRadius: 8,
-                            ),
-                          ],
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.map_outlined,
-                              color: Colors.white70,
-                              size: 18,
-                            ),
-                            SizedBox(width: 6),
-                            Text(
-                              'GPS',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          // Bottom card with ride controls (only if there's a ride)
-          if (_hasRide)
-            Positioned(
-              left: 16,
-              right: 16,
-              bottom: 16,
-              child: Consumer2<RideProvider, DriverProvider>(
-                builder: (context, rideProvider, driverProvider, child) {
-                  final currentRide = rideProvider.activeRide ?? widget.ride!;
-                  final rideStatus = currentRide.status;
-
-                  return Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppColors.card,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: const Color(0xFFFF9500).withValues(alpha: 0.3),
-                        width: 1,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFFFF9500).withValues(alpha: 0.2),
-                          blurRadius: 16,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // === ROW 1: Rider Info + Quick Actions ===
-                        Row(
-                          children: [
-                            // Rider Avatar - compacto
-                            Container(
-                              width: 36,
-                              height: 36,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: const Color(
-                                  0xFFFF9500,
-                                ).withValues(alpha: 0.2),
-                                border: Border.all(
-                                  color: const Color(0xFFFF9500),
-                                  width: 2,
-                                ),
-                              ),
-                              child: currentRide.displayImageUrl != null
-                                  ? ClipOval(
-                                      child: Image.network(
-                                        currentRide.displayImageUrl!,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (_, _, _) => Center(
-                                          child: Text(
-                                            currentRide.displayName.isNotEmpty
-                                                ? currentRide.displayName[0]
-                                                      .toUpperCase()
-                                                : 'C',
-                                            style: const TextStyle(
-                                              color: Color(0xFFFF9500),
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    )
-                                  : Center(
-                                      child: Text(
-                                        currentRide.displayName.isNotEmpty
-                                            ? currentRide.displayName[0]
-                                                  .toUpperCase()
-                                            : 'C',
-                                        style: const TextStyle(
-                                          color: Color(0xFFFF9500),
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                            ),
-                            const SizedBox(width: 8),
-                            // Rider Name + Status - compacto
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    currentRide.displayName,
-                                    style: const TextStyle(
-                                      color: AppColors.textPrimary,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 1),
-                                  Row(
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 4,
-                                          vertical: 1,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: _getStatusColor(
-                                            rideStatus,
-                                          ).withValues(alpha: 0.2),
-                                          borderRadius: BorderRadius.circular(
-                                            6,
-                                          ),
-                                        ),
-                                        child: Text(
-                                          _getStatusLabel(rideStatus),
-                                          style: TextStyle(
-                                            color: _getStatusColor(rideStatus),
-                                            fontSize: 9,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 5),
-                                      Text(
-                                        '\$${(currentRide.driverEarnings > 0 ? currentRide.driverEarnings : currentRide.fare * 0.49).toStringAsFixed(2)}',
-                                        style: const TextStyle(
-                                          color: AppColors.success,
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                            // Quick Action Button: Message (no phone calls)
-                            _buildQuickActionButton(
-                              icon: Icons.chat_bubble_outline,
-                              color: const Color(0xFF4285F4),
-                              onTap: () => _openInAppChat(currentRide),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        // === ROW 2: Destination Address - compacto ===
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.05),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                _isGoingToPickup
-                                    ? Icons.location_on
-                                    : Icons.flag,
-                                color: _isGoingToPickup
-                                    ? const Color(0xFFFF9500)
-                                    : Colors.green,
-                                size: 14,
-                              ),
-                              const SizedBox(width: 4),
-                              Expanded(
-                                child: Text(
-                                  _targetAddress,
-                                  style: const TextStyle(
-                                    color: AppColors.textPrimary,
-                                    fontSize: 11,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        // === ROW 3: Action Buttons ===
-                        Row(
-                          children: [
-                            // Cancel Button (solo si no ha iniciado el viaje)
-                            if (rideStatus != RideStatus.inProgress &&
-                                rideStatus != RideStatus.completed &&
-                                rideStatus != RideStatus.cancelled)
-                              Expanded(
-                                child: GestureDetector(
-                                  onTap: () =>
-                                      _showCancelDialog(context, rideProvider),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 8,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.red.withValues(alpha: 0.15),
-                                      borderRadius: BorderRadius.circular(10),
-                                      border: Border.all(
-                                        color: Colors.red.withValues(
-                                          alpha: 0.3,
-                                        ),
-                                      ),
-                                    ),
-                                    child: const Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Icon(
-                                          Icons.close,
-                                          color: Colors.red,
-                                          size: 16,
-                                        ),
-                                        SizedBox(width: 4),
-                                        Text(
-                                          'CANCELAR',
-                                          style: TextStyle(
-                                            color: Colors.red,
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            if (rideStatus != RideStatus.inProgress &&
-                                rideStatus != RideStatus.completed &&
-                                rideStatus != RideStatus.cancelled)
-                              const SizedBox(width: 10),
-                            // Main Action Button (Uber-style: siempre visible)
-                            Expanded(
-                              flex: 2,
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  // Timer de espera (solo visible en arrivedAtPickup)
-                                  _buildWaitTimerWidget(),
-                                  // Botón de acción
-                                  _buildActionButton(
-                                    context,
-                                    rideProvider,
-                                    driverProvider,
-                                    rideStatus,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
-
-          // === DEBUG OVERLAY REMOVIDO - reduce overhead de rendering ===
-          // Para reactivar, descomentar el bloque de abajo
-          /*
-          Positioned(
-            top: 200,
-            right: 8,
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.85),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.red, width: 2),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text('BUILD #$_debugBuildCount', style: const TextStyle(color: Colors.white, fontSize: 11)),
-                  Text('GPS #$_gpsUpdateCount', style: const TextStyle(color: Colors.cyan, fontSize: 11)),
-                  Text('CAM #$_cameraUpdateCount', style: const TextStyle(color: Colors.yellow, fontSize: 11)),
-                ],
-              ),
-            ),
-          ),
-          */
-        ],
-      ),
-    );
-  }
-
-  /// Botón circular pequeño para acciones rápidas (chat, llamar)
-  Widget _buildQuickActionButton({
-    required IconData icon,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: () {
-        HapticService.lightImpact();
-        onTap();
-      },
-      child: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: color.withValues(alpha: 0.15),
-          border: Border.all(color: color.withValues(alpha: 0.4)),
-        ),
-        child: Icon(icon, color: color, size: 20),
-      ),
-    );
-  }
-
-  /// Abrir chat interno con el rider
-  void _openInAppChat(RideModel ride) {
-    // TODO: Implementar chat interno
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Chat interno próximamente...'),
-        backgroundColor: Color(0xFF4285F4),
-      ),
-    );
-  }
-
-  /// Mostrar dialogo de cancelación
-  void _showCancelDialog(BuildContext context, RideProvider rideProvider) {
-    HapticService.mediumImpact();
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.card,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
-          children: [
-            Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
-            SizedBox(width: 12),
-            Text(
-              '¿Cancelar viaje?',
-              style: TextStyle(color: AppColors.textPrimary),
-            ),
-          ],
-        ),
-        content: const Text(
-          'Esta acción puede afectar tu calificación. ¿Estás seguro de que deseas cancelar?',
-          style: TextStyle(color: AppColors.textSecondary),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text(
-              'NO',
-              style: TextStyle(color: AppColors.textSecondary),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              await rideProvider.cancelRide('driver_cancelled');
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text(
-              'SÍ, CANCELAR',
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActionButton(
-    BuildContext context,
-    RideProvider rideProvider,
-    DriverProvider driverProvider,
-    RideStatus status,
-  ) {
-    String buttonText;
-    IconData buttonIcon;
-    Color buttonColor;
-    VoidCallback? onTap;
-    bool isLoading = rideProvider.isLoading;
-    bool isDisabled = false;
-
-    switch (status) {
-      case RideStatus.pending:
-      case RideStatus.accepted:
-        // === UBER-STYLE: Botón siempre visible, confirmación si está lejos ===
-        final distanceText = _routeDistance ?? '...';
-        buttonText = _isNearTarget
-            ? 'LLEGUÉ AL PUNTO'
-            : 'LLEGUÉ ($distanceText)';
-        buttonIcon = Icons.location_on;
-        buttonColor = const Color(0xFFFF9500);
-        onTap = () async {
-          HapticService.mediumImpact();
-
-          // Si está lejos (>100m), pedir confirmación
-          if (!_isNearTarget) {
-            final confirmed = await _showConfirmArrivalDialog();
-            if (!confirmed) return;
-          }
-
-          final success = await rideProvider.arriveAtPickup();
-
-          if (success && context.mounted) {
-            // Iniciar timer de espera
-            _startWaitTimer();
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Llegaste al punto. Esperando al pasajero...'),
-                backgroundColor: Color(0xFFFF9500),
-              ),
-            );
-          } else if (!success && context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'Error: ${rideProvider.error ?? "No se pudo marcar llegada"}',
-                ),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-        };
-        break;
-
-      case RideStatus.arrivedAtPickup:
-        // === UBER-STYLE: Mostrar timer + botón INICIAR ===
-        buttonText = 'INICIAR VIAJE';
-        buttonIcon = Icons.play_arrow_rounded;
-        buttonColor = const Color(0xFF4285F4);
-        onTap = () async {
-          HapticService.mediumImpact();
-          _stopWaitTimer(); // Detener timer de espera
-          final success = await rideProvider.startRide();
-          if (success && context.mounted) {
-            // === CAMBIO AUTOMÁTICO: Ahora navegar al DESTINO ===
-            _lastRouteIndex = 0; // Reset navigation index
-            _lastCalculatedBearing = 0;
-            _navigationSteps = []; // Reset turn-by-turn
-            _currentStepIndex = 0;
-            await _fetchRouteFromMapbox(); // Nueva ruta al destino
-            setState(() {});
-          }
-        };
-        break;
-
-      case RideStatus.inProgress:
-        // === UBER-STYLE: Botón siempre visible, confirmación si está lejos ===
-        final distanceTextDest = _routeDistance ?? '...';
-        buttonText = _isNearTarget
-            ? 'COMPLETAR VIAJE'
-            : 'COMPLETAR ($distanceTextDest)';
-        buttonIcon = Icons.check_circle;
-        buttonColor = Colors.green;
-        onTap = () async {
-          HapticService.heavyImpact();
-
-          // Si está lejos (>100m), pedir confirmación
-          if (!_isNearTarget) {
-            final confirmed = await _showConfirmCompletionDialog();
-            if (!confirmed) return;
-          }
-
-          final driverId = driverProvider.driver?.id;
-          if (driverId != null) {
-            final success = await rideProvider.completeRide(driverId: driverId);
-            if (success && context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('¡Viaje completado! Ganancias agregadas.'),
-                  backgroundColor: Colors.green,
-                ),
-              );
-            }
-          }
-        };
-        break;
-
-      case RideStatus.completed:
-      case RideStatus.cancelled:
-        buttonText = 'VOLVER AL INICIO';
-        buttonIcon = Icons.home_rounded;
-        buttonColor = AppColors.textSecondary;
-        onTap = () {
-          // The UI will automatically switch back when ride is completed
-        };
-        break;
-    }
-
-    return GestureDetector(
-      onTap: isLoading || isDisabled ? null : onTap,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: isLoading || isDisabled
-                ? [Colors.grey.shade700, Colors.grey.shade800]
-                : [buttonColor, buttonColor.withValues(alpha: 0.8)],
-          ),
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: isDisabled
-              ? null
-              : [
-                  BoxShadow(
-                    color: buttonColor.withValues(alpha: 0.4),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (isLoading)
-              const SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(
-                  color: Colors.white,
-                  strokeWidth: 2,
-                ),
-              )
-            else
-              Icon(
-                buttonIcon,
-                color: isDisabled ? Colors.white54 : Colors.white,
-                size: 16,
-              ),
-            const SizedBox(width: 4),
-            Text(
-              buttonText,
-              style: TextStyle(
-                color: isDisabled ? Colors.white54 : Colors.white,
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  @override
-  void dispose() {
-    // Remove lifecycle observer
-    WidgetsBinding.instance.removeObserver(this);
-    _locationSubscription?.cancel();
-    _interpolationTimer?.cancel(); // Interpolation timer for smooth camera
-    _debugTimer?.cancel(); // Debug FPS timer
-    _returnToNavTimer?.cancel();
-    _waitTimer?.cancel(); // Timer de espera Uber-style
-    _pulseController.dispose();
-
-    // CLEANUP: Limpiar recursos de Mapbox para evitar mapa fantasma
-    _cleanupMapboxResources();
-
-    super.dispose();
-  }
-
-  /// Limpiar recursos de Mapbox cuando el widget se destruye o el ride cambia
-  void _cleanupMapboxResources() {
-    try {
-      _polylineManager?.deleteAll();
-      _pointManager?.deleteAll();
-    } catch (e) {
-      // Error cleaning Mapbox resources
-    }
-    _mapboxMap = null;
-    _polylineManager = null;
-    _pointManager = null;
-    _mapboxRouteGeometry = [];
-    _routePoints = [];
-    _navigationSteps = [];
-  }
-
-  // === UBER-STYLE WAIT TIMER FUNCTIONS ===
-
-  void _startWaitTimer() {
-    _arrivedAtPickupTime = DateTime.now();
-    _waitSeconds = 0;
-    _waitTimer?.cancel();
-    _waitTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (mounted) {
-        setState(() {
-          _waitSeconds = DateTime.now()
-              .difference(_arrivedAtPickupTime!)
-              .inSeconds;
-        });
-      }
-    });
-  }
-
-  void _stopWaitTimer() {
-    _waitTimer?.cancel();
-    _waitTimer = null;
-    _arrivedAtPickupTime = null;
-    _waitSeconds = 0;
-  }
-
-  String _formatWaitTime(int seconds) {
-    final minutes = seconds ~/ 60;
-    final secs = seconds % 60;
-    return '${minutes.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
-  }
-
-  bool get _isWaitTimeExceeded => _waitSeconds > (_freeWaitMinutes * 60);
-
-  // Mostrar diálogo de confirmación cuando está lejos
-  Future<bool> _showConfirmArrivalDialog() async {
-    final distanceText =
-        _routeDistance ?? '${_distanceToTargetMeters.toStringAsFixed(0)}m';
-
-    return await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            backgroundColor: const Color(0xFF1A1A2E),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            title: Row(
-              children: [
-                Icon(
-                  Icons.warning_amber_rounded,
-                  color: Colors.orange.shade400,
-                  size: 28,
-                ),
-                const SizedBox(width: 12),
-                const Text(
-                  '¿Confirmar llegada?',
-                  style: TextStyle(color: Colors.white, fontSize: 18),
-                ),
-              ],
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Estás a $distanceText del punto de recogida.',
-                  style: TextStyle(color: Colors.grey.shade300, fontSize: 15),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  '¿Estás seguro que ya llegaste?',
-                  style: TextStyle(color: Colors.grey.shade400, fontSize: 14),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: Text(
-                  'Cancelar',
-                  style: TextStyle(color: Colors.grey.shade400),
-                ),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context, true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFF9500),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: const Text(
-                  'Sí, llegué',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ) ??
-        false;
-  }
-
-  // Diálogo de confirmación para completar viaje lejos del destino
-  Future<bool> _showConfirmCompletionDialog() async {
-    final distanceText =
-        _routeDistance ?? '${_distanceToTargetMeters.toStringAsFixed(0)}m';
-
-    return await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            backgroundColor: const Color(0xFF1A1A2E),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            title: Row(
-              children: [
-                Icon(
-                  Icons.warning_amber_rounded,
-                  color: Colors.orange.shade400,
-                  size: 28,
-                ),
-                const SizedBox(width: 12),
-                const Text(
-                  '¿Completar viaje?',
-                  style: TextStyle(color: Colors.white, fontSize: 18),
-                ),
-              ],
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Estás a $distanceText del destino.',
-                  style: TextStyle(color: Colors.grey.shade300, fontSize: 15),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  '¿El pasajero quiere bajarse aquí?',
-                  style: TextStyle(color: Colors.grey.shade400, fontSize: 14),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: Text(
-                  'Cancelar',
-                  style: TextStyle(color: Colors.grey.shade400),
-                ),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context, true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: const Text(
-                  'Sí, completar',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ) ??
-        false;
-  }
-
-  // Widget del timer de espera (mostrar encima del botón cuando arrivedAtPickup)
-  Widget _buildWaitTimerWidget() {
-    if (widget.ride?.status != RideStatus.arrivedAtPickup) {
-      return const SizedBox.shrink();
-    }
-
-    final isOvertime = _isWaitTimeExceeded;
-    final freeTimeLeft = (_freeWaitMinutes * 60) - _waitSeconds;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: isOvertime
-            ? Colors.red.shade900.withOpacity(0.3)
-            : Colors.blue.shade900.withOpacity(0.3),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isOvertime ? Colors.red.shade400 : Colors.blue.shade400,
-          width: 1,
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            isOvertime ? Icons.timer_off : Icons.timer,
-            color: isOvertime ? Colors.red.shade300 : Colors.blue.shade300,
-            size: 20,
-          ),
-          const SizedBox(width: 8),
-          Text(
-            'Esperando: ${_formatWaitTime(_waitSeconds)}',
-            style: TextStyle(
-              color: isOvertime ? Colors.red.shade200 : Colors.blue.shade200,
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          if (!isOvertime) ...[
-            const SizedBox(width: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: Colors.green.shade800,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                '${_formatWaitTime(freeTimeLeft > 0 ? freeTimeLeft : 0)} gratis',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
-          if (isOvertime) ...[
-            const SizedBox(width: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: Colors.red.shade700,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: const Text(
-                'COBRO EXTRA',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
+/// _ActiveRideNavigation class removed (was lines 3504-7413)
 
 /// Navigation option button for external GPS apps
 class _NavOptionButton extends StatelessWidget {
@@ -7216,5 +3690,1689 @@ class _NavigationTrianglePainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _NavigationTrianglePainter oldDelegate) {
     return oldDelegate.color != color || oldDelegate.glowOpacity != glowOpacity;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PUBLISH VEHICLE SHEET - Create a rental listing (manual entry, no vehicles table)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+class _PublishVehicleSheet extends StatefulWidget {
+  final String userId;
+  const _PublishVehicleSheet({required this.userId});
+
+  @override
+  State<_PublishVehicleSheet> createState() => _PublishVehicleSheetState();
+}
+
+class _PublishVehicleSheetState extends State<_PublishVehicleSheet> {
+  static const _accent = Color(0xFF8B5CF6);
+
+  // Step tracker
+  int _currentStep = 0; // 0=Vehicle, 1=Insurance, 2=Pricing, 3=Location, 4=Contract
+
+  // Vehicle info controllers
+  final _makeCtrl = TextEditingController();
+  final _modelCtrl = TextEditingController();
+  final _yearCtrl = TextEditingController();
+  final _colorCtrl = TextEditingController();
+  final _plateCtrl = TextEditingController();
+  final _vinCtrl = TextEditingController();
+  String _vehicleType = 'sedan';
+
+  // Autobus: assigned driver
+  final _driverEmailCtrl = TextEditingController();
+  String? _assignedDriverId;
+  String? _assignedDriverName;
+  bool _driverVerified = false;
+  bool _verifyingDriver = false;
+
+  // Insurance controllers
+  final _insCompanyCtrl = TextEditingController();
+  final _insPolicyCtrl = TextEditingController();
+  DateTime? _insExpiry;
+
+  // Pricing controllers
+  final _weeklyPriceCtrl = TextEditingController();
+  final _perKmPriceCtrl = TextEditingController();
+  final _depositCtrl = TextEditingController();
+
+  // Location
+  double? _pickupLat;
+  double? _pickupLng;
+  String? _pickupAddress;
+
+  // Availability
+  DateTime? _availableFrom;
+  DateTime? _availableTo;
+
+  // Contract signing
+  bool _agreedToTerms = false;
+  bool _isSubmitting = false;
+  String? _error;
+
+  final _vehicleTypes = ['sedan', 'SUV', 'van', 'truck', 'autobus'];
+
+  @override
+  void dispose() {
+    _makeCtrl.dispose();
+    _modelCtrl.dispose();
+    _yearCtrl.dispose();
+    _colorCtrl.dispose();
+    _plateCtrl.dispose();
+    _vinCtrl.dispose();
+    _driverEmailCtrl.dispose();
+    _insCompanyCtrl.dispose();
+    _insPolicyCtrl.dispose();
+    _weeklyPriceCtrl.dispose();
+    _perKmPriceCtrl.dispose();
+    _depositCtrl.dispose();
+    super.dispose();
+  }
+
+  String? _validateStep(int step) {
+    switch (step) {
+      case 0:
+        if (_makeCtrl.text.trim().isEmpty) return 'Ingresa la marca';
+        if (_modelCtrl.text.trim().isEmpty) return 'Ingresa el modelo';
+        if (_yearCtrl.text.trim().isEmpty) return 'Ingresa el año';
+        final year = int.tryParse(_yearCtrl.text.trim());
+        if (year == null || year < 1990 || year > 2030) return 'Año invalido';
+        if (_plateCtrl.text.trim().isEmpty) return 'Ingresa la placa';
+        if (_vehicleType == 'autobus' && !_driverVerified) {
+          return 'Autobus requiere un chofer aprobado por Toro';
+        }
+        return null;
+      case 1:
+        // Insurance is optional but if company is entered, policy is required
+        if (_insCompanyCtrl.text.trim().isNotEmpty && _insPolicyCtrl.text.trim().isEmpty) {
+          return 'Ingresa el numero de poliza';
+        }
+        return null;
+      case 2:
+        if (_weeklyPriceCtrl.text.trim().isEmpty) return 'Ingresa el precio semanal';
+        if (double.tryParse(_weeklyPriceCtrl.text.trim()) == null) return 'Precio semanal invalido';
+        return null;
+      case 3:
+        if (_pickupLat == null || _pickupLng == null) return 'Selecciona la ubicacion de entrega';
+        return null;
+      case 4:
+        if (!_agreedToTerms) return 'Debes aceptar los terminos del contrato';
+        return null;
+      default:
+        return null;
+    }
+  }
+
+  void _nextStep() {
+    final validation = _validateStep(_currentStep);
+    if (validation != null) {
+      setState(() => _error = validation);
+      return;
+    }
+    setState(() {
+      _error = null;
+      _currentStep++;
+    });
+    HapticService.lightImpact();
+  }
+
+  void _prevStep() {
+    if (_currentStep > 0) {
+      setState(() {
+        _error = null;
+        _currentStep--;
+      });
+      HapticService.lightImpact();
+    }
+  }
+
+  Future<void> _getCurrentLocation() async {
+    try {
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+      );
+      // Reverse geocode via Mapbox
+      String address = '${pos.latitude.toStringAsFixed(5)}, ${pos.longitude.toStringAsFixed(5)}';
+      try {
+        final url = 'https://api.mapbox.com/geocoding/v5/mapbox.places/${pos.longitude},${pos.latitude}.json'
+            '?access_token=pk.eyJ1IjoibWFydGluZXpjMjAxNyIsImEiOiJjbWtocWtoZHIwbW1iM2dvdXZ3bmp0ZjBiIn0.MjYgv6DuvLTkrBVbrhtFbg&limit=1';
+        final resp = await http.get(Uri.parse(url));
+        if (resp.statusCode == 200) {
+          final data = jsonDecode(resp.body);
+          final features = data['features'] as List?;
+          if (features != null && features.isNotEmpty) {
+            address = features[0]['place_name'] as String? ?? address;
+          }
+        }
+      } catch (_) {}
+      if (mounted) {
+        setState(() {
+          _pickupLat = pos.latitude;
+          _pickupLng = pos.longitude;
+          _pickupAddress = address;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _error = 'Error obteniendo ubicacion: $e');
+      }
+    }
+  }
+
+  Future<void> _verifyDriver() async {
+    final email = _driverEmailCtrl.text.trim();
+    if (email.isEmpty) {
+      setState(() => _error = 'Ingresa el email del chofer');
+      return;
+    }
+    setState(() { _verifyingDriver = true; _error = null; });
+    try {
+      // Look up driver by email in drivers table - must be verified/approved
+      final results = await SupabaseConfig.client
+          .from('drivers')
+          .select('id, name, email, status, is_verified')
+          .eq('email', email)
+          .limit(1);
+      final list = List<Map<String, dynamic>>.from(results);
+      if (list.isEmpty) {
+        setState(() { _verifyingDriver = false; _error = 'Chofer no encontrado. Debe estar registrado en Toro.'; });
+        return;
+      }
+      final driver = list.first;
+      final status = driver['status']?.toString() ?? '';
+      final isVerified = driver['is_verified'] == true;
+      if (!isVerified && status != 'approved' && status != 'active') {
+        setState(() { _verifyingDriver = false; _error = 'El chofer no esta aprobado por Toro. Status: $status'; });
+        return;
+      }
+      setState(() {
+        _assignedDriverId = driver['id'] as String;
+        _assignedDriverName = driver['name'] as String? ?? email;
+        _driverVerified = true;
+        _verifyingDriver = false;
+        _error = null;
+      });
+      HapticService.mediumImpact();
+    } catch (e) {
+      setState(() { _verifyingDriver = false; _error = 'Error verificando chofer: $e'; });
+    }
+  }
+
+  Future<void> _submitListing() async {
+    final validation = _validateStep(_currentStep);
+    if (validation != null) {
+      setState(() => _error = validation);
+      return;
+    }
+
+    setState(() {
+      _isSubmitting = true;
+      _error = null;
+    });
+
+    try {
+      // Get current position for contract signing GPS
+      Position? signPos;
+      try {
+        signPos = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+        );
+      } catch (_) {}
+
+      final data = <String, dynamic>{
+        'owner_id': widget.userId,
+        'vehicle_type': _vehicleType,
+        'vehicle_make': _makeCtrl.text.trim(),
+        'vehicle_model': _modelCtrl.text.trim(),
+        'vehicle_year': int.parse(_yearCtrl.text.trim()),
+        'vehicle_color': _colorCtrl.text.trim().isNotEmpty ? _colorCtrl.text.trim() : null,
+        'vehicle_plate': _plateCtrl.text.trim(),
+        'vehicle_vin': _vinCtrl.text.trim().isNotEmpty ? _vinCtrl.text.trim() : null,
+        // Legacy columns
+        'make': _makeCtrl.text.trim(),
+        'model': _modelCtrl.text.trim(),
+        'year': int.parse(_yearCtrl.text.trim()),
+        'plate_number': _plateCtrl.text.trim(),
+        // Insurance
+        'insurance_company': _insCompanyCtrl.text.trim().isNotEmpty ? _insCompanyCtrl.text.trim() : null,
+        'insurance_policy_number': _insPolicyCtrl.text.trim().isNotEmpty ? _insPolicyCtrl.text.trim() : null,
+        'insurance_expiry': _insExpiry?.toIso8601String().substring(0, 10),
+        // Pricing
+        'weekly_price': double.parse(_weeklyPriceCtrl.text.trim()),
+        'per_km_price': _perKmPriceCtrl.text.trim().isNotEmpty ? double.parse(_perKmPriceCtrl.text.trim()) : null,
+        'deposit_amount': _depositCtrl.text.trim().isNotEmpty ? double.parse(_depositCtrl.text.trim()) : 0,
+        // Location
+        'pickup_lat': _pickupLat,
+        'pickup_lng': _pickupLng,
+        'pickup_address': _pickupAddress,
+        // Availability
+        'available_from': _availableFrom?.toIso8601String().substring(0, 10),
+        'available_to': _availableTo?.toIso8601String().substring(0, 10),
+        // Contract signing
+        'owner_signed_at': DateTime.now().toIso8601String(),
+        'owner_sign_lat': signPos?.latitude,
+        'owner_sign_lng': signPos?.longitude,
+        'status': 'active',
+        'created_at': DateTime.now().toIso8601String(),
+      };
+
+      // Autobus: include assigned driver
+      if (_vehicleType == 'autobus' && _assignedDriverId != null) {
+        data['assigned_driver_id'] = _assignedDriverId;
+      }
+
+      await SupabaseConfig.client.from('rental_vehicle_listings').insert(data);
+
+      if (mounted) {
+        Navigator.of(context).pop(true); // true = refresh
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Vehiculo publicado exitosamente'),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = 'Error al publicar: $e';
+          _isSubmitting = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _pickDate({required bool isFrom}) async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: isFrom ? (_availableFrom ?? now) : (_availableTo ?? now.add(const Duration(days: 30))),
+      firstDate: now,
+      lastDate: now.add(const Duration(days: 365)),
+      builder: (ctx, child) => Theme(
+        data: ThemeData.dark().copyWith(
+          colorScheme: const ColorScheme.dark(primary: _PublishVehicleSheetState._accent),
+        ),
+        child: child!,
+      ),
+    );
+    if (picked != null && mounted) {
+      setState(() {
+        if (isFrom) {
+          _availableFrom = picked;
+        } else {
+          _availableTo = picked;
+        }
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final stepTitles = ['Vehiculo', 'Seguro', 'Precios', 'Ubicacion', 'Contrato'];
+    return Container(
+      constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.92),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        border: Border.all(color: _accent.withValues(alpha: 0.2), width: 1),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Drag handle
+          Center(
+            child: Container(
+              margin: const EdgeInsets.only(top: 12),
+              width: 40, height: 4,
+              decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)),
+            ),
+          ),
+          // Title row
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 12, 0),
+            child: Row(
+              children: [
+                const Icon(Icons.directions_car_rounded, color: _accent, size: 24),
+                const SizedBox(width: 12),
+                Text('Publicar Vehiculo', style: TextStyle(color: AppColors.textPrimary, fontSize: 20, fontWeight: FontWeight.w700)),
+                const Spacer(),
+                IconButton(onPressed: () => Navigator.of(context).pop(), icon: Icon(Icons.close_rounded, color: AppColors.textTertiary)),
+              ],
+            ),
+          ),
+          // Step indicator
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+            child: Row(
+              children: List.generate(stepTitles.length, (i) {
+                final isActive = i == _currentStep;
+                final isDone = i < _currentStep;
+                return Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.only(right: i < stepTitles.length - 1 ? 4 : 0),
+                    child: Column(
+                      children: [
+                        Container(
+                          height: 3,
+                          decoration: BoxDecoration(
+                            color: isDone ? AppColors.success : isActive ? _accent : AppColors.border,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          stepTitles[i],
+                          style: TextStyle(
+                            color: isActive ? _accent : isDone ? AppColors.success : AppColors.textDisabled,
+                            fontSize: 10, fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }),
+            ),
+          ),
+          Divider(color: AppColors.border.withValues(alpha: 0.5), height: 1),
+          // Error
+          if (_error != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.error.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.error_outline, color: AppColors.error, size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(_error!, style: TextStyle(color: AppColors.error, fontSize: 13))),
+                  ],
+                ),
+              ),
+            ),
+          // Step content
+          Flexible(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: _buildStepContent(),
+            ),
+          ),
+          // Navigation buttons
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+            child: Row(
+              children: [
+                if (_currentStep > 0)
+                  Expanded(
+                    child: SizedBox(
+                      height: 50,
+                      child: OutlinedButton(
+                        onPressed: _prevStep,
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: AppColors.border),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                        child: Text('Atras', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+                      ),
+                    ),
+                  ),
+                if (_currentStep > 0) const SizedBox(width: 12),
+                Expanded(
+                  flex: 2,
+                  child: SizedBox(
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: _isSubmitting ? null : (_currentStep == 4 ? _submitListing : _nextStep),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _currentStep == 4 ? AppColors.success : _accent,
+                        disabledBackgroundColor: _accent.withValues(alpha: 0.3),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        elevation: 0,
+                      ),
+                      child: _isSubmitting
+                          ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+                          : Text(
+                              _currentStep == 4 ? 'Firmar y Publicar' : 'Siguiente',
+                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                            ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStepContent() {
+    switch (_currentStep) {
+      case 0: return _buildVehicleStep();
+      case 1: return _buildInsuranceStep();
+      case 2: return _buildPricingStep();
+      case 3: return _buildLocationStep();
+      case 4: return _buildContractStep();
+      default: return const SizedBox.shrink();
+    }
+  }
+
+  // ── Step 0: Vehicle Info ──
+  Widget _buildVehicleStep() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionLabel('Tipo de Vehiculo'),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8, runSpacing: 8,
+          children: _vehicleTypes.map((t) {
+            final sel = _vehicleType == t;
+            return GestureDetector(
+              onTap: () { HapticService.lightImpact(); setState(() { _vehicleType = t; _driverVerified = false; _assignedDriverId = null; _assignedDriverName = null; _driverEmailCtrl.clear(); }); },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: sel ? _accent.withValues(alpha: 0.15) : AppColors.card,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: sel ? _accent.withValues(alpha: 0.6) : AppColors.border, width: sel ? 1.5 : 1),
+                ),
+                child: Text(t.toUpperCase(), style: TextStyle(color: sel ? _accent : AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w600)),
+              ),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 20),
+        _sectionLabel('Informacion del Vehiculo'),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(child: _field(_makeCtrl, 'Marca', 'Toyota')),
+            const SizedBox(width: 12),
+            Expanded(child: _field(_modelCtrl, 'Modelo', 'Camry')),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(child: _field(_yearCtrl, 'Año', '2024', isNumber: true)),
+            const SizedBox(width: 12),
+            Expanded(child: _field(_colorCtrl, 'Color', 'Blanco')),
+          ],
+        ),
+        const SizedBox(height: 12),
+        _field(_plateCtrl, 'Placa', 'ABC-1234'),
+        const SizedBox(height: 12),
+        _field(_vinCtrl, 'VIN (opcional)', '1HGBH41JXMN109186'),
+        // ── Autobus: Chofer obligatorio ──
+        if (_vehicleType == 'autobus') ...[
+          const SizedBox(height: 24),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFEF3C7).withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFEAB308).withValues(alpha: 0.4)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.warning_amber_rounded, color: const Color(0xFFEAB308), size: 20),
+                    const SizedBox(width: 8),
+                    const Text('Chofer Requerido', style: TextStyle(color: Color(0xFFEAB308), fontSize: 14, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'La renta de autobus requiere un chofer aprobado por Toro. Ingresa el email del chofer para verificarlo.',
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(child: _field(_driverEmailCtrl, 'Email del Chofer', 'chofer@email.com')),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: _verifyingDriver ? null : _verifyDriver,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        decoration: BoxDecoration(
+                          color: _driverVerified ? const Color(0xFF22C55E) : _accent,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: _verifyingDriver
+                            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                            : Icon(_driverVerified ? Icons.check : Icons.search, color: Colors.white, size: 20),
+                      ),
+                    ),
+                  ],
+                ),
+                if (_driverVerified && _assignedDriverName != null) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF22C55E).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFF22C55E).withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.verified, color: Color(0xFF22C55E), size: 18),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Chofer verificado: $_assignedDriverName',
+                            style: const TextStyle(color: Color(0xFF22C55E), fontSize: 13, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  // ── Step 1: Insurance ──
+  Widget _buildInsuranceStep() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionLabel('Seguro del Vehiculo (Opcional)'),
+        const SizedBox(height: 4),
+        Text(
+          'Si tu vehiculo tiene seguro, ingresa los datos para proteccion adicional',
+          style: TextStyle(color: AppColors.textDisabled, fontSize: 12),
+        ),
+        const SizedBox(height: 16),
+        _field(_insCompanyCtrl, 'Compañia de Seguro', 'Qualitas, HDI, GNP...'),
+        const SizedBox(height: 12),
+        _field(_insPolicyCtrl, 'Numero de Poliza', 'POL-123456'),
+        const SizedBox(height: 12),
+        _sectionLabel('Vencimiento de Poliza'),
+        const SizedBox(height: 8),
+        GestureDetector(
+          onTap: () async {
+            final picked = await showDatePicker(
+              context: context,
+              initialDate: _insExpiry ?? DateTime.now().add(const Duration(days: 180)),
+              firstDate: DateTime.now(),
+              lastDate: DateTime.now().add(const Duration(days: 730)),
+              builder: (ctx, child) => Theme(
+                data: ThemeData.dark().copyWith(colorScheme: const ColorScheme.dark(primary: _accent)),
+                child: child!,
+              ),
+            );
+            if (picked != null && mounted) setState(() => _insExpiry = picked);
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: AppColors.card,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.calendar_today_rounded, color: _accent, size: 18),
+                const SizedBox(width: 12),
+                Text(
+                  _insExpiry != null
+                      ? '${_insExpiry!.day}/${_insExpiry!.month}/${_insExpiry!.year}'
+                      : 'Seleccionar fecha',
+                  style: TextStyle(color: _insExpiry != null ? AppColors.textPrimary : AppColors.textDisabled, fontSize: 15),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Step 2: Pricing ──
+  Widget _buildPricingStep() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionLabel('Precios de Renta'),
+        const SizedBox(height: 4),
+        Text(
+          'Toro aplica un multiplicador sobre tu precio para cubrir costos de plataforma',
+          style: TextStyle(color: AppColors.textDisabled, fontSize: 12),
+        ),
+        const SizedBox(height: 16),
+        _priceField(_weeklyPriceCtrl, 'Precio Semanal *', 'Ej: 350.00'),
+        const SizedBox(height: 12),
+        _priceField(_perKmPriceCtrl, 'Precio por Km (opcional)', 'Ej: 2.50'),
+        const SizedBox(height: 12),
+        _priceField(_depositCtrl, 'Deposito (opcional)', 'Ej: 500.00'),
+        const SizedBox(height: 20),
+        _sectionLabel('Disponibilidad (Opcional)'),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _dateTile('Desde', _availableFrom, () => _pickDate(isFrom: true)),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _dateTile('Hasta', _availableTo, () => _pickDate(isFrom: false)),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  // ── Step 3: Location ──
+  Widget _buildLocationStep() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionLabel('Ubicacion de Entrega/Recogida'),
+        const SizedBox(height: 4),
+        Text(
+          'Donde se entregara y recogerá el vehiculo',
+          style: TextStyle(color: AppColors.textDisabled, fontSize: 12),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          width: double.infinity,
+          height: 50,
+          child: OutlinedButton.icon(
+            onPressed: _getCurrentLocation,
+            icon: const Icon(Icons.my_location_rounded, size: 20),
+            label: const Text('Usar Mi Ubicacion Actual'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: _accent,
+              side: BorderSide(color: _accent.withValues(alpha: 0.5)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+        ),
+        if (_pickupAddress != null) ...[
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.success.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.location_on_rounded, color: AppColors.success, size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Ubicacion seleccionada', style: TextStyle(color: AppColors.success, fontSize: 12, fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 4),
+                      Text(_pickupAddress!, style: TextStyle(color: AppColors.textPrimary, fontSize: 13), maxLines: 2, overflow: TextOverflow.ellipsis),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  // ── Step 4: Contract ──
+  Widget _buildContractStep() {
+    final make = _makeCtrl.text.trim();
+    final model = _modelCtrl.text.trim();
+    final year = _yearCtrl.text.trim();
+    final plate = _plateCtrl.text.trim();
+    final weekly = _weeklyPriceCtrl.text.trim();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionLabel('Resumen del Vehiculo'),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.card,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: _accent.withValues(alpha: 0.3)),
+          ),
+          child: Column(
+            children: [
+              _summaryRow('Tipo', _vehicleType.toUpperCase()),
+              _summaryRow('Vehiculo', '$year $make $model'),
+              _summaryRow('Placa', plate),
+              if (_colorCtrl.text.trim().isNotEmpty) _summaryRow('Color', _colorCtrl.text.trim()),
+              if (_vinCtrl.text.trim().isNotEmpty) _summaryRow('VIN', _vinCtrl.text.trim()),
+              if (_insCompanyCtrl.text.trim().isNotEmpty) _summaryRow('Seguro', _insCompanyCtrl.text.trim()),
+              _summaryRow('Precio Semanal', '\$$weekly'),
+              if (_pickupAddress != null) _summaryRow('Ubicacion', _pickupAddress!),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        _sectionLabel('Contrato de Publicacion'),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: AppColors.card,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Text(
+            'Al firmar este contrato, acepto que:\n\n'
+            '• El vehiculo descrito esta en condiciones operativas\n'
+            '• La informacion proporcionada es veridica\n'
+            '• Autorizo a Toro a listar mi vehiculo en la plataforma\n'
+            '• Toro aplicara un multiplicador sobre el precio para cubrir costos de plataforma\n'
+            '• Soy responsable del seguro y mantenimiento del vehiculo\n'
+            '• Puedo retirar mi vehiculo en cualquier momento que no tenga un contrato activo',
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 13, height: 1.5),
+          ),
+        ),
+        const SizedBox(height: 16),
+        GestureDetector(
+          onTap: () { HapticService.lightImpact(); setState(() => _agreedToTerms = !_agreedToTerms); },
+          child: Row(
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 24, height: 24,
+                decoration: BoxDecoration(
+                  color: _agreedToTerms ? _accent : Colors.transparent,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: _agreedToTerms ? _accent : AppColors.border, width: 2),
+                ),
+                child: _agreedToTerms ? const Icon(Icons.check_rounded, color: Colors.white, size: 18) : null,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Acepto los terminos y firmo digitalmente este contrato',
+                  style: TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Helpers ──
+  Widget _sectionLabel(String text) => Text(
+    text,
+    style: TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w600),
+  );
+
+  Widget _field(TextEditingController ctrl, String label, String hint, {bool isNumber = false}) {
+    return TextField(
+      controller: ctrl,
+      keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+      style: TextStyle(color: AppColors.textPrimary, fontSize: 15),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(color: AppColors.textTertiary, fontSize: 13),
+        hintText: hint,
+        hintStyle: TextStyle(color: AppColors.textDisabled),
+        filled: true, fillColor: AppColors.card,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.border)),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.border)),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _accent, width: 1.5)),
+      ),
+    );
+  }
+
+  Widget _priceField(TextEditingController ctrl, String label, String hint) {
+    return TextField(
+      controller: ctrl,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      style: TextStyle(color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.w500),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(color: AppColors.textTertiary, fontSize: 13),
+        hintText: hint,
+        hintStyle: TextStyle(color: AppColors.textDisabled),
+        prefixText: '\$ ',
+        prefixStyle: TextStyle(color: _accent, fontSize: 15, fontWeight: FontWeight.w600),
+        filled: true, fillColor: AppColors.card,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.border)),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.border)),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _accent, width: 1.5)),
+      ),
+    );
+  }
+
+  Widget _dateTile(String label, DateTime? date, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: TextStyle(color: AppColors.textDisabled, fontSize: 11, fontWeight: FontWeight.w500)),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Icon(Icons.calendar_today_rounded, color: _accent, size: 16),
+                const SizedBox(width: 8),
+                Text(
+                  date != null ? '${date.day}/${date.month}/${date.year}' : 'Seleccionar',
+                  style: TextStyle(color: date != null ? AppColors.textPrimary : AppColors.textDisabled, fontSize: 14),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _summaryRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 110,
+            child: Text(label, style: TextStyle(color: AppColors.textTertiary, fontSize: 13)),
+          ),
+          Expanded(
+            child: Text(value, style: TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w500), maxLines: 2, overflow: TextOverflow.ellipsis),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MY RENTALS SHEET - Published listings + active rental activity
+// ═══════════════════════════════════════════════════════════════════════════════
+
+class _MyRentalsSheet extends StatefulWidget {
+  final String userId;
+  const _MyRentalsSheet({required this.userId});
+
+  @override
+  State<_MyRentalsSheet> createState() => _MyRentalsSheetState();
+}
+
+class _MyRentalsSheetState extends State<_MyRentalsSheet> {
+  static const _accent = Color(0xFF8B5CF6);
+  List<Map<String, dynamic>> _listings = [];
+  // Active agreements for each listing (listing_id → agreement)
+  Map<String, Map<String, dynamic>> _activeAgreements = {};
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    try {
+      final client = SupabaseConfig.client;
+      // Load all listings for this owner
+      final listings = await client
+          .from('rental_vehicle_listings')
+          .select('*')
+          .eq('owner_id', widget.userId)
+          .order('created_at', ascending: false);
+
+      final listingsList = List<Map<String, dynamic>>.from(listings);
+
+      // Load active agreements for these listings
+      final listingIds = listingsList.map((l) => l['id'] as String).toList();
+      Map<String, Map<String, dynamic>> agreements = {};
+
+      if (listingIds.isNotEmpty) {
+        try {
+          final agr = await client
+              .from('rental_agreements')
+              .select('*')
+              .inFilter('listing_id', listingIds)
+              .inFilter('status', ['active', 'pending']);
+
+          for (final a in (agr as List)) {
+            final lid = a['listing_id'] as String?;
+            if (lid != null) agreements[lid] = Map<String, dynamic>.from(a);
+          }
+        } catch (_) {}
+      }
+
+      if (mounted) {
+        setState(() {
+          _listings = listingsList;
+          _activeAgreements = agreements;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = 'Error al cargar: $e';
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _toggleListingStatus(Map<String, dynamic> listing) async {
+    final id = listing['id'] as String;
+    final currentStatus = listing['status'] as String? ?? 'active';
+    final newStatus = currentStatus == 'active' ? 'inactive' : 'active';
+
+    try {
+      await SupabaseConfig.client
+          .from('rental_vehicle_listings')
+          .update({'status': newStatus})
+          .eq('id', id);
+      HapticService.mediumImpact();
+      _loadData(); // Refresh
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.85),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        border: Border.all(color: _accent.withValues(alpha: 0.2), width: 1),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Drag handle
+          Center(
+            child: Container(
+              margin: const EdgeInsets.only(top: 12),
+              width: 40, height: 4,
+              decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)),
+            ),
+          ),
+          // Title
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 12, 0),
+            child: Row(
+              children: [
+                const Icon(Icons.receipt_long_rounded, color: _accent, size: 24),
+                const SizedBox(width: 12),
+                Text('Mis Rentas', style: TextStyle(color: AppColors.textPrimary, fontSize: 20, fontWeight: FontWeight.w700)),
+                const Spacer(),
+                IconButton(onPressed: () => Navigator.of(context).pop(), icon: Icon(Icons.close_rounded, color: AppColors.textTertiary)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Divider(color: AppColors.border.withValues(alpha: 0.5), height: 1),
+          // Content
+          Flexible(
+            child: _isLoading
+                ? const Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator(color: _accent)))
+                : _error != null
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(40),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.error_outline, color: AppColors.error, size: 40),
+                              const SizedBox(height: 12),
+                              Text(_error!, style: TextStyle(color: AppColors.textTertiary, fontSize: 14), textAlign: TextAlign.center),
+                            ],
+                          ),
+                        ),
+                      )
+                    : _listings.isEmpty
+                        ? Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(40),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.car_rental_rounded, color: AppColors.textDisabled, size: 48),
+                                  const SizedBox(height: 16),
+                                  Text('No tienes vehiculos publicados', style: TextStyle(color: AppColors.textTertiary, fontSize: 15, fontWeight: FontWeight.w500)),
+                                  const SizedBox(height: 6),
+                                  Text('Publica un vehiculo para comenzar a rentar', style: TextStyle(color: AppColors.textDisabled, fontSize: 13), textAlign: TextAlign.center),
+                                ],
+                              ),
+                            ),
+                          )
+                        : ListView.separated(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: _listings.length,
+                            separatorBuilder: (_, __) => const SizedBox(height: 12),
+                            itemBuilder: (context, index) => _buildListingCard(_listings[index]),
+                          ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildListingCard(Map<String, dynamic> listing) {
+    final id = listing['id'] as String;
+    final make = listing['vehicle_make'] ?? listing['make'] ?? '';
+    final model = listing['vehicle_model'] ?? listing['model'] ?? '';
+    final year = (listing['vehicle_year'] ?? listing['year'])?.toString() ?? '';
+    final plate = listing['vehicle_plate'] ?? listing['plate_number'] ?? '';
+    final type = listing['vehicle_type'] ?? '';
+    final color = listing['vehicle_color'] ?? '';
+    final status = listing['status'] as String? ?? 'active';
+    final weeklyPrice = listing['weekly_price']?.toString() ?? '0';
+    final pickupAddr = listing['pickup_address'] as String?;
+    final isActive = status == 'active';
+
+    final agreement = _activeAgreements[id];
+    final hasRenter = agreement != null;
+
+    return GestureDetector(
+      onTap: hasRenter ? () => _showActivityDetail(listing, agreement) : null,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: hasRenter ? AppColors.warning.withValues(alpha: 0.5) : isActive ? _accent.withValues(alpha: 0.3) : AppColors.border,
+            width: hasRenter ? 1.5 : 1,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header row
+            Row(
+              children: [
+                Container(
+                  width: 44, height: 44,
+                  decoration: BoxDecoration(
+                    color: hasRenter ? AppColors.warning.withValues(alpha: 0.15) : isActive ? _accent.withValues(alpha: 0.15) : AppColors.cardHover,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    hasRenter ? Icons.person_rounded : Icons.directions_car_rounded,
+                    color: hasRenter ? AppColors.warning : isActive ? _accent : AppColors.textDisabled,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('$year $make $model', style: TextStyle(color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          _statusBadge(hasRenter ? 'Rentado' : isActive ? 'Publicado' : 'Inactivo',
+                            hasRenter ? AppColors.warning : isActive ? AppColors.success : AppColors.textDisabled),
+                          const SizedBox(width: 8),
+                          Text('\$$weeklyPrice/sem', style: TextStyle(color: AppColors.textTertiary, fontSize: 12)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                if (hasRenter)
+                  Icon(Icons.chevron_right_rounded, color: AppColors.textTertiary, size: 22)
+                else
+                  // Toggle active/inactive
+                  GestureDetector(
+                    onTap: () => _toggleListingStatus(listing),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: isActive ? AppColors.error.withValues(alpha: 0.1) : AppColors.success.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        isActive ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                        color: isActive ? AppColors.error : AppColors.success,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            // Vehicle details row
+            if (type.isNotEmpty || plate.isNotEmpty || color.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8, runSpacing: 6,
+                children: [
+                  if (type.isNotEmpty) _infoPill(Icons.category_rounded, type.toUpperCase()),
+                  if (plate.isNotEmpty) _infoPill(Icons.confirmation_number_rounded, plate),
+                  if (color.isNotEmpty) _infoPill(Icons.palette_rounded, color),
+                ],
+              ),
+            ],
+            // Location
+            if (pickupAddr != null) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(Icons.location_on_rounded, color: AppColors.textDisabled, size: 14),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(pickupAddr, style: TextStyle(color: AppColors.textDisabled, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  ),
+                ],
+              ),
+            ],
+            // Renter info if active
+            if (hasRenter) ...[
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.warning.withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.warning.withValues(alpha: 0.2)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.person_outline_rounded, color: AppColors.warning, size: 18),
+                    const SizedBox(width: 8),
+                    Text('Vehiculo en uso', style: TextStyle(color: AppColors.warning, fontSize: 13, fontWeight: FontWeight.w600)),
+                    const Spacer(),
+                    Text('Ver actividad →', style: TextStyle(color: AppColors.warning.withValues(alpha: 0.7), fontSize: 12)),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _statusBadge(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(text, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600)),
+    );
+  }
+
+  Widget _infoPill(IconData icon, String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.cardHover,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: AppColors.textDisabled, size: 12),
+          const SizedBox(width: 4),
+          Text(text, style: TextStyle(color: AppColors.textTertiary, fontSize: 11, fontWeight: FontWeight.w500)),
+        ],
+      ),
+    );
+  }
+
+  void _showActivityDetail(Map<String, dynamic> listing, Map<String, dynamic> agreement) {
+    final make = listing['vehicle_make'] ?? listing['make'] ?? '';
+    final model = listing['vehicle_model'] ?? listing['model'] ?? '';
+    final year = (listing['vehicle_year'] ?? listing['year'])?.toString() ?? '';
+    final plate = listing['vehicle_plate'] ?? listing['plate_number'] ?? '';
+    final agrStatus = agreement['status'] as String? ?? 'active';
+    final startDate = agreement['start_date'] as String?;
+    final endDate = agreement['end_date'] as String?;
+    final totalCost = agreement['total_cost'];
+    final renterId = agreement['renter_id'] as String?;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Container(
+        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.7),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle
+            Center(
+              child: Container(
+                margin: const EdgeInsets.only(top: 12),
+                width: 40, height: 4,
+                decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 12, 0),
+              child: Row(
+                children: [
+                  const Icon(Icons.analytics_rounded, color: _accent, size: 24),
+                  const SizedBox(width: 12),
+                  Text('Actividad del Vehiculo', style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w700)),
+                  const Spacer(),
+                  IconButton(onPressed: () => Navigator.pop(ctx), icon: Icon(Icons.close_rounded, color: AppColors.textTertiary)),
+                ],
+              ),
+            ),
+            Divider(color: AppColors.border.withValues(alpha: 0.5), height: 16),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Vehicle
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.border)),
+                    child: Column(
+                      children: [
+                        _detailRow('Vehiculo', '$year $make $model'),
+                        _detailRow('Placa', plate),
+                        _detailRow('Estado', agrStatus == 'active' ? 'En uso' : agrStatus),
+                        if (startDate != null) _detailRow('Inicio', startDate.substring(0, 10)),
+                        if (endDate != null) _detailRow('Fin', endDate.substring(0, 10)),
+                        if (totalCost != null) _detailRow('Costo Total', '\$$totalCost'),
+                        if (renterId != null) _detailRow('Renter ID', renterId.substring(0, 8)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _detailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
+        children: [
+          SizedBox(width: 100, child: Text(label, style: TextStyle(color: AppColors.textTertiary, fontSize: 13))),
+          Expanded(child: Text(value, style: TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w500))),
+        ],
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GPS TRACKING SHEET - Active vehicle tracking with checkin data
+// ═══════════════════════════════════════════════════════════════════════════════
+
+class _GpsTrackingSheet extends StatefulWidget {
+  final String userId;
+  const _GpsTrackingSheet({required this.userId});
+
+  @override
+  State<_GpsTrackingSheet> createState() => _GpsTrackingSheetState();
+}
+
+class _GpsTrackingSheetState extends State<_GpsTrackingSheet> {
+  static const _accent = Color(0xFF8B5CF6);
+  List<Map<String, dynamic>> _rentedVehicles = []; // listings with active agreements
+  Map<String, List<Map<String, dynamic>>> _checkins = {}; // listing_id → checkins
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTracking();
+  }
+
+  Future<void> _loadTracking() async {
+    try {
+      final client = SupabaseConfig.client;
+
+      // 1. Get owner's listings
+      final listings = await client
+          .from('rental_vehicle_listings')
+          .select('*')
+          .eq('owner_id', widget.userId)
+          .order('created_at', ascending: false);
+
+      final listingsList = List<Map<String, dynamic>>.from(listings);
+      final listingIds = listingsList.map((l) => l['id'] as String).toList();
+
+      if (listingIds.isEmpty) {
+        if (mounted) setState(() => _isLoading = false);
+        return;
+      }
+
+      // 2. Get active agreements
+      final agreements = await client
+          .from('rental_agreements')
+          .select('*')
+          .inFilter('listing_id', listingIds)
+          .eq('status', 'active');
+
+      final activeListingIds = <String>{};
+      for (final a in (agreements as List)) {
+        activeListingIds.add(a['listing_id'] as String);
+      }
+
+      // Filter listings to only those with active agreements
+      final rentedListings = listingsList.where((l) => activeListingIds.contains(l['id'])).toList();
+
+      // 3. Load recent checkins for rented vehicles
+      Map<String, List<Map<String, dynamic>>> checkinMap = {};
+      for (final lid in activeListingIds) {
+        try {
+          final checks = await client
+              .from('rental_checkins')
+              .select('*')
+              .eq('listing_id', lid)
+              .order('created_at', ascending: false)
+              .limit(5);
+          checkinMap[lid] = List<Map<String, dynamic>>.from(checks);
+        } catch (_) {
+          checkinMap[lid] = [];
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _rentedVehicles = rentedListings;
+          _checkins = checkinMap;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = 'Error al cargar rastreo: $e';
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.8),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        border: Border.all(color: _accent.withValues(alpha: 0.2), width: 1),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Drag handle
+          Center(
+            child: Container(
+              margin: const EdgeInsets.only(top: 12),
+              width: 40, height: 4,
+              decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)),
+            ),
+          ),
+          // Title
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 12, 0),
+            child: Row(
+              children: [
+                const Icon(Icons.gps_fixed_rounded, color: _accent, size: 24),
+                const SizedBox(width: 12),
+                Text('GPS Tracking', style: TextStyle(color: AppColors.textPrimary, fontSize: 20, fontWeight: FontWeight.w700)),
+                const Spacer(),
+                IconButton(onPressed: () => Navigator.of(context).pop(), icon: Icon(Icons.close_rounded, color: AppColors.textTertiary)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Divider(color: AppColors.border.withValues(alpha: 0.5), height: 1),
+          // Content
+          Flexible(
+            child: _isLoading
+                ? const Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator(color: _accent)))
+                : _error != null
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(40),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.error_outline, color: AppColors.error, size: 40),
+                              const SizedBox(height: 12),
+                              Text(_error!, style: TextStyle(color: AppColors.textTertiary, fontSize: 14), textAlign: TextAlign.center),
+                            ],
+                          ),
+                        ),
+                      )
+                    : _rentedVehicles.isEmpty
+                        ? Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(40),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.gps_off_rounded, color: AppColors.textDisabled, size: 48),
+                                  const SizedBox(height: 16),
+                                  Text('Sin vehiculos rastreados', style: TextStyle(color: AppColors.textTertiary, fontSize: 15, fontWeight: FontWeight.w500)),
+                                  const SizedBox(height: 6),
+                                  Text('El rastreo GPS se activa cuando un vehiculo esta rentado', style: TextStyle(color: AppColors.textDisabled, fontSize: 13), textAlign: TextAlign.center),
+                                ],
+                              ),
+                            ),
+                          )
+                        : ListView.separated(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: _rentedVehicles.length,
+                            separatorBuilder: (_, __) => const SizedBox(height: 14),
+                            itemBuilder: (context, index) {
+                              final vehicle = _rentedVehicles[index];
+                              return _buildTrackedVehicle(vehicle);
+                            },
+                          ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTrackedVehicle(Map<String, dynamic> vehicle) {
+    final id = vehicle['id'] as String;
+    final make = vehicle['vehicle_make'] ?? vehicle['make'] ?? '';
+    final model = vehicle['vehicle_model'] ?? vehicle['model'] ?? '';
+    final year = (vehicle['vehicle_year'] ?? vehicle['year'])?.toString() ?? '';
+    final plate = vehicle['vehicle_plate'] ?? vehicle['plate_number'] ?? '';
+    final checkins = _checkins[id] ?? [];
+    final lastCheckin = checkins.isNotEmpty ? checkins.first : null;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Vehicle header
+          Row(
+            children: [
+              Container(
+                width: 44, height: 44,
+                decoration: BoxDecoration(
+                  color: AppColors.success.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Icon(Icons.gps_fixed_rounded, color: AppColors.success, size: 22),
+                    Positioned(
+                      right: 8, top: 8,
+                      child: Container(
+                        width: 8, height: 8,
+                        decoration: BoxDecoration(
+                          color: AppColors.success,
+                          shape: BoxShape.circle,
+                          boxShadow: [BoxShadow(color: AppColors.success.withValues(alpha: 0.5), blurRadius: 4)],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('$year $make $model', style: TextStyle(color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(color: AppColors.success.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(6)),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(width: 6, height: 6, decoration: BoxDecoration(color: AppColors.success, shape: BoxShape.circle)),
+                              const SizedBox(width: 5),
+                              Text('GPS Activo', style: TextStyle(color: AppColors.success, fontSize: 11, fontWeight: FontWeight.w600)),
+                            ],
+                          ),
+                        ),
+                        if (plate.isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          Text(plate, style: TextStyle(color: AppColors.textTertiary, fontSize: 12)),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          // Last checkin info
+          if (lastCheckin != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.cardHover,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Ultimo Check-in', style: TextStyle(color: AppColors.textTertiary, fontSize: 11, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 8),
+                  if (lastCheckin['lat'] != null && lastCheckin['lng'] != null)
+                    Row(
+                      children: [
+                        Icon(Icons.location_on_rounded, color: _accent, size: 14),
+                        const SizedBox(width: 6),
+                        Text(
+                          '${(lastCheckin['lat'] as num).toStringAsFixed(5)}, ${(lastCheckin['lng'] as num).toStringAsFixed(5)}',
+                          style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  if (lastCheckin['mileage'] != null) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(Icons.speed_rounded, color: _accent, size: 14),
+                        const SizedBox(width: 6),
+                        Text('${lastCheckin['mileage']} mi', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                      ],
+                    ),
+                  ],
+                  if (lastCheckin['fuel_level'] != null) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(Icons.local_gas_station_rounded, color: _accent, size: 14),
+                        const SizedBox(width: 6),
+                        Text('${lastCheckin['fuel_level']}%', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                      ],
+                    ),
+                  ],
+                  if (lastCheckin['created_at'] != null) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(Icons.access_time_rounded, color: AppColors.textDisabled, size: 14),
+                        const SizedBox(width: 6),
+                        Text(
+                          (lastCheckin['created_at'] as String).substring(0, 16).replaceAll('T', ' '),
+                          style: TextStyle(color: AppColors.textDisabled, fontSize: 11),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+          // Checkin history
+          if (checkins.length > 1) ...[
+            const SizedBox(height: 8),
+            Text('Historial (${checkins.length})', style: TextStyle(color: AppColors.textDisabled, fontSize: 11)),
+          ],
+        ],
+      ),
+    );
   }
 }

@@ -4,6 +4,7 @@ import '../core/logging/app_logger.dart';
 
 /// Servicio para manejar Stripe Connect Express
 /// Permite a los drivers conectar su cuenta bancaria para recibir pagos
+/// Soporta múltiples proveedores: 'us' para Estados Unidos, 'mx' para México
 class StripeConnectService {
   static final StripeConnectService _instance = StripeConnectService._();
   static StripeConnectService get instance => _instance;
@@ -11,11 +12,13 @@ class StripeConnectService {
 
   /// Crear cuenta de Stripe Connect y obtener link de onboarding
   /// Retorna el URL para que el driver complete su registro
+  /// provider: 'us' para Estados Unidos, 'mx' para México
   Future<String?> createConnectAccount({
     required String driverId,
     required String email,
     String? firstName,
     String? lastName,
+    String provider = 'us',
   }) async {
     try {
       final supabase = SupabaseConfig.client;
@@ -28,6 +31,7 @@ class StripeConnectService {
           'email': email,
           'first_name': firstName,
           'last_name': lastName,
+          'provider': provider,
         },
       );
 
@@ -41,13 +45,23 @@ class StripeConnectService {
       final accountId = data['account_id'] as String?;
 
       if (accountId != null) {
-        // Guardar el account_id en la tabla drivers
-        await supabase
-            .from('drivers')
-            .update({'stripe_account_id': accountId})
-            .eq('id', driverId);
+        // Guardar el account_id en driver_stripe_accounts
+        await supabase.from('driver_stripe_accounts').upsert({
+          'driver_id': driverId,
+          'stripe_account_id': accountId,
+          'provider': provider,
+          'is_active': true,
+        }, onConflict: 'driver_id, provider');
 
-        AppLogger.log('STRIPE CONNECT -> Account created: $accountId');
+        // También actualizar stripe_account_id en drivers si es la cuenta principal
+        if (provider == 'us') {
+          await supabase
+              .from('drivers')
+              .update({'stripe_account_id': accountId})
+              .eq('id', driverId);
+        }
+
+        AppLogger.log('STRIPE CONNECT -> Account created: $accountId ($provider)');
       }
 
       return onboardingUrl;
@@ -59,7 +73,8 @@ class StripeConnectService {
 
   /// Obtener link de onboarding para cuenta existente
   /// Usar cuando el driver no completo el onboarding
-  Future<String?> getOnboardingLink(String driverId) async {
+  /// provider: 'us' para Estados Unidos, 'mx' para México
+  Future<String?> getOnboardingLink(String driverId, {String provider = 'us'}) async {
     try {
       final supabase = SupabaseConfig.client;
 
@@ -68,6 +83,7 @@ class StripeConnectService {
         body: {
           'driver_id': driverId,
           'refresh': true, // Solo generar nuevo link
+          'provider': provider,
         },
       );
 
@@ -84,66 +100,108 @@ class StripeConnectService {
   }
 
   /// Verificar estado de la cuenta de Stripe Connect
-  Future<StripeAccountStatus> getAccountStatus(String driverId) async {
+  /// provider: 'us' para Estados Unidos, 'mx' para México
+  Future<StripeAccountStatus> getAccountStatus(String driverId, {String provider = 'us'}) async {
     try {
       final supabase = SupabaseConfig.client;
 
-      // Obtener stripe_account_id del driver
-      final driver = await supabase
-          .from('drivers')
-          .select('stripe_account_id, stripe_account_status')
-          .eq('id', driverId)
+      // Obtener stripe_account_id de driver_stripe_accounts
+      final account = await supabase
+          .from('driver_stripe_accounts')
+          .select('stripe_account_id, status')
+          .eq('driver_id', driverId)
+          .eq('provider', provider)
           .maybeSingle();
 
-      if (driver == null) {
-        return StripeAccountStatus.notFound;
+      if (account == null) {
+        // Fallback: revisar en drivers si es US
+        if (provider == 'us') {
+          final driver = await supabase
+              .from('drivers')
+              .select('stripe_account_id, stripe_account_status')
+              .eq('id', driverId)
+              .maybeSingle();
+
+          if (driver == null) {
+            return StripeAccountStatus.notFound;
+          }
+
+          final accountId = driver['stripe_account_id'];
+          if (accountId == null || accountId.toString().isEmpty) {
+            return StripeAccountStatus.notCreated;
+          }
+
+          // Verificar estado con Edge Function
+          return _checkAccountStatus(supabase, driverId, accountId, provider);
+        }
+        return StripeAccountStatus.notCreated;
       }
 
-      final accountId = driver['stripe_account_id'];
+      final accountId = account['stripe_account_id'];
       if (accountId == null || accountId.toString().isEmpty) {
         return StripeAccountStatus.notCreated;
       }
 
-      // Verificar estado con Edge Function
-      final response = await supabase.functions.invoke(
-        'stripe-connect-status',
-        body: {'account_id': accountId},
-      );
+      return _checkAccountStatus(supabase, driverId, accountId, provider);
+    } catch (e) {
+      AppLogger.log('STRIPE CONNECT -> Error checking status: $e');
+      return StripeAccountStatus.error;
+    }
+  }
 
-      if (response.status != 200) {
-        return StripeAccountStatus.error;
-      }
+  Future<StripeAccountStatus> _checkAccountStatus(
+    dynamic supabase,
+    String driverId,
+    String accountId,
+    String provider,
+  ) async {
+    // Verificar estado con Edge Function
+    final response = await supabase.functions.invoke(
+      'stripe-connect-status',
+      body: {'account_id': accountId, 'provider': provider},
+    );
 
-      final data = response.data as Map<String, dynamic>;
-      final chargesEnabled = data['charges_enabled'] as bool? ?? false;
-      final payoutsEnabled = data['payouts_enabled'] as bool? ?? false;
-      final detailsSubmitted = data['details_submitted'] as bool? ?? false;
+    if (response.status != 200) {
+      return StripeAccountStatus.error;
+    }
 
-      // Actualizar estado en la base de datos
-      String status;
-      if (chargesEnabled && payoutsEnabled) {
-        status = 'active';
-      } else if (detailsSubmitted) {
-        status = 'pending';
-      } else {
-        status = 'incomplete';
-      }
+    final data = response.data as Map<String, dynamic>;
+    final chargesEnabled = data['charges_enabled'] as bool? ?? false;
+    final payoutsEnabled = data['payouts_enabled'] as bool? ?? false;
+    final detailsSubmitted = data['details_submitted'] as bool? ?? false;
 
+    // Actualizar estado en la base de datos
+    String status;
+    if (chargesEnabled && payoutsEnabled) {
+      status = 'active';
+    } else if (detailsSubmitted) {
+      status = 'pending';
+    } else {
+      status = 'incomplete';
+    }
+
+    // Actualizar en driver_stripe_accounts
+    await supabase.from('driver_stripe_accounts').upsert({
+      'driver_id': driverId,
+      'stripe_account_id': accountId,
+      'provider': provider,
+      'status': status,
+    }, onConflict: 'driver_id, provider');
+
+    // También actualizar en drivers si es US
+    if (provider == 'us') {
       await supabase
           .from('drivers')
           .update({'stripe_account_status': status})
           .eq('id', driverId);
+    }
 
-      if (chargesEnabled && payoutsEnabled) {
-        return StripeAccountStatus.active;
-      } else if (detailsSubmitted) {
-        return StripeAccountStatus.pendingVerification;
-      } else {
-        return StripeAccountStatus.incomplete;
-      }
-    } catch (e) {
-      AppLogger.log('STRIPE CONNECT -> Error checking status: $e');
-      return StripeAccountStatus.error;
+    if (chargesEnabled && payoutsEnabled) {
+      return StripeAccountStatus.active;
+    } else if (detailsSubmitted) {
+      return StripeAccountStatus.pendingVerification;
+    } else {
+      return StripeAccountStatus.incomplete;
     }
   }
 
@@ -163,13 +221,14 @@ class StripeConnectService {
   }
 
   /// Obtener link del dashboard de Stripe para el driver
-  Future<String?> getDashboardLink(String driverId) async {
+  /// provider: 'us' para Estados Unidos, 'mx' para México
+  Future<String?> getDashboardLink(String driverId, {String provider = 'us'}) async {
     try {
       final supabase = SupabaseConfig.client;
 
       final response = await supabase.functions.invoke(
         'stripe-connect-dashboard',
-        body: {'driver_id': driverId},
+        body: {'driver_id': driverId, 'provider': provider},
       );
 
       if (response.status != 200) {
@@ -185,13 +244,14 @@ class StripeConnectService {
   }
 
   /// Obtener balance disponible del driver
-  Future<DriverBalance?> getBalance(String driverId) async {
+  /// provider: 'us' para Estados Unidos, 'mx' para México
+  Future<DriverBalance?> getBalance(String driverId, {String provider = 'us'}) async {
     try {
       final supabase = SupabaseConfig.client;
 
       final response = await supabase.functions.invoke(
         'stripe-connect-balance',
-        body: {'driver_id': driverId},
+        body: {'driver_id': driverId, 'provider': provider},
       );
 
       if (response.status != 200) {
@@ -207,18 +267,45 @@ class StripeConnectService {
     }
   }
 
+  /// Obtener todas las cuentas conectadas del driver
+  Future<List<ConnectedAccount>> getConnectedAccounts(String driverId) async {
+    try {
+      final supabase = SupabaseConfig.client;
+
+      final response = await supabase
+          .from('driver_stripe_accounts')
+          .select()
+          .eq('driver_id', driverId)
+          .eq('is_active', true);
+
+      return (response as List).map((data) {
+        return ConnectedAccount(
+          provider: data['provider'] as String,
+          stripeAccountId: data['stripe_account_id'] as String,
+          status: data['status'] as String? ?? 'unknown',
+          isDefault: data['is_default'] as bool? ?? false,
+        );
+      }).toList();
+    } catch (e) {
+      AppLogger.log('STRIPE CONNECT -> Error getting connected accounts: $e');
+      return [];
+    }
+  }
+
   /// Solicitar retiro de fondos (payout)
   /// amount: cantidad en centavos (ej: 10000 = $100.00 MXN)
+  /// provider: 'us' para Estados Unidos, 'mx' para México
   Future<PayoutResult> requestPayout({
     required String driverId,
     required int amountCents,
     String currency = 'mxn',
+    String provider = 'us',
   }) async {
     try {
       final supabase = SupabaseConfig.client;
 
       // Verificar que la cuenta este activa
-      final status = await getAccountStatus(driverId);
+      final status = await getAccountStatus(driverId, provider: provider);
       if (!status.canReceivePayments) {
         return PayoutResult(
           success: false,
@@ -227,7 +314,7 @@ class StripeConnectService {
       }
 
       // Verificar balance disponible
-      final balance = await getBalance(driverId);
+      final balance = await getBalance(driverId, provider: provider);
       if (balance == null) {
         return PayoutResult(
           success: false,
@@ -249,6 +336,7 @@ class StripeConnectService {
           'driver_id': driverId,
           'amount': amountCents,
           'currency': currency,
+          'provider': provider,
         },
       );
 
@@ -276,7 +364,8 @@ class StripeConnectService {
   }
 
   /// Obtener historial de payouts
-  Future<List<PayoutRecord>> getPayoutHistory(String driverId, {int limit = 20}) async {
+  /// provider: 'us' para Estados Unidos, 'mx' para México
+  Future<List<PayoutRecord>> getPayoutHistory(String driverId, {int limit = 20, String provider = 'us'}) async {
     try {
       final supabase = SupabaseConfig.client;
 
@@ -285,6 +374,7 @@ class StripeConnectService {
         body: {
           'driver_id': driverId,
           'limit': limit,
+          'provider': provider,
         },
       );
 
@@ -450,4 +540,43 @@ class PayoutRecord {
         return status;
     }
   }
+}
+
+/// Cuenta conectada de Stripe
+class ConnectedAccount {
+  final String provider;
+  final String stripeAccountId;
+  final String status;
+  final bool isDefault;
+
+  ConnectedAccount({
+    required this.provider,
+    required this.stripeAccountId,
+    required this.status,
+    required this.isDefault,
+  });
+
+  String get providerDisplayName {
+    switch (provider) {
+      case 'us':
+        return 'Estados Unidos';
+      case 'mx':
+        return 'México';
+      default:
+        return provider.toUpperCase();
+    }
+  }
+
+  String get currencyCode {
+    switch (provider) {
+      case 'us':
+        return 'USD';
+      case 'mx':
+        return 'MXN';
+      default:
+        return 'USD';
+    }
+  }
+
+  bool get isActive => status == 'active';
 }

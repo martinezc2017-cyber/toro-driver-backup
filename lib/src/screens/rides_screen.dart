@@ -562,14 +562,8 @@ class _RidesScreenState extends State<RidesScreen>
                             ),
                           );
                         }),
-                        Text(
-                          ride.driverEarnings > 0 ? 'card'.tr() : 'est.'.tr(),
-                          style: TextStyle(
-                            color: ride.driverEarnings > 0 ? AppColors.primary : AppColors.warning,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+                        // Payment method badge
+                        _buildPaymentMethodBadge(ride.paymentMethod),
                       ],
                     ),
                   ],
@@ -1066,7 +1060,15 @@ class _RidesScreenState extends State<RidesScreen>
                     const SizedBox(height: 18),
                     _buildDetailRow(Icons.location_on_rounded, 'pickup'.tr(), ride.pickupLocation.address ?? 'N/A'),
                     _buildDetailRow(Icons.flag_rounded, 'destination'.tr(), ride.dropoffLocation.address ?? 'N/A'),
-                    _buildDetailRow(Icons.payment_rounded, 'payment_method'.tr(), 'card'.tr()),
+                    _buildDetailRow(
+                      ride.paymentMethod == PaymentMethod.cash
+                          ? Icons.payments_outlined
+                          : Icons.credit_card_rounded,
+                      'payment_method'.tr(),
+                      ride.paymentMethod == PaymentMethod.cash
+                          ? 'Efectivo'
+                          : (ride.paymentMethod == PaymentMethod.wallet ? 'Wallet' : 'Tarjeta'),
+                    ),
                     if (ride.notes != null && ride.notes!.isNotEmpty)
                       _buildDetailRow(Icons.note_rounded, 'note'.tr(), ride.notes!),
                     const Spacer(),
@@ -1160,6 +1162,40 @@ class _RidesScreenState extends State<RidesScreen>
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Build payment method badge with appropriate icon and color
+  /// Cash = green/orange with bills icon
+  /// Card = blue with card icon
+  Widget _buildPaymentMethodBadge(PaymentMethod method) {
+    final isCash = method == PaymentMethod.cash;
+    final color = isCash ? const Color(0xFF4CAF50) : AppColors.primary;
+    final icon = isCash ? Icons.payments_outlined : Icons.credit_card_rounded;
+    final text = isCash ? 'Efectivo' : 'Tarjeta';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 10),
+          const SizedBox(width: 3),
+          Text(
+            text,
+            style: TextStyle(
+              color: color,
+              fontSize: 9,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],

@@ -1,4 +1,4 @@
-package com.example.toro_driver
+package com.tororide.driver
 
 import android.os.Bundle
 import io.flutter.embedding.android.FlutterFragmentActivity

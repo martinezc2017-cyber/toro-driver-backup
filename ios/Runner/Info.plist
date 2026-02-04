@@ -57,5 +57,19 @@
 		<string>TORO Driver needs your location in the background to track rides and provide navigation.</string>
 		<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 		<string>TORO Driver needs your location to provide turn-by-turn navigation and track your ride progress.</string>
+		<!-- Deep Links for OAuth callback -->
+		<key>CFBundleURLTypes</key>
+		<array>
+			<dict>
+				<key>CFBundleURLSchemes</key>
+				<array>
+					<string>io.supabase.torodriver</string>
+				</array>
+				<key>CFBundleURLName</key>
+				<string>io.supabase.torodriver</string>
+			</dict>
+		</array>
+		<key>FlutterDeepLinkingEnabled</key>
+		<true/>
 	</dict>
 </plist>

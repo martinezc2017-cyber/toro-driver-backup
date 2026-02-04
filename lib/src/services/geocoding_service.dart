@@ -9,6 +9,7 @@ class GeocodingService {
   GeocodingService(this._accessToken);
 
   /// Convierte una dirección a coordenadas
+  /// country: 'us' para Estados Unidos, 'mx' para México, 'us,mx' para ambos
   Future<GeocodingResult?> searchAddress(String query, {
     double? proximityLat,
     double? proximityLng,

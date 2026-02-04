@@ -29,35 +29,21 @@ class RideService {
       return (response as List).map((json) => RideModel.fromJson(json)).toList();
     }
 
-    // === 1. Query deliveries table (rides and packages) with rider profile ===
+    // === 1. Query deliveries table (rides and packages) ===
     final deliveriesResponse = await _client
         .from(SupabaseConfig.packageDeliveriesTable)
-        .select('''
-          *,
-          profiles!user_id(
-            full_name,
-            avatar_url,
-            rating
-          )
-        ''')
+        .select('*')
         .eq('status', statusToDatabase(RideStatus.pending))
         .isFilter('driver_id', null)
         .order('created_at', ascending: false)
         .limit(20);
 
-    // === 2. Query share_ride_bookings table (carpools) with rider profile ===
+    // === 2. Query share_ride_bookings table (carpools) ===
     List<dynamic> carpoolsResponse = [];
     try {
       carpoolsResponse = await _client
           .from('share_ride_bookings')
-          .select('''
-            *,
-            profiles!rider_id(
-              full_name,
-              avatar_url,
-              rating
-            )
-          ''')
+          .select('*')
           .inFilter('status', ['pending', 'matched']) // Carpools waiting for driver
           .isFilter('driver_id', null)
           .order('pickup_time', ascending: true) // Ordenar por hora de pickup
@@ -86,16 +72,32 @@ class RideService {
     return rides;
   }
 
-  // Helper to parse ride and calculate split if needed
-  Future<RideModel> _parseAndCalculateSplit(Map<String, dynamic> json) async {
-    // === FIX: Extract rider profile data from nested profiles object ===
-    final profiles = json['profiles'] as Map<String, dynamic>?;
-    if (profiles != null) {
-      // Map profile fields to expected field names
-      json['passenger_name'] = profiles['full_name'];
-      json['passenger_image_url'] = profiles['avatar_url'];
-      json['passenger_rating'] = profiles['rating'];
+  // Fetch rider profile separately and enrich the JSON
+  Future<void> _enrichWithRiderProfile(Map<String, dynamic> json, String? userId) async {
+    if (userId == null || userId.isEmpty) return;
+    try {
+      final profile = await _client
+          .from('profiles')
+          .select('full_name, avatar_url, rating')
+          .eq('id', userId)
+          .maybeSingle();
+      if (profile != null) {
+        json['passenger_name'] = profile['full_name'];
+        json['passenger_image_url'] = profile['avatar_url'];
+        json['passenger_rating'] = profile['rating'];
+      }
+    } catch (e) {
+      // Profile fetch failed - ride will show default name
     }
+  }
+
+  // Helper to parse ride and calculate split if needed
+  Future<RideModel> _parseAndCalculateSplit(Map<String, dynamic> originalJson) async {
+    // Make a mutable copy (Supabase returns UnmodifiableMapView)
+    final json = Map<String, dynamic>.from(originalJson);
+    // Fetch rider profile separately
+    final userId = json['user_id'] as String? ?? json['rider_id'] as String?;
+    await _enrichWithRiderProfile(json, userId);
 
     final ride = RideModel.fromJson(json);
 
@@ -109,56 +111,32 @@ class RideService {
 
   // Get ride by ID - searches both deliveries and share_ride_bookings
   Future<RideModel?> getRide(String rideId) async {
-    // Try deliveries first (rides and packages) with rider profile
+    // Try deliveries first (rides and packages)
     var response = await _client
         .from(SupabaseConfig.packageDeliveriesTable)
-        .select('''
-          *,
-          profiles!user_id(
-            full_name,
-            avatar_url,
-            rating
-          )
-        ''')
+        .select('*')
         .eq('id', rideId)
         .maybeSingle();
 
     if (response != null) {
       final json = Map<String, dynamic>.from(response);
-      // Extract rider profile data
-      final profiles = json['profiles'] as Map<String, dynamic>?;
-      if (profiles != null) {
-        json['passenger_name'] = profiles['full_name'];
-        json['passenger_image_url'] = profiles['avatar_url'];
-        json['passenger_rating'] = profiles['rating'];
-      }
+      // Fetch rider profile separately if user_id exists
+      await _enrichWithRiderProfile(json, json['user_id'] as String?);
       return RideModel.fromJson(json);
     }
 
-    // Try share_ride_bookings (carpools) with rider profile
+    // Try share_ride_bookings (carpools)
     response = await _client
         .from('share_ride_bookings')
-        .select('''
-          *,
-          profiles!rider_id(
-            full_name,
-            avatar_url,
-            rating
-          )
-        ''')
+        .select('*')
         .eq('id', rideId)
         .maybeSingle();
 
     if (response != null) {
       final carpoolJson = Map<String, dynamic>.from(response);
       carpoolJson['service_type'] = 'carpool';
-      // Extract rider profile data
-      final profiles = carpoolJson['profiles'] as Map<String, dynamic>?;
-      if (profiles != null) {
-        carpoolJson['passenger_name'] = profiles['full_name'];
-        carpoolJson['passenger_image_url'] = profiles['avatar_url'];
-        carpoolJson['passenger_rating'] = profiles['rating'];
-      }
+      // Fetch rider profile separately
+      await _enrichWithRiderProfile(carpoolJson, carpoolJson['rider_id'] as String? ?? carpoolJson['user_id'] as String?);
       return RideModel.fromJson(carpoolJson);
     }
 
@@ -167,38 +145,27 @@ class RideService {
 
   // Accept ride - uses SQL function for atomicity, supports both tables
   Future<RideModel> acceptRide(String rideId, String driverId, {String serviceType = 'ride'}) async {
+    // Track acceptance in ride_requests for acceptance rate calculation
     try {
-      // Track acceptance in ride_requests for acceptance rate calculation
       await _trackRideResponse(driverId, rideId, serviceType, 'accepted');
-
-      await _client.rpc(
-        'accept_ride',
-        params: {
-          'p_ride_id': rideId,
-          'p_driver_id': driverId,
-        },
-      );
-
-      // Fetch the ride with profile data after accepting
-      final ride = await getRide(rideId);
-      if (ride != null) return ride;
-      throw Exception('Ride not found after accept');
     } catch (e) {
-      // Fallback to direct update if function doesn't exist
-      // Determine which table to update based on service type
+      debugPrint('Warning: Could not track ride response: $e');
+    }
+
+    // Direct update - works for both pending and already-assigned rides
+    try {
       if (serviceType == 'carpool') {
-        // Update share_ride_bookings for carpools
         await _client
             .from('share_ride_bookings')
             .update({
               'driver_id': driverId,
-              'status': 'confirmed', // Carpools use 'confirmed' when driver accepts
+              'status': 'confirmed',
               'confirmed_at': DateTime.now().toIso8601String(),
             })
             .eq('id', rideId)
-            .inFilter('status', ['pending', 'matched']);
+            .inFilter('status', ['pending', 'matched', 'accepted']);
       } else {
-        // Update deliveries for rides and packages
+        // Accept ride - handles both pending (new) and accepted (pre-assigned by assign-driver)
         await _client
             .from(SupabaseConfig.packageDeliveriesTable)
             .update({
@@ -207,14 +174,16 @@ class RideService {
               'accepted_at': DateTime.now().toIso8601String(),
             })
             .eq('id', rideId)
-            .eq('status', statusToDatabase(RideStatus.pending));
+            .inFilter('status', ['pending', 'accepted', 'searching']);
       }
-
-      // Fetch the ride with profile data after updating
-      final ride = await getRide(rideId);
-      if (ride != null) return ride;
-      throw Exception('Ride not found after fallback accept');
+    } catch (e) {
+      debugPrint('Warning: Update failed (ride may already be accepted): $e');
     }
+
+    // Always fetch the ride after attempting accept
+    final ride = await getRide(rideId);
+    if (ride != null) return ride;
+    throw Exception('Ride not found after accept');
   }
 
   // Reject ride - driver declines the ride offer
@@ -514,6 +483,47 @@ class RideService {
     return RideModel.fromJson(response);
   }
 
+  // Force release ALL active rides for a driver - use for stuck/ghost rides
+  // Tries both deliveries and share_ride_bookings tables
+  Future<bool> forceReleaseAllActiveRides(String driverId) async {
+    bool success = false;
+
+    // 1. Release from deliveries table
+    try {
+      await _client
+          .from(SupabaseConfig.packageDeliveriesTable)
+          .update({
+            'status': 'pending',
+            'driver_id': null,
+            'accepted_at': null,
+            'started_at': null,
+          })
+          .eq('driver_id', driverId)
+          .inFilter('status', ['accepted', 'in_progress', 'arrived']);
+      success = true;
+    } catch (e) {
+      debugPrint('Error releasing deliveries: $e');
+    }
+
+    // 2. Release from share_ride_bookings table (carpools)
+    try {
+      await _client
+          .from('share_ride_bookings')
+          .update({
+            'status': 'pending',
+            'driver_id': null,
+            'accepted_at': null,
+          })
+          .eq('driver_id', driverId)
+          .inFilter('status', ['accepted', 'in_progress', 'matched', 'driver_assigned']);
+      success = true;
+    } catch (e) {
+      debugPrint('Error releasing carpools: $e');
+    }
+
+    return success;
+  }
+
   // Get driver's active ride
   Future<RideModel?> getActiveRide(String driverId) async {
     try {
@@ -633,50 +643,33 @@ class RideService {
   }
 
   // Stream available rides (real-time) - listens to deliveries table
-  // FIX: Listen to ALL status changes to detect cancellations, then filter locally
-  // FIX: Calculate preview split for each ride using pricing_config
+  // Lightweight: parse JSON directly without async HTTP calls to avoid ANR
+  // Profile enrichment + split calculation happen in getAvailableRides() periodic backup
   Stream<List<RideModel>> streamAvailableRides() {
-    // Also fetch initial data to see if there are pending rides
     _fetchInitialPendingRides();
 
-    // FIXED: Listen to ALL deliveries without status filter
-    // This way we detect when a ride changes from 'pending' to 'cancelled'
-    // Then filter locally for pending + no driver
     return _client
         .from(SupabaseConfig.packageDeliveriesTable)
         .stream(primaryKey: ['id'])
         .order('created_at', ascending: false)
-        .asyncMap((dynamic data) async {
-          // Handle null or non-list data
-          if (data == null) {
-            return <RideModel>[];
-          }
+        .map((dynamic data) {
+          if (data == null) return <RideModel>[];
 
           final List<dynamic> dataList = data is List ? data : [];
 
           try {
-            // FIXED: Filter locally for pending rides without driver
-            // This ensures cancelled rides are removed from the list
             final filtered = dataList.where((json) {
               final status = json['status'] as String?;
               final driverId = json['driver_id'];
               return status == 'pending' && driverId == null;
             }).toList();
 
-            // Parse rides and calculate preview split for each
-            final rides = <RideModel>[];
-            for (final json in filtered) {
-              final ride = RideModel.fromJson(json as Map<String, dynamic>);
-
-              // Calculate preview split if driverEarnings is 0
-              if (ride.driverEarnings == 0 && ride.fare > 0) {
-                final rideWithSplit = await _calculatePreviewSplit(ride);
-                rides.add(rideWithSplit);
-              } else {
-                rides.add(ride);
-              }
-            }
-            return rides;
+            // Lightweight parse - no HTTP calls, no async
+            // Profile names + split preview come from periodic getAvailableRides()
+            return filtered.map((json) {
+              final mutableJson = Map<String, dynamic>.from(json as Map);
+              return RideModel.fromJson(mutableJson);
+            }).toList();
           } catch (e) {
             return <RideModel>[];
           }
@@ -762,16 +755,65 @@ class RideService {
     }
   }
 
-  // Stream current ride (real-time)
+  // Stream current ride (real-time) - supports both deliveries and carpools
   Stream<RideModel?> streamRide(String rideId) {
+    // Try deliveries table first
     return _client
         .from(SupabaseConfig.packageDeliveriesTable)
         .stream(primaryKey: ['id'])
         .eq('id', rideId)
-        .map((dynamic data) {
+        .asyncMap((dynamic data) async {
           if (data == null) return null;
           final List<dynamic> dataList = data is List ? data : [];
-          return dataList.isNotEmpty ? RideModel.fromJson(dataList.first as Map<String, dynamic>) : null;
+
+          if (dataList.isNotEmpty) {
+            final json = Map<String, dynamic>.from(dataList.first as Map<String, dynamic>);
+            // Enrich with rider profile (name, photo, rating)
+            final userId = json['user_id'] as String? ?? json['rider_id'] as String?;
+            await _enrichWithRiderProfile(json, userId);
+            return RideModel.fromJson(json);
+          }
+
+          // If not found in deliveries, try share_ride_bookings (carpools)
+          try {
+            final carpoolData = await _client
+                .from('share_ride_bookings')
+                .select()
+                .eq('id', rideId)
+                .maybeSingle();
+
+            if (carpoolData != null) {
+              final carpoolJson = Map<String, dynamic>.from(carpoolData);
+              carpoolJson['service_type'] = 'carpool';
+              final userId = carpoolJson['user_id'] as String? ?? carpoolJson['rider_id'] as String?;
+              await _enrichWithRiderProfile(carpoolJson, userId);
+              return RideModel.fromJson(carpoolJson);
+            }
+          } catch (e) {
+            debugPrint('Error checking carpool: $e');
+          }
+
+          return null;
+        });
+  }
+
+  // Stream carpool ride (real-time) - for share_ride_bookings table
+  Stream<RideModel?> streamCarpoolRide(String rideId) {
+    return _client
+        .from('share_ride_bookings')
+        .stream(primaryKey: ['id'])
+        .eq('id', rideId)
+        .asyncMap((dynamic data) async {
+          if (data == null) return null;
+          final List<dynamic> dataList = data is List ? data : [];
+          if (dataList.isNotEmpty) {
+            final carpoolJson = Map<String, dynamic>.from(dataList.first as Map<String, dynamic>);
+            carpoolJson['service_type'] = 'carpool';
+            final userId = carpoolJson['user_id'] as String? ?? carpoolJson['rider_id'] as String?;
+            await _enrichWithRiderProfile(carpoolJson, userId);
+            return RideModel.fromJson(carpoolJson);
+          }
+          return null;
         });
   }
 
@@ -803,6 +845,123 @@ class RideService {
       'rated_by': 'driver',
       'created_at': DateTime.now().toIso8601String(),
     });
+  }
+
+  // ============================================================================
+  // CASH PAYMENT CONFIRMATION
+  // When a ride is paid in cash, the driver must confirm they received the money
+  // ============================================================================
+
+  /// Confirm cash payment received from rider
+  /// This marks the delivery as paid and creates a cash_payment transaction
+  Future<RideModel> confirmCashPayment({
+    required String rideId,
+    required String driverId,
+    required double amount,
+    String? stateCode,
+  }) async {
+    final now = DateTime.now();
+
+    // Get the ride to verify it's a cash payment
+    final ride = await getRide(rideId);
+    if (ride == null) {
+      throw Exception('Ride not found');
+    }
+
+    // Verify payment method is cash
+    if (ride.paymentMethod != PaymentMethod.cash) {
+      throw Exception('This ride is not a cash payment');
+    }
+
+    // Get state code for pricing if not provided
+    String resolvedStateCode = stateCode ?? 'AZ';
+    if (stateCode == null && ride.pickupLocation.latitude != 0) {
+      resolvedStateCode = await _locationService.getStateCodeFromCoordinates(
+        ride.pickupLocation.latitude,
+        ride.pickupLocation.longitude,
+      );
+    }
+
+    // Get pricing config for the state
+    StatePricing statePricing;
+    try {
+      statePricing = await StatePricingService.instance.getPricing(
+        stateCode: resolvedStateCode,
+        bookingType: ride.type == RideType.carpool ? BookingType.carpool :
+                     ride.type == RideType.package ? BookingType.delivery : BookingType.ride,
+      );
+    } on NoPricingConfiguredError {
+      rethrow;
+    }
+
+    // Calculate driver earnings using pricing config
+    final fare = amount > 0 ? amount : ride.fare;
+    final driverCommissionPercent = statePricing.driverPercentage.toInt();
+    final platformFeePercent = statePricing.platformPercentage;
+    final driverEarnings = fare * (driverCommissionPercent / 100);
+    final platformAmount = fare * (platformFeePercent / 100);
+
+    // Update the delivery with cash payment confirmed
+    final updateData = <String, dynamic>{
+      'is_paid': true,
+      'cash_payment_confirmed': true,
+      'cash_payment_confirmed_at': now.toIso8601String(),
+      'cash_payment_confirmed_by': driverId,
+      'final_price': fare,
+      'driver_earnings': driverEarnings,
+      'platform_fee_amount': platformAmount,
+      'driver_commission_percent': driverCommissionPercent,
+      'platform_fee_percent': platformFeePercent,
+      'state_code': resolvedStateCode,
+    };
+
+    // Update the correct table based on ride type
+    Map<String, dynamic> response;
+    if (ride.type == RideType.carpool) {
+      response = await _client
+          .from('share_ride_bookings')
+          .update(updateData)
+          .eq('id', rideId)
+          .select()
+          .single();
+      response['service_type'] = 'carpool';
+    } else {
+      response = await _client
+          .from(SupabaseConfig.packageDeliveriesTable)
+          .update(updateData)
+          .eq('id', rideId)
+          .select()
+          .single();
+    }
+
+    // Create a cash_payment transaction record
+    try {
+      await _client.from('transactions').insert({
+        'booking_id': rideId,
+        'driver_id': driverId,
+        'user_id': ride.passengerId,
+        'type': 'cash_payment',
+        'amount': fare,
+        'driver_amount': driverEarnings,
+        'platform_amount': platformAmount,
+        'status': 'success',
+        'payment_method': 'cash',
+        'state_code': resolvedStateCode,
+        'description': 'Cash payment confirmed by driver',
+        'created_at': now.toIso8601String(),
+        'processed_at': now.toIso8601String(),
+      });
+    } catch (e) {
+      // Transaction creation is non-critical, don't fail the whole operation
+      debugPrint('Warning: Could not create cash_payment transaction: $e');
+    }
+
+    return RideModel.fromJson(response);
+  }
+
+  /// Check if a ride requires cash payment confirmation
+  bool requiresCashPaymentConfirmation(RideModel ride) {
+    return ride.paymentMethod == PaymentMethod.cash && !ride.isPaid;
   }
 
   // ============================================================================

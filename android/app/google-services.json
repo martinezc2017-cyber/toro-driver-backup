@@ -1,0 +1,67 @@
+{
+  "project_info": {
+    "project_number": "1001566261860",
+    "project_id": "toro-admin",
+    "storage_bucket": "toro-admin.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1001566261860:android:4215ba473e9472b75b4571",
+        "android_client_info": {
+          "package_name": "com.tororide.admin"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBt4F7f3vckyIYOE7CYCS7B5qzm6IN38V4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1001566261860:android:2cbdb23ab2f50aae5b4571",
+        "android_client_info": {
+          "package_name": "com.tororide.driver"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBt4F7f3vckyIYOE7CYCS7B5qzm6IN38V4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1001566261860:android:74557a53ab6143595b4571",
+        "android_client_info": {
+          "package_name": "com.tororide.rider"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBt4F7f3vckyIYOE7CYCS7B5qzm6IN38V4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

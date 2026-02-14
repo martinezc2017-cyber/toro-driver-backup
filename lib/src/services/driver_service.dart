@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 import 'dart:math';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -43,7 +43,7 @@ class DriverService {
   Future<DriverModel> createDriver(DriverModel driver) async {
     final response = await _client
         .from(SupabaseConfig.driversTable)
-        .insert(driver.toJson())
+        .upsert(driver.toJson())
         .select()
         .single();
 
@@ -176,12 +176,12 @@ class DriverService {
   }
 
   // Upload profile image
-  Future<String> uploadProfileImage(String driverId, File imageFile) async {
+  Future<String> uploadProfileImage(String driverId, Uint8List imageBytes) async {
     final fileName = '$driverId/profile_${DateTime.now().millisecondsSinceEpoch}.jpg';
 
     await _client.storage
         .from(SupabaseConfig.profileImagesBucket)
-        .upload(fileName, imageFile);
+        .uploadBinary(fileName, imageBytes, fileOptions: const FileOptions(contentType: 'image/jpeg'));
 
     final imageUrl = _client.storage
         .from(SupabaseConfig.profileImagesBucket)
@@ -465,6 +465,8 @@ class DriverService {
           'tax_city': city,
           'tax_state': state,
           'tax_zip': zipCode,
+          'country_code': 'US',
+          'state_code': state.toUpperCase(),
           'w9_signed': certificationSigned,
           'w9_signed_at': DateTime.now().toIso8601String(),
           'updated_at': DateTime.now().toIso8601String(),
@@ -483,6 +485,45 @@ class DriverService {
     } catch (e) {
       // Table might not exist yet - that's okay, the basic W-9 info is saved
     }
+  }
+
+  /// Save driver's Mexico tax information (RFC, CURP, SAT regime)
+  Future<void> saveMexicoTaxInfo({
+    required String driverId,
+    required String rfc,
+    required String curp,
+    required String satRegime,
+    required String legalName,
+    String? businessName,
+    required String streetAddress,
+    required String city,
+    required String state,
+    required String zipCode,
+    required bool certificationSigned,
+  }) async {
+    final fullAddress = '$streetAddress, $city, $state $zipCode';
+
+    await _client
+        .from(SupabaseConfig.driversTable)
+        .update({
+          'rfc': rfc.toUpperCase(),
+          'rfc_validated': true,
+          'curp': curp.toUpperCase(),
+          'legal_name': legalName,
+          'business_name': businessName,
+          'tax_classification': satRegime,
+          'tax_address': fullAddress,
+          'tax_street': streetAddress,
+          'tax_city': city,
+          'tax_state': state,
+          'tax_zip': zipCode,
+          'country_code': 'MX',
+          'state_code': state.toUpperCase(),
+          'w9_signed': certificationSigned,
+          'w9_signed_at': DateTime.now().toIso8601String(),
+          'updated_at': DateTime.now().toIso8601String(),
+        })
+        .eq('id', driverId);
   }
 
   /// Check if driver has completed W-9

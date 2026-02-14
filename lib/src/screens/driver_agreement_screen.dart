@@ -7,12 +7,11 @@ import 'package:crypto/crypto.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:uuid/uuid.dart';
 import 'package:provider/provider.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../utils/app_colors.dart';
 import '../utils/haptic_service.dart';
 import '../config/supabase_config.dart';
 import '../providers/location_provider.dart';
-
-const String kAppVersion = '1.0.0'; // TODO: Get from pubspec.yaml
 
 class DriverAgreementScreen extends StatefulWidget {
   const DriverAgreementScreen({super.key});
@@ -27,6 +26,20 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
   bool _isSubmitting = false;
   bool _hasAgreed = false;
   bool _showFullContract = false;
+  String _appVersion = '1.0.0';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadVersion();
+  }
+
+  Future<void> _loadVersion() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      if (mounted) setState(() => _appVersion = info.version);
+    } catch (_) {}
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -498,7 +511,7 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
         'agreement_user_agent': userAgent,
         'agreement_latitude': location?.latitude,
         'agreement_longitude': location?.longitude,
-        'agreement_app_version': kAppVersion,
+        'agreement_app_version': _appVersion,
         'agreement_document_hash': documentHash,
         'agreement_session_id': sessionId,
         'agreement_timezone': timezone,

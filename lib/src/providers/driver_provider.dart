@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show ChangeNotifier, debugPrint;
 import '../services/driver_service.dart';
 import '../services/notification_service.dart';
@@ -256,14 +256,14 @@ class DriverProvider with ChangeNotifier {
   }
 
   // Upload profile image
-  Future<String?> uploadProfileImage(File imageFile) async {
+  Future<String?> uploadProfileImage(Uint8List imageBytes) async {
     if (_driver == null) return null;
 
     try {
       _isLoading = true;
       notifyListeners();
 
-      final imageUrl = await _driverService.uploadProfileImage(_driver!.id, imageFile);
+      final imageUrl = await _driverService.uploadProfileImage(_driver!.id, imageBytes);
       _driver = _driver!.copyWith(profileImageUrl: imageUrl);
 
       _isLoading = false;

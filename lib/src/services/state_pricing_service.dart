@@ -57,6 +57,7 @@ class StatePricing {
   final String stateCode;
   final String stateName;
   final String bookingType;
+  final String countryCode;
 
   // === TARIFAS BASE ===
   final double baseFare;
@@ -90,14 +91,28 @@ class StatePricing {
   // Examples: CA $0.10-$0.35, Chicago $1.25-$3.00, NYC $2.75
   final double tncTaxPerTrip;
 
+  // === VARIABLE PLATFORM TIERS (Toro Nivelar) ===
+  final bool variablePlatformEnabled;
+  final double platformTier1MaxFare;
+  final double platformTier1Percent;
+  final double platformTier2MaxFare;
+  final double platformTier2Percent;
+  final double platformTier3MaxFare;
+  final double platformTier3Percent;
+  final double platformTier4Percent;
+
   // === METADATA ===
   final bool isActive;
   final DateTime updatedAt;
+
+  /// Whether per_mile_rate is actually per-km (true for MX)
+  bool get usesKilometers => countryCode == 'MX';
 
   const StatePricing({
     required this.stateCode,
     required this.stateName,
     required this.bookingType,
+    this.countryCode = 'MX',
     required this.baseFare,
     required this.perMileRate,
     required this.perMinuteRate,
@@ -116,6 +131,14 @@ class StatePricing {
     required this.carpoolMaxDiscount,
     required this.qrPointValue,
     required this.tncTaxPerTrip,
+    this.variablePlatformEnabled = false,
+    this.platformTier1MaxFare = 10.0,
+    this.platformTier1Percent = 5.0,
+    this.platformTier2MaxFare = 20.0,
+    this.platformTier2Percent = 15.0,
+    this.platformTier3MaxFare = 35.0,
+    this.platformTier3Percent = 23.4,
+    this.platformTier4Percent = 25.0,
     required this.isActive,
     required this.updatedAt,
   });
@@ -126,6 +149,7 @@ class StatePricing {
       stateCode: json['state_code']?.toString() ?? '',
       stateName: json['state_name']?.toString() ?? '',
       bookingType: json['booking_type']?.toString() ?? 'ride',
+      countryCode: json['country_code']?.toString() ?? 'MX',
       baseFare: (json['base_fare'] as num?)?.toDouble() ?? 0,
       perMileRate: (json['per_mile_rate'] as num?)?.toDouble() ?? 0,
       perMinuteRate: (json['per_minute_rate'] as num?)?.toDouble() ?? 0,
@@ -144,6 +168,14 @@ class StatePricing {
       carpoolMaxDiscount: (json['carpool_max_discount'] as num?)?.toDouble() ?? 0,
       qrPointValue: (json['qr_point_value'] as num?)?.toDouble() ?? 1,
       tncTaxPerTrip: (json['tnc_tax_per_trip'] as num?)?.toDouble() ?? 0,
+      variablePlatformEnabled: json['variable_platform_enabled'] == true,
+      platformTier1MaxFare: (json['platform_tier_1_max_fare'] as num?)?.toDouble() ?? 10.0,
+      platformTier1Percent: (json['platform_tier_1_percent'] as num?)?.toDouble() ?? 5.0,
+      platformTier2MaxFare: (json['platform_tier_2_max_fare'] as num?)?.toDouble() ?? 20.0,
+      platformTier2Percent: (json['platform_tier_2_percent'] as num?)?.toDouble() ?? 15.0,
+      platformTier3MaxFare: (json['platform_tier_3_max_fare'] as num?)?.toDouble() ?? 35.0,
+      platformTier3Percent: (json['platform_tier_3_percent'] as num?)?.toDouble() ?? 23.4,
+      platformTier4Percent: (json['platform_tier_4_percent'] as num?)?.toDouble() ?? 25.0,
       isActive: json['is_active'] == true,
       updatedAt: json['updated_at'] != null
           ? DateTime.parse(json['updated_at'].toString())
@@ -157,6 +189,7 @@ class StatePricing {
       'state_code': stateCode,
       'state_name': stateName,
       'booking_type': bookingType,
+      'country_code': countryCode,
       'base_fare': baseFare,
       'per_mile_rate': perMileRate,
       'per_minute_rate': perMinuteRate,
@@ -194,6 +227,14 @@ class StatePricing {
       'tax_percentage': taxPercentage,
       'qr_point_value': qrPointValue,
       'tnc_tax_per_trip': tncTaxPerTrip,
+      'variable_platform_enabled': variablePlatformEnabled,
+      'platform_tier_1_max_fare': platformTier1MaxFare,
+      'platform_tier_1_percent': platformTier1Percent,
+      'platform_tier_2_max_fare': platformTier2MaxFare,
+      'platform_tier_2_percent': platformTier2Percent,
+      'platform_tier_3_max_fare': platformTier3MaxFare,
+      'platform_tier_3_percent': platformTier3Percent,
+      'platform_tier_4_percent': platformTier4Percent,
     };
   }
 }
@@ -209,6 +250,7 @@ class StatePricingService {
   final Map<String, StatePricing> _cache = {};
   DateTime? _lastCacheRefresh;
   static const _cacheMaxAge = Duration(minutes: 5);
+  RealtimeChannel? _realtimeChannel;
 
   /// Obtener pricing para un estado y tipo de booking
   /// LANZA NoPricingConfiguredError si no existe
@@ -309,7 +351,13 @@ class StatePricingService {
 
   /// Subscribir a cambios en pricing_config (realtime)
   void subscribeToUpdates() {
-    SupabaseConfig.client
+    // Clean up previous channel if any
+    if (_realtimeChannel != null) {
+      SupabaseConfig.client.removeChannel(_realtimeChannel!);
+      _realtimeChannel = null;
+    }
+
+    _realtimeChannel = SupabaseConfig.client
         .channel('state_pricing_updates_driver')
         .onPostgresChanges(
           event: PostgresChangeEvent.all,
@@ -323,5 +371,13 @@ class StatePricingService {
         .subscribe();
 
     AppLogger.log('STATE_PRICING_DRV -> Subscribed to realtime updates');
+  }
+
+  /// Clean up realtime channel
+  void dispose() {
+    if (_realtimeChannel != null) {
+      SupabaseConfig.client.removeChannel(_realtimeChannel!);
+      _realtimeChannel = null;
+    }
   }
 }

@@ -1,12 +1,15 @@
 import 'dart:async';
 import 'dart:io' show ContentType, HttpRequest, HttpServer, InternetAddress, Platform;
+import 'dart:ui' show PlatformDispatcher;
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:geolocator/geolocator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:app_links/app_links.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../config/supabase_config.dart';
 import '../models/driver_model.dart';
+import '../core/logging/app_logger.dart';
 
 class AuthService {
   final SupabaseClient _client = SupabaseConfig.client;
@@ -30,14 +33,17 @@ class AuthService {
     required String firstName,
     required String lastName,
     required String phone,
+    String role = 'driver',
   }) async {
     final response = await _client.auth.signUp(
       email: email,
       password: password,
+      emailRedirectTo: _getEmailRedirectUrl(),
       data: {
         'first_name': firstName,
         'last_name': lastName,
         'phone': phone,
+        'role': role,
       },
     );
 
@@ -49,6 +55,7 @@ class AuthService {
         firstName: firstName,
         lastName: lastName,
         phone: phone,
+        role: role,
       );
     }
 
@@ -104,13 +111,8 @@ class AuthService {
         return await _signInWithGoogleMobile();
       }
 
-      // En producción usar URL de Cloudflare, en desarrollo usar localhost
-      final isProduction = Uri.base.host.contains('pages.dev') ||
-                           Uri.base.host.contains('toro-ride.com') ||
-                           Uri.base.host.contains('toro-driver');
-      final redirectUrl = isProduction
-          ? Uri.base.origin
-          : 'https://toro-driver.pages.dev';
+      // Siempre redirigir al origen actual (funciona en local y producción)
+      final redirectUrl = Uri.base.origin;
 
       final response = await _client.auth.signInWithOAuth(
         OAuthProvider.google,
@@ -260,33 +262,18 @@ class AuthService {
 
       final authUrl = Uri.parse(authUrlStr);
 
+      // Use inAppBrowserView (Chrome Custom Tab) instead of externalApplication
+      // Chrome Custom Tabs auto-close when redirecting to a custom scheme
+      // This prevents accumulating browser tabs after OAuth
       final launched = await launchUrl(
         authUrl,
-        mode: LaunchMode.externalApplication,
+        mode: LaunchMode.inAppBrowserView,
       );
 
       if (!launched) {
         subscription.cancel();
         return false;
       }
-
-      // También verificar periódicamente si hay un link pendiente
-      // (por si el stream no lo capturó)
-      Timer.periodic(const Duration(seconds: 1), (timer) async {
-        if (completer.isCompleted) {
-          timer.cancel();
-          return;
-        }
-        try {
-          final latestLink = await appLinks.getLatestLink();
-          if (latestLink != null && latestLink.scheme == 'io.supabase.torodriver') {
-            timer.cancel();
-            await processCallback(latestLink);
-          }
-        } catch (e) {
-          // Ignore errors
-        }
-      });
 
       return await completer.future.timeout(
         const Duration(minutes: 5),
@@ -517,7 +504,27 @@ class AuthService {
 
   // Reset password
   Future<void> resetPassword(String email) async {
-    await _client.auth.resetPasswordForEmail(email);
+    await _client.auth.resetPasswordForEmail(
+      email,
+      redirectTo: _getEmailRedirectUrl(),
+    );
+  }
+
+  /// Returns the proper redirect URL for email links (confirmation, reset, etc.)
+  /// Mobile: deep link scheme, Desktop: localhost callback, Web: origin
+  static String _getEmailRedirectUrl() {
+    if (kIsWeb) {
+      final isProduction = Uri.base.host.contains('pages.dev') ||
+                           Uri.base.host.contains('toro-ride.com') ||
+                           Uri.base.host.contains('toro-driver');
+      return isProduction ? Uri.base.origin : 'https://toro-driver.pages.dev';
+    }
+    if (!kIsWeb) {
+      if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+        return _desktopCallbackUrl;
+      }
+    }
+    return 'io.supabase.torodriver://login-callback/';
   }
 
   // Update password
@@ -534,9 +541,36 @@ class AuthService {
     required String firstName,
     required String lastName,
     required String phone,
+    String role = 'driver',
   }) async {
     final now = DateTime.now().toIso8601String();
     final fullName = '$firstName $lastName'.trim();
+
+    // Detect country from GPS or device locale
+    String countryCode = 'MX'; // Default to Mexico
+    double? signupLat;
+    double? signupLng;
+    try {
+      final permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.always ||
+          permission == LocationPermission.whileInUse) {
+        final position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.low,
+        ).timeout(const Duration(seconds: 5));
+        signupLat = position.latitude;
+        signupLng = position.longitude;
+        // Mexico bounds: lat 14-33, lng -118 to -86
+        if (position.latitude >= 14 && position.latitude <= 33 &&
+            position.longitude >= -118 && position.longitude <= -86) {
+          countryCode = 'MX';
+        } else {
+          countryCode = 'US';
+        }
+      } else {
+        final locale = PlatformDispatcher.instance.locale;
+        if (locale.countryCode == 'MX') countryCode = 'MX';
+      }
+    } catch (_) {}
 
     await _client.from(SupabaseConfig.driversTable).insert({
       'id': userId,
@@ -544,6 +578,7 @@ class AuthService {
       'email': email,
       'name': fullName,
       'phone': phone,
+      'country_code': countryCode,
       'rating': 0.0,
       'total_rides': 0,
       'total_earnings': 0.0,
@@ -551,34 +586,61 @@ class AuthService {
       'is_verified': false,
       'is_active': true,
       'status': 'pending',
+      'role': role,
       'created_at': now,
       'updated_at': now,
     });
+
+    // Also update profiles table with signup coordinates
+    try {
+      final profileUpdate = <String, dynamic>{
+        'country_code': countryCode,
+      };
+      if (signupLat != null) profileUpdate['signup_lat'] = signupLat;
+      if (signupLng != null) profileUpdate['signup_lng'] = signupLng;
+      await _client.from('profiles').update(profileUpdate).eq('id', userId);
+    } catch (_) {}
   }
 
   // Get current driver profile
   Future<DriverModel?> getCurrentDriverProfile() async {
-    if (currentUserId == null) return null;
+    AppLogger.log('AUTH_SERVICE -> getCurrentDriverProfile called');
+    AppLogger.log('AUTH_SERVICE -> currentUserId: $currentUserId');
+    AppLogger.log('AUTH_SERVICE -> currentUser email: ${currentUser?.email}');
+
+    if (currentUserId == null) {
+      AppLogger.log('AUTH_SERVICE -> currentUserId is null, returning null');
+      return null;
+    }
 
     // First try to find by user ID (primary method)
+    AppLogger.log('AUTH_SERVICE -> Querying drivers by id: $currentUserId');
     var response = await _client
         .from(SupabaseConfig.driversTable)
         .select()
         .eq('id', currentUserId!)
         .maybeSingle();
 
+    AppLogger.log('AUTH_SERVICE -> Query by id result: $response');
+
     // If not found by ID, try to find by email (fallback for legacy registrations)
     if (response == null && currentUser?.email != null) {
+      AppLogger.log('AUTH_SERVICE -> Trying fallback query by email: ${currentUser!.email}');
       response = await _client
           .from(SupabaseConfig.driversTable)
           .select()
           .eq('email', currentUser!.email!)
           .maybeSingle();
+      AppLogger.log('AUTH_SERVICE -> Query by email result: $response');
     }
 
     // Return null if driver profile doesn't exist (new user needs to register)
-    if (response == null) return null;
+    if (response == null) {
+      AppLogger.log('AUTH_SERVICE -> No driver profile found, returning null');
+      return null;
+    }
 
+    AppLogger.log('AUTH_SERVICE -> Found driver, role: ${response['role']}');
     return DriverModel.fromJson(response);
   }
 

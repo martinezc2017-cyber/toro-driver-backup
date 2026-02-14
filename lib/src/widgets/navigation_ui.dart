@@ -1,4 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher_string.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/navigation_service.dart';
 import '../services/directions_service.dart';
 import '../models/ride_model.dart';
@@ -17,6 +21,7 @@ class NavigationUI extends StatelessWidget {
   final VoidCallback? onStartRide;
   final VoidCallback? onCompleteRide;
   final VoidCallback? onCancelRide;
+  final VoidCallback? onReportRide;
   final VoidCallback? onLaunchExternalNav;
   final bool isMuted;
   final bool isOverviewMode;
@@ -45,6 +50,7 @@ class NavigationUI extends StatelessWidget {
     this.onStartRide,
     this.onCompleteRide,
     this.onCancelRide,
+    this.onReportRide,
     this.onLaunchExternalNav,
     this.isMuted = false,
     this.isOverviewMode = false,
@@ -138,6 +144,13 @@ class NavigationUI extends StatelessWidget {
             right: 0,
             child: _buildCompactBottomPanel(),
           ),
+
+        // SOS Emergency button - always visible during navigation
+        Positioned(
+          bottom: hideBottomPanel ? 20 : (ride != null ? 160 : 80),
+          left: 16,
+          child: SOSButton(ride: ride),
+        ),
       ],
     );
   }
@@ -289,7 +302,8 @@ class NavigationUI extends StatelessWidget {
     return GestureDetector(
       onTap: onShowSteps,
       child: Container(
-        margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+        // Left margin 70px to avoid overlap with back button (16px left + 46px width + 8px gap)
+        margin: const EdgeInsets.fromLTRB(70, 8, 12, 0),
         decoration: BoxDecoration(
           // 85% opacidad - se ve ligeramente a través pero texto legible
           color: const Color(0xD91A73E8),
@@ -617,6 +631,23 @@ class NavigationUI extends StatelessWidget {
                     onTap: onOverview,
                   ),
                   const SizedBox(width: 8),
+                  // Report ride button
+                  if (ride != null)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: GestureDetector(
+                        onTap: onReportRide,
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: Colors.orange.withAlpha(40),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Icon(Icons.flag_rounded, color: Colors.orange, size: 18),
+                        ),
+                      ),
+                    ),
                   // Cancel ride button
                   GestureDetector(
                     onTap: onCancelRide,
@@ -1158,5 +1189,151 @@ class NextManeuverCompact extends StatelessWidget {
       case 'roundabout': return Icons.roundabout_left;
       default: return Icons.straight;
     }
+  }
+}
+
+/// SOS Emergency button - calls 911 and logs alert to Supabase
+class SOSButton extends StatelessWidget {
+  final RideModel? ride;
+
+  const SOSButton({super.key, this.ride});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onLongPress: () => _showSOSDialog(context),
+      child: Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          color: Colors.red.shade900.withAlpha(200),
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.red.shade300, width: 2),
+        ),
+        child: const Center(
+          child: Text(
+            'SOS',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showSOSDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => _SOSCountdownDialog(ride: ride),
+    );
+  }
+}
+
+class _SOSCountdownDialog extends StatefulWidget {
+  final RideModel? ride;
+  const _SOSCountdownDialog({this.ride});
+
+  @override
+  State<_SOSCountdownDialog> createState() => _SOSCountdownDialogState();
+}
+
+class _SOSCountdownDialogState extends State<_SOSCountdownDialog> {
+  int _countdown = 5;
+  late final StreamSubscription _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Stream.periodic(const Duration(seconds: 1)).listen((_) {
+      if (!mounted) return;
+      setState(() => _countdown--);
+      if (_countdown <= 0) {
+        _timer.cancel();
+        _triggerSOS();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    super.dispose();
+  }
+
+  Future<void> _triggerSOS() async {
+    // Log alert to Supabase
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user != null) {
+        await Supabase.instance.client.from('safety_alerts').insert({
+          'driver_id': user.id,
+          'ride_id': widget.ride?.id,
+          'alert_type': 'sos_emergency',
+          'created_at': DateTime.now().toIso8601String(),
+        });
+      }
+    } catch (_) {}
+
+    // Call 911
+    try {
+      await launchUrlString('tel:911');
+    } catch (_) {}
+
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: Colors.grey.shade900,
+      title: const Row(
+        children: [
+          Icon(Icons.emergency, color: Colors.red, size: 28),
+          SizedBox(width: 8),
+          Text('Emergencia', style: TextStyle(color: Colors.white)),
+        ],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'Llamando al 911 en $_countdown segundos...',
+            style: const TextStyle(color: Colors.white70, fontSize: 16),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: 60,
+            height: 60,
+            child: CircularProgressIndicator(
+              value: _countdown / 5,
+              strokeWidth: 4,
+              color: Colors.red,
+              backgroundColor: Colors.grey.shade700,
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () {
+            _timer.cancel();
+            Navigator.of(context).pop();
+          },
+          child: const Text('Cancelar', style: TextStyle(color: Colors.white54)),
+        ),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+          onPressed: () {
+            _timer.cancel();
+            _triggerSOS();
+          },
+          child: const Text('Llamar ahora'),
+        ),
+      ],
+    );
   }
 }

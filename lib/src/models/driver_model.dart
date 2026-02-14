@@ -1,11 +1,12 @@
 /// Estados posibles del conductor
-enum DriverStatus { pending, active, suspended, rejected }
+enum DriverStatus { pending, active, approved, suspended, rejected }
 
 extension DriverStatusExtension on DriverStatus {
   String get value {
     switch (this) {
       case DriverStatus.pending: return 'pending';
       case DriverStatus.active: return 'active';
+      case DriverStatus.approved: return 'approved';
       case DriverStatus.suspended: return 'suspended';
       case DriverStatus.rejected: return 'rejected';
     }
@@ -13,6 +14,7 @@ extension DriverStatusExtension on DriverStatus {
   static DriverStatus fromString(String? v) {
     switch (v) {
       case 'active': return DriverStatus.active;
+      case 'approved': return DriverStatus.approved;
       case 'suspended': return DriverStatus.suspended;
       case 'rejected': return DriverStatus.rejected;
       default: return DriverStatus.pending;
@@ -47,9 +49,28 @@ class DriverModel {
   final double? currentLat;
   final double? currentLng;
   final DateTime? locationUpdatedAt;
+  final String role; // 'driver' or 'organizer'
+  final bool canOrganize; // Whether this driver can organize tourism events
   final DriverStatus status;
   final DateTime createdAt;
   final DateTime updatedAt;
+
+  // Tourism mode fields
+  final String vehicleMode; // 'personal' or 'tourism'
+  final String? activeTourismEventId;
+
+  // Driver credential / business card fields
+  final String? contactEmail;
+  final String? contactPhone;
+  final String? contactFacebook;
+  final String? businessCardUrl;
+
+  // Country & tax fields (MX/US)
+  final String countryCode; // 'US' or 'MX'
+  final String? rfc; // Mexico: Registro Federal de Contribuyentes
+  final bool rfcValidated;
+  final String? curp; // Mexico: Clave Única de Registro de Población
+  final String? stateCode; // State/entity code
 
   // Document fields - synced with admin panel
   final String? licenseNumber;
@@ -123,6 +144,8 @@ class DriverModel {
     this.isActive = true,
     this.currentLat,
     this.currentLng,
+    this.role = 'driver',
+    this.canOrganize = false,
     this.status = DriverStatus.pending,
     required this.createdAt,
     required this.updatedAt,
@@ -151,6 +174,20 @@ class DriverModel {
     this.adminApprovedAt,
     this.onboardingStage,
     this.canReceiveRides = false,
+    // Tourism mode
+    this.vehicleMode = 'personal',
+    this.activeTourismEventId,
+    // Driver credential / business card
+    this.contactEmail,
+    this.contactPhone,
+    this.contactFacebook,
+    this.businessCardUrl,
+    // Country & tax fields
+    this.countryCode = 'MX',
+    this.rfc,
+    this.rfcValidated = false,
+    this.curp,
+    this.stateCode,
     // Compatibility fields
     this.username,
     this.currentVehicleId,
@@ -252,6 +289,8 @@ class DriverModel {
       locationUpdatedAt: json['location_updated_at'] != null
           ? DateTime.parse(json['location_updated_at'] as String)
           : null,
+      role: json['role'] as String? ?? 'driver',
+      canOrganize: json['can_organize'] as bool? ?? false,
       status: DriverStatusExtension.fromString(json['status'] as String?),
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'] as String)
@@ -285,6 +324,20 @@ class DriverModel {
           : null,
       onboardingStage: json['onboarding_stage'] as String?,
       canReceiveRides: json['can_receive_rides'] as bool? ?? false,
+      // Tourism mode
+      vehicleMode: json['vehicle_mode'] as String? ?? 'personal',
+      activeTourismEventId: json['active_tourism_event_id'] as String?,
+      // Driver credential / business card
+      contactEmail: json['contact_email'] as String?,
+      contactPhone: json['contact_phone'] as String?,
+      contactFacebook: json['contact_facebook'] as String?,
+      businessCardUrl: json['business_card_url'] as String?,
+      // Country & tax fields
+      countryCode: json['country_code'] as String? ?? 'MX',
+      rfc: json['rfc'] as String?,
+      rfcValidated: json['rfc_validated'] as bool? ?? false,
+      curp: json['curp'] as String?,
+      stateCode: json['state_code'] as String?,
     );
   }
 
@@ -316,6 +369,8 @@ class DriverModel {
       'current_lat': currentLat,
       'current_lng': currentLng,
       'location_updated_at': locationUpdatedAt?.toIso8601String(),
+      'role': role,
+      'can_organize': canOrganize,
       'status': status.value,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
@@ -337,6 +392,20 @@ class DriverModel {
       'admin_approved_at': adminApprovedAt?.toIso8601String(),
       'onboarding_stage': onboardingStage,
       'can_receive_rides': canReceiveRides,
+      // Tourism mode
+      'vehicle_mode': vehicleMode,
+      'active_tourism_event_id': activeTourismEventId,
+      // Driver credential / business card
+      'contact_email': contactEmail,
+      'contact_phone': contactPhone,
+      'contact_facebook': contactFacebook,
+      'business_card_url': businessCardUrl,
+      // Country & tax fields
+      'country_code': countryCode,
+      'rfc': rfc,
+      'rfc_validated': rfcValidated,
+      'curp': curp,
+      'state_code': stateCode,
     };
   }
 
@@ -369,6 +438,7 @@ class DriverModel {
     double? currentLat,
     double? currentLng,
     DateTime? locationUpdatedAt,
+    String? role,
     DriverStatus? status,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -390,6 +460,20 @@ class DriverModel {
     DateTime? adminApprovedAt,
     String? onboardingStage,
     bool? canReceiveRides,
+    // Tourism mode
+    String? vehicleMode,
+    String? activeTourismEventId,
+    // Driver credential / business card
+    String? contactEmail,
+    String? contactPhone,
+    String? contactFacebook,
+    String? businessCardUrl,
+    // Country & tax fields
+    String? countryCode,
+    String? rfc,
+    bool? rfcValidated,
+    String? curp,
+    String? stateCode,
     // Compatibility fields
     String? username,
     String? currentVehicleId,
@@ -433,6 +517,7 @@ class DriverModel {
       currentLat: currentLat ?? this.currentLat,
       currentLng: currentLng ?? this.currentLng,
       locationUpdatedAt: locationUpdatedAt ?? this.locationUpdatedAt,
+      role: role ?? this.role,
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -454,6 +539,20 @@ class DriverModel {
       adminApprovedAt: adminApprovedAt ?? this.adminApprovedAt,
       onboardingStage: onboardingStage ?? this.onboardingStage,
       canReceiveRides: canReceiveRides ?? this.canReceiveRides,
+      // Tourism mode
+      vehicleMode: vehicleMode ?? this.vehicleMode,
+      activeTourismEventId: activeTourismEventId ?? this.activeTourismEventId,
+      // Driver credential / business card
+      contactEmail: contactEmail ?? this.contactEmail,
+      contactPhone: contactPhone ?? this.contactPhone,
+      contactFacebook: contactFacebook ?? this.contactFacebook,
+      businessCardUrl: businessCardUrl ?? this.businessCardUrl,
+      // Country & tax fields
+      countryCode: countryCode ?? this.countryCode,
+      rfc: rfc ?? this.rfc,
+      rfcValidated: rfcValidated ?? this.rfcValidated,
+      curp: curp ?? this.curp,
+      stateCode: stateCode ?? this.stateCode,
       // Compatibility fields
       username: username ?? this.username,
       currentVehicleId: currentVehicleId ?? this.currentVehicleId,

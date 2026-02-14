@@ -1,0 +1,68 @@
+# Build artifacts
+build/
+.dart_tool/
+android/.gradle/
+android/build/
+ios/build/
+ios/Pods/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# ALL txt files (session notes, old plans, logs)
+*.txt
+
+# ALL md files EXCEPT PLAN.md and CLAUDE.md
+ALL_OPTIMIZATION_OPTIONS.md
+APOCALYPSE_MODE_OPTIMIZATIONS.md
+CAMERA_DEBUG_LOGS_GUIDE.md
+CRITICAL_PERFORMANCE_FIXES.md
+EXTREME_MODE_OPTIMIZATIONS.md
+HOME_MAP_*.md
+IMPLEMENTATION_SUMMARY.md
+NUCLEAR_MODE_OPTIMIZATIONS.md
+OFFLINE_*.md
+OPTIMIZATION_SUMMARY.md
+PERFORMANCE_*.md
+ULTRA_MODE_OPTIMIZATIONS.md
+README.md
+
+# Test/debug scripts and files
+*.bat
+*.ps1
+*.zip
+*.png
+*.iml
+nul
+flutter_01.png
+nav_debug/
+nav_debug.zip
+
+# Generated/config files
+pubspec.lock
+.packages
+.vscode/
+devtools_options.yaml
+analysis_options.yaml
+firebase.json
+
+# Assets that bloat context
+assets/images/
+android/app/src/main/res/drawable*/*.png
+android/app/src/main/res/mipmap*/*.png
+android/app/src/main/res/layout/
+
+# Supabase temp + old migrations folder
+supabase/.temp/
+supabase_migrations/
+supabase_ranking_setup.sql
+
+# Supabase edge functions (not needed for current plan)
+supabase/functions/
+
+# Platform folders not needed
+windows/
+linux/
+macos/
+web/
+ios/
+test/

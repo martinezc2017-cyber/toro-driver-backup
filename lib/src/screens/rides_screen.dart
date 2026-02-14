@@ -11,6 +11,7 @@ import '../services/pricing_config_service.dart';
 import '../utils/app_colors.dart';
 import '../utils/haptic_service.dart';
 import '../widgets/futuristic_widgets.dart';
+import 'report_ride_screen.dart';
 
 class RidesScreen extends StatefulWidget {
   const RidesScreen({super.key});
@@ -792,6 +793,40 @@ class _RidesScreenState extends State<RidesScreen>
                   ],
                 ),
             ],
+          ),
+          const SizedBox(width: 8),
+          // Report button
+          GestureDetector(
+            onTap: () {
+              HapticService.lightImpact();
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ReportRideScreen(
+                    rideId: ride.id,
+                    rideType: ride.type == RideType.carpool
+                        ? 'carpool'
+                        : ride.type == RideType.package
+                            ? 'delivery'
+                            : 'ride',
+                    reportedUserId: ride.passengerId,
+                    reportedUserName: ride.displayName,
+                  ),
+                ),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: AppColors.error.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.flag_rounded,
+                color: AppColors.error.withValues(alpha: 0.6),
+                size: 16,
+              ),
+            ),
           ),
         ],
       ),

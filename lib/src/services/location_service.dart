@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
 import '../config/app_config.dart';
+import 'background_location_service.dart';
 
 class LocationService {
   final SupabaseClient _client = SupabaseConfig.client;
@@ -80,7 +82,10 @@ class LocationService {
 
     _positionSubscription = Geolocator.getPositionStream(
       locationSettings: locationSettings,
-    ).listen((Position position) {
+    ).handleError((error) {
+      // Gracefully handle permission denied or location errors
+      debugPrint('[LOCATION] Stream error (ignored): $error');
+    }).listen((Position position) {
       _currentPosition = position;
       _positionController.add(position);
 
@@ -208,19 +213,31 @@ class LocationService {
 
   StreamSubscription<Position>? _rideTrackingSubscription;
   String? _activeRideId;
+  final BackgroundLocationController _backgroundLocation = BackgroundLocationController();
 
   /// Start tracking for an active ride
   /// Updates both driver_locations AND the delivery record so rider can see
+  /// Uses BOTH foreground stream (when app open) AND background service (when app closed)
   Future<void> startRideTracking({
     required String driverId,
     required String rideId,
+    String? riderName,
   }) async {
     final hasPermission = await checkAndRequestPermission();
     if (!hasPermission) return;
 
     _activeRideId = rideId;
 
-    // Use high accuracy and frequent updates during active ride
+    // START BACKGROUND SERVICE - works even when app is closed
+    _backgroundLocation.startTracking(
+      deliveryId: rideId,
+      supabaseUrl: SupabaseConfig.supabaseUrl,
+      supabaseKey: SupabaseConfig.supabaseAnonKey,
+      riderName: riderName,
+      tableName: SupabaseConfig.packageDeliveriesTable,
+    );
+
+    // FOREGROUND STREAM - provides more frequent updates when app is open
     const locationSettings = LocationSettings(
       accuracy: LocationAccuracy.bestForNavigation,
       distanceFilter: 10, // Update every 10 meters
@@ -228,7 +245,9 @@ class LocationService {
 
     _rideTrackingSubscription = Geolocator.getPositionStream(
       locationSettings: locationSettings,
-    ).listen((Position position) {
+    ).handleError((error) {
+      debugPrint('[LOCATION] Ride tracking stream error (ignored): $error');
+    }).listen((Position position) {
       _currentPosition = position;
       _positionController.add(position);
 
@@ -242,8 +261,16 @@ class LocationService {
     // LocationService: Started ride tracking for ride $rideId');
   }
 
+  /// Update notification when ride status changes
+  void updateRideNotification({String? title, String? content}) {
+    _backgroundLocation.updateNotification(title: title, content: content);
+  }
+
   /// Stop ride tracking
   void stopRideTracking() {
+    // Stop background service
+    _backgroundLocation.stopTracking();
+    // Stop foreground stream
     _rideTrackingSubscription?.cancel();
     _rideTrackingSubscription = null;
     _activeRideId = null;

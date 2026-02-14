@@ -1,0 +1,755 @@
+--------- beginning of main
+02-13 01:38:08.193 12126 14361 I flutter : [IMPORTANT:flutter/shell/platform/android/android_context_vk_impeller.cc(62)] Using the Impeller rendering backend (Vulkan).
+02-13 01:38:08.509 12126 12126 I flutter : [MAIN] start at 0ms
+02-13 01:38:08.520 12126 12126 I flutter : [MAIN] binding done at 13ms
+02-13 01:38:08.528 12126 12126 I flutter : [MAIN] EasyLocalization done at 21ms
+02-13 01:38:08.528 12126 12126 I flutter : [MAIN] runApp at 21ms
+02-13 01:38:08.569 12126 12126 I flutter : [WRAPPER] initState at 61ms
+02-13 01:38:08.569 12126 12126 I flutter : [WRAPPER] services START at 62ms
+02-13 01:38:08.569 12126 12126 I flutter : [SPLASH] initState at 0ms
+02-13 01:38:08.624 12126 12126 I flutter : [SPLASH] FIRST frame at 54ms wall
+02-13 01:38:08.839 12126 12126 I flutter : [SPLASH] text at 265ms smooth (frame 5, delta=133ms)
+02-13 01:38:08.842 12126 12126 I flutter : [SERVICES] Firebase done at 272ms
+02-13 01:38:08.870 12126 12126 I flutter : [KEYSTORE] Health check passed
+02-13 01:38:08.877 12126 12126 I flutter : [SERVICES] Supabase done at 308ms
+02-13 01:38:08.877 12126 12126 I flutter : [SERVICES] CRITICAL done at 308ms
+02-13 01:38:08.988 12126 12126 I flutter : [SPLASH] scan at 409ms smooth (frame 14, delta=16ms)
+02-13 01:38:12.257 12126 12126 I flutter : [SPLASH] intro COMPLETE at 3501ms smooth (frame 198, 3687ms wall)
+02-13 01:38:14.071 12126 12126 I flutter : [WRAPPER] ready at 5564ms
+02-13 01:38:14.071 12126 12126 I flutter : [SPLASH] exit TRIGGERED at 5501ms (introComplete=true)
+02-13 01:38:14.071 12126 12126 I flutter : [SPLASH] exit fade started at 5502ms
+02-13 01:38:14.073 12126 12126 I flutter : [BG_SERVICES] Mapbox done at 1ms
+02-13 01:38:14.085 12126 12126 I flutter : 📱 VersionCheck: App v1.2.0+4010 (android)
+02-13 01:38:14.085 12126 12126 I flutter : [BG_SERVICES] VersionCheck done at 13ms
+02-13 01:38:14.181 12126 12126 I flutter : STATE_VALIDATOR -> Current: v1.2.0+4010, Last: v1.2.0+4010
+02-13 01:38:14.181 12126 12126 I flutter : STATE_VALIDATOR -> Not logged in, skipping server validation
+02-13 01:38:14.181 12126 12126 I flutter : [BG_SERVICES] AppStateValidator done at 109ms
+02-13 01:38:14.187 12126 12126 I flutter : [BG_SERVICES] PaymentService done at 115ms
+02-13 01:38:14.190 12126 12126 I flutter : [BG_SERVICES] HapticService done at 118ms
+02-13 01:38:14.192 12126 12126 I flutter : [BG_SERVICES] BackgroundLocation done at 120ms
+02-13 01:38:14.201 12126 12126 I flutter : [BG_SERVICES] NotificationService done at 129ms
+02-13 01:38:14.201 12126 12126 I flutter : [BG_SERVICES] ALL DONE at 129ms
+02-13 01:38:14.499 12126 12126 I flutter : [SPLASH] onComplete at 5929ms
+02-13 01:38:14.500 12126 12126 I flutter : [WRAPPER] onComplete → AuthWrapper at 5992ms
+02-13 01:38:14.507 12126 12126 I flutter : [AUTH] onAuthStateChange: event=AuthChangeEvent.initialSession, session=false, status=AuthStatus.initial, initialResolved=false
+02-13 01:38:31.414 12126 12126 I flutter : [AUTH] onAuthStateChange: event=AuthChangeEvent.tokenRefreshed, session=true, status=AuthStatus.loading, initialResolved=true
+02-13 01:38:31.415 12126 12126 I flutter : [AUTH] _loadDriverProfile from: _handleAuthStateChange(tokenRefreshed) | status=AuthStatus.loading | supaAuth=true
+02-13 01:38:31.415 12126 12126 I flutter : AUTH_SERVICE -> getCurrentDriverProfile called
+02-13 01:38:31.415 12126 12126 I flutter : AUTH_SERVICE -> currentUserId: 88575185-a910-4cf2-b1f7-ba7e0f40324e
+02-13 01:38:31.415 12126 12126 I flutter : AUTH_SERVICE -> currentUser email: 2018martinezc@gmail.com
+02-13 01:38:31.415 12126 12126 I flutter : AUTH_SERVICE -> Querying drivers by id: 88575185-a910-4cf2-b1f7-ba7e0f40324e
+02-13 01:38:31.610 12126 12126 I flutter : AUTH_SERVICE -> Query by id result: {id: 88575185-a910-4cf2-b1f7-ba7e0f40324e, user_id: 88575185-a910-4cf2-b1f7-ba7e0f40324e, email: 2018martinezc@gmail.com, name: patito driver, phone: 5554443322, vehicle_type: standard, vehicle_plate: muchos, vehicle_model: toyota priusc, profile_image_url: https://gkqcrkqaijwhiksyjekv.supabase.co/storage/v1/object/public/driver-documents/88575185-a910-4cf2-b1f7-ba7e0f40324e/profile_1770938578944.jpg, rating: 5.0, total_rides: 0, total_earnings: 129.37, is_online: false, is_verified: true, is_active: true, current_lat: 33.3972876368738, current_lng: -111.863959554936, created_at: 2026-01-03T12:20:20.454+00:00, updated_at: 2026-02-13T03:29:32.516+00:00, status: active, rejection_reason: null, rejected_at: null, legal_name: null, operating_state: null, license_state: null, operating_city: null, stripe_account_id: null, stripe_account_status: not_created, available_balance: 0.0, pending_balance: 0.0, points: 1000, previous_rank: 1, state: AZ, state_rank: 2, usa_rank: 3, refer
+02-13 01:38:31.610 12126 12126 I flutter : AUTH_SERVICE -> Found driver, role: driver
+02-13 01:38:31.614 12126 12126 I flutter : [AUTH] driver loaded: 88575185-a910-4cf2-b1f7-ba7e0f40324e, role: driver
+02-13 01:38:31.614 12126 12126 I flutter : [AUTH] final status: AuthStatus.authenticated
+02-13 01:38:31.773 12126 12126 I flutter : ⚠️ Cannot subscribe to notifications: driver is null
+02-13 01:38:31.774 12126 12126 I flutter : ═══════════════════════════════════════════════════
+02-13 01:38:31.774 12126 12126 I flutter :   TOURISM SCHEMA DIAGNOSTICS
+02-13 01:38:31.774 12126 12126 I flutter : ═══════════════════════════════════════════════════
+02-13 01:38:31.833 12126 12126 I flutter : 🔔 FCM permission: AuthorizationStatus.authorized
+02-13 01:38:31.981 12126 12126 I flutter :   [OK] tourism_events
+02-13 01:38:32.001 12126 12126 I flutter : 🔍 getActiveRide: Checking for driver 88575185-a910-4cf2-b1f7-ba7e0f40324e
+02-13 01:38:32.090 12126 12126 I flutter :   [OK] tourism_invitations
+02-13 01:38:32.260 12126 12126 I flutter : ℹ️ getActiveRide: No active ride found for driver 88575185-a910-4cf2-b1f7-ba7e0f40324e
+02-13 01:38:32.260 12126 12126 I flutter : INIT: activeRide=null, isActive=true
+02-13 01:38:32.260 12126 12126 I flutter : INIT: No active ride, subscribing to available rides
+02-13 01:38:32.262 12126 12126 I flutter : POLL: Starting periodic refresh (every 5s), status=RideProviderStatus.idle
+02-13 01:38:32.265 12126 12126 I flutter :   [OK] tourism_check_ins
+02-13 01:38:32.351 12126 12126 I flutter : 🔔 FCM Token: e7scbJeaQXeEdKQDIhEm...
+02-13 01:38:32.428 12126 12126 I flutter :   [OK] tourism_messages
+02-13 01:38:32.483 12126 12126 I flutter : 🔔 FCM Token saved for driver 88575185-a910-4cf2-b1f7-ba7e0f40324e
+02-13 01:38:32.526 12126 12126 I flutter :   [OK] tourism_join_requests
+02-13 01:38:32.663 12126 12126 I flutter :   [OK] tourism_event_reviews
+02-13 01:38:32.762 12126 12126 I flutter :   [OK] tourism_trip_records
+02-13 01:38:32.779 12126 12126 I flutter : 🔔 Subscribed to notifications for driver 88575185-a910-4cf2-b1f7-ba7e0f40324e
+02-13 01:38:32.877 12126 12126 I flutter :   [OK] tourism_vehicle_bids
+02-13 01:38:32.979 12126 12126 I flutter :   [FAIL] tourism_passenger_locations — PostgrestException(message: Could not find the table 'public.tourism_passenger_locations' in the schema cache, code: PGRST205, details: Not Found, hint: Perhaps you meant the table 'public.tourism_notifications')
+02-13 01:38:33.060 12126 12126 I flutter :   [OK] tourism_event_itinerary
+02-13 01:38:33.155 12126 12126 I flutter :   [OK] tourism_abuse_reports
+02-13 01:38:33.255 12126 12126 I flutter :   [OK] bus_vehicles
+02-13 01:38:33.343 12126 12126 I flutter :   [OK] bus_routes
+02-13 01:38:33.443 12126 12126 I flutter :   [OK] bus_route_stops
+02-13 01:38:33.566 12126 12126 I flutter :   [OK] bus_seat_reservations
+02-13 01:38:33.657 12126 12126 I flutter :   [OK] bus_driver_location
+02-13 01:38:33.741 12126 12126 I flutter :   [OK] bus_events
+02-13 01:38:33.775 12126 12126 I flutter : 🔔 Subscribed to tourism chat messages for driver 88575185-a910-4cf2-b1f7-ba7e0f40324e
+02-13 01:38:33.827 12126 12126 I flutter :   [OK] bus_messages
+02-13 01:38:33.929 12126 12126 I flutter :   [OK] bus_calls
+02-13 01:38:34.015 12126 12126 I flutter :   [OK] organizers
+02-13 01:38:34.097 12126 12126 I flutter :   [OK] organizer_credit_accounts
+02-13 01:38:34.180 12126 12126 I flutter :   [OK] organizer_weekly_statements
+02-13 01:38:34.263 12126 12126 I flutter :   [OK] drivers
+02-13 01:38:34.348 12126 12126 I flutter :   [OK] profiles
+02-13 01:38:34.348 12126 12126 I flutter : ───────────────────────────────────────────────────
+02-13 01:38:34.348 12126 12126 I flutter :   RESULT: 23 passed, 1 failed
+02-13 01:38:34.348 12126 12126 I flutter : ═══════════════════════════════════════════════════
+02-13 01:38:37.277 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:38:37.344 12126 12126 E flutter : [ERROR:flutter/runtime/dart_vm_initializer.cc(40)] Unhandled Exception: User denied permissions to access the device's location.
+02-13 01:38:37.344 12126 12126 E flutter : #0      GeolocatorAndroid.getPositionStream.<anonymous closure> (package:geolocator_android/src/geolocator_android.dart:201)
+02-13 01:38:37.344 12126 12126 E flutter : #1      Stream.handleError.<anonymous closure> (dart:async/stream.dart:961)
+02-13 01:38:37.344 12126 12126 E flutter : #2      _HandleErrorStream._handleError (dart:async/stream_pipe.dart:303)
+02-13 01:38:37.344 12126 12126 E flutter : #3      _ForwardingStreamSubscription._handleError (dart:async/stream_pipe.dart:188)
+02-13 01:38:37.344 12126 12126 E flutter : #4      _RootZone.runBinaryGuarded (dart:async/zone.dart:1790)
+02-13 01:38:37.344 12126 12126 E flutter : #5      _BufferingStreamSubscription._sendError.sendError (dart:async/stream_impl.dart:400)
+02-13 01:38:37.344 12126 12126 E flutter : #6      _BufferingStreamSubscription._sendError (dart:async/stream_impl.dart:418)
+02-13 01:38:37.344 12126 12126 E flutter : #7      _BufferingStreamSubscription._addError (dart:async/stream_impl.dart:322)
+02-13 01:38:37.344 12126 12126 E flutter : #8      _ForwardingStreamSubscription._addError (dart:async/stream_pipe.dart:159)
+02-13 01:38:37.344 12126 12126 E flutter : #9      _ForwardingStream._handleError (dart:async/stream_pipe.dart:119)
+02-13 01:38:37.344 12126 12126 E flutter : #10     _ForwardingStreamSubscription._handleError (dart:async/stream_pipe.dart:188)
+02-13 01:38:37.344 12126 12126 E flutter : #11     _RootZone.runBinaryGuarded (dart:async/zone.dart:1790)
+02-13 01:38:37.344 12126 12126 E flutter : #12     _BufferingStreamSubscription._sendError.sendError (dart:async/stream_impl.dart:400)
+02-13 01:38:37.344 12126 12126 E flutter : #13     _BufferingStreamSubscription._sendError (dart:async/stream_impl.dart:418)
+02-13 01:38:37.344 12126 12126 E flutter : #14     _BufferingStreamSubscription._addError (dart:async/stream_impl.dart:322)
+02-13 01:38:37.344 12126 12126 E flutter : #15     _SyncBroadcastStreamController._sendError.<anonymous closure> (dart:async/broadcast_stream_controller.dart:400)
+02-13 01:38:37.344 12126 12126 E flutter : #16     _BroadcastStreamController._forEachListener (dart:async/broadcast_stream_controller.dart:329)
+02-13 01:38:37.344 12126 12126 E flutter : #17     _SyncBroadcastStreamController._sendError (dart:async/broadcast_stream_controller.dart:399)
+02-13 01:38:37.344 12126 12126 E flutter : #18     _BroadcastStreamController._addError (dart:async/broadcast_stream_controller.dart:294)
+02-13 01:38:37.344 12126 12126 E flutter : #19     _AsBroadcastStreamController.addError (dart:async/broadcast_stream_controller.dart:499)
+02-13 01:38:37.344 12126 12126 E flutter : #20     _RootZone.runBinaryGuarded (dart:async/zone.dart:1790)
+02-13 01:38:37.344 12126 12126 E flutter : #21     _BufferingStreamSubscription._sendError.sendError (dart:async/stream_impl.dart:400)
+02-13 01:38:37.344 12126 12126 E flutter : #22     _BufferingStreamSubscription._sendError (dart:async/stream_impl.dart:418)
+02-13 01:38:37.344 12126 12126 E flutter : #23     _DelayedError.perform (dart:async/stream_impl.dart:584)
+02-13 01:38:37.344 12126 12126 E flutter : #24     _PendingEvents.handleNext (dart:async/stream_impl.dart:678)
+02-13 01:38:37.344 12126 12126 E flutter : #25     _PendingEvents.schedule.<anonymous closure> (dart:async/stream_impl.dart:649)
+02-13 01:38:37.344 12126 12126 E flutter : #26     _microtaskLoop (dart:async/schedule_microtask.dart:40)
+02-13 01:38:37.344 12126 12126 E flutter : #27     _startMicrotaskLoop (dart:async/schedule_microtask.dart:49)
+02-13 01:38:37.344 12126 12126 E flutter : 
+02-13 01:38:37.402 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:38:37.699 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:38:42.272 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:38:42.564 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:38:42.884 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:38:43.067 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:38:43.203 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:38:47.264 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:38:47.399 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:38:47.696 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:38:52.263 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:38:52.420 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:38:54.370 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:38:57.264 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:38:57.467 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:38:58.221 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:39:02.265 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:39:02.410 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:39:02.749 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:39:07.264 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:39:07.407 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:39:09.816 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:39:12.264 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:39:12.888 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:39:14.456 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:39:17.265 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:39:18.637 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:39:18.909 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:39:22.263 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:39:22.396 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:39:22.727 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:39:27.263 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:39:31.816 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:39:32.263 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:39:32.396 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:39:32.618 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:39:37.265 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:39:37.354 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:39:37.496 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:39:37.677 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:39:42.264 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:39:42.962 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:39:43.305 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:39:47.264 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:39:47.447 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:39:48.638 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:39:52.263 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:39:52.428 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:39:52.773 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:39:57.263 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:39:57.402 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:39:57.747 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:40:02.263 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:40:07.263 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:40:07.298 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:40:07.443 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:40:07.543 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:40:07.714 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:40:12.263 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:40:12.371 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:40:12.699 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:40:17.264 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:40:18.812 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:40:19.126 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:40:22.266 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:40:22.644 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:40:24.450 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:40:27.263 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:40:27.426 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:40:27.774 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:40:32.264 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:40:34.081 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:40:34.415 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:40:37.265 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:40:37.479 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:40:37.828 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:40:42.265 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:40:42.416 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:40:45.953 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:40:47.263 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:40:47.389 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:40:47.718 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:40:52.263 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:40:52.654 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:40:53.038 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:40:57.265 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:40:57.406 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:41:02.163 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:41:02.263 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:41:02.363 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:41:02.703 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:41:07.263 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:41:07.377 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:41:12.264 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:41:12.398 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:41:12.474 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:41:12.780 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:41:17.263 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:41:17.426 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:41:22.263 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:41:22.388 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:41:22.502 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:41:22.738 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:41:27.264 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:41:27.458 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:41:27.945 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:41:32.264 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:41:32.447 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:41:37.182 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:41:37.263 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:41:37.346 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:41:37.678 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:41:42.264 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:41:42.403 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:41:45.791 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:41:47.263 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:41:47.425 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:41:47.975 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:41:52.263 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:41:52.424 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:41:52.808 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:41:57.263 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:41:57.412 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:41:57.828 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:42:02.263 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:42:02.414 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:42:06.030 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:42:07.267 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:42:07.444 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:42:08.009 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:42:12.264 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:42:12.384 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:42:12.780 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:42:17.264 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:42:17.462 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:42:17.880 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:42:22.265 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:42:22.416 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:42:22.770 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:42:27.263 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:42:27.419 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:42:27.763 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:42:32.264 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:42:35.750 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:42:36.048 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:42:37.263 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:42:37.403 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:42:37.758 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:42:42.263 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:42:42.410 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:42:42.760 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:42:47.263 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:42:47.428 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:42:47.731 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:42:52.265 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:42:54.799 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:42:55.103 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:42:57.263 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:42:57.367 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:42:57.739 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:43:02.263 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:43:02.369 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:43:02.716 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:43:07.264 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:43:07.396 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:43:10.195 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:43:12.264 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:43:12.390 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:43:15.185 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:43:17.264 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:43:22.263 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:43:22.305 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:43:22.462 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:43:22.614 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:43:22.855 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:43:27.263 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:43:32.167 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:43:32.264 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:43:32.419 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:43:32.516 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:43:32.726 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:43:37.264 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:43:37.373 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:43:37.700 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:43:42.263 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:43:42.472 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:43:42.735 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:43:47.264 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:43:47.640 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:43:52.264 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:43:52.389 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:43:52.452 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:43:57.263 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:43:57.422 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:43:57.423 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:43:57.778 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:44:02.264 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:44:02.388 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:44:07.263 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:44:07.366 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:44:07.511 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:44:12.263 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:44:12.282 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:44:12.380 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:44:12.723 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:44:17.264 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:44:17.414 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:44:22.264 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:44:22.361 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:44:22.455 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:44:22.668 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:44:27.267 12126 12126 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:44:27.636 12126 12126 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:44:28.140 12126 12126 I flutter : POLL: Found 0 available rides
+02-13 01:49:33.658 19489 19626 I flutter : [IMPORTANT:flutter/shell/platform/android/android_context_vk_impeller.cc(62)] Using the Impeller rendering backend (Vulkan).
+02-13 01:49:34.810 19489 19489 I flutter : [MAIN] start at 0ms
+02-13 01:49:34.830 19489 19489 I flutter : [MAIN] binding done at 22ms
+02-13 01:49:34.841 19489 19489 I flutter : [MAIN] EasyLocalization done at 33ms
+02-13 01:49:34.841 19489 19489 I flutter : [MAIN] runApp at 33ms
+02-13 01:49:35.083 19489 19800 I flutter : [IMPORTANT:flutter/shell/platform/android/android_context_vk_impeller.cc(62)] Using the Impeller rendering backend (Vulkan).
+02-13 01:49:35.207 19489 19489 I flutter : [WRAPPER] initState at 399ms
+02-13 01:49:35.207 19489 19489 I flutter : [WRAPPER] services START at 399ms
+02-13 01:49:35.208 19489 19489 I flutter : [SPLASH] initState at 0ms
+02-13 01:49:35.317 19489 19489 I flutter : `flutter_background_service_android` threw an error: Exception: This class should only be used in the main isolate (UI App). The app may not function as expected until you remove this plugin from pubspec.yaml
+02-13 01:49:35.335 19489 19489 I flutter : [SPLASH] FIRST frame at 127ms wall
+02-13 01:49:35.369 19489 19489 I flutter : [SPLASH] text at 150ms smooth (frame 2, delta=416ms)
+02-13 01:49:35.553 19489 19489 I flutter : [SERVICES] Firebase done at 345ms
+02-13 01:49:35.612 19489 19968 I flutter : [IMPORTANT:flutter/shell/platform/android/android_context_vk_impeller.cc(62)] Using the Impeller rendering backend (Vulkan).
+02-13 01:49:35.681 19489 19489 I flutter : [SPLASH] scan at 447ms smooth (frame 9, delta=66ms)
+02-13 01:49:35.830 19489 19489 I flutter : [KEYSTORE] Health check passed
+02-13 01:49:35.933 19489 19489 I flutter : [SERVICES] Supabase done at 725ms
+02-13 01:49:35.933 19489 19489 I flutter : [SERVICES] CRITICAL done at 726ms
+02-13 01:49:38.835 19489 19489 I flutter : [SPLASH] intro COMPLETE at 3501ms smooth (frame 145, 3625ms wall)
+02-13 01:49:40.710 19489 19489 I flutter : [WRAPPER] ready at 5902ms
+02-13 01:49:40.710 19489 19489 I flutter : [SPLASH] exit TRIGGERED at 5502ms (introComplete=true)
+02-13 01:49:40.710 19489 19489 I flutter : [SPLASH] exit fade started at 5502ms
+02-13 01:49:40.715 19489 19489 I flutter : [BG_SERVICES] Mapbox done at 4ms
+02-13 01:49:40.730 19489 19489 I flutter : 📱 VersionCheck: App v1.2.0+4010 (android)
+02-13 01:49:40.730 19489 19489 I flutter : [BG_SERVICES] VersionCheck done at 19ms
+02-13 01:49:40.907 19489 19489 I flutter : STATE_VALIDATOR -> Current: v1.2.0+4010, Last: v1.2.0+4010
+02-13 01:49:40.985 19489 19489 I flutter : [BG_SERVICES] PaymentService done at 275ms
+02-13 01:49:41.012 19489 19489 I flutter : [BG_SERVICES] HapticService done at 302ms
+02-13 01:49:41.017 19489 19489 I flutter : [BG_SERVICES] BackgroundLocation done at 306ms
+02-13 01:49:41.029 19489 19489 I flutter : [BG_SERVICES] NotificationService done at 318ms
+02-13 01:49:41.174 19489 19489 I flutter : [SPLASH] onComplete at 5966ms
+02-13 01:49:41.174 19489 19489 I flutter : [WRAPPER] onComplete → AuthWrapper at 6366ms
+02-13 01:49:41.186 19489 19489 I flutter : [AUTH] onAuthStateChange: event=AuthChangeEvent.initialSession, session=true, status=AuthStatus.initial, initialResolved=false
+02-13 01:49:41.186 19489 19489 I flutter : [AUTH] _loadDriverProfile from: _handleAuthStateChange(initialSession) | status=AuthStatus.initial | supaAuth=true
+02-13 01:49:41.186 19489 19489 I flutter : AUTH_SERVICE -> getCurrentDriverProfile called
+02-13 01:49:41.186 19489 19489 I flutter : AUTH_SERVICE -> currentUserId: 88575185-a910-4cf2-b1f7-ba7e0f40324e
+02-13 01:49:41.186 19489 19489 I flutter : AUTH_SERVICE -> currentUser email: 2018martinezc@gmail.com
+02-13 01:49:41.188 19489 19489 I flutter : AUTH_SERVICE -> Querying drivers by id: 88575185-a910-4cf2-b1f7-ba7e0f40324e
+02-13 01:49:41.772 19489 19489 I flutter : STATE_VALIDATOR -> Server has active ride for driver: false
+02-13 01:49:41.772 19489 19489 I flutter : [BG_SERVICES] AppStateValidator done at 1061ms
+02-13 01:49:41.772 19489 19489 I flutter : [BG_SERVICES] ALL DONE at 1061ms
+02-13 01:49:41.977 19489 19489 I flutter : AUTH_SERVICE -> Query by id result: {id: 88575185-a910-4cf2-b1f7-ba7e0f40324e, user_id: 88575185-a910-4cf2-b1f7-ba7e0f40324e, email: 2018martinezc@gmail.com, name: patito driver, phone: 5554443322, vehicle_type: standard, vehicle_plate: muchos, vehicle_model: toyota priusc, profile_image_url: https://gkqcrkqaijwhiksyjekv.supabase.co/storage/v1/object/public/driver-documents/88575185-a910-4cf2-b1f7-ba7e0f40324e/profile_1770938578944.jpg, rating: 5.0, total_rides: 0, total_earnings: 129.37, is_online: false, is_verified: true, is_active: true, current_lat: 33.3972876368738, current_lng: -111.863959554936, created_at: 2026-01-03T12:20:20.454+00:00, updated_at: 2026-02-13T03:29:32.516+00:00, status: active, rejection_reason: null, rejected_at: null, legal_name: null, operating_state: null, license_state: null, operating_city: null, stripe_account_id: null, stripe_account_status: not_created, available_balance: 0.0, pending_balance: 0.0, points: 1000, previous_rank: 1, state: AZ, state_rank: 2, usa_rank: 3, refer
+02-13 01:49:41.977 19489 19489 I flutter : AUTH_SERVICE -> Found driver, role: driver
+02-13 01:49:41.977 19489 19489 I flutter : [AUTH] driver loaded: 88575185-a910-4cf2-b1f7-ba7e0f40324e, role: driver
+02-13 01:49:41.977 19489 19489 I flutter : [AUTH] final status: AuthStatus.authenticated
+02-13 01:49:42.038 19489 19489 I flutter : ⚠️ Cannot subscribe to notifications: driver is null
+02-13 01:49:42.038 19489 19489 I flutter : ═══════════════════════════════════════════════════
+02-13 01:49:42.038 19489 19489 I flutter :   TOURISM SCHEMA DIAGNOSTICS
+02-13 01:49:42.038 19489 19489 I flutter : ═══════════════════════════════════════════════════
+02-13 01:49:42.239 19489 19489 I flutter : 🔔 FCM permission: AuthorizationStatus.authorized
+02-13 01:49:42.278 19489 19489 I flutter : 🔍 getActiveRide: Checking for driver 88575185-a910-4cf2-b1f7-ba7e0f40324e
+02-13 01:49:42.468 19489 19489 I flutter :   [OK] tourism_events
+02-13 01:49:42.573 19489 19489 I flutter : ℹ️ getActiveRide: No active ride found for driver 88575185-a910-4cf2-b1f7-ba7e0f40324e
+02-13 01:49:42.574 19489 19489 I flutter : INIT: activeRide=null, isActive=true
+02-13 01:49:42.574 19489 19489 I flutter : INIT: No active ride, subscribing to available rides
+02-13 01:49:42.578 19489 19489 I flutter : POLL: Starting periodic refresh (every 5s), status=RideProviderStatus.idle
+02-13 01:49:42.684 19489 19489 I flutter :   [OK] tourism_invitations
+02-13 01:49:44.574 19489 19489 I flutter : 🔔 Subscribed to notifications for driver 88575185-a910-4cf2-b1f7-ba7e0f40324e
+02-13 01:49:44.574 19489 19489 I flutter : 🔔 Subscribed to tourism chat messages for driver 88575185-a910-4cf2-b1f7-ba7e0f40324e
+02-13 01:49:45.517 19489 19489 I flutter :   [OK] tourism_check_ins
+02-13 01:49:45.695 19489 19489 I flutter : 🔔 FCM Token: e7scbJeaQXeEdKQDIhEm...
+02-13 01:49:45.701 19489 19489 I flutter :   [OK] tourism_messages
+02-13 01:49:45.813 19489 19489 I flutter :   [OK] tourism_join_requests
+02-13 01:49:45.848 19489 19489 I flutter : 🔔 FCM Token saved for driver 88575185-a910-4cf2-b1f7-ba7e0f40324e
+02-13 01:49:45.912 19489 19489 I flutter :   [OK] tourism_event_reviews
+02-13 01:49:46.029 19489 19489 I flutter :   [OK] tourism_trip_records
+02-13 01:49:46.145 19489 19489 I flutter :   [OK] tourism_vehicle_bids
+02-13 01:49:46.307 19489 19489 I flutter :   [FAIL] tourism_passenger_locations — PostgrestException(message: Could not find the table 'public.tourism_passenger_locations' in the schema cache, code: PGRST205, details: Not Found, hint: Perhaps you meant the table 'public.tourism_notifications')
+02-13 01:49:46.426 19489 19489 I flutter :   [OK] tourism_event_itinerary
+02-13 01:49:46.534 19489 19489 I flutter :   [OK] tourism_abuse_reports
+02-13 01:49:46.680 19489 19489 I flutter :   [OK] bus_vehicles
+02-13 01:49:46.800 19489 19489 I flutter :   [OK] bus_routes
+02-13 01:49:46.934 19489 19489 I flutter :   [OK] bus_route_stops
+02-13 01:49:47.040 19489 19489 I flutter :   [OK] bus_seat_reservations
+02-13 01:49:47.130 19489 19489 I flutter :   [OK] bus_driver_location
+02-13 01:49:47.237 19489 19489 I flutter :   [OK] bus_events
+02-13 01:49:47.373 19489 19489 I flutter :   [OK] bus_messages
+02-13 01:49:47.490 19489 19489 I flutter :   [OK] bus_calls
+02-13 01:49:47.580 19489 19489 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:49:47.648 19489 19489 I flutter :   [OK] organizers
+02-13 01:49:47.723 19489 19489 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:49:47.784 19489 19489 I flutter :   [OK] organizer_credit_accounts
+02-13 01:49:47.903 19489 19489 I flutter :   [OK] organizer_weekly_statements
+02-13 01:49:48.056 19489 19489 I flutter :   [OK] drivers
+02-13 01:49:48.130 19489 19489 I flutter : POLL: Found 0 available rides
+02-13 01:49:48.202 19489 19489 I flutter :   [OK] profiles
+02-13 01:49:48.202 19489 19489 I flutter : ───────────────────────────────────────────────────
+02-13 01:49:48.202 19489 19489 I flutter :   RESULT: 23 passed, 1 failed
+02-13 01:49:48.203 19489 19489 I flutter : ═══════════════════════════════════════════════════
+02-13 01:49:52.581 19489 19489 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:49:52.907 19489 19489 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:49:53.275 19489 19489 I flutter : POLL: Found 0 available rides
+02-13 01:49:57.581 19489 19489 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:49:57.686 19489 19489 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:49:57.974 19489 19489 I flutter : POLL: Found 0 available rides
+02-13 01:50:02.584 19489 19489 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:50:02.706 19489 19489 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:50:03.036 19489 19489 I flutter : POLL: Found 0 available rides
+02-13 01:50:07.579 19489 19489 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:50:07.672 19489 19489 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:50:08.005 19489 19489 I flutter : POLL: Found 0 available rides
+02-13 01:50:12.580 19489 19489 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:50:12.727 19489 19489 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:50:13.030 19489 19489 I flutter : POLL: Found 0 available rides
+02-13 01:50:17.579 19489 19489 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:50:22.579 19489 19489 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:50:22.624 19489 19489 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:50:22.778 19489 19489 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:50:22.928 19489 19489 I flutter : POLL: Found 0 available rides
+02-13 01:50:23.123 19489 19489 I flutter : POLL: Found 0 available rides
+02-13 01:50:27.579 19489 19489 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:50:27.729 19489 19489 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:50:30.775 19489 19489 I flutter : POLL: Found 0 available rides
+02-13 01:50:32.580 19489 19489 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:50:32.675 19489 19489 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:50:33.059 19489 19489 I flutter : POLL: Found 0 available rides
+02-13 01:50:37.579 19489 19489 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:50:37.691 19489 19489 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:50:38.043 19489 19489 I flutter : POLL: Found 0 available rides
+02-13 01:50:42.579 19489 19489 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:50:42.690 19489 19489 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:50:47.579 19489 19489 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:50:47.696 19489 19489 I flutter : POLL: Found 0 available rides
+02-13 01:50:47.741 19489 19489 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:50:48.056 19489 19489 I flutter : POLL: Found 0 available rides
+02-13 01:50:52.579 19489 19489 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:50:52.714 19489 19489 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:50:57.580 19489 19489 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:50:57.745 19489 19489 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:50:57.881 19489 19489 I flutter : POLL: Found 0 available rides
+02-13 01:50:58.130 19489 19489 I flutter : POLL: Found 0 available rides
+02-13 01:51:02.579 19489 19489 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:51:04.992 19489 19489 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:51:07.580 19489 19489 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:51:07.746 19489 19489 I flutter : POLL: Found 0 available rides
+02-13 01:51:07.748 19489 19489 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:51:09.025 19489 19489 I flutter : POLL: Found 0 available rides
+02-13 01:51:12.586 19489 19489 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:51:17.579 19489 19489 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:51:17.607 19489 19489 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:51:17.741 19489 19489 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:51:22.580 19489 19489 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:51:22.609 19489 19489 I flutter : POLL: Found 0 available rides
+02-13 01:51:22.692 19489 19489 I flutter : POLL: Found 0 available rides
+02-13 01:51:22.824 19489 19489 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:51:25.676 19489 19489 I flutter : POLL: Found 0 available rides
+02-13 01:51:27.580 19489 19489 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:51:27.753 19489 19489 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:51:32.579 19489 19489 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:51:32.676 19489 19489 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:51:32.811 19489 19489 I flutter : POLL: Found 0 available rides
+02-13 01:51:35.043 19489 19489 I flutter : POLL: Found 0 available rides
+02-13 01:51:37.579 19489 19489 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:51:37.855 19489 19489 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:51:42.579 19489 19489 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:51:42.740 19489 19489 I flutter : POLL: Found 0 available rides
+02-13 01:51:42.742 19489 19489 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:51:43.103 19489 19489 I flutter : POLL: Found 0 available rides
+02-13 01:51:47.579 19489 19489 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:51:50.530 19489 19489 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:51:50.937 19489 19489 I flutter : POLL: Found 0 available rides
+02-13 01:51:52.579 19489 19489 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:51:52.674 19489 19489 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:51:53.077 19489 19489 I flutter : POLL: Found 0 available rides
+02-13 01:51:57.579 19489 19489 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:51:57.763 19489 19489 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:52:02.579 19489 19489 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:52:02.695 19489 19489 I flutter : POLL: Found 0 available rides
+02-13 01:52:02.746 19489 19489 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:52:03.056 19489 19489 I flutter : POLL: Found 0 available rides
+02-13 01:52:07.579 19489 19489 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:52:07.725 19489 19489 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:52:12.579 19489 19489 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:52:12.756 19489 19489 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:52:12.955 19489 19489 I flutter : POLL: Found 0 available rides
+02-13 01:52:15.680 19489 19489 I flutter : POLL: Found 0 available rides
+02-13 01:52:17.579 19489 19489 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:52:17.747 19489 19489 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:52:22.579 19489 19489 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:52:22.729 19489 19489 I flutter : POLL: Found 0 available rides
+02-13 01:52:22.731 19489 19489 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:52:27.581 19489 19489 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:52:27.743 19489 19489 I flutter : POLL: Found 0 available rides
+02-13 01:52:27.745 19489 19489 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:52:28.889 19489 19489 I flutter : POLL: Found 0 available rides
+02-13 01:52:32.579 19489 19489 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:52:32.697 19489 19489 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:52:35.244 19489 19489 I flutter : POLL: Found 0 available rides
+02-13 01:52:37.579 19489 19489 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:52:40.540 19489 19489 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:52:42.579 19489 19489 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:52:42.598 19489 19489 I flutter : POLL: Found 0 available rides
+02-13 01:52:42.730 19489 19489 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:52:44.861 19489 19489 I flutter : POLL: Found 0 available rides
+02-13 01:52:47.579 19489 19489 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:52:49.794 19489 19489 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:52:52.579 19489 19489 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:52:52.679 19489 19489 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:52:52.693 19489 19489 I flutter : POLL: Found 0 available rides
+02-13 01:52:57.579 19489 19489 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:52:57.597 19489 19489 I flutter : POLL: Found 0 available rides
+02-13 01:53:00.711 19489 19489 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:53:02.579 19489 19489 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:53:02.676 19489 19489 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:53:02.687 19489 19489 I flutter : POLL: Found 0 available rides
+02-13 01:53:03.056 19489 19489 I flutter : POLL: Found 0 available rides
+02-13 01:53:07.579 19489 19489 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:53:07.724 19489 19489 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:53:12.579 19489 19489 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:53:12.678 19489 19489 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:53:12.689 19489 19489 I flutter : POLL: Found 0 available rides
+02-13 01:53:13.074 19489 19489 I flutter : POLL: Found 0 available rides
+02-13 01:53:17.579 19489 19489 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:53:22.579 19489 19489 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:53:22.612 19489 19489 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:53:22.747 19489 19489 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:53:23.357 19489 19489 I flutter : POLL: Found 0 available rides
+02-13 01:53:23.377 19489 19489 I flutter : POLL: Found 0 available rides
+02-13 01:53:27.579 19489 19489 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:53:27.732 19489 19489 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 01:53:30.698 19489 19489 I flutter : POLL: Found 0 available rides
+02-13 01:53:32.579 19489 19489 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 01:53:32.773 19489 19489 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 02:02:42.429 25385 25438 I flutter : [IMPORTANT:flutter/shell/platform/android/android_context_vk_impeller.cc(62)] Using the Impeller rendering backend (Vulkan).
+02-13 02:02:42.921 25385 25385 I flutter : [MAIN] start at 0ms
+02-13 02:02:42.933 25385 25385 I flutter : [MAIN] binding done at 14ms
+02-13 02:02:42.940 25385 25385 I flutter : [MAIN] EasyLocalization done at 21ms
+02-13 02:02:42.940 25385 25385 I flutter : [MAIN] runApp at 21ms
+02-13 02:02:43.006 25385 25491 I flutter : [IMPORTANT:flutter/shell/platform/android/android_context_vk_impeller.cc(62)] Using the Impeller rendering backend (Vulkan).
+02-13 02:02:43.049 25385 25385 I flutter : [WRAPPER] initState at 130ms
+02-13 02:02:43.049 25385 25385 I flutter : [WRAPPER] services START at 130ms
+02-13 02:02:43.050 25385 25385 I flutter : [SPLASH] initState at 0ms
+02-13 02:02:43.078 25385 25385 I flutter : `flutter_background_service_android` threw an error: Exception: This class should only be used in the main isolate (UI App). The app may not function as expected until you remove this plugin from pubspec.yaml
+02-13 02:02:43.081 25385 25385 I flutter : [SPLASH] FIRST frame at 31ms wall
+02-13 02:02:43.155 25385 25385 I flutter : [SPLASH] text at 166ms smooth (frame 4, delta=50ms)
+02-13 02:02:43.202 25385 25385 I flutter : [SERVICES] Firebase done at 152ms
+02-13 02:02:43.263 25385 25530 I flutter : [IMPORTANT:flutter/shell/platform/android/android_context_vk_impeller.cc(62)] Using the Impeller rendering backend (Vulkan).
+02-13 02:02:43.353 25385 25385 I flutter : [KEYSTORE] Health check passed
+02-13 02:02:43.361 25385 25385 I flutter : [SERVICES] Supabase done at 312ms
+02-13 02:02:43.361 25385 25385 I flutter : [SERVICES] CRITICAL done at 312ms
+02-13 02:02:43.403 25385 25385 I flutter : [SPLASH] scan at 410ms smooth (frame 14, delta=16ms)
+02-13 02:02:46.725 25385 25385 I flutter : [SPLASH] intro COMPLETE at 3512ms smooth (frame 185, 3674ms wall)
+02-13 02:02:48.551 25385 25385 I flutter : [WRAPPER] ready at 5632ms
+02-13 02:02:48.551 25385 25385 I flutter : [SPLASH] exit TRIGGERED at 5501ms (introComplete=true)
+02-13 02:02:48.551 25385 25385 I flutter : [SPLASH] exit fade started at 5501ms
+02-13 02:02:48.555 25385 25385 I flutter : [BG_SERVICES] Mapbox done at 3ms
+02-13 02:02:48.560 25385 25385 I flutter : 📱 VersionCheck: App v1.2.0+4010 (android)
+02-13 02:02:48.560 25385 25385 I flutter : [BG_SERVICES] VersionCheck done at 8ms
+02-13 02:02:48.672 25385 25385 I flutter : STATE_VALIDATOR -> Current: v1.2.0+4010, Last: v1.2.0+4010
+02-13 02:02:48.683 25385 25385 I flutter : [BG_SERVICES] PaymentService done at 131ms
+02-13 02:02:48.687 25385 25385 I flutter : [BG_SERVICES] HapticService done at 135ms
+02-13 02:02:48.688 25385 25385 I flutter : [BG_SERVICES] BackgroundLocation done at 136ms
+02-13 02:02:48.692 25385 25385 I flutter : [BG_SERVICES] NotificationService done at 140ms
+02-13 02:02:48.984 25385 25385 I flutter : [SPLASH] onComplete at 5934ms
+02-13 02:02:48.984 25385 25385 I flutter : [WRAPPER] onComplete → AuthWrapper at 6065ms
+02-13 02:02:48.989 25385 25385 I flutter : [AUTH] onAuthStateChange: event=AuthChangeEvent.initialSession, session=true, status=AuthStatus.initial, initialResolved=false
+02-13 02:02:48.990 25385 25385 I flutter : [AUTH] _loadDriverProfile from: _handleAuthStateChange(initialSession) | status=AuthStatus.initial | supaAuth=true
+02-13 02:02:48.990 25385 25385 I flutter : AUTH_SERVICE -> getCurrentDriverProfile called
+02-13 02:02:48.990 25385 25385 I flutter : AUTH_SERVICE -> currentUserId: 88575185-a910-4cf2-b1f7-ba7e0f40324e
+02-13 02:02:48.990 25385 25385 I flutter : AUTH_SERVICE -> currentUser email: 2018martinezc@gmail.com
+02-13 02:02:48.990 25385 25385 I flutter : AUTH_SERVICE -> Querying drivers by id: 88575185-a910-4cf2-b1f7-ba7e0f40324e
+02-13 02:02:49.235 25385 25385 I flutter : STATE_VALIDATOR -> Server has active ride for driver: false
+02-13 02:02:49.235 25385 25385 I flutter : [BG_SERVICES] AppStateValidator done at 683ms
+02-13 02:02:49.235 25385 25385 I flutter : [BG_SERVICES] ALL DONE at 683ms
+02-13 02:02:49.275 25385 25385 I flutter : AUTH_SERVICE -> Query by id result: {id: 88575185-a910-4cf2-b1f7-ba7e0f40324e, user_id: 88575185-a910-4cf2-b1f7-ba7e0f40324e, email: 2018martinezc@gmail.com, name: patito driver, phone: 5554443322, vehicle_type: standard, vehicle_plate: muchos, vehicle_model: toyota priusc, profile_image_url: https://gkqcrkqaijwhiksyjekv.supabase.co/storage/v1/object/public/driver-documents/88575185-a910-4cf2-b1f7-ba7e0f40324e/profile_1770938578944.jpg, rating: 5.0, total_rides: 0, total_earnings: 129.37, is_online: false, is_verified: true, is_active: true, current_lat: 33.3972876368738, current_lng: -111.863959554936, created_at: 2026-01-03T12:20:20.454+00:00, updated_at: 2026-02-13T03:29:32.516+00:00, status: active, rejection_reason: null, rejected_at: null, legal_name: null, operating_state: null, license_state: null, operating_city: null, stripe_account_id: null, stripe_account_status: not_created, available_balance: 0.0, pending_balance: 0.0, points: 1000, previous_rank: 1, state: AZ, state_rank: 2, usa_rank: 3, refer
+02-13 02:02:49.275 25385 25385 I flutter : AUTH_SERVICE -> Found driver, role: driver
+02-13 02:02:49.276 25385 25385 I flutter : [AUTH] driver loaded: 88575185-a910-4cf2-b1f7-ba7e0f40324e, role: driver
+02-13 02:02:49.276 25385 25385 I flutter : [AUTH] final status: AuthStatus.authenticated
+02-13 02:02:49.335 25385 25385 I flutter : ⚠️ Cannot subscribe to notifications: driver is null
+02-13 02:02:49.336 25385 25385 I flutter : ═══════════════════════════════════════════════════
+02-13 02:02:49.336 25385 25385 I flutter :   TOURISM SCHEMA DIAGNOSTICS
+02-13 02:02:49.336 25385 25385 I flutter : ═══════════════════════════════════════════════════
+02-13 02:02:49.384 25385 25385 I flutter : 🔔 FCM permission: AuthorizationStatus.authorized
+02-13 02:02:49.684 25385 25385 I flutter : 🔍 getActiveRide: Checking for driver 88575185-a910-4cf2-b1f7-ba7e0f40324e
+02-13 02:02:49.911 25385 25385 I flutter :   [OK] tourism_events
+02-13 02:02:49.996 25385 25385 I flutter : ℹ️ getActiveRide: No active ride found for driver 88575185-a910-4cf2-b1f7-ba7e0f40324e
+02-13 02:02:49.996 25385 25385 I flutter : INIT: activeRide=null, isActive=true
+02-13 02:02:49.996 25385 25385 I flutter : INIT: No active ride, subscribing to available rides
+02-13 02:02:50.003 25385 25385 I flutter : POLL: Starting periodic refresh (every 5s), status=RideProviderStatus.idle
+02-13 02:02:50.034 25385 25385 I flutter :   [OK] tourism_invitations
+02-13 02:02:50.145 25385 25385 I flutter :   [OK] tourism_check_ins
+02-13 02:02:50.341 25385 25385 I flutter : 🔔 Subscribed to notifications for driver 88575185-a910-4cf2-b1f7-ba7e0f40324e
+02-13 02:02:50.358 25385 25385 I flutter : 🔔 FCM Token: e7scbJeaQXeEdKQDIhEm...
+02-13 02:02:50.373 25385 25385 I flutter :   [OK] tourism_messages
+02-13 02:02:50.499 25385 25385 I flutter :   [OK] tourism_join_requests
+02-13 02:02:50.511 25385 25385 I flutter : 🔔 FCM Token saved for driver 88575185-a910-4cf2-b1f7-ba7e0f40324e
+02-13 02:02:50.598 25385 25385 I flutter :   [OK] tourism_event_reviews
+02-13 02:02:50.696 25385 25385 I flutter :   [OK] tourism_trip_records
+02-13 02:02:50.820 25385 25385 I flutter :   [OK] tourism_vehicle_bids
+02-13 02:02:50.946 25385 25385 I flutter :   [FAIL] tourism_passenger_locations — PostgrestException(message: Could not find the table 'public.tourism_passenger_locations' in the schema cache, code: PGRST205, details: Not Found, hint: Perhaps you meant the table 'public.tourism_notifications')
+02-13 02:02:51.043 25385 25385 I flutter :   [OK] tourism_event_itinerary
+02-13 02:02:51.161 25385 25385 I flutter :   [OK] tourism_abuse_reports
+02-13 02:02:51.288 25385 25385 I flutter :   [OK] bus_vehicles
+02-13 02:02:51.352 25385 25385 I flutter : 🔔 Subscribed to tourism chat messages for driver 88575185-a910-4cf2-b1f7-ba7e0f40324e
+02-13 02:02:51.393 25385 25385 I flutter :   [OK] bus_routes
+02-13 02:02:51.500 25385 25385 I flutter :   [OK] bus_route_stops
+02-13 02:02:51.600 25385 25385 I flutter :   [OK] bus_seat_reservations
+02-13 02:02:51.725 25385 25385 I flutter :   [OK] bus_driver_location
+02-13 02:02:51.833 25385 25385 I flutter :   [OK] bus_events
+02-13 02:02:51.930 25385 25385 I flutter :   [OK] bus_messages
+02-13 02:02:52.032 25385 25385 I flutter :   [OK] bus_calls
+02-13 02:02:52.136 25385 25385 I flutter :   [OK] organizers
+02-13 02:02:52.231 25385 25385 I flutter :   [OK] organizer_credit_accounts
+02-13 02:02:52.319 25385 25385 I flutter :   [OK] organizer_weekly_statements
+02-13 02:02:52.413 25385 25385 I flutter :   [OK] drivers
+02-13 02:02:52.495 25385 25385 I flutter :   [OK] profiles
+02-13 02:02:52.495 25385 25385 I flutter : ───────────────────────────────────────────────────
+02-13 02:02:52.495 25385 25385 I flutter :   RESULT: 23 passed, 1 failed
+02-13 02:02:52.495 25385 25385 I flutter : ═══════════════════════════════════════════════════
+02-13 02:02:54.721 25385 25385 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 02:02:54.892 25385 25385 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 02:02:55.006 25385 25385 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 02:02:55.142 25385 25385 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 02:02:55.394 25385 25385 I flutter : POLL: Found 0 available rides
+02-13 02:03:00.007 25385 25385 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 02:03:00.152 25385 25385 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 02:03:00.774 25385 25385 I flutter : POLL: Found 0 available rides
+02-13 02:03:05.004 25385 25385 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 02:03:05.172 25385 25385 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 02:03:05.589 25385 25385 I flutter : POLL: Found 0 available rides
+02-13 02:03:10.007 25385 25385 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 02:03:10.160 25385 25385 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 02:03:10.843 25385 25385 I flutter : POLL: Found 0 available rides
+02-13 02:03:15.004 25385 25385 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 02:03:15.148 25385 25385 I flutter : RIDES_QUERY: Found 1 pending deliveries
+02-13 02:03:17.129 25385 25385 I flutter : [AUTH] onAuthStateChange: event=AuthChangeEvent.signedOut, session=false, status=AuthStatus.authenticated, initialResolved=true
+02-13 02:03:17.406 25385 25385 I flutter : POLL: Found 1 available rides
+02-13 02:03:20.005 25385 25385 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 02:03:20.220 25385 25385 I flutter : RIDES_QUERY: Found 0 pending deliveries
+02-13 02:03:20.502 25385 25385 I flutter : POLL: Found 0 available rides
+02-13 02:03:25.004 25385 25385 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 02:03:25.650 25385 25385 I flutter : RIDES_QUERY: Found 0 pending deliveries
+02-13 02:03:25.856 25385 25385 I flutter : POLL: Found 0 available rides
+02-13 02:03:30.004 25385 25385 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 02:03:35.004 25385 25385 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 02:03:35.031 25385 25385 I flutter : RIDES_QUERY: Found 0 pending deliveries
+02-13 02:03:35.168 25385 25385 I flutter : RIDES_QUERY: Found 0 pending deliveries
+02-13 02:03:35.218 25385 25385 I flutter : POLL: Found 0 available rides
+02-13 02:03:35.353 25385 25385 I flutter : POLL: Found 0 available rides
+02-13 02:03:40.005 25385 25385 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 02:03:40.150 25385 25385 I flutter : RIDES_QUERY: Found 0 pending deliveries
+02-13 02:03:40.355 25385 25385 I flutter : POLL: Found 0 available rides
+02-13 02:03:45.015 25385 25385 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 02:03:50.018 25385 25385 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 02:03:50.039 25385 25385 I flutter : RIDES_QUERY: Found 0 pending deliveries
+02-13 02:03:50.121 25385 25385 I flutter : RIDES_QUERY: Found 0 pending deliveries
+02-13 02:03:50.253 25385 25385 I flutter : POLL: Found 0 available rides
+02-13 02:03:50.322 25385 25385 I flutter : POLL: Found 0 available rides
+02-13 02:03:55.004 25385 25385 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 02:03:55.151 25385 25385 I flutter : RIDES_QUERY: Found 0 pending deliveries
+02-13 02:03:55.437 25385 25385 I flutter : POLL: Found 0 available rides
+02-13 02:04:00.007 25385 25385 I flutter : RIDES_QUERY: Fetching pending deliveries...
+02-13 02:04:03.184 25385 25385 I flutter : RIDES_QUERY: Found 0 pending deliveries
+02-13 02:04:03.522 25385 25385 I flutter : POLL: Found 0 available rides
+02-13 02:04:37.561 28032 28165 I flutter : [IMPORTANT:flutter/shell/platform/android/android_context_vk_impeller.cc(62)] Using the Impeller rendering backend (Vulkan).
+02-13 02:04:38.442 28032 28032 I flutter : [MAIN] start at 0ms
+02-13 02:04:38.457 28032 28032 I flutter : [MAIN] binding done at 18ms
+02-13 02:04:38.533 28032 28032 I flutter : [MAIN] EasyLocalization done at 93ms
+02-13 02:04:38.533 28032 28032 I flutter : [MAIN] runApp at 93ms
+02-13 02:04:38.615 28032 28032 I flutter : [WRAPPER] initState at 176ms
+02-13 02:04:38.616 28032 28032 I flutter : [WRAPPER] services START at 176ms
+02-13 02:04:38.616 28032 28032 I flutter : [SPLASH] initState at 0ms
+02-13 02:04:38.711 28032 28032 I flutter : [SPLASH] FIRST frame at 94ms wall
+02-13 02:04:38.796 28032 28032 I flutter : [SPLASH] text at 181ms smooth (frame 5, delta=33ms)
+02-13 02:04:38.851 28032 28032 I flutter : [SERVICES] Firebase done at 235ms
+02-13 02:04:38.959 28032 28422 I flutter : [IMPORTANT:flutter/shell/platform/android/android_context_vk_impeller.cc(62)] Using the Impeller rendering backend (Vulkan).
+02-13 02:04:39.027 28032 28032 I flutter : [SPLASH] scan at 409ms smooth (frame 15, delta=16ms)
+02-13 02:04:39.345 28032 28032 I flutter : [KEYSTORE] Health check passed
+02-13 02:04:39.347 28032 28032 I flutter : [SERVICES] Supabase done at 731ms
+02-13 02:04:39.347 28032 28032 I flutter : [SERVICES] CRITICAL done at 731ms
+02-13 02:04:42.557 28032 28032 I flutter : [SPLASH] intro COMPLETE at 3510ms smooth (frame 172, 3940ms wall)
+02-13 02:04:44.120 28032 28032 I flutter : [WRAPPER] ready at 5680ms
+02-13 02:04:44.120 28032 28032 I flutter : [SPLASH] exit TRIGGERED at 5503ms (introComplete=true)
+02-13 02:04:44.120 28032 28032 I flutter : [SPLASH] exit fade started at 5503ms
+02-13 02:04:44.127 28032 28032 I flutter : [BG_SERVICES] Mapbox done at 6ms
+02-13 02:04:44.139 28032 28032 I flutter : 📱 VersionCheck: App v1.2.0+4010 (android)
+02-13 02:04:44.139 28032 28032 I flutter : [BG_SERVICES] VersionCheck done at 18ms
+02-13 02:04:44.295 28032 28032 I flutter : STATE_VALIDATOR -> Current: v1.2.0+4010, Last: vnull+null
+02-13 02:04:44.295 28032 28032 I flutter : STATE_VALIDATOR -> Version changed! Clearing stale state...
+02-13 02:04:44.302 28032 28032 I flutter : [BG_SERVICES] PaymentService done at 182ms
+02-13 02:04:44.307 28032 28032 I flutter : [BG_SERVICES] HapticService done at 186ms
+02-13 02:04:44.308 28032 28032 I flutter : [BG_SERVICES] BackgroundLocation done at 188ms
+02-13 02:04:44.318 28032 28032 I flutter : STATE_VALIDATOR -> Cleared 7 stale keys
+02-13 02:04:44.322 28032 28032 I flutter : [BG_SERVICES] NotificationService done at 201ms
+02-13 02:04:44.322 28032 28032 I flutter : STATE_VALIDATOR -> Not logged in, skipping server validation
+02-13 02:04:44.322 28032 28032 I flutter : [BG_SERVICES] AppStateValidator done at 201ms
+02-13 02:04:44.322 28032 28032 I flutter : [BG_SERVICES] ALL DONE at 201ms
+02-13 02:04:44.552 28032 28032 I flutter : [SPLASH] onComplete at 5935ms
+02-13 02:04:44.552 28032 28032 I flutter : [WRAPPER] onComplete → AuthWrapper at 6113ms
+02-13 02:04:44.563 28032 28032 I flutter : [AUTH] onAuthStateChange: event=AuthChangeEvent.initialSession, session=false, status=AuthStatus.initial, initialResolved=false
+02-13 02:04:44.811 28032 28032 I flutter : ⚠️ VersionCheck error: PostgrestException(message: Could not find the function public.check_app_version(p_app_name, p_build_number, p_platform, p_version) in the schema cache, code: PGRST202, details: Searched for the function public.check_app_version with parameters p_app_name, p_build_number, p_platform, p_version or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache., hint: Perhaps you meant to call the function public.check_driver_compliance)
+02-13 02:05:06.418 29322 29393 I flutter : [IMPORTANT:flutter/shell/platform/android/android_context_vk_impeller.cc(62)] Using the Impeller rendering backend (Vulkan).
+02-13 02:05:06.867 29322 29322 I flutter : [MAIN] start at 0ms
+02-13 02:05:06.879 29322 29322 I flutter : [MAIN] binding done at 14ms
+02-13 02:05:06.888 29322 29322 I flutter : [MAIN] EasyLocalization done at 23ms
+02-13 02:05:06.888 29322 29322 I flutter : [MAIN] runApp at 23ms
+02-13 02:05:06.940 29322 29322 I flutter : [WRAPPER] initState at 75ms
+02-13 02:05:06.940 29322 29322 I flutter : [WRAPPER] services START at 75ms
+02-13 02:05:06.941 29322 29322 I flutter : [SPLASH] initState at 0ms
+02-13 02:05:06.969 29322 29322 I flutter : [SPLASH] FIRST frame at 28ms wall
+02-13 02:05:07.102 29322 29322 I flutter : [SPLASH] text at 164ms smooth (frame 6, delta=16ms)
+02-13 02:05:07.104 29322 29322 I flutter : [SERVICES] Firebase done at 163ms
+02-13 02:05:07.165 29322 29469 I flutter : [IMPORTANT:flutter/shell/platform/android/android_context_vk_impeller.cc(62)] Using the Impeller rendering backend (Vulkan).
+02-13 02:05:07.241 29322 29322 I flutter : [KEYSTORE] Health check passed
+02-13 02:05:07.247 29322 29322 I flutter : [SERVICES] Supabase done at 307ms
+02-13 02:05:07.247 29322 29322 I flutter : [SERVICES] CRITICAL done at 307ms
+02-13 02:05:07.356 29322 29322 I flutter : [SPLASH] scan at 406ms smooth (frame 18, delta=16ms)
+02-13 02:05:10.638 29322 29322 I flutter : [SPLASH] intro COMPLETE at 3513ms smooth (frame 188, 3697ms wall)
+02-13 02:05:12.442 29322 29322 I flutter : [WRAPPER] ready at 5577ms
+02-13 02:05:12.442 29322 29322 I flutter : [SPLASH] exit TRIGGERED at 5501ms (introComplete=true)
+02-13 02:05:12.443 29322 29322 I flutter : [SPLASH] exit fade started at 5501ms
+02-13 02:05:12.455 29322 29322 I flutter : [BG_SERVICES] Mapbox done at 11ms
+02-13 02:05:12.479 29322 29322 I flutter : 📱 VersionCheck: App v1.2.0+4010 (android)
+02-13 02:05:12.479 29322 29322 I flutter : [BG_SERVICES] VersionCheck done at 35ms
+02-13 02:05:12.641 29322 29322 I flutter : STATE_VALIDATOR -> Current: v1.2.0+4010, Last: v1.2.0+4010
+02-13 02:05:12.641 29322 29322 I flutter : STATE_VALIDATOR -> Not logged in, skipping server validation
+02-13 02:05:12.641 29322 29322 I flutter : [BG_SERVICES] AppStateValidator done at 198ms
+02-13 02:05:12.642 29322 29322 I flutter : [BG_SERVICES] PaymentService done at 198ms
+02-13 02:05:12.646 29322 29322 I flutter : [BG_SERVICES] HapticService done at 203ms
+02-13 02:05:12.647 29322 29322 I flutter : [BG_SERVICES] BackgroundLocation done at 204ms
+02-13 02:05:12.677 29322 29322 I flutter : [BG_SERVICES] NotificationService done at 233ms
+02-13 02:05:12.677 29322 29322 I flutter : [BG_SERVICES] ALL DONE at 233ms
+02-13 02:05:12.870 29322 29322 I flutter : [SPLASH] onComplete at 5929ms
+02-13 02:05:12.870 29322 29322 I flutter : [WRAPPER] onComplete → AuthWrapper at 6005ms
+02-13 02:05:12.882 29322 29322 I flutter : [AUTH] onAuthStateChange: event=AuthChangeEvent.initialSession, session=false, status=AuthStatus.initial, initialResolved=false

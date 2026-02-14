@@ -1,0 +1,898 @@
+================================================================================
+TORO DRIVER - TODOS LOS CONTRATOS Y DOCUMENTOS LEGALES
+Extraido de: lib/src/core/legal/legal_documents.dart
+Fecha de extraccion: 9 de Febrero 2026
+================================================================================
+
+
+================================================================================
+DOCUMENTO 1: TERMS AND CONDITIONS OF SERVICE
+Version 1.0 | Effective Date: January 2025
+================================================================================
+
+PLEASE READ THESE TERMS CAREFULLY BEFORE USING TORO DRIVER.
+
+By accessing or using the Toro Driver application ("App"), you agree to be bound
+by these Terms and Conditions ("Terms"). If you do not agree to these Terms,
+do not use the App.
+
+--------------------------------------------------------------------------------
+1. ACCEPTANCE OF TERMS
+--------------------------------------------------------------------------------
+
+By creating an account, accessing, or using Toro Driver, you acknowledge that you
+have read, understood, and agree to be bound by these Terms, our Privacy Policy,
+Driver Agreement, and all applicable laws and regulations.
+
+--------------------------------------------------------------------------------
+2. DESCRIPTION OF SERVICE
+--------------------------------------------------------------------------------
+
+Toro Driver is a technology platform that connects independent third-party service
+providers ("Drivers") with users seeking transportation and delivery services.
+
+TORO DRIVER:
+- Provides a technology platform to facilitate connections
+- Does NOT employ Drivers - you are an independent contractor
+- Does NOT control how you perform services
+- Does NOT guarantee minimum earnings
+
+--------------------------------------------------------------------------------
+3. ELIGIBILITY REQUIREMENTS
+--------------------------------------------------------------------------------
+
+To use Toro Driver as a Driver, you must:
+- Be at least 21 years of age
+- Have a valid driver's license for at least 1 year
+- Pass a background check and driving record review
+- Have valid auto insurance meeting minimum requirements
+- Have a vehicle that meets our safety and age requirements
+- Have the legal right to work in your jurisdiction
+- Maintain accurate and complete registration information
+
+--------------------------------------------------------------------------------
+4. DRIVER RESPONSIBILITIES
+--------------------------------------------------------------------------------
+
+As a Driver, you agree to:
+- Provide safe, professional transportation services
+- Maintain your vehicle in safe operating condition
+- Comply with all traffic laws and regulations
+- Maintain valid insurance and registration
+- Complete services in a timely manner
+- Treat riders and other users with respect
+- Not use the service while impaired
+- Keep your account information current
+
+--------------------------------------------------------------------------------
+5. INDEPENDENT CONTRACTOR STATUS
+--------------------------------------------------------------------------------
+
+YOU ACKNOWLEDGE AND AGREE THAT:
+- You are an independent contractor, NOT an employee
+- You control when, where, and how you provide services
+- You can accept or decline any service request
+- You can use other platforms simultaneously
+- You are responsible for your own taxes
+- You are not entitled to employee benefits
+- This relationship does not create an agency or partnership
+
+--------------------------------------------------------------------------------
+6. PAYMENT TERMS
+--------------------------------------------------------------------------------
+
+- Payments are calculated based on distance, time, and service type
+- Toro Driver deducts a platform fee from each fare
+- Payments are processed weekly via direct deposit
+- Tips are 100% yours and paid out separately
+- You are responsible for reporting income and paying taxes
+- Disputes must be raised within 30 days
+
+--------------------------------------------------------------------------------
+7. VEHICLE AND INSURANCE REQUIREMENTS
+--------------------------------------------------------------------------------
+
+You must maintain:
+- A vehicle no older than 10 years (varies by service type)
+- Valid vehicle registration and inspection
+- Auto insurance meeting or exceeding state minimums
+- Commercial insurance if required in your jurisdiction
+- All required permits and licenses
+
+--------------------------------------------------------------------------------
+8. DEACTIVATION
+--------------------------------------------------------------------------------
+
+Toro Driver may deactivate your account for:
+- Violation of these Terms or community guidelines
+- Low ratings that fall below acceptable thresholds
+- Safety concerns or complaints
+- Failed background or driving record checks
+- Fraudulent activity or dishonesty
+- Inactivity for extended periods
+
+--------------------------------------------------------------------------------
+9. LIMITATION OF LIABILITY
+--------------------------------------------------------------------------------
+
+TO THE MAXIMUM EXTENT PERMITTED BY LAW:
+- Toro Driver is not liable for actions between Drivers and riders
+- Toro Driver is not liable for indirect or consequential damages
+- Total liability shall not exceed fees paid in the past 12 months
+- You agree to indemnify Toro Driver against third-party claims
+
+--------------------------------------------------------------------------------
+10. DISPUTE RESOLUTION
+--------------------------------------------------------------------------------
+
+- Disputes shall be resolved through binding arbitration
+- Class action lawsuits are waived
+- Disputes must be brought within one year
+- You may opt out of arbitration within 30 days of registration
+
+--------------------------------------------------------------------------------
+11. GOVERNING LAW
+--------------------------------------------------------------------------------
+
+These Terms shall be governed by the laws of the State of California, USA,
+without regard to conflict of law principles.
+
+--------------------------------------------------------------------------------
+12. CONTACT INFORMATION
+--------------------------------------------------------------------------------
+
+For questions about these Terms, contact us at:
+Email: legal@toro-ride.com
+Driver Support: drivers@toro-ride.com
+Address: Los Angeles, California, USA
+
+================================================================================
+END OF TERMS AND CONDITIONS
+================================================================================
+
+
+
+================================================================================
+DOCUMENTO 2: PRIVACY POLICY
+Version 1.0 | Effective Date: January 2025
+================================================================================
+
+Your privacy is critically important to us. This Privacy Policy explains how
+Toro Driver ("we," "our," or "us") collects, uses, and protects your personal
+information as a Driver on our platform.
+
+--------------------------------------------------------------------------------
+1. INFORMATION WE COLLECT
+--------------------------------------------------------------------------------
+
+A. INFORMATION YOU PROVIDE:
+- Account information (name, email, phone number, address)
+- Identity documents (driver's license, photo ID)
+- Vehicle information (make, model, year, registration, insurance)
+- Payment information (bank account for deposits)
+- Background check consent and information
+- Profile photo
+
+B. INFORMATION COLLECTED AUTOMATICALLY:
+- Location data (GPS tracking during active rides)
+- Trip data (routes, duration, distance)
+- Device information (model, OS, unique identifiers)
+- App usage data and interaction patterns
+- Vehicle telematics (if enabled)
+
+C. INFORMATION FROM THIRD PARTIES:
+- Background check results
+- Driving record information
+- Insurance verification
+- Identity verification results
+
+--------------------------------------------------------------------------------
+2. HOW WE USE YOUR INFORMATION
+--------------------------------------------------------------------------------
+
+We use your information to:
+- Verify your identity and eligibility
+- Connect you with riders seeking services
+- Process payments and tax documentation
+- Ensure safety and security of our platform
+- Improve our services and app experience
+- Communicate important updates
+- Comply with legal and regulatory requirements
+- Investigate incidents and resolve disputes
+
+--------------------------------------------------------------------------------
+3. LOCATION DATA
+--------------------------------------------------------------------------------
+
+We collect precise location data to:
+- Match you with nearby ride requests
+- Provide navigation and routing
+- Calculate accurate fares and distances
+- Ensure rider safety (share location with riders)
+- Investigate incidents and disputes
+- Comply with regulatory requirements
+
+Location is tracked when you are online/available.
+You can go offline to stop location tracking.
+
+--------------------------------------------------------------------------------
+4. DATA SHARING AND DISCLOSURE
+--------------------------------------------------------------------------------
+
+We may share your information with:
+
+A. RIDERS:
+- First name and profile photo
+- Vehicle information (make, model, color, plate)
+- Real-time location during rides
+- Rating and review history
+
+B. SERVICE PROVIDERS:
+- Background check companies
+- Payment processors
+- Insurance verification services
+- Cloud hosting providers
+- Analytics and support tools
+
+C. LEGAL REQUIREMENTS:
+- When required by law, subpoena, or court order
+- To protect rights, safety, or property
+- To investigate potential violations
+
+D. BUSINESS TRANSFERS:
+- In connection with merger, acquisition, or sale
+
+WE DO NOT SELL YOUR PERSONAL INFORMATION.
+
+--------------------------------------------------------------------------------
+5. DATA SECURITY
+--------------------------------------------------------------------------------
+
+We implement industry-standard security measures:
+- Encryption of data in transit and at rest
+- Regular security audits and testing
+- Access controls and authentication
+- Employee training on data protection
+- Incident response procedures
+
+--------------------------------------------------------------------------------
+6. DATA RETENTION
+--------------------------------------------------------------------------------
+
+We retain your data for:
+- Active accounts: As long as you remain active
+- Trip records: 7 years for tax and legal compliance
+- Background check data: As required by law
+- After deactivation: 90 days, then anonymized/deleted
+
+--------------------------------------------------------------------------------
+7. YOUR RIGHTS
+--------------------------------------------------------------------------------
+
+You have the right to:
+- ACCESS: Request a copy of your personal data
+- CORRECT: Update inaccurate information
+- DELETE: Request deletion of your account and data
+- OPT-OUT: Control marketing communications
+- PORTABILITY: Receive your data in portable format
+- RESTRICT: Limit how we process your data
+
+To exercise these rights, contact privacy@toro-ride.com
+
+--------------------------------------------------------------------------------
+8. CALIFORNIA PRIVACY RIGHTS (CCPA)
+--------------------------------------------------------------------------------
+
+California residents have additional rights:
+- Right to know what personal information is collected
+- Right to delete personal information
+- Right to opt-out of sale of personal information
+- Right to non-discrimination for exercising privacy rights
+
+--------------------------------------------------------------------------------
+9. CONTACT US
+--------------------------------------------------------------------------------
+
+For privacy-related inquiries:
+Email: privacy@toro-ride.com
+Driver Support: drivers@toro-ride.com
+Address: Los Angeles, California, USA
+
+================================================================================
+END OF PRIVACY POLICY
+================================================================================
+
+
+
+================================================================================
+DOCUMENTO 3: INDEPENDENT CONTRACTOR AGREEMENT
+Version 1.0 | Effective Date: January 2025
+================================================================================
+
+This Independent Contractor Agreement ("Agreement") is between you ("Driver,"
+"Contractor," or "you") and Toro Driver LLC ("Company," "we," or "us").
+
+--------------------------------------------------------------------------------
+1. INDEPENDENT CONTRACTOR RELATIONSHIP
+--------------------------------------------------------------------------------
+
+A. STATUS:
+You are an independent contractor, NOT an employee of Toro Driver. Nothing in
+this Agreement creates an employment, agency, joint venture, or partnership
+relationship.
+
+B. CONTROL:
+You retain complete control over:
+- When you choose to be available on the platform
+- Whether to accept or decline any service request
+- The manner in which you provide services
+- Your work schedule and hours
+- Use of other platforms or services
+
+C. NO EXCLUSIVITY:
+You are free to provide services through other platforms, apps, or businesses
+at any time, including while using the Toro Driver platform.
+
+--------------------------------------------------------------------------------
+2. SERVICE REQUIREMENTS
+--------------------------------------------------------------------------------
+
+When providing services through the platform, you agree to:
+- Provide safe, professional transportation
+- Follow all applicable traffic laws
+- Maintain your vehicle in safe condition
+- Not operate while impaired by drugs or alcohol
+- Treat all riders with respect and courtesy
+- Complete accepted trips unless safety concerns arise
+
+--------------------------------------------------------------------------------
+3. VEHICLE AND EQUIPMENT
+--------------------------------------------------------------------------------
+
+You are responsible for providing and maintaining:
+- A qualifying vehicle that meets our standards
+- Valid registration and inspection
+- Adequate auto insurance coverage
+- Any necessary permits or licenses
+- A compatible smartphone device
+- All fuel, maintenance, and repair costs
+
+--------------------------------------------------------------------------------
+4. BACKGROUND CHECK AND SCREENING
+--------------------------------------------------------------------------------
+
+You consent to and must pass:
+- Criminal background check
+- Motor vehicle record check
+- Identity verification
+- Insurance verification
+- Ongoing periodic re-screening
+
+--------------------------------------------------------------------------------
+5. PAYMENT AND FEES
+--------------------------------------------------------------------------------
+
+A. FARE CALCULATION:
+Fares are calculated by the platform based on distance, time, and service type.
+The platform retains a service fee from each fare.
+
+B. PAYMENT SCHEDULE:
+Payments are processed weekly via direct deposit to your designated account.
+Express pay options may be available for a fee.
+
+C. TAXES:
+You are responsible for all applicable taxes. You will receive a 1099 form
+if you earn above the IRS threshold.
+
+--------------------------------------------------------------------------------
+6. INSURANCE REQUIREMENTS
+--------------------------------------------------------------------------------
+
+You must maintain auto insurance that meets or exceeds:
+- State minimum liability coverage
+- Any additional coverage required by local regulations
+- Commercial coverage if required in your jurisdiction
+
+Toro Driver provides contingent liability coverage that applies during active
+trips when your personal insurance does not cover rideshare activities.
+
+--------------------------------------------------------------------------------
+7. CONFIDENTIALITY
+--------------------------------------------------------------------------------
+
+You agree not to disclose confidential information including:
+- Rider personal information
+- Platform pricing algorithms
+- Business strategies and plans
+- Technical or trade secrets
+
+--------------------------------------------------------------------------------
+8. TERMINATION
+--------------------------------------------------------------------------------
+
+Either party may terminate this Agreement at any time for any reason.
+Toro Driver may deactivate your account immediately for safety violations,
+fraudulent activity, or material breach of this Agreement.
+
+--------------------------------------------------------------------------------
+9. DISPUTE RESOLUTION
+--------------------------------------------------------------------------------
+
+All disputes arising from this Agreement shall be resolved through binding
+arbitration in accordance with the Terms and Conditions.
+
+--------------------------------------------------------------------------------
+10. ACKNOWLEDGMENT
+--------------------------------------------------------------------------------
+
+By accepting this Agreement, you acknowledge that:
+- You have read and understood all terms
+- You are voluntarily entering into this Agreement
+- You understand your independent contractor status
+- You waive any claims to employee benefits
+- You are responsible for your own taxes and expenses
+
+================================================================================
+END OF INDEPENDENT CONTRACTOR AGREEMENT
+================================================================================
+
+
+
+================================================================================
+DOCUMENTO 4: SAFETY POLICY AGREEMENT
+Version 1.0 | Effective Date: January 2025
+================================================================================
+
+This Safety Policy Agreement ("Policy") outlines the safety standards and
+requirements that all Drivers must follow while using the Toro Driver platform.
+
+--------------------------------------------------------------------------------
+1. ZERO TOLERANCE POLICY
+--------------------------------------------------------------------------------
+
+Toro Driver maintains a ZERO TOLERANCE policy for the following:
+
+A. SUBSTANCE IMPAIRMENT:
+- No driving under the influence of alcohol
+- No driving under the influence of drugs (legal or illegal)
+- No use of impairing substances while on active duty
+- No open containers of alcohol in the vehicle
+
+B. VIOLENCE AND HARASSMENT:
+- No physical violence or threats of violence
+- No sexual harassment or inappropriate conduct
+- No verbal abuse or intimidation
+- No discrimination of any kind
+
+C. DANGEROUS DRIVING:
+- No excessive speeding (15+ mph over limit)
+- No reckless driving or street racing
+- No use of mobile devices while driving (except GPS)
+- No driving while fatigued beyond safe limits
+
+VIOLATION RESULTS IN IMMEDIATE AND PERMANENT DEACTIVATION.
+
+--------------------------------------------------------------------------------
+2. VEHICLE SAFETY REQUIREMENTS
+--------------------------------------------------------------------------------
+
+Before each shift, you must ensure:
+
+A. VEHICLE CONDITION:
+- All lights functioning (headlights, brake lights, turn signals)
+- Tires properly inflated with adequate tread
+- Brakes functioning properly
+- Mirrors properly adjusted
+- Windshield clean and unobstructed
+- Seatbelts functioning for all passengers
+
+B. CLEANLINESS:
+- Interior clean and free of debris
+- No offensive odors
+- Air conditioning/heating functional
+- No hazardous materials in vehicle
+
+C. EQUIPMENT:
+- First aid kit recommended
+- Phone charger available
+- Emergency contact information accessible
+
+--------------------------------------------------------------------------------
+3. SAFE DRIVING PRACTICES
+--------------------------------------------------------------------------------
+
+While providing services, you must:
+
+A. FOLLOW TRAFFIC LAWS:
+- Obey all speed limits
+- Stop at all stop signs and red lights
+- Use turn signals for all lane changes
+- Yield to pedestrians
+- Maintain safe following distance
+
+B. DEFENSIVE DRIVING:
+- Anticipate potential hazards
+- Stay alert and focused on the road
+- Avoid distractions
+- Adjust driving for weather conditions
+- Take breaks when fatigued
+
+C. PASSENGER SAFETY:
+- Ensure all passengers wear seatbelts
+- Wait for passengers to be fully seated before moving
+- Assist passengers with accessibility needs
+- Never leave children unattended
+
+--------------------------------------------------------------------------------
+4. INCIDENT REPORTING
+--------------------------------------------------------------------------------
+
+You must immediately report:
+
+- Any accident or collision (no matter how minor)
+- Near-miss incidents
+- Threatening behavior from riders
+- Suspected criminal activity
+- Vehicle breakdowns during active trips
+- Any safety concerns
+
+Report via: App emergency button, email safety@toro-ride.com, or call support.
+
+--------------------------------------------------------------------------------
+5. EMERGENCY PROCEDURES
+--------------------------------------------------------------------------------
+
+A. IN CASE OF ACCIDENT:
+1. Stop immediately and ensure safety
+2. Call 911 if injuries or significant damage
+3. Exchange information with other parties
+4. Document with photos
+5. Report to Toro Driver immediately
+
+B. IN CASE OF THREAT:
+1. Do not escalate the situation
+2. End the trip if safe to do so
+3. Drive to a safe, public location
+4. Call 911 if immediate danger
+5. Report to Toro Driver
+
+C. MEDICAL EMERGENCY:
+1. Pull over safely
+2. Call 911
+3. Provide basic assistance if trained
+4. Stay with the passenger until help arrives
+
+--------------------------------------------------------------------------------
+6. COVID-19 AND HEALTH SAFETY
+--------------------------------------------------------------------------------
+
+During health emergencies, additional requirements may include:
+- Face masks for drivers and passengers
+- Regular vehicle sanitization
+- Health screening before shifts
+- Compliance with local health orders
+
+--------------------------------------------------------------------------------
+7. TRAINING AND CERTIFICATION
+--------------------------------------------------------------------------------
+
+You agree to:
+- Complete all required safety training modules
+- Maintain any required certifications
+- Stay updated on safety policy changes
+- Participate in periodic safety reviews
+
+--------------------------------------------------------------------------------
+8. CONSEQUENCES OF VIOLATIONS
+--------------------------------------------------------------------------------
+
+Safety violations result in:
+
+MINOR VIOLATIONS:
+- Warning and required safety refresher training
+- Temporary suspension pending review
+
+MAJOR VIOLATIONS:
+- Immediate suspension
+- Investigation and review
+- Possible permanent deactivation
+
+ZERO TOLERANCE VIOLATIONS:
+- Immediate and permanent deactivation
+- Report to appropriate authorities if applicable
+
+--------------------------------------------------------------------------------
+9. ACKNOWLEDGMENT
+--------------------------------------------------------------------------------
+
+By signing this Safety Policy Agreement, I acknowledge that:
+
+- I have read and understand all safety requirements
+- I agree to comply with all safety policies
+- I understand the consequences of violations
+- I will report all safety incidents promptly
+- I prioritize the safety of myself, passengers, and the public
+- Violation may result in deactivation and legal consequences
+
+================================================================================
+END OF SAFETY POLICY AGREEMENT
+================================================================================
+
+
+
+================================================================================
+DOCUMENTO 5: BACKGROUND CHECK CONSENT AND AUTHORIZATION
+Version 1.0 | Effective Date: January 2025
+================================================================================
+
+IMPORTANT: PLEASE READ THIS ENTIRE DOCUMENT CAREFULLY BEFORE SIGNING.
+
+This document authorizes Toro Driver LLC and its designated background check
+provider to obtain consumer reports and investigative consumer reports about you.
+
+--------------------------------------------------------------------------------
+1. AUTHORIZATION FOR BACKGROUND CHECK
+--------------------------------------------------------------------------------
+
+I, the undersigned applicant/driver, hereby authorize Toro Driver LLC ("Company")
+and its designated consumer reporting agency to:
+
+A. OBTAIN THE FOLLOWING INFORMATION:
+- Criminal history records (federal, state, and local)
+- Sex offender registry searches
+- Motor vehicle records and driving history
+- Identity verification
+- Social Security Number verification
+- Address history verification
+- Employment verification (if applicable)
+- Education verification (if applicable)
+
+B. SOURCES OF INFORMATION:
+- Federal and state court records
+- Department of Motor Vehicles
+- Law enforcement agencies
+- Public records databases
+- Previous employers (if applicable)
+- Credit bureaus (for identity verification only)
+
+--------------------------------------------------------------------------------
+2. DISCLOSURE OF CONSUMER REPORT
+--------------------------------------------------------------------------------
+
+In accordance with the Fair Credit Reporting Act (FCRA), you are hereby notified:
+
+A. CONSUMER REPORT DISCLOSURE:
+A consumer report and/or investigative consumer report may be obtained for
+employment purposes. This report may contain information about your:
+- Character
+- General reputation
+- Personal characteristics
+- Mode of living
+- Criminal history
+- Driving record
+
+B. NATURE OF INVESTIGATION:
+The investigation may include personal interviews with sources such as your
+neighbors, friends, associates, current and former employers, and others with
+knowledge of you.
+
+--------------------------------------------------------------------------------
+3. YOUR RIGHTS UNDER THE FCRA
+--------------------------------------------------------------------------------
+
+You have the right to:
+
+A. REQUEST DISCLOSURE:
+Request a complete and accurate disclosure of the nature and scope of the
+investigation requested, within 5 business days of your written request.
+
+B. OBTAIN A COPY:
+Receive a free copy of any consumer report obtained if you request it.
+
+C. DISPUTE INFORMATION:
+Dispute the accuracy or completeness of any information in your consumer report.
+
+D. CONTACT THE CONSUMER REPORTING AGENCY:
+The consumer reporting agency that provides the report did not make the decision
+to obtain the report and cannot provide specific reasons for any employment action.
+
+--------------------------------------------------------------------------------
+4. STATE-SPECIFIC RIGHTS
+--------------------------------------------------------------------------------
+
+Residents of certain states have additional rights:
+
+CALIFORNIA RESIDENTS:
+- May request the nature and substance of all information
+- May view the file maintained by the consumer reporting agency
+- Are entitled to receive a free copy of their report
+
+NEW YORK RESIDENTS:
+- May request a copy of any report upon request
+- May inspect the consumer reporting agency's files
+
+Additional state-specific notices are available upon request.
+
+--------------------------------------------------------------------------------
+5. ONGOING AUTHORIZATION
+--------------------------------------------------------------------------------
+
+I understand and agree that:
+
+A. INITIAL AND ONGOING CHECKS:
+This authorization covers background checks:
+- At the time of application
+- Periodically during my engagement with the platform
+- Following any reported incidents
+- As required by law or regulation
+
+B. CONTINUOUS MONITORING:
+Toro Driver may conduct ongoing monitoring of criminal records and driving
+records throughout my engagement with the platform.
+
+--------------------------------------------------------------------------------
+6. CERTIFICATION AND ACKNOWLEDGMENT
+--------------------------------------------------------------------------------
+
+By signing below, I certify that:
+
+[ ] I have carefully read and understand this disclosure and authorization
+[ ] I authorize the background check investigation as described
+[ ] All information I have provided is true, accurate, and complete
+[ ] I understand that falsification may result in denial or termination
+[ ] I release all parties from liability for information provided in good faith
+[ ] I understand I may receive a copy of any report upon written request
+[ ] I acknowledge my rights under the FCRA and applicable state laws
+
+--------------------------------------------------------------------------------
+7. PERSONAL INFORMATION FOR BACKGROUND CHECK
+--------------------------------------------------------------------------------
+
+The following information is required to conduct the background check:
+
+Full Legal Name: ____________________________
+Date of Birth: ____________________________
+Social Security Number: ____________________________
+Driver's License Number: ____________________________
+Driver's License State: ____________________________
+Current Address: ____________________________
+Previous Addresses (7 years): ____________________________
+
+--------------------------------------------------------------------------------
+8. SIGNATURE AND CONSENT
+--------------------------------------------------------------------------------
+
+I HAVE READ THIS DISCLOSURE AND AUTHORIZATION, UNDERSTAND MY RIGHTS, AND
+AUTHORIZE TORO DRIVER LLC TO OBTAIN CONSUMER REPORTS ABOUT ME FOR EMPLOYMENT
+PURPOSES. I UNDERSTAND THAT THIS AUTHORIZATION WILL REMAIN IN EFFECT THROUGHOUT
+MY ENGAGEMENT WITH THE PLATFORM UNLESS I REVOKE IT IN WRITING.
+
+Signature: ____________________________
+Printed Name: ____________________________
+Date: ____________________________
+
+================================================================================
+END OF BACKGROUND CHECK CONSENT AND AUTHORIZATION
+================================================================================
+
+
+
+================================================================================
+DOCUMENTO 6: LIABILITY WAIVER AND RELEASE
+Version 1.0 | Effective Date: January 2025
+================================================================================
+
+PLEASE READ CAREFULLY - THIS AFFECTS YOUR LEGAL RIGHTS
+
+By using the Toro Driver platform as a Driver, you agree to the following
+waiver and release of liability.
+
+--------------------------------------------------------------------------------
+1. ASSUMPTION OF RISK
+--------------------------------------------------------------------------------
+
+You acknowledge and understand that:
+- Driving involves inherent risks including accidents and injuries
+- You may encounter difficult or dangerous situations
+- Weather, traffic, and road conditions create risks
+- Interactions with riders may present risks
+- You voluntarily assume all such risks
+
+--------------------------------------------------------------------------------
+2. RELEASE OF LIABILITY
+--------------------------------------------------------------------------------
+
+To the fullest extent permitted by law, you release and discharge Toro Driver,
+its officers, directors, employees, agents, and affiliates from any and all
+claims, demands, damages, costs, expenses, and causes of action arising from:
+
+- Your use of the platform or provision of services
+- Accidents, injuries, or property damage
+- Interactions with riders or third parties
+- Lost income or business opportunities
+- Any other loss or damage of any kind
+
+--------------------------------------------------------------------------------
+3. INDEMNIFICATION
+--------------------------------------------------------------------------------
+
+You agree to indemnify, defend, and hold harmless Toro Driver from any claims,
+damages, losses, and expenses (including legal fees) arising from:
+
+- Your breach of any terms or agreements
+- Your negligent or wrongful acts
+- Your violation of any law or regulation
+- Any claim by a third party related to your services
+- Your failure to maintain adequate insurance
+
+--------------------------------------------------------------------------------
+4. LIMITATION OF DAMAGES
+--------------------------------------------------------------------------------
+
+IN NO EVENT SHALL TORO DRIVER BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL,
+CONSEQUENTIAL, OR PUNITIVE DAMAGES, INCLUDING BUT NOT LIMITED TO LOST PROFITS,
+LOST DATA, OR BUSINESS INTERRUPTION.
+
+--------------------------------------------------------------------------------
+5. ACKNOWLEDGMENT
+--------------------------------------------------------------------------------
+
+I HAVE READ THIS WAIVER AND RELEASE, FULLY UNDERSTAND ITS TERMS, AND SIGN IT
+FREELY AND VOLUNTARILY. I UNDERSTAND THAT I AM GIVING UP SUBSTANTIAL RIGHTS,
+INCLUDING THE RIGHT TO SUE.
+
+================================================================================
+END OF LIABILITY WAIVER
+================================================================================
+
+
+
+================================================================================
+INFORMACION ADICIONAL DEL SISTEMA LEGAL
+================================================================================
+
+ARCHIVO: lib/src/core/legal/legal_constants.dart
+
+Versiones actuales:
+- Terms and Conditions: v1.0
+- Privacy Policy: v1.0
+- Liability Waiver: v1.0
+- Damage Policy: v1.0
+- Recording Consent: v1.0
+- Legal Bundle: 2025.01.01.1
+
+Entidad Legal:
+- Nombre: TORO DRIVER LLC
+- Jurisdiccion: State of Delaware, United States
+- Email legal: legal@toro-ride.com
+- Email privacidad: privacy@toro-ride.com
+- Email soporte: drivers@toro-ride.com
+
+Configuracion de consentimiento:
+- Scroll minimo requerido: 95%
+- Aceptacion separada por documento: No
+- Log al servidor: Si
+- Periodo de gracia: 0 dias (inmediato)
+
+================================================================================
+
+ARCHIVO: lib/src/core/legal/consent_record.dart
+
+Tipos de documentos legales registrados:
+1. terms_and_conditions - Terms and Conditions / Terminos y Condiciones
+2. privacy_policy - Privacy Policy / Politica de Privacidad
+3. liability_waiver - Liability Waiver / Exoneracion de Responsabilidad
+4. damage_policy - Damage Policy / Politica de Danos
+5. recording_consent - Recording Consent / Consentimiento de Grabacion
+6. data_processing - Data Processing / Procesamiento de Datos
+7. location_consent - Location Consent / Consentimiento de Ubicacion
+8. arbitration_agreement - Arbitration Agreement / Acuerdo de Arbitraje
+9. driver_agreement - Driver Agreement / Acuerdo del Conductor
+10. background_check - Background Check Consent / Consentimiento de Verificacion
+
+Estados con consentimiento de dos partes (grabacion):
+CA, CT, FL, IL, MD, MA, MI, MT, NV, NH, PA, WA
+
+================================================================================
+FIN DEL DOCUMENTO
+================================================================================

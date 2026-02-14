@@ -54,8 +54,12 @@ android {
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName("release")
-            isMinifyEnabled = false
-            isShrinkResources = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 
@@ -80,6 +84,9 @@ flutter {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+
+    // Firebase Messaging - needed for native ToroFirebaseMessagingService
+    implementation("com.google.firebase:firebase-messaging:24.1.0")
 
     // Mapbox Navigation SDK - COMENTADO (requiere suscripción de pago)
     // Usamos REST API de Mapbox Directions que es GRATUITA

@@ -13,10 +13,9 @@ class AppLogger {
 
   static void error(String message, [Object? error, StackTrace? stackTrace]) {
     if (kDebugMode) {
-      final timestamp = DateTime.now().toIso8601String();
-      // print('[$timestamp] ERROR: $message');
-      if (error != null) print('  Error: $error');
-      if (stackTrace != null) print('  StackTrace: $stackTrace');
+      debugPrint('[ERROR] $message');
+      if (error != null) debugPrint('  Error: $error');
+      if (stackTrace != null) debugPrint('  StackTrace: $stackTrace');
     }
   }
 }

@@ -1,0 +1,452 @@
+================================================================================
+QUÉ FALTA PARA CONTROL TOTAL DE MÉXICO EN ADMIN WEB
+================================================================================
+Fecha: 30 Enero 2026
+Análisis basado en investigación completa del admin web
+
+================================================================================
+ESTADO ACTUAL - QUÉ YA EXISTE
+================================================================================
+
+✅ BACKEND (Supabase):
+   - 6 migrations aplicadas (004-009)
+   - Tablas: countries, mexican_states, fx_rates, driver_documents_mx,
+     tax_retentions, tax_monthly_summary, cfdi_invoices, pricing_zones_mx, etc.
+   - 5 Edge Functions deployadas: pricing-quote-mx, fx-refresh,
+     calculate-tax-retention, generate-cfdi, validate-driver-mx
+
+✅ DRIVER APP (toro_driver):
+   - mexico_documents_screen.dart (driver sube sus documentos)
+   - mexico_tax_screen.dart (driver ve sus retenciones)
+   - mexico_invoices_screen.dart (driver solicita CFDIs)
+   - 4 servicios: mexico_documents, mexico_tax, mexico_pricing, mexico_cfdi
+
+✅ ADMIN WEB (toro):
+   - admin_mexico_pricing_screen.dart (zonas y reglas de pricing MX)
+   - Ruta: /admin/mexico-pricing
+
+✅ RIDER APP (toro):
+   - mexico_invoice_screen.dart (rider solicita facturas)
+   - Ruta: /mexico-invoices
+
+
+================================================================================
+LO QUE FALTA - ADMIN WEB PARA CONTROL TOTAL MX
+================================================================================
+
+## 1. ADMIN MEXICO DOCUMENTS SCREEN ⚠️ CRÍTICO
+--------------------------------------------------------------------------------
+PROPÓSITO: Ver y gestionar documentos de TODOS los drivers mexicanos
+
+FUNCIONALIDAD NECESARIA:
+- Lista de drivers mexicanos con status de documentos
+- Filtros: estado de verificación (pendiente, aprobado, rechazado, expirado)
+- Filtros: tipo de documento (INE, RFC, Licencia E1, Tarjetón, Seguro ERT)
+- Vista detallada de documentos con imágenes
+- Acciones: Aprobar, Rechazar, Solicitar recarga
+- KPIs:
+  * Total drivers MX
+  * Documentos pendientes de verificación
+  * Documentos por expirar (próximos 30 días)
+  * Documentos expirados
+  * Tasa de aprobación
+- Alertas de documentos críticos
+- Export CSV de status de documentos
+- Búsqueda por driver name, email, RFC
+
+INTEGRACIÓN:
+- Tabla: driver_documents_mx
+- Edge Function: validate-driver-mx
+
+RUTA SUGERIDA: /admin/mexico/documents
+
+
+## 2. ADMIN MEXICO TAX SCREEN ⚠️ CRÍTICO
+--------------------------------------------------------------------------------
+PROPÓSITO: Ver y gestionar retenciones de impuestos ISR/IVA de drivers MX
+
+FUNCIONALIDAD NECESARIA:
+- Lista de retenciones por driver
+- Filtros: periodo (mes/año), driver, estado (calculado, pagado, pendiente)
+- KPIs:
+  * Total retenciones ISR este mes
+  * Total retenciones IVA este mes
+  * Drivers con RFC (tasa 2.5%)
+  * Drivers sin RFC (tasa 20%)
+  * Total a pagar a SAT
+- Vista mensual consolidada
+- Vista por driver individual
+- Descargar constancias de retención (PDF)
+- Export para contabilidad
+- Gráficas de tendencias de retenciones
+- Calculadora de retenciones (preview)
+
+INTEGRACIÓN:
+- Tabla: tax_retentions, tax_monthly_summary
+- Edge Function: calculate-tax-retention
+
+RUTA SUGERIDA: /admin/mexico/tax
+
+
+## 3. ADMIN MEXICO CFDI SCREEN ⚠️ CRÍTICO
+--------------------------------------------------------------------------------
+PROPÓSITO: Gestionar TODAS las facturas CFDI (riders y drivers)
+
+FUNCIONALIDAD NECESARIA:
+- Lista de CFDIs generadas
+- Filtros: status (pending, issued, cancelled), tipo (ingreso, egreso),
+  usuario (rider/driver), fecha, monto
+- KPIs:
+  * CFDIs emitidas hoy/mes
+  * Total facturado
+  * CFDIs pendientes
+  * CFDIs canceladas
+  * Tasa de éxito con PAC
+- Acciones:
+  * Ver XML/PDF
+  * Cancelar CFDI
+  * Regenerar CFDI fallida
+  * Enviar por email
+- Búsqueda por UUID, RFC, rider/driver
+- Export para contabilidad
+- Configuración de PAC (Facturama/SW Sapien credentials)
+- Monitor de errores de PAC
+- Estadísticas de uso de PAC
+
+INTEGRACIÓN:
+- Tabla: cfdi_invoices, cfdi_platform_config
+- Edge Function: generate-cfdi
+
+RUTA SUGERIDA: /admin/mexico/cfdi
+
+
+## 4. ADMIN MEXICO COMPLIANCE SCREEN 🔶 ALTA PRIORIDAD
+--------------------------------------------------------------------------------
+PROPÓSITO: Monitorear cumplimiento legal México (similar al USA compliance)
+
+FUNCIONALIDAD NECESARIA:
+- Status de licencias TNC por estado mexicano
+- Documentos de plataforma (permisos SEMOVI, etc.)
+- Requisitos por estado (CDMX, Guadalajara, Monterrey, etc.)
+- KPIs:
+  * Estados con operación activa
+  * Licencias por expirar
+  * Drivers conformes vs no conformes por estado
+  * Alertas regulatorias
+- Calendar events para renovaciones
+- Audit logs de acciones de compliance
+
+INTEGRACIÓN:
+- Tabla: mexican_states, driver_documents_mx
+- Reutiliza lógica de admin_compliance_screen.dart
+
+RUTA SUGERIDA: /admin/mexico/compliance
+
+
+## 5. ADMIN MEXICO ANALYTICS SCREEN 🔶 ALTA PRIORIDAD
+--------------------------------------------------------------------------------
+PROPÓSITO: Analytics específicos de operación México
+
+FUNCIONALIDAD NECESARIA:
+- Dashboard de KPIs México:
+  * Trips completados MX
+  * Revenue MX (en MXN y USD)
+  * Drivers activos MX
+  * Riders activos MX
+  * FX rate actual
+  * Promedio de viaje MX
+- Gráficas:
+  * Tendencia de viajes por estado
+  * Revenue por ciudad (CDMX, GDL, MTY)
+  * Comparativa USA vs MX
+  * Uso de métodos de pago (OXXO, SPEI, tarjeta)
+- Mapa de calor de zonas de pricing
+- Top rutas en México
+- Horas pico México
+
+INTEGRACIÓN:
+- Tabla: deliveries (con country filter), pricing_zones_mx
+- Reutiliza lógica de admin_analytics_screen.dart
+
+RUTA SUGERIDA: /admin/mexico/analytics
+
+
+## 6. ADMIN MEXICO DRIVERS TAB 🔷 MEDIA PRIORIDAD
+--------------------------------------------------------------------------------
+PROPÓSITO: Vista filtrada de drivers mexicanos en el admin de drivers
+
+FUNCIONALIDAD NECESARIA:
+- Tab adicional en DriversShell: "MEXICO DRIVERS"
+- Filtro automático: country = 'MX'
+- Columnas adicionales:
+  * RFC
+  * Estado mexicano
+  * Status de documentos MX
+  * Retenciones acumuladas
+- Link rápido a Mexico Documents para cada driver
+- Link rápido a Mexico Tax para cada driver
+
+INTEGRACIÓN:
+- Modificar: admin_drivers_screen.dart
+- Agregar tab: /admin/drivers/tab-4 (Mexico)
+
+RUTA SUGERIDA: /admin/drivers/tab-4
+
+
+## 7. FINANCE INTEGRATION - MEXICO TABS 🔷 MEDIA PRIORIDAD
+--------------------------------------------------------------------------------
+PROPÓSITO: Separar finanzas USA vs MX en paneles existentes
+
+MODIFICACIONES NECESARIAS:
+
+A) finance_overview_screen.dart:
+   - Selector de país (USA / MX / ALL)
+   - KPIs separados por país
+   - Revenue en MXN para México
+   - FX rate display
+
+B) transactions_screen.dart:
+   - Filtro adicional: Country (USA/MX)
+   - Columna de moneda (USD/MXN)
+   - Conversión automática a display currency
+   - Identificación de transacciones OXXO/SPEI
+
+C) driver_payouts_screen.dart:
+   - Separar payouts USA vs MX
+   - Para MX: mostrar retenciones ISR/IVA
+   - Link a Mexico Tax screen
+
+INTEGRACIÓN:
+- Modificar: finance/screens/*.dart
+- Agregar: country filter en todos los queries
+
+
+## 8. CALENDAR INTEGRATION - MEXICO EVENTS 🔷 MEDIA PRIORIDAD
+--------------------------------------------------------------------------------
+PROPÓSITO: Mostrar eventos fiscales de México en el calendario
+
+MODIFICACIONES NECESARIAS:
+- admin_calendar_screen.dart:
+  * Agregar eventos de retenciones mensuales
+  * Agregar eventos de declaraciones SAT
+  * Agregar vencimientos de documentos MX
+  * Color coding: USA events (blue), MX events (green)
+
+INTEGRACIÓN:
+- Tabla: tax_monthly_summary (para fechas de retenciones)
+- Tabla: driver_documents_mx (para expiración de docs)
+
+
+## 9. MAP INTEGRATION - MEXICO DRIVERS/RIDERS 🟢 BAJA PRIORIDAD
+--------------------------------------------------------------------------------
+PROPÓSITO: Distinguir drivers/riders de México en el mapa
+
+MODIFICACIONES NECESARIAS:
+- admin_map_screen.dart:
+  * Marcadores diferentes para MX (bandera 🇲🇽)
+  * Filtro: USA only / MX only / Both
+  * Info popup: mostrar país y estado
+
+INTEGRACIÓN:
+- Modificar: admin_map_screen.dart
+
+
+## 10. SETTINGS - MEXICO CONFIGURATION 🟢 BAJA PRIORIDAD
+--------------------------------------------------------------------------------
+PROPÓSITO: Configuración global para operación México
+
+FUNCIONALIDAD NECESARIA:
+- PAC credentials (Facturama/SW Sapien)
+- RFC de la plataforma
+- Razón social
+- Domicilio fiscal
+- Logo para CFDIs
+- API keys de servicios mexicanos
+- FX rate source configuration
+- Tasas de retención ISR/IVA (editables)
+
+INTEGRACIÓN:
+- Tabla: app_settings, cfdi_platform_config
+
+RUTA SUGERIDA: /admin/mexico/settings
+
+
+================================================================================
+INTEGRACIÓN CON PANELES EXISTENTES (RESUMEN)
+================================================================================
+
+PANELES QUE NECESITAN ACTUALIZACIÓN:
+
+1. ✅ /admin/executive
+   - Agregar selector de país (USA/MX/ALL) en top bar
+   - KPIs separados o combinados según selección
+
+2. ✅ /admin/drivers (DriversShell)
+   - Nuevo tab "MEXICO DRIVERS" (tab-4)
+   - Filtros de documentos MX
+
+3. ✅ /admin/finances (FinanceShell)
+   - Todos los tabs necesitan filtro de país
+   - Overview, Transactions, Payouts críticos
+
+4. ✅ /admin/analytics
+   - Nuevo tab "MEXICO" o filtro de país
+
+5. ✅ /admin/calendar
+   - Integrar eventos fiscales MX
+
+6. ✅ /admin/map
+   - Distinguir MX vs USA drivers/riders
+
+7. ✅ /admin/support
+   - Filtro de país en tickets
+   - Soporte en español para MX
+
+
+================================================================================
+NUEVAS RUTAS NECESARIAS
+================================================================================
+
+/admin/mexico/documents       → AdminMexicoDocumentsScreen
+/admin/mexico/tax            → AdminMexicoTaxScreen
+/admin/mexico/cfdi           → AdminMexicoCFDIScreen
+/admin/mexico/compliance     → AdminMexicoComplianceScreen
+/admin/mexico/analytics      → AdminMexicoAnalyticsScreen
+/admin/mexico/settings       → AdminMexicoSettingsScreen
+
+/admin/mexico-pricing        → ✅ YA EXISTE (AdminMexicoPricingScreen)
+
+
+================================================================================
+SIDEBAR - NUEVA SECCIÓN MÉXICO
+================================================================================
+
+Agregar en EnterpriseAdminShell (enterprise_admin_shell.dart):
+
+MÉXICO
+├─ 📊 Analytics
+├─ 💵 Pricing
+├─ 📄 Documents
+├─ 💰 Tax & Retentions
+├─ 🧾 CFDI Invoices
+├─ ⚖️ Compliance
+└─ ⚙️ Settings
+
+
+================================================================================
+PRIORIZACIÓN DE DESARROLLO
+================================================================================
+
+🔴 FASE 1 - CRÍTICO (Control Monetario Total):
+   1. Admin Mexico Tax Screen - Ver todas las retenciones
+   2. Admin Mexico CFDI Screen - Gestionar todas las facturas
+   3. Finance Integration - Separar USA/MX en finanzas
+   → RESULTADO: Control total de dinero MX
+
+🟡 FASE 2 - ALTA PRIORIDAD (Operación Completa):
+   4. Admin Mexico Documents Screen - Verificar documentos drivers
+   5. Admin Mexico Analytics Screen - KPIs y dashboards MX
+   6. Admin Mexico Compliance Screen - Cumplimiento legal
+   → RESULTADO: Operación completa MX
+
+🟢 FASE 3 - MEDIA PRIORIDAD (Optimización):
+   7. Mexico Drivers Tab - Vista dedicada drivers MX
+   8. Calendar Integration - Eventos fiscales MX
+   9. Map Integration - Distinguir MX drivers
+   → RESULTADO: Experiencia optimizada
+
+🔵 FASE 4 - BAJA PRIORIDAD (Nice to Have):
+   10. Mexico Settings Screen - Configuración avanzada
+   → RESULTADO: Personalización completa
+
+
+================================================================================
+ESTIMACIÓN DE ARCHIVOS A CREAR
+================================================================================
+
+NUEVOS ARCHIVOS (6 screens principales + repos/services):
+
+1. lib/features/admin/mexico/admin_mexico_documents_screen.dart
+2. lib/features/admin/mexico/admin_mexico_tax_screen.dart
+3. lib/features/admin/mexico/admin_mexico_cfdi_screen.dart
+4. lib/features/admin/mexico/admin_mexico_compliance_screen.dart
+5. lib/features/admin/mexico/admin_mexico_analytics_screen.dart
+6. lib/features/admin/mexico/admin_mexico_settings_screen.dart
+
+7. lib/features/admin/mexico/mexico_documents_repo.dart
+8. lib/features/admin/mexico/mexico_tax_repo.dart
+9. lib/features/admin/mexico/mexico_cfdi_repo.dart
+
+ARCHIVOS A MODIFICAR (integración):
+
+10. lib/core/router/app_router.dart (agregar rutas)
+11. lib/features/admin/enterprise/enterprise_admin_shell.dart (sidebar)
+12. lib/features/admin/admin_drivers_screen.dart (agregar tab MX)
+13. lib/features/admin/finance/screens/finance_overview_screen.dart
+14. lib/features/admin/finance/screens/transactions_screen.dart
+15. lib/features/admin/finance/screens/driver_payouts_screen.dart
+16. lib/features/admin/admin_calendar_screen.dart
+17. lib/features/admin/admin_map_screen.dart
+18. lib/features/admin/admin_executive_dashboard_screen.dart
+
+
+================================================================================
+DEPENDENCIAS DE DATOS (YA EXISTEN EN SUPABASE)
+================================================================================
+
+✅ driver_documents_mx - Documentos de drivers MX
+✅ tax_retentions - Retenciones ISR/IVA
+✅ tax_monthly_summary - Resúmenes mensuales de impuestos
+✅ cfdi_invoices - Facturas CFDI generadas
+✅ cfdi_platform_config - Configuración del PAC
+✅ pricing_zones_mx - Zonas de pricing MX
+✅ pricing_rules_mx - Reglas de pricing MX
+✅ fx_rates - Tasas de cambio
+✅ mexican_states - Estados mexicanos
+✅ countries - Países (USA, MX)
+
+
+================================================================================
+RESPUESTA A LA PREGUNTA DEL USUARIO
+================================================================================
+
+Para tener CONTROL TOTAL MONETARIO de México necesitas:
+
+🔴 MÍNIMO INDISPENSABLE (Control Monetario):
+   1. Admin Mexico Tax Screen - Ver retenciones ISR/IVA de todos los drivers
+   2. Admin Mexico CFDI Screen - Gestionar facturas de riders y drivers
+   3. Finance tabs actualizados - Filtrar por país USA/MX
+
+🟡 RECOMENDADO (Operación Completa):
+   + Admin Mexico Documents Screen - Verificar que drivers tengan docs válidos
+   + Admin Mexico Analytics - Dashboard con KPIs de México
+   + Admin Mexico Compliance - Cumplimiento legal por estado
+
+🟢 IDEAL (Experiencia Completa):
+   + Todo lo anterior
+   + Integration en Calendar, Map, Drivers tabs
+   + Mexico Settings para configuración PAC
+
+
+================================================================================
+PRÓXIMOS PASOS SUGERIDOS
+================================================================================
+
+OPCIÓN A - Crear TODO de una vez (6 screens + modificaciones)
+   Pros: Completar MX 100%
+   Contras: Mucho código, múltiples sesiones
+
+OPCIÓN B - Empezar con lo crítico (Fase 1)
+   Crear: Admin Mexico Tax + Admin Mexico CFDI + Finance Integration
+   Pros: Control monetario inmediato
+   Contras: Falta operación completa
+
+OPCIÓN C - Uno por uno (empezar con Tax Screen)
+   Crear: Solo Admin Mexico Tax Screen
+   Pros: Probar enfoque, menos riesgo
+   Contras: Toma más sesiones llegar a 100%
+
+
+================================================================================
+FIN DEL ANÁLISIS
+================================================================================

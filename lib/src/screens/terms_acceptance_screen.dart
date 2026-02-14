@@ -1,17 +1,17 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/legal/consent_service.dart';
 import '../core/legal/legal_constants.dart';
 import '../core/legal/legal_documents.dart';
 import '../core/logging/app_logger.dart';
+import '../services/version_check_service.dart';
+import '../widgets/version_check_dialog.dart';
 import 'auth_wrapper.dart';
 
 /// Terms Acceptance Screen for Drivers
 /// Shows BEFORE login - user must accept to proceed
-/// - Checkbox to accept terms
-/// - Checkbox for 21+ age verification (drivers must be 21+)
-/// - Checkbox for background check consent
-/// - Button to read terms if driver wants
+/// Tracks scroll percentage, reading time, and acceptance language
 class TermsAcceptanceScreen extends StatefulWidget {
   const TermsAcceptanceScreen({super.key});
 
@@ -24,6 +24,12 @@ class _TermsAcceptanceScreenState extends State<TermsAcceptanceScreen> {
   bool _isOver21 = false;
   bool _isProcessing = false;
 
+  // Scroll and reading tracking
+  double _scrollPercentage = 0.0;
+  late DateTime _screenOpenedAt;
+  final ScrollController _termsScrollController = ScrollController();
+  bool _hasOpenedTerms = false;
+
   // Theme colors
   static const Color primaryColor = Color(0xFF1E88E5);
   static const Color secondaryColor = Color(0xFF43A047);
@@ -31,7 +37,39 @@ class _TermsAcceptanceScreenState extends State<TermsAcceptanceScreen> {
   @override
   void initState() {
     super.initState();
+    _screenOpenedAt = DateTime.now();
     AppLogger.log('TERMS_SCREEN -> Opened (pre-login)');
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkAppVersion());
+  }
+
+  @override
+  void dispose() {
+    _termsScrollController.dispose();
+    super.dispose();
+  }
+
+  /// Get the current language code from EasyLocalization
+  String get _currentLanguageCode {
+    try {
+      return context.locale.languageCode;
+    } catch (_) {
+      return 'en';
+    }
+  }
+
+  Future<void> _checkAppVersion() async {
+    try {
+      final result = await VersionCheckService().checkVersion(appName: 'toro_driver');
+
+      if (!mounted) return;
+
+      if (result.needsHardUpdate || result.needsSoftUpdate) {
+        await VersionCheckDialog.show(context, result);
+      }
+    } catch (e) {
+      AppLogger.log('VERSION_CHECK -> Error: $e');
+    }
   }
 
   Future<void> _onAccept() async {
@@ -40,24 +78,33 @@ class _TermsAcceptanceScreenState extends State<TermsAcceptanceScreen> {
     setState(() => _isProcessing = true);
 
     try {
-      // Save acceptance locally (before login)
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(AuthWrapper.termsAcceptedKey, true);
+      final lang = _currentLanguageCode;
+      final timeSpent = DateTime.now().difference(_screenOpenedAt).inMilliseconds;
 
-      // Record consent locally
+      // Save acceptance locally
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(LegalConstants.termsAcceptedKey, true);
+      await prefs.setString(LegalConstants.termsLanguageKey, lang);
+      await prefs.setString(LegalConstants.termsVersionKey, LegalConstants.legalBundleVersion);
+
+      // Record consent with real metrics
       final consentService = ConsentService.instance;
       await consentService.initialize();
       await consentService.recordFullAcceptance(
         userId: 'pre_login_${DateTime.now().millisecondsSinceEpoch}',
-        scrollPercentage: 1.0,
-        timeSpentReadingMs: 0,
+        languageCode: lang,
+        scrollPercentage: _scrollPercentage,
+        timeSpentReadingMs: timeSpent,
         ageVerified: true,
         backgroundCheckConsent: true,
       );
 
-      AppLogger.log('LEGAL_ACCEPTED -> Pre-login acceptance (21+ verified, background check consent)');
+      AppLogger.log(
+        'LEGAL_ACCEPTED -> Pre-login acceptance lang=$lang, '
+        'scroll=${_scrollPercentage.toStringAsFixed(2)}, '
+        'timeMs=$timeSpent',
+      );
 
-      // Navigate to AuthWrapper - will now show LoginScreen
       if (mounted) {
         Navigator.pushReplacementNamed(context, '/auth');
       }
@@ -79,6 +126,10 @@ class _TermsAcceptanceScreenState extends State<TermsAcceptanceScreen> {
   }
 
   void _showTerms() {
+    _hasOpenedTerms = true;
+    _scrollPercentage = 0.0;
+    final lang = _currentLanguageCode;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -89,6 +140,18 @@ class _TermsAcceptanceScreenState extends State<TermsAcceptanceScreen> {
         maxChildSize: 0.95,
         expand: false,
         builder: (context, scrollController) {
+          // Track scroll for legal metrics
+          scrollController.addListener(() {
+            if (scrollController.hasClients &&
+                scrollController.position.maxScrollExtent > 0) {
+              final pct = scrollController.offset /
+                  scrollController.position.maxScrollExtent;
+              if (pct > _scrollPercentage) {
+                _scrollPercentage = pct.clamp(0.0, 1.0);
+              }
+            }
+          });
+
           return Container(
             decoration: BoxDecoration(
               color: Theme.of(context).scaffoldBackgroundColor,
@@ -113,12 +176,29 @@ class _TermsAcceptanceScreenState extends State<TermsAcceptanceScreen> {
                     children: [
                       Icon(Icons.description, color: Theme.of(context).colorScheme.primary),
                       const SizedBox(width: 12),
-                      const Expanded(
+                      Expanded(
                         child: Text(
-                          'Documentos Legales',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          lang == 'es' ? 'Documentos Legales' : 'Legal Documents',
+                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                         ),
                       ),
+                      // Language indicator
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: primaryColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          lang.toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: primaryColor,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
                       IconButton(
                         icon: const Icon(Icons.close),
                         onPressed: () => Navigator.pop(context),
@@ -133,7 +213,7 @@ class _TermsAcceptanceScreenState extends State<TermsAcceptanceScreen> {
                     controller: scrollController,
                     padding: const EdgeInsets.all(16),
                     child: SelectableText(
-                      LegalDocuments.combinedLegalDocument,
+                      LegalDocuments.getCombinedDocument(lang),
                       style: const TextStyle(
                         fontFamily: 'monospace',
                         fontSize: 12,
@@ -153,47 +233,55 @@ class _TermsAcceptanceScreenState extends State<TermsAcceptanceScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final lang = _currentLanguageCode;
+    final isEs = lang == 'es';
 
     return Scaffold(
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
-          child: Column(
-            children: [
-              const Spacer(),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: MediaQuery.of(context).size.height -
+                  MediaQuery.of(context).padding.top -
+                  MediaQuery.of(context).padding.bottom -
+                  48,
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const SizedBox(height: 24),
 
-              // TORO Logo
+                // TORO Logo
               Container(
-                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [primaryColor, secondaryColor],
-                  ),
-                  shape: BoxShape.circle,
+                  borderRadius: BorderRadius.circular(28),
                   boxShadow: [
                     BoxShadow(
-                      color: primaryColor.withValues(alpha: 0.3),
+                      color: const Color(0xFF00D9FF).withValues(alpha: 0.35),
+                      blurRadius: 30,
+                      spreadRadius: 2,
+                    ),
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.4),
                       blurRadius: 20,
                       offset: const Offset(0, 8),
                     ),
                   ],
                 ),
-                child: ClipOval(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(28),
                   child: Image.asset(
-                    'assets/images/toro_logo.png',
-                    width: 80,
-                    height: 80,
-                    fit: BoxFit.contain,
+                    'assets/images/toro_logo_new.png',
+                    width: 120,
+                    height: 120,
+                    fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) {
-                      // Fallback to stylized "T" if image not found
-                      return const Text(
-                        'T',
-                        style: TextStyle(
-                          fontSize: 64,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                          fontFamily: 'sans-serif',
-                        ),
+                      return Image.asset(
+                        'assets/images/toro_logo.png',
+                        width: 120,
+                        height: 120,
+                        fit: BoxFit.cover,
                       );
                     },
                   ),
@@ -208,7 +296,7 @@ class _TermsAcceptanceScreenState extends State<TermsAcceptanceScreen> {
                   colors: [primaryColor, secondaryColor],
                 ).createShader(bounds),
                 child: Text(
-                  'Bienvenido a Toro Driver',
+                  isEs ? 'Bienvenido a Toro Driver' : 'Welcome to Toro Driver',
                   style: theme.textTheme.headlineMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
@@ -220,7 +308,9 @@ class _TermsAcceptanceScreenState extends State<TermsAcceptanceScreen> {
 
               // Subtitle
               Text(
-                'Para comenzar a conducir con ${LegalConstants.companyName} debes aceptar nuestros terminos y condiciones',
+                isEs
+                    ? 'Para comenzar a conducir con ${LegalConstants.companyName} debes aceptar nuestros terminos y condiciones'
+                    : 'To start driving with ${LegalConstants.companyName} you must accept our terms and conditions',
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyLarge?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
@@ -233,7 +323,7 @@ class _TermsAcceptanceScreenState extends State<TermsAcceptanceScreen> {
               OutlinedButton.icon(
                 onPressed: _showTerms,
                 icon: const Icon(Icons.menu_book),
-                label: const Text('Leer Documentos Legales'),
+                label: Text(isEs ? 'Leer Documentos Legales' : 'Read Legal Documents'),
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                   foregroundColor: primaryColor,
@@ -241,14 +331,16 @@ class _TermsAcceptanceScreenState extends State<TermsAcceptanceScreen> {
                 ),
               ),
 
-              const Spacer(),
+              const SizedBox(height: 32),
 
               // Age verification checkbox (21+ for drivers)
               _buildCheckbox(
                 value: _isOver21,
                 onChanged: (v) => setState(() => _isOver21 = v ?? false),
-                title: 'Confirmo que tengo 21 anos o mas',
-                subtitle: 'Debes tener al menos 21 anos para conducir con TORO DRIVER',
+                title: isEs ? 'Confirmo que tengo 21 anos o mas' : 'I confirm I am 21 years or older',
+                subtitle: isEs
+                    ? 'Debes tener al menos 21 anos para conducir con TORO DRIVER'
+                    : 'You must be at least 21 years old to drive with TORO DRIVER',
                 theme: theme,
                 isChecked: _isOver21,
               ),
@@ -259,8 +351,12 @@ class _TermsAcceptanceScreenState extends State<TermsAcceptanceScreen> {
               _buildCheckbox(
                 value: _hasAcceptedTerms,
                 onChanged: (v) => setState(() => _hasAcceptedTerms = v ?? false),
-                title: 'Acepto todos los Terminos, Politicas y Acuerdos',
-                subtitle: 'Terminos de Servicio, Politica de Privacidad, Acuerdo del Conductor y Exoneracion',
+                title: isEs
+                    ? 'Acepto todos los Terminos, Politicas y Acuerdos'
+                    : 'I accept all Terms, Policies and Agreements',
+                subtitle: isEs
+                    ? 'Terminos de Servicio, Politica de Privacidad, Acuerdo del Conductor y Exoneracion'
+                    : 'Terms of Service, Privacy Policy, Driver Agreement and Liability Waiver',
                 theme: theme,
                 isChecked: _hasAcceptedTerms,
               ),
@@ -306,9 +402,9 @@ class _TermsAcceptanceScreenState extends State<TermsAcceptanceScreen> {
                               valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                             ),
                           )
-                        : const Text(
-                            'COMENZAR A CONDUCIR',
-                            style: TextStyle(
+                        : Text(
+                            isEs ? 'COMENZAR A CONDUCIR' : 'START DRIVING',
+                            style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 16,
                               color: Colors.white,
@@ -320,14 +416,15 @@ class _TermsAcceptanceScreenState extends State<TermsAcceptanceScreen> {
 
               const SizedBox(height: 16),
 
-              // Version info
+              // Version info + language
               Text(
-                'v${LegalConstants.legalBundleVersion}',
+                'v${LegalConstants.legalBundleVersion} | ${lang.toUpperCase()}',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

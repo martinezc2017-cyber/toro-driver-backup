@@ -1,0 +1,620 @@
+================================================================================
+BUGS Y CORRECCIONES - MÉXICO - DOCUMENTO MAESTRO
+================================================================================
+Fecha: 30 Enero 2026
+Consolidando TODOS los problemas encontrados en múltiples análisis
+
+================================================================================
+SECCIÓN 1: BUGS CRÍTICOS EN UI/UX
+================================================================================
+
+## BUG #1: UNIDADES INCORRECTAS - "Per Mile" en México ⚠️⚠️⚠️ CRÍTICO
+--------------------------------------------------------------------------------
+UBICACIÓN: /admin/pricing cuando country = México
+SCREENSHOT: Se ve claramente "Per Mile $ 8.50"
+
+PROBLEMA:
+- Database: columna `per_km` (kilómetros)
+- UI muestra: "Per Mile" (millas)
+- México usa sistema MÉTRICO (km), no imperial (millas)
+
+IMPACTO FINANCIERO:
+- Admin configura $8.50 pensando "por milla"
+- Se guarda como $8.50 "por km"
+- 1 milla = 1.609 km
+- Precio real debería ser: $8.50 / 1.609 = $5.28 por km
+- PÉRDIDA DE REVENUE: ~60% menos ingresos
+
+CAUSA ROOT:
+- admin_pricing_screen.dart NO cambia labels según país
+- Hardcoded "Per Mile" en lugar de dynamic "Per ${unit}"
+
+SOLUCIÓN:
+```dart
+// En lugar de:
+Text('Per Mile')
+
+// Usar:
+Text(country.isMexico ? 'Por KM' : 'Per Mile')
+```
+
+ARCHIVOS AFECTADOS:
+- lib/features/admin/admin_pricing_screen.dart
+- Cualquier lugar que muestre distancia
+
+LUGARES A REVISAR:
+[ ] Label de input "Per Mile"
+[ ] Calculadora - ¿usa km o millas?
+[ ] Finance reports - ¿muestra km o millas?
+[ ] Ride details - ¿distancia en km o millas?
+[ ] Driver earnings - ¿cálculo por km o milla?
+
+PRIORIDAD: 🔴 CRÍTICO - Arreglar INMEDIATAMENTE
+
+
+## BUG #2: Currency Symbol Inconsistency (PENDIENTE VERIFICAR)
+--------------------------------------------------------------------------------
+UBICACIÓN: Por determinar
+
+PROBLEMA POTENCIAL:
+- ¿Todos los $ son MXN cuando country = México?
+- ¿O algunos siguen mostrando USD?
+
+VERIFICAR:
+[ ] TARIFAS section - ¿muestra $ o MXN?
+[ ] Calculadora - ¿resultado en MXN o USD?
+[ ] Finance - ¿revenue en MXN o USD?
+[ ] Driver payouts - ¿en MXN o USD?
+
+SOLUCIÓN:
+```dart
+Text('${country.currencySymbol} ${amount}')
+// MXN: $ o MX$
+// USD: $ o US$
+```
+
+PRIORIDAD: 🟡 ALTA
+
+
+## BUG #3: Language/Localization Incompleto (PENDIENTE VERIFICAR)
+--------------------------------------------------------------------------------
+UBICACIÓN: Toda la UI
+
+PROBLEMA POTENCIAL:
+- ¿UI está en español cuando country = México?
+- ¿O sigue en inglés?
+
+Screenshot muestra:
+- "Per Mile" (inglés)
+- "Base Fare" (inglés)
+- "Booking Fee" (inglés)
+- "Service Fee" (inglés)
+
+Debería mostrar:
+- "Por KM" (español)
+- "Tarifa Base" (español)
+- "Cargo de Reserva" (español)
+- "Cargo de Servicio" (español)
+
+VERIFICAR:
+[ ] ¿Existe es-MX.json en admin web?
+[ ] ¿Se activa automáticamente con país México?
+[ ] ¿Todas las secciones están traducidas?
+
+PRIORIDAD: 🟡 ALTA
+
+
+================================================================================
+SECCIÓN 2: BUGS DE SCHEMA/DATABASE
+================================================================================
+
+## BUG #4: Column Name Inconsistency - state vs state_code
+--------------------------------------------------------------------------------
+UBICACIÓN: pricing_zones_mx table
+
+PROBLEMA:
+Migration 008 línea 14 dice en comentario:
+    state_code TEXT NOT NULL, -- 'CDMX', 'JAL', 'NL'
+
+Pero los INSERTs usan 'state_code'
+Y el código tiene que hacer aliasing:
+    'state_code': z['state'], // Alias
+
+IMPACTO:
+- Confusión en código
+- Mantener aliases en múltiples lugares
+- Bugs potenciales
+
+SOLUCIÓN:
+Decidir UN nombre y usarlo consistentemente:
+OPCIÓN A: Renombrar columna a 'state_code'
+OPCIÓN B: Renombrar todos los aliases a 'state'
+
+RECOMENDACIÓN: Usar 'state' (más simple)
+
+ARCHIVOS AFECTADOS:
+- supabase/migrations/008_mexico_pricing.sql
+- lib/features/admin/mexico/mexico_pricing_repo.dart (líneas 26-29)
+
+PRIORIDAD: 🟡 ALTA
+
+
+## BUG #5: Column Name Aliasing - per_minute vs per_min
+--------------------------------------------------------------------------------
+UBICACIÓN: pricing_rules_mx table
+
+PROBLEMA:
+Database: per_minute, minimum_fare
+Código UI: per_min, min_fare
+
+mexico_pricing_repo.dart líneas 164-169:
+    'per_min': r['per_minute'],
+    'min_fare': r['minimum_fare'],
+
+IMPACTO:
+- Aliases en múltiples lugares
+- Código difícil de mantener
+
+SOLUCIÓN:
+Usar nombres consistentes:
+OPCIÓN A: DB usa per_minute, código usa per_minute
+OPCIÓN B: DB renombra a per_min, código usa per_min
+
+RECOMENDACIÓN: Usar nombres completos (per_minute, minimum_fare)
+
+PRIORIDAD: 🟡 ALTA
+
+
+## BUG #6: service_type vs vehicle_type Confusion
+--------------------------------------------------------------------------------
+UBICACIÓN: pricing_rules_mx table y código
+
+PROBLEMA:
+mexico_pricing_repo.dart línea 168:
+    'vehicle_type': r['service_type'], // ← MAL
+
+service_type debería ser: ride, delivery, carpool
+vehicle_type debería ser: standard, premium, moto
+
+Pero están MEZCLADOS en el mapeo.
+
+IMPACTO:
+- No se puede filtrar por tipo de vehículo
+- Bugs en matching de reglas
+
+SOLUCIÓN:
+Agregar columna vehicle_type real a pricing_rules_mx
+Separar los conceptos completamente
+
+PRIORIDAD: 🔴 CRÍTICO
+
+
+## BUG #7: Falta country_code en rides/deliveries
+--------------------------------------------------------------------------------
+UBICACIÓN: rides, deliveries tables
+
+PROBLEMA:
+No hay forma de distinguir rides de USA vs México
+
+IMPACTO:
+- Finance no puede separar revenue USA vs MX
+- Analytics no puede comparar métricas
+- Reporting fiscal imposible
+
+SOLUCIÓN:
+```sql
+ALTER TABLE rides ADD COLUMN country_code TEXT DEFAULT 'US';
+ALTER TABLE deliveries ADD COLUMN country_code TEXT DEFAULT 'US';
+UPDATE rides SET country_code = 'US' WHERE country_code IS NULL;
+```
+
+PRIORIDAD: 🔴 CRÍTICO
+
+
+================================================================================
+SECCIÓN 3: FEATURES FALTANTES
+================================================================================
+
+## FALTA #8: Payment Method Fees (OXXO/SPEI)
+--------------------------------------------------------------------------------
+PROBLEMA:
+Stripe cobra fees diferentes por método de pago en México:
+- OXXO: ~$10-15 MXN cargo fijo
+- SPEI: Gratis pero 24-48hrs
+- Tarjeta: 2.9% + $3.00 MXN
+
+Pero pricing NO incluye estos fees.
+
+IMPACTO:
+- Pérdida de margen en pagos OXXO
+- Riders confundidos con cargos adicionales
+
+SOLUCIÓN:
+Agregar a pricing_rules_mx:
+- oxxo_fee DECIMAL(10,2)
+- card_processing_fee_percent DECIMAL(5,2)
+- card_processing_fee_fixed DECIMAL(10,2)
+
+PRIORIDAD: 🟡 ALTA
+
+
+## FALTA #9: FX Rates Integration
+--------------------------------------------------------------------------------
+PROBLEMA:
+Tabla fx_rates existe
+Edge function fx-refresh existe
+Pero cálculos NO usan FX rates
+
+IMPACTO:
+- No se puede cobrar en USD a riders americanos
+- No hay conversión automática
+
+SOLUCIÓN:
+Integrar FX rates en mexico_pricing_repo._calculateFareLocally()
+Guardar fx_rate_used en ride_fares
+
+PRIORIDAD: 🟢 MEDIA (nice to have)
+
+
+## FALTA #10: Geographic Polygons
+--------------------------------------------------------------------------------
+PROBLEMA:
+Columna 'area' en pricing_zones_mx está NULL
+No hay validación geográfica real
+
+IMPACTO:
+- Rider en Puebla podría obtener pricing de CDMX
+- No hay cobertura real definida
+
+SOLUCIÓN:
+Importar polígonos GeoJSON para cada zona metropolitana
+Usar PostGIS ST_Contains para validar
+
+PRIORIDAD: 🟢 MEDIA
+
+
+================================================================================
+SECCIÓN 4: COBERTURA GEOGRÁFICA
+================================================================================
+
+## FALTA #11: Solo 15% Cobertura de México
+--------------------------------------------------------------------------------
+PROBLEMA:
+México: 32 estados
+Configurados: 4-5 estados (CDMX, JAL, NL, BC, QROO)
+Cobertura: 12.5% - 15.6%
+
+ZONAS ACTUALES:
+1. CDMX - Ciudad de México
+2. Guadalajara - Jalisco
+3. Monterrey - Nuevo León
+4. Tijuana - Baja California
+5. Cancún - Quintana Roo
+
+FALTAN TOP 10 CIUDADES:
+6. Puebla (3.2M hab)
+7. León, Guanajuato (1.9M)
+8. Ciudad Juárez, Chihuahua (1.5M)
+9. Toluca, Estado de México (2.3M)
+10. San Luis Potosí (1.2M)
+11. Mérida, Yucatán (1.1M)
+12. Querétaro (1.0M)
+13. Acapulco, Guerrero (0.9M)
+14. Aguascalientes (1.0M)
+15. Mexicali, Baja California (1.0M)
+
+IMPACTO:
+- Solo 27% de población mexicana cubierta
+- Competidores operan en más ciudades
+
+SOLUCIÓN:
+Agregar pricing zones para top 15 ciudades mínimo
+
+PRIORIDAD: 🟡 ALTA
+
+
+## FALTA #12: Zonas por Ciudad, No por Estado
+--------------------------------------------------------------------------------
+PROBLEMA:
+Guadalajara configurada, pero ¿Zapopan? ¿Tlaquepaque? ¿Puerto Vallarta?
+Monterrey configurada, pero ¿San Pedro? ¿Santa Catarina?
+
+IMPACTO:
+- Riders en área metropolitana extendida no pueden solicitar
+- Limita crecimiento
+
+SOLUCIÓN:
+Definir zonas metropolitanas completas
+O pricing por estado completo como fallback
+
+PRIORIDAD: 🟡 ALTA
+
+
+================================================================================
+SECCIÓN 5: ADMIN UI FALTANTES
+================================================================================
+
+## FALTA #13: Admin Mexico Documents Screen
+--------------------------------------------------------------------------------
+PROPÓSITO: Gestionar documentos de drivers mexicanos (INE, RFC, Licencia, etc.)
+
+ACTUALMENTE:
+- Driver app tiene mexico_documents_screen.dart (driver ve sus docs)
+- Admin NO tiene pantalla para gestionar/aprobar
+
+IMPACTO:
+- Admin no puede verificar documentos
+- No hay workflow de aprobación
+
+SOLUCIÓN:
+Crear /admin/mexico/documents con:
+- Lista de drivers MX con status docs
+- Filtros por estado de verificación
+- Acciones: Aprobar/Rechazar/Solicitar recarga
+
+PRIORIDAD: 🔴 CRÍTICO
+
+
+## FALTA #14: Admin Mexico Tax Screen
+--------------------------------------------------------------------------------
+PROPÓSITO: Ver retenciones ISR/IVA de TODOS los drivers
+
+ACTUALMENTE:
+- Driver app tiene mexico_tax_screen.dart (driver ve sus retenciones)
+- Admin NO tiene vista consolidada
+
+IMPACTO:
+- No hay control sobre obligaciones fiscales
+- No se pueden generar reportes SAT
+
+SOLUCIÓN:
+Crear /admin/mexico/tax con:
+- Lista de retenciones por driver
+- Resúmenes mensuales consolidados
+- Export para contabilidad
+
+PRIORIDAD: 🔴 CRÍTICO
+
+
+## FALTA #15: Admin Mexico CFDI Screen
+--------------------------------------------------------------------------------
+PROPÓSITO: Gestionar TODAS las facturas CFDI
+
+ACTUALMENTE:
+- Rider app tiene mexico_invoice_screen.dart (rider solicita CFDI)
+- Admin NO tiene gestión de facturas
+
+IMPACTO:
+- No hay control sobre CFDIs emitidas
+- No se pueden cancelar facturas erróneas
+
+SOLUCIÓN:
+Crear /admin/mexico/cfdi con:
+- Lista de CFDIs generadas
+- Filtros por status/tipo/usuario
+- Acciones: Ver XML/PDF, Cancelar, Regenerar
+
+PRIORIDAD: 🔴 CRÍTICO
+
+
+## FALTA #16: Admin Mexico Analytics
+--------------------------------------------------------------------------------
+PROPÓSITO: KPIs específicos de operación México
+
+FALTA:
+- Dashboard separado para México
+- Comparativa USA vs MX
+- Métricas de métodos de pago (OXXO/SPEI)
+
+SOLUCIÓN:
+Agregar tab México en Analytics o screen separado
+
+PRIORIDAD: 🟡 ALTA
+
+
+## FALTA #17: Admin Mexico Compliance
+--------------------------------------------------------------------------------
+PROPÓSITO: Cumplimiento legal México (SEMOVI, TNC licenses por estado)
+
+FALTA:
+- Monitor de licencias estatales
+- Requisitos por estado mexicano
+
+SOLUCIÓN:
+Crear /admin/mexico/compliance similar a USA compliance
+
+PRIORIDAD: 🟡 ALTA
+
+
+================================================================================
+SECCIÓN 6: ADMIN UI - DROPDOWN HARDCODEADO
+================================================================================
+
+## BUG #18: Estados Hardcodeados en Dropdown
+--------------------------------------------------------------------------------
+UBICACIÓN: admin_mexico_pricing_screen.dart línea 1063-1069
+
+PROBLEMA:
+```dart
+items: const [
+    DropdownMenuItem(value: 'CDMX', child: Text('CDMX')),
+    DropdownMenuItem(value: 'JAL', child: Text('Jalisco')),
+    DropdownMenuItem(value: 'NL', child: Text('Nuevo Leon')),
+    DropdownMenuItem(value: 'GTO', child: Text('Guanajuato')),
+    DropdownMenuItem(value: 'QRO', child: Text('Queretaro')),
+],
+```
+
+Solo 5 estados hardcodeados.
+
+IMPACTO:
+- No se pueden agregar nuevos estados desde UI
+- Hay que editar código para agregar estados
+
+SOLUCIÓN:
+Cargar dinámicamente desde tabla mexican_states
+
+PRIORIDAD: 🟡 ALTA
+
+
+================================================================================
+SECCIÓN 7: DATOS DE PRUEBA VS PRODUCCIÓN
+================================================================================
+
+## PREGUNTA #19: Pricing Valores Reales?
+--------------------------------------------------------------------------------
+VALORES ACTUALES:
+- CDMX: Base $35, /km $8.50, /min $2.50
+- Guadalajara: Base $30, /km $7.50
+- Monterrey: Base $32, /km $8.00
+
+PREGUNTAS:
+- ¿Son precios de producción o placeholders?
+- ¿Competitivos vs Uber/Didi?
+- ¿Cubren costos operacionales?
+
+ACCIÓN:
+Validar pricing con:
+- Estudio de mercado competidores
+- Análisis de costos operacionales MX
+- Willingness to pay usuarios
+
+PRIORIDAD: 🟡 ALTA
+
+
+================================================================================
+SECCIÓN 8: INTEGRACIÓN EN PANELES EXISTENTES
+================================================================================
+
+## FALTA #20: Finance - Filtro de País
+--------------------------------------------------------------------------------
+PROBLEMA:
+Finance panels (Overview, Transactions, Payouts) NO tienen filtro USA/MX
+
+IMPACTO:
+- No se puede separar revenue USA vs MX
+- Reporting fiscal mezclado
+
+SOLUCIÓN:
+Agregar selector de país en:
+- finance_overview_screen.dart
+- transactions_screen.dart
+- driver_payouts_screen.dart
+
+PRIORIDAD: 🔴 CRÍTICO
+
+
+## FALTA #21: Calendar - Eventos Fiscales México
+--------------------------------------------------------------------------------
+PROBLEMA:
+Calendar NO muestra eventos de retenciones mensuales MX
+
+SOLUCIÓN:
+Integrar eventos de tax_monthly_summary en calendar
+
+PRIORIDAD: 🟢 BAJA
+
+
+## FALTA #22: Map - Distinguir Drivers USA vs MX
+--------------------------------------------------------------------------------
+PROBLEMA:
+Mapa muestra todos los drivers igual
+
+SOLUCIÓN:
+Marcadores diferentes (🇺🇸 vs 🇲🇽)
+Filtro: USA only / MX only / Both
+
+PRIORIDAD: 🟢 BAJA
+
+
+================================================================================
+SECCIÓN 9: LAS 11 SECCIONES - ¿FUNCIONAN PARA MÉXICO?
+================================================================================
+
+PREGUNTA PENDIENTE:
+El screenshot muestra 11 secciones, pero ¿todas están ACTIVAS para México?
+
+SECCIONES:
+1. TARIFAS (6) - ✅ Confirmado funciona (se ve en screenshot)
+2. TIEMPO (7) - ❓ ¿Funciona para MX?
+3. MULTIPLICADORES (9) - ❓ ¿Funciona para MX?
+4. SERVICIOS (6) - ❓ ¿Funciona para MX?
+5. CANCELACIONES (6) - ❓ ¿Funciona para MX?
+6. LOST ITEMS (3) - ❓ ¿Funciona para MX?
+7. ZONAS (4) - ✅ Confirmado funciona (carga de pricing_zones_mx)
+8. QR POINTS (3) - ❓ ¿Funciona para MX?
+9. CARPOOL (4) - ❓ ¿Funciona para MX?
+10. LIMPIEZA (3) - ❓ ¿Funciona para MX?
+11. DAÑOS (4) - ❓ ¿Funciona para MX?
+
+PREGUNTA AL USUARIO:
+¿Todas las secciones 2-11 guardan datos específicos para México?
+¿O solo se ven pero no hacen nada diferente de USA?
+
+
+================================================================================
+RESUMEN EJECUTIVO
+================================================================================
+
+TOTAL BUGS/ISSUES ENCONTRADOS: 22
+
+BUGS CRÍTICOS (arreglar YA): 7
+- BUG #1: Per Mile en lugar de Per KM
+- BUG #6: service_type vs vehicle_type
+- BUG #7: Falta country_code en rides
+- FALTA #13: Admin Mexico Documents Screen
+- FALTA #14: Admin Mexico Tax Screen
+- FALTA #15: Admin Mexico CFDI Screen
+- FALTA #20: Finance filtro de país
+
+BUGS ALTA PRIORIDAD: 9
+- BUG #2: Currency symbols
+- BUG #3: Localization
+- BUG #4: state vs state_code
+- BUG #5: per_minute vs per_min
+- FALTA #8: Payment method fees
+- FALTA #11: Cobertura geográfica
+- FALTA #12: Zonas metropolitanas
+- FALTA #16: Mexico Analytics
+- BUG #18: Dropdown hardcodeado
+
+BUGS MEDIA/BAJA PRIORIDAD: 6
+- FALTA #9: FX rates
+- FALTA #10: Geographic polygons
+- FALTA #17: Mexico compliance
+- PREGUNTA #19: Pricing valores
+- FALTA #21: Calendar eventos
+- FALTA #22: Map filtros
+
+
+================================================================================
+PRÓXIMOS PASOS
+================================================================================
+
+FASE 1 - FIXES CRÍTICOS (Sesión 1):
+[ ] BUG #1: Cambiar "Per Mile" → "Por KM" cuando country = MX
+[ ] BUG #6: Separar service_type y vehicle_type
+[ ] BUG #7: Agregar country_code a rides/deliveries
+[ ] FALTA #20: Finance con filtro de país
+
+FASE 2 - ADMIN SCREENS (Sesión 2-3):
+[ ] FALTA #13: Crear Admin Mexico Documents Screen
+[ ] FALTA #14: Crear Admin Mexico Tax Screen
+[ ] FALTA #15: Crear Admin Mexico CFDI Screen
+[ ] FALTA #16: Crear Admin Mexico Analytics
+
+FASE 3 - SCHEMA CLEANUP (Sesión 4):
+[ ] BUG #4: Unificar state/state_code
+[ ] BUG #5: Unificar per_minute/per_min
+[ ] BUG #18: Dropdown dinámico desde mexican_states
+
+FASE 4 - FEATURES (Sesión 5+):
+[ ] FALTA #8: Payment method fees
+[ ] FALTA #11-12: Expansión geográfica
+[ ] FALTA #9: FX rates integration
+
+
+================================================================================
+FIN DEL DOCUMENTO MAESTRO
+Última actualización: 30 Enero 2026
+================================================================================

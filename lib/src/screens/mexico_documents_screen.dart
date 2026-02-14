@@ -88,7 +88,7 @@ class _MexicoDocumentsScreenState extends State<MexicoDocumentsScreen> {
         title: Row(
           children: [
             Image.asset('assets/images/mexico_flag.png', width: 24, height: 16,
-              errorBuilder: (_, __, ___) => const Icon(Icons.flag, size: 18, color: AppColors.primary),
+              errorBuilder: (_, _, _) => const Icon(Icons.flag, size: 18, color: AppColors.primary),
             ),
             const SizedBox(width: 8),
             Text('mx_documents_title'.tr(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
@@ -535,6 +535,7 @@ class _MexicoDocumentsScreenState extends State<MexicoDocumentsScreen> {
       // Pick back file if needed
       File? backFile;
       if (docType.hasFrontBack) {
+        if (!mounted) return;
         final shouldUploadBack = await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(

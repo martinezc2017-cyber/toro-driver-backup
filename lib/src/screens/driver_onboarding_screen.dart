@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -12,11 +14,10 @@ import '../utils/app_colors.dart';
 import '../utils/haptic_service.dart';
 import '../widgets/custom_keyboard.dart';
 
-/// Multi-step onboarding for new drivers
-/// Step 1: Personal Information
-/// Step 2: Vehicle Information
-/// Step 3: Document Upload
-/// Step 4: Tax Information (W-9)
+/// Multi-step onboarding for new drivers and organizers
+/// Step 0: Role Selection (Driver or Organizer)
+/// Driver path:    Step 1: Personal Info -> Step 2: Vehicle -> Step 3: Documents -> Step 4: Tax (W-9)
+/// Organizer path: Step 1: Personal Info -> Step 2: Organizer Info -> Step 3: Tax (W-9)
 class DriverOnboardingScreen extends StatefulWidget {
   const DriverOnboardingScreen({super.key});
 
@@ -27,6 +28,16 @@ class DriverOnboardingScreen extends StatefulWidget {
 class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
   int _currentStep = 0;
   bool _isLoading = false;
+
+  // Step 0: Role Selection
+  String _selectedRole = 'driver'; // 'driver' or 'organizer'
+  String _countryCode = 'MX'; // 'US' or 'MX' - auto-detected, user can override
+  bool get _isMexico => _countryCode == 'MX';
+
+  // Organizer-specific controllers
+  final _orgCompanyNameController = TextEditingController();
+  final _orgPhoneController = TextEditingController();
+  final _orgStateController = TextEditingController();
 
   // Step 1: Personal Info
   final _firstNameController = TextEditingController();
@@ -53,7 +64,7 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
   // Step 3: Background Check Consent
   bool _acceptsBackgroundCheck = false;
 
-  // Step 4: Tax Information (W-9)
+  // Step 4: Tax Information (W-9 for US, SAT for MX)
   final _ssnController = TextEditingController();
   final _legalNameController = TextEditingController();
   final _businessNameController = TextEditingController();
@@ -63,6 +74,12 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
   final _zipCodeController = TextEditingController();
   String _taxClassification = 'individual'; // individual, llc_single, llc_partnership, corporation
   bool _certifyW9 = false;
+
+  // Mexico tax fields
+  final _rfcController = TextEditingController();
+  final _curpController = TextEditingController();
+  String _satRegime = 'pfae'; // pfae, resico, moral
+  bool _certifySAT = false;
 
   // OCR extraction results (ML Kit - offline, free)
   final DocumentOcrService _ocrService = DocumentOcrService();
@@ -99,10 +116,19 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
   String? _activeField;
   late FocusNode _keyboardListenerFocus;
 
+  /// Total number of steps based on role
+  /// Driver: roleSelect, personal, vehicle, documents, tax = 5
+  /// Organizer: roleSelect, personal, organizerInfo, tax = 4
+  int get _totalSteps => _selectedRole == 'organizer' ? 4 : 5;
+
+  /// Whether the current step index is the last step
+  bool get _isLastStep => _currentStep == _totalSteps - 1;
+
   @override
   void initState() {
     super.initState();
     _keyboardListenerFocus = FocusNode();
+    _detectCountry();
     // Listen to year changes to update UI for inspection report requirement
     _vehicleYearController.addListener(_onYearChanged);
     // Add listeners for text fields to trigger UI updates
@@ -114,6 +140,9 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
     _vehicleModelController.addListener(() => setState(() {}));
     _vehicleColorController.addListener(() => setState(() {}));
     _licensePlateController.addListener(() => setState(() {}));
+    _orgCompanyNameController.addListener(() => setState(() {}));
+    _orgPhoneController.addListener(() => setState(() {}));
+    _orgStateController.addListener(() => setState(() {}));
     _ssnController.addListener(() => setState(() {}));
     _legalNameController.addListener(() => setState(() {}));
     _businessNameController.addListener(() => setState(() {}));
@@ -126,6 +155,24 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
   void _onYearChanged() {
     // Rebuild to show/hide warnings and inspection report field
     setState(() {});
+  }
+
+  /// Auto-detect country from device locale (e.g. es_MX → MX, en_US → US)
+  void _detectCountry() {
+    try {
+      if (!kIsWeb) {
+        final locale = Platform.localeName; // e.g. "es_MX", "en_US"
+        final parts = locale.split('_');
+        if (parts.length >= 2) {
+          final region = parts.last.toUpperCase();
+          if (region == 'MX') {
+            _countryCode = 'MX';
+          }
+        }
+      }
+    } catch (_) {
+      // Fallback: keep default US
+    }
   }
 
   @override
@@ -141,6 +188,10 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
     _vehicleYearController.dispose();
     _vehicleColorController.dispose();
     _licensePlateController.dispose();
+    // Organizer controllers
+    _orgCompanyNameController.dispose();
+    _orgPhoneController.dispose();
+    _orgStateController.dispose();
     // W-9 controllers
     _ssnController.dispose();
     _legalNameController.dispose();
@@ -149,6 +200,9 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
     _cityController.dispose();
     _stateController.dispose();
     _zipCodeController.dispose();
+    // MX tax controllers
+    _rfcController.dispose();
+    _curpController.dispose();
     _ocrService.dispose();
     super.dispose();
   }
@@ -270,7 +324,7 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
 
     switch (type) {
       case 'license':
-        docName = "Driver's License";
+        docName = 'onb_doc_license'.tr();
         hasData = _licenseOcrData?.hasAnyData ?? false;
         if (_licenseOcrData != null) {
           extractedInfo = _licenseOcrData!.licenseNumber;
@@ -278,11 +332,11 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
         }
         break;
       case 'registration':
-        docName = 'Vehicle Registration';
+        docName = 'onb_doc_registration'.tr();
         hasData = true; // Registration doesn't have specific data to extract
         break;
       case 'insurance':
-        docName = 'Insurance';
+        docName = 'onb_doc_insurance'.tr();
         hasData = _insuranceOcrData?.hasAnyData ?? false;
         if (_insuranceOcrData != null) {
           extractedInfo = _insuranceOcrData!.policyNumber ?? _insuranceOcrData!.insuranceCompany;
@@ -344,12 +398,12 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
   }
 
   void _nextStep() {
-    if (_currentStep < 3) {
+    if (!_isLastStep) {
       if (_validateCurrentStep()) {
         HapticService.buttonPress();
         setState(() => _currentStep++);
-        // Auto-fill W-9 legal name from personal info when entering Step 4
-        if (_currentStep == 3 && _legalNameController.text.isEmpty) {
+        // Auto-fill W-9 legal name from personal info when entering tax step
+        if (_isLastStep && _legalNameController.text.isEmpty) {
           _legalNameController.text = '${_firstNameController.text.trim()} ${_lastNameController.text.trim()}'.trim();
         }
       }
@@ -365,88 +419,172 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
     }
   }
 
+  /// Map the current step index to the logical step name based on role
+  String get _currentStepName {
+    if (_selectedRole == 'organizer') {
+      // Organizer: 0=roleSelect, 1=personal, 2=organizerInfo, 3=tax
+      switch (_currentStep) {
+        case 0: return 'roleSelect';
+        case 1: return 'personal';
+        case 2: return 'organizerInfo';
+        case 3: return 'tax';
+        default: return 'unknown';
+      }
+    } else {
+      // Driver: 0=roleSelect, 1=personal, 2=vehicle, 3=documents, 4=tax
+      switch (_currentStep) {
+        case 0: return 'roleSelect';
+        case 1: return 'personal';
+        case 2: return 'vehicle';
+        case 3: return 'documents';
+        case 4: return 'tax';
+        default: return 'unknown';
+      }
+    }
+  }
+
   bool _validateCurrentStep() {
-    switch (_currentStep) {
-      case 0:
+    switch (_currentStepName) {
+      case 'roleSelect':
+        // Always valid - just selecting a role
+        return true;
+      case 'personal':
         if (_firstNameController.text.isEmpty ||
             _lastNameController.text.isEmpty ||
             _phoneController.text.isEmpty) {
-          _showError('Please fill in all required fields');
+          _showError('onb_error_fill_fields'.tr());
           return false;
         }
         return true;
-      case 1:
+      case 'vehicle':
         if (_vehicleMakeController.text.isEmpty ||
             _vehicleModelController.text.isEmpty ||
             _licensePlateController.text.isEmpty) {
-          _showError('Please fill in all required vehicle information');
+          _showError('onb_error_vehicle_fields'.tr());
           return false;
         }
         // Validate vehicle year
         if (_vehicleYearController.text.isNotEmpty) {
           final year = _vehicleYear;
           if (year == null) {
-            _showError('Please enter a valid vehicle year');
+            _showError('onb_error_valid_year'.tr());
             return false;
           }
           if (year < 2012) {
-            _showError('Vehicles older than 2012 are not eligible for registration');
+            _showError('onb_vehicle_old_error'.tr());
             return false;
           }
           final currentYear = DateTime.now().year;
           if (year > currentYear + 1) {
-            _showError('Please enter a valid vehicle year');
+            _showError('onb_error_valid_year'.tr());
             return false;
           }
         }
         return true;
-      case 2:
+      case 'documents':
         if (_profilePhoto == null || _driverLicense == null) {
-          _showError('Please upload your profile photo and driver\'s license');
+          _showError('onb_error_docs_upload'.tr());
           return false;
         }
         // Vehicle Inspection Report required for 2012-2017 vehicles
         if (_requiresInspectionReport && _vehicleInspectionReport == null) {
-          _showError('Vehicle Inspection Report is required for vehicles 2012-2017');
+          _showError('onb_error_inspection'.tr());
           return false;
         }
         // Background check consent is required
         if (!_acceptsBackgroundCheck) {
-          _showError('You must consent to background check verification');
+          _showError('onb_error_bg_check'.tr());
           return false;
         }
         return true;
-      case 3:
-        // W-9 Tax Information validation
-        if (_ssnController.text.isEmpty) {
-          _showError('Social Security Number is required');
+      case 'organizerInfo':
+        if (_orgCompanyNameController.text.isEmpty) {
+          _showError('onb_error_company'.tr());
           return false;
         }
-        // SSN should be 9 digits (without dashes)
-        final ssnDigits = _ssnController.text.replaceAll(RegExp(r'\D'), '');
-        if (ssnDigits.length != 9) {
-          _showError('Please enter a valid 9-digit SSN');
+        if (_orgPhoneController.text.isEmpty) {
+          _showError('onb_error_phone'.tr());
           return false;
         }
-        if (_legalNameController.text.isEmpty) {
-          _showError('Legal name is required');
-          return false;
-        }
-        if (_streetAddressController.text.isEmpty ||
-            _cityController.text.isEmpty ||
-            _stateController.text.isEmpty ||
-            _zipCodeController.text.isEmpty) {
-          _showError('Complete mailing address is required');
-          return false;
-        }
-        if (!_certifyW9) {
-          _showError('You must certify the W-9 information');
+        if (_orgStateController.text.isEmpty) {
+          _showError('onb_error_state'.tr());
           return false;
         }
         return true;
+      case 'tax':
+        if (_isMexico) {
+          return _validateMexicoTax();
+        }
+        return _validateUSTax();
       default:
         return true;
     }
+  }
+
+  bool _validateUSTax() {
+    if (_ssnController.text.isEmpty) {
+      _showError('onb_error_ssn_required'.tr());
+      return false;
+    }
+    final ssnDigits = _ssnController.text.replaceAll(RegExp(r'\D'), '');
+    if (ssnDigits.length != 9) {
+      _showError('onb_error_ssn'.tr());
+      return false;
+    }
+    if (_legalNameController.text.isEmpty) {
+      _showError('onb_error_required'.tr());
+      return false;
+    }
+    if (_streetAddressController.text.isEmpty ||
+        _cityController.text.isEmpty ||
+        _stateController.text.isEmpty ||
+        _zipCodeController.text.isEmpty) {
+      _showError('onb_error_address'.tr());
+      return false;
+    }
+    if (!_certifyW9) {
+      _showError('onb_error_certify_w9'.tr());
+      return false;
+    }
+    return true;
+  }
+
+  bool _validateMexicoTax() {
+    final rfc = _rfcController.text.trim();
+    if (rfc.isEmpty) {
+      _showError('onb_error_rfc'.tr());
+      return false;
+    }
+    // RFC: 12 chars (moral) or 13 chars (física)
+    if (!RegExp(r'^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}$').hasMatch(rfc)) {
+      _showError('onb_tax_rfc_error'.tr());
+      return false;
+    }
+    final curp = _curpController.text.trim();
+    if (curp.isEmpty) {
+      _showError('onb_error_curp'.tr());
+      return false;
+    }
+    if (curp.length != 18) {
+      _showError('onb_tax_curp_error'.tr());
+      return false;
+    }
+    if (_legalNameController.text.isEmpty) {
+      _showError('onb_error_required'.tr());
+      return false;
+    }
+    if (_streetAddressController.text.isEmpty ||
+        _cityController.text.isEmpty ||
+        _stateController.text.isEmpty ||
+        _zipCodeController.text.isEmpty) {
+      _showError('onb_error_required'.tr());
+      return false;
+    }
+    if (!_certifySAT) {
+      _showError('onb_error_certify_sat'.tr());
+      return false;
+    }
+    return true;
   }
 
   void _showError(String message) {
@@ -475,7 +613,7 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
       //ONBOARDING -> currentUser: ${currentUser?.email ?? "NULL"}');
 
       if (currentUser == null) {
-        _showError('User not authenticated. Please sign in again.');
+        _showError('onb_error_auth'.tr());
         setState(() => _isLoading = false);
         return;
       }
@@ -487,17 +625,20 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
 
       // Create driver model with pending status
       final fullName = '${_firstNameController.text.trim()} ${_lastNameController.text.trim()}'.trim();
+      final isOrganizer = _selectedRole == 'organizer';
       final newDriver = DriverModel(
         id: driverId,
         odUserId: driverId,
         email: currentUser.email ?? '',
         phone: _phoneController.text.trim(),
         name: fullName,
-        vehicleType: _vehicleType,
-        vehiclePlate: _licensePlateController.text.trim(),
-        vehicleModel: '${_vehicleMakeController.text.trim()} ${_vehicleModelController.text.trim()}'.trim(),
+        vehicleType: isOrganizer ? null : _vehicleType,
+        vehiclePlate: isOrganizer ? null : _licensePlateController.text.trim(),
+        vehicleModel: isOrganizer ? null : '${_vehicleMakeController.text.trim()} ${_vehicleModelController.text.trim()}'.trim(),
+        role: _selectedRole,
         status: DriverStatus.pending,
         isVerified: false,
+        countryCode: _countryCode,
         createdAt: now,
         updatedAt: now,
       );
@@ -507,23 +648,59 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
       final savedDriver = await driverService.createDriver(newDriver);
       //ONBOARDING -> Driver saved successfully: ${savedDriver.id}');
 
-      // Save W-9 Tax Information
-      //ONBOARDING -> Saving W-9 tax info...');
-      await driverService.saveW9TaxInfo(
-        driverId: savedDriver.id,
-        ssn: _ssnController.text,
-        legalName: _legalNameController.text.trim(),
-        businessName: _businessNameController.text.trim().isNotEmpty
-            ? _businessNameController.text.trim()
-            : null,
-        taxClassification: _taxClassification,
-        streetAddress: _streetAddressController.text.trim(),
-        city: _cityController.text.trim(),
-        state: _stateController.text.trim().toUpperCase(),
-        zipCode: _zipCodeController.text.trim(),
-        certificationSigned: _certifyW9,
-      );
-      //ONBOARDING -> W-9 saved successfully');
+      // Save tax information based on country
+      if (_isMexico) {
+        await driverService.saveMexicoTaxInfo(
+          driverId: savedDriver.id,
+          rfc: _rfcController.text.trim(),
+          curp: _curpController.text.trim(),
+          satRegime: _satRegime,
+          legalName: _legalNameController.text.trim(),
+          businessName: _businessNameController.text.trim().isNotEmpty
+              ? _businessNameController.text.trim()
+              : null,
+          streetAddress: _streetAddressController.text.trim(),
+          city: _cityController.text.trim(),
+          state: _stateController.text.trim(),
+          zipCode: _zipCodeController.text.trim(),
+          certificationSigned: _certifySAT,
+        );
+      } else {
+        await driverService.saveW9TaxInfo(
+          driverId: savedDriver.id,
+          ssn: _ssnController.text,
+          legalName: _legalNameController.text.trim(),
+          businessName: _businessNameController.text.trim().isNotEmpty
+              ? _businessNameController.text.trim()
+              : null,
+          taxClassification: _taxClassification,
+          streetAddress: _streetAddressController.text.trim(),
+          city: _cityController.text.trim(),
+          state: _stateController.text.trim().toUpperCase(),
+          zipCode: _zipCodeController.text.trim(),
+          certificationSigned: _certifyW9,
+        );
+      }
+
+      // If organizer, also insert into organizers table
+      if (isOrganizer) {
+        //ONBOARDING -> Saving organizer info...');
+        try {
+          await Supabase.instance.client.from('organizers').insert({
+            'id': savedDriver.id,
+            'user_id': savedDriver.id,
+            'company_name': _orgCompanyNameController.text.trim(),
+            'phone': _orgPhoneController.text.trim(),
+            'state': _orgStateController.text.trim(),
+            'status': 'pending',
+            'created_at': now.toIso8601String(),
+            'updated_at': now.toIso8601String(),
+          });
+          //ONBOARDING -> Organizer info saved successfully');
+        } catch (e) {
+          //ONBOARDING -> Organizer insert error (non-fatal): $e');
+        }
+      }
 
       // Update AuthProvider with the new driver
       authProvider.updateDriver(savedDriver);
@@ -613,6 +790,11 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
       case 'city': return _cityController;
       case 'state': return _stateController;
       case 'zipCode': return _zipCodeController;
+      case 'orgCompanyName': return _orgCompanyNameController;
+      case 'orgPhone': return _orgPhoneController;
+      case 'orgState': return _orgStateController;
+      case 'rfc': return _rfcController;
+      case 'curp': return _curpController;
       default: return null;
     }
   }
@@ -639,7 +821,7 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
             onPressed: _currentStep > 0 ? _previousStep : () => Navigator.pop(context),
           ),
           title: Text(
-            'Step ${_currentStep + 1} of 4',
+            'onb_step_x_of_y'.tr(namedArgs: {'current': '${_currentStep + 1}', 'total': '$_totalSteps'}),
             style: const TextStyle(
               color: AppColors.textSecondary,
               fontSize: 14,
@@ -744,11 +926,11 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       child: Row(
-        children: List.generate(4, (index) {
+        children: List.generate(_totalSteps, (index) {
           final isActive = index <= _currentStep;
           return Expanded(
             child: Container(
-              margin: EdgeInsets.only(right: index < 3 ? 6 : 0),
+              margin: EdgeInsets.only(right: index < _totalSteps - 1 ? 6 : 0),
               height: 3,
               decoration: BoxDecoration(
                 color: isActive ? AppColors.success : AppColors.border,
@@ -762,27 +944,31 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
   }
 
   Widget _buildStepContent() {
-    switch (_currentStep) {
-      case 0:
+    switch (_currentStepName) {
+      case 'roleSelect':
+        return _buildRoleSelectionStep();
+      case 'personal':
         return _buildPersonalInfoStep();
-      case 1:
+      case 'vehicle':
         return _buildVehicleInfoStep();
-      case 2:
+      case 'documents':
         return _buildDocumentsStep();
-      case 3:
+      case 'organizerInfo':
+        return _buildOrganizerInfoStep();
+      case 'tax':
         return _buildTaxInfoStep();
       default:
         return const SizedBox();
     }
   }
 
-  Widget _buildPersonalInfoStep() {
+  Widget _buildRoleSelectionStep() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Personal Information',
-          style: TextStyle(
+        Text(
+          'onb_select_role'.tr(),
+          style: const TextStyle(
             color: AppColors.textPrimary,
             fontSize: 18,
             fontWeight: FontWeight.bold,
@@ -790,7 +976,255 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
         ),
         const SizedBox(height: 4),
         Text(
-          'Tell us about yourself',
+          'onb_select_role_desc'.tr(),
+          style: TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 12,
+          ),
+        ),
+        const SizedBox(height: 24),
+
+        _buildRoleCard(
+          roleId: 'driver',
+          title: 'onb_role_im_driver'.tr(),
+          subtitle: 'onb_role_im_driver_desc'.tr(),
+          icon: Icons.directions_car,
+        ),
+        const SizedBox(height: 16),
+
+        _buildRoleCard(
+          roleId: 'organizer',
+          title: 'onb_role_im_organizer'.tr(),
+          subtitle: 'onb_role_im_organizer_desc'.tr(),
+          icon: Icons.business_center,
+        ),
+        const SizedBox(height: 32),
+
+        // Country selector
+        Text(
+          'onb_country_label'.tr(),
+          style: const TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            _buildCountryChip('US', '🇺🇸', 'onb_country_us'.tr()),
+            const SizedBox(width: 12),
+            _buildCountryChip('MX', '🇲🇽', 'onb_country_mx'.tr()),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCountryChip(String code, String flag, String label) {
+    final isSelected = _countryCode == code;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          HapticService.buttonPress();
+          setState(() => _countryCode = code);
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            color: isSelected ? AppColors.primary.withValues(alpha: 0.08) : AppColors.card,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isSelected ? AppColors.primary : AppColors.border,
+              width: isSelected ? 2 : 1,
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(flag, style: const TextStyle(fontSize: 22)),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRoleCard({
+    required String roleId,
+    required String title,
+    required String subtitle,
+    required IconData icon,
+  }) {
+    final isSelected = _selectedRole == roleId;
+    return GestureDetector(
+      onTap: () {
+        HapticService.buttonPress();
+        setState(() => _selectedRole = roleId);
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColors.primary.withValues(alpha: 0.08)
+              : AppColors.card,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected ? AppColors.primary : AppColors.border,
+            width: isSelected ? 2 : 1,
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.25),
+                    blurRadius: 20,
+                    spreadRadius: -2,
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? AppColors.primary.withValues(alpha: 0.15)
+                    : AppColors.cardSecondary,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(
+                icon,
+                color: isSelected ? AppColors.primary : AppColors.textTertiary,
+                size: 28,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: isSelected
+                          ? AppColors.primary
+                          : AppColors.textPrimary,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isSelected ? AppColors.primary : Colors.transparent,
+                border: Border.all(
+                  color: isSelected ? AppColors.primary : AppColors.textTertiary,
+                  width: 2,
+                ),
+              ),
+              child: isSelected
+                  ? const Icon(Icons.check, color: Colors.white, size: 16)
+                  : null,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOrganizerInfoStep() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'onb_org_title'.tr(),
+          style: const TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'onb_org_desc'.tr(),
+          style: TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 12,
+          ),
+        ),
+        const SizedBox(height: 20),
+
+        _buildTextField(
+          controller: _orgCompanyNameController,
+          label: '${'onb_org_company'.tr()} *',
+          icon: Icons.business_outlined,
+          hint: 'onb_org_company_hint'.tr(),
+          fieldName: 'orgCompanyName',
+        ),
+        const SizedBox(height: 12),
+
+        _buildTextField(
+          controller: _orgPhoneController,
+          label: '${'onb_org_phone'.tr()} *',
+          icon: Icons.phone_outlined,
+          keyboardType: TextInputType.phone,
+          fieldName: 'orgPhone',
+        ),
+        const SizedBox(height: 12),
+
+        _buildTextField(
+          controller: _orgStateController,
+          label: '${'onb_org_state'.tr()} *',
+          icon: Icons.map_outlined,
+          hint: 'onb_org_state_hint'.tr(),
+          fieldName: 'orgState',
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPersonalInfoStep() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'onb_personal_title'.tr(),
+          style: const TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'onb_personal_desc'.tr(),
           style: TextStyle(
             color: AppColors.textSecondary,
             fontSize: 12,
@@ -800,7 +1234,7 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
 
         _buildTextField(
           controller: _firstNameController,
-          label: 'First Name *',
+          label: '${'onb_first_name'.tr()} *',
           icon: Icons.person_outline_rounded,
           fieldName: 'firstName',
         ),
@@ -808,7 +1242,7 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
 
         _buildTextField(
           controller: _lastNameController,
-          label: 'Last Name *',
+          label: '${'onb_last_name'.tr()} *',
           icon: Icons.person_outline_rounded,
           fieldName: 'lastName',
         ),
@@ -816,7 +1250,7 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
 
         _buildTextField(
           controller: _phoneController,
-          label: 'Phone Number *',
+          label: '${'onb_phone'.tr()} *',
           icon: Icons.phone_outlined,
           keyboardType: TextInputType.phone,
           fieldName: 'phone',
@@ -825,7 +1259,7 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
 
         _buildTextField(
           controller: _addressController,
-          label: 'Address',
+          label: 'onb_address'.tr(),
           icon: Icons.location_on_outlined,
           fieldName: 'address',
         ),
@@ -840,9 +1274,9 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Vehicle Information',
-          style: TextStyle(
+        Text(
+          'onb_vehicle_title'.tr(),
+          style: const TextStyle(
             color: AppColors.textPrimary,
             fontSize: 18,
             fontWeight: FontWeight.bold,
@@ -850,7 +1284,7 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
         ),
         const SizedBox(height: 4),
         Text(
-          'Tell us about your vehicle',
+          'onb_vehicle_desc'.tr(),
           style: TextStyle(
             color: AppColors.textSecondary,
             fontSize: 12,
@@ -864,18 +1298,18 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
 
         _buildTextField(
           controller: _vehicleMakeController,
-          label: 'Make *',
+          label: '${'onb_vehicle_make'.tr()} *',
           icon: Icons.directions_car_outlined,
-          hint: 'e.g., Toyota',
+          hint: 'onb_vehicle_make_hint'.tr(),
           fieldName: 'vehicleMake',
         ),
         const SizedBox(height: 12),
 
         _buildTextField(
           controller: _vehicleModelController,
-          label: 'Model *',
+          label: '${'onb_vehicle_model'.tr()} *',
           icon: Icons.directions_car_outlined,
-          hint: 'e.g., Camry',
+          hint: 'onb_vehicle_model_hint'.tr(),
           fieldName: 'vehicleModel',
         ),
         const SizedBox(height: 12),
@@ -885,10 +1319,10 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
             Expanded(
               child: _buildTextField(
                 controller: _vehicleYearController,
-                label: 'Year',
+                label: 'onb_vehicle_year'.tr(),
                 icon: Icons.calendar_today_outlined,
                 keyboardType: TextInputType.number,
-                hint: 'e.g., 2020',
+                hint: 'onb_vehicle_year_hint'.tr(),
                 fieldName: 'vehicleYear',
               ),
             ),
@@ -896,9 +1330,9 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
             Expanded(
               child: _buildTextField(
                 controller: _vehicleColorController,
-                label: 'Color',
+                label: 'onb_vehicle_color'.tr(),
                 icon: Icons.palette_outlined,
-                hint: 'e.g., White',
+                hint: 'onb_vehicle_color_hint'.tr(),
                 fieldName: 'vehicleColor',
               ),
             ),
@@ -908,7 +1342,7 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
 
         _buildTextField(
           controller: _licensePlateController,
-          label: 'License Plate *',
+          label: '${'onb_vehicle_plate'.tr()} *',
           icon: Icons.credit_card_outlined,
           textCapitalization: TextCapitalization.characters,
           fieldName: 'licensePlate',
@@ -930,7 +1364,7 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'Vehicles older than 2012 are not eligible for registration.',
+                    'onb_vehicle_old_error'.tr(),
                     style: TextStyle(
                       color: AppColors.error,
                       fontSize: 12,
@@ -959,7 +1393,7 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'Vehicles from 2012-2017 require a Vehicle Inspection Report.',
+                    'onb_vehicle_inspection_notice'.tr(),
                     style: TextStyle(
                       color: AppColors.warning,
                       fontSize: 12,
@@ -979,9 +1413,9 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Upload Documents',
-          style: TextStyle(
+        Text(
+          'onb_doc_title'.tr(),
+          style: const TextStyle(
             color: AppColors.textPrimary,
             fontSize: 18,
             fontWeight: FontWeight.bold,
@@ -989,7 +1423,7 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
         ),
         const SizedBox(height: 4),
         Text(
-          'We need to verify your identity',
+          'onb_doc_subtitle'.tr(),
           style: TextStyle(
             color: AppColors.textSecondary,
             fontSize: 12,
@@ -998,8 +1432,8 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
         const SizedBox(height: 20),
 
         _buildDocumentUpload(
-          title: 'Profile Photo *',
-          subtitle: 'Clear photo of your face',
+          title: '${'onb_doc_photo'.tr()} *',
+          subtitle: 'onb_doc_photo_desc'.tr(),
           icon: Icons.face_rounded,
           imageBytes: _profilePhoto,
           onTap: () => _pickImage('profile'),
@@ -1007,8 +1441,8 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
         const SizedBox(height: 10),
 
         _buildDocumentUpload(
-          title: 'Driver\'s License *',
-          subtitle: 'Front side of your license',
+          title: '${'onb_doc_license'.tr()} *',
+          subtitle: 'onb_doc_license_front'.tr(),
           icon: Icons.badge_outlined,
           imageBytes: _driverLicense,
           onTap: () => _pickImage('license'),
@@ -1019,8 +1453,8 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
         const SizedBox(height: 10),
 
         _buildDocumentUpload(
-          title: 'Vehicle Registration',
-          subtitle: 'Current registration document',
+          title: 'onb_doc_registration'.tr(),
+          subtitle: 'onb_doc_registration_desc'.tr(),
           icon: Icons.description_outlined,
           imageBytes: _vehicleRegistration,
           onTap: () => _pickImage('registration'),
@@ -1028,8 +1462,8 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
         const SizedBox(height: 10),
 
         _buildDocumentUpload(
-          title: 'Insurance Card',
-          subtitle: 'Proof of insurance',
+          title: 'onb_doc_insurance'.tr(),
+          subtitle: 'onb_doc_insurance_desc'.tr(),
           icon: Icons.security_outlined,
           imageBytes: _insuranceCard,
           onTap: () => _pickImage('insurance'),
@@ -1042,8 +1476,8 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
         if (_requiresInspectionReport) ...[
           const SizedBox(height: 10),
           _buildDocumentUpload(
-            title: 'Vehicle Inspection Report *',
-            subtitle: 'Required for vehicles 2012-2017',
+            title: '${'onb_vehicle_inspection_title'.tr()} *',
+            subtitle: 'onb_vehicle_inspection_desc'.tr(),
             icon: Icons.assignment_outlined,
             imageBytes: _vehicleInspectionReport,
             onTap: () => _pickImage('inspection'),
@@ -1086,7 +1520,7 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
               ),
               const SizedBox(width: 8),
               Text(
-                'Background Check Verification *',
+                '${'onb_bg_check_title'.tr()} *',
                 style: TextStyle(
                   color: AppColors.textPrimary,
                   fontSize: 14,
@@ -1097,8 +1531,7 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'As a TORO Driver, you will be transporting passengers and packages. '
-            'For everyone\'s safety, we conduct background checks on all drivers.',
+            'onb_bg_check_desc'.tr(),
             style: TextStyle(
               color: AppColors.textSecondary,
               fontSize: 11,
@@ -1131,7 +1564,7 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'I consent to background check verification',
+                    'onb_bg_check_agree'.tr(),
                     style: TextStyle(
                       color: _acceptsBackgroundCheck ? AppColors.success : AppColors.textSecondary,
                       fontSize: 12,
@@ -1148,12 +1581,16 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
   }
 
   Widget _buildTaxInfoStep() {
+    return _isMexico ? _buildMexicoTaxStep() : _buildUSTaxStep();
+  }
+
+  Widget _buildUSTaxStep() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Tax Information (W-9)',
-          style: TextStyle(
+        Text(
+          'onb_tax_title_us'.tr(),
+          style: const TextStyle(
             color: AppColors.textPrimary,
             fontSize: 18,
             fontWeight: FontWeight.bold,
@@ -1161,7 +1598,7 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
         ),
         const SizedBox(height: 4),
         Text(
-          'Required for IRS 1099 tax reporting',
+          'onb_tax_subtitle_us'.tr(),
           style: TextStyle(
             color: AppColors.textSecondary,
             fontSize: 12,
@@ -1181,7 +1618,7 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Your SSN is encrypted and only used for tax filing',
+                  'onb_tax_ssn_note'.tr(),
                   style: TextStyle(
                     color: AppColors.warning,
                     fontSize: 11,
@@ -1199,7 +1636,7 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
 
         _buildTextField(
           controller: _legalNameController,
-          label: 'Legal Name (as shown on tax return) *',
+          label: '${'onb_tax_legal_name'.tr()} *',
           icon: Icons.person_outline,
           fieldName: 'legalName',
         ),
@@ -1207,9 +1644,9 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
 
         _buildTextField(
           controller: _businessNameController,
-          label: 'Business Name (if different)',
+          label: 'onb_tax_business_name'.tr(),
           icon: Icons.business_outlined,
-          hint: 'Leave blank if individual',
+          hint: 'onb_tax_business_hint'.tr(),
           fieldName: 'businessName',
         ),
         const SizedBox(height: 12),
@@ -1220,7 +1657,7 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
 
         // Mailing Address Section
         Text(
-          'Mailing Address',
+          'onb_tax_address'.tr(),
           style: TextStyle(
             color: AppColors.textSecondary,
             fontSize: 12,
@@ -1231,7 +1668,7 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
 
         _buildTextField(
           controller: _streetAddressController,
-          label: 'Street Address *',
+          label: '${'onb_address'.tr()} *',
           icon: Icons.home_outlined,
           fieldName: 'streetAddress',
         ),
@@ -1243,7 +1680,7 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
               flex: 2,
               child: _buildTextField(
                 controller: _cityController,
-                label: 'City *',
+                label: '${'onb_city'.tr()} *',
                 icon: Icons.location_city_outlined,
                 fieldName: 'city',
               ),
@@ -1252,9 +1689,9 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
             Expanded(
               child: _buildTextField(
                 controller: _stateController,
-                label: 'State *',
+                label: '${'onb_state'.tr()} *',
                 icon: Icons.map_outlined,
-                hint: 'CA',
+                hint: 'onb_state_hint_us'.tr(),
                 textCapitalization: TextCapitalization.characters,
                 fieldName: 'state',
               ),
@@ -1267,7 +1704,7 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
           width: 150,
           child: _buildTextField(
             controller: _zipCodeController,
-            label: 'ZIP Code *',
+            label: '${'onb_zip'.tr()} *',
             icon: Icons.markunread_mailbox_outlined,
             keyboardType: TextInputType.number,
             fieldName: 'zipCode',
@@ -1277,6 +1714,266 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
 
         // W-9 Certification
         _buildW9Certification(),
+      ],
+    );
+  }
+
+  Widget _buildMexicoTaxStep() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'onb_tax_title_mx'.tr(),
+          style: const TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'onb_tax_subtitle_mx'.tr(),
+          style: TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 12,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: AppColors.warning.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.security_outlined, color: AppColors.warning, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'onb_tax_mx_note'.tr(),
+                  style: TextStyle(
+                    color: AppColors.warning,
+                    fontSize: 11,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // RFC Field
+        TextFormField(
+          controller: _rfcController,
+          keyboardType: TextInputType.none,
+          textCapitalization: TextCapitalization.characters,
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
+            LengthLimitingTextInputFormatter(13),
+            _UpperCaseInputFormatter(),
+          ],
+          onTap: () => _showKeyboardForField('rfc', TextInputType.text),
+          style: const TextStyle(color: AppColors.textPrimary, fontSize: 14, letterSpacing: 1.5),
+          decoration: InputDecoration(
+            labelText: '${'onb_tax_rfc'.tr()} *',
+            hintText: 'onb_tax_rfc_hint'.tr(),
+            labelStyle: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+            hintStyle: TextStyle(color: AppColors.textTertiary, fontSize: 13),
+            prefixIcon: Icon(Icons.badge_outlined, color: AppColors.textTertiary, size: 20),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            filled: true,
+            fillColor: AppColors.card,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: AppColors.border)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: AppColors.border)),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: AppColors.success, width: 2)),
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // CURP Field
+        TextFormField(
+          controller: _curpController,
+          keyboardType: TextInputType.none,
+          textCapitalization: TextCapitalization.characters,
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
+            LengthLimitingTextInputFormatter(18),
+            _UpperCaseInputFormatter(),
+          ],
+          onTap: () => _showKeyboardForField('curp', TextInputType.text),
+          style: const TextStyle(color: AppColors.textPrimary, fontSize: 14, letterSpacing: 1.5),
+          decoration: InputDecoration(
+            labelText: '${'onb_tax_curp'.tr()} *',
+            hintText: 'onb_tax_curp_hint'.tr(),
+            labelStyle: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+            hintStyle: TextStyle(color: AppColors.textTertiary, fontSize: 13),
+            prefixIcon: Icon(Icons.fingerprint, color: AppColors.textTertiary, size: 20),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            filled: true,
+            fillColor: AppColors.card,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: AppColors.border)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: AppColors.border)),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: AppColors.success, width: 2)),
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        _buildTextField(
+          controller: _legalNameController,
+          label: '${'onb_tax_legal_name'.tr()} *',
+          icon: Icons.person_outline,
+          fieldName: 'legalName',
+        ),
+        const SizedBox(height: 12),
+
+        _buildTextField(
+          controller: _businessNameController,
+          label: 'onb_tax_business_name'.tr(),
+          icon: Icons.business_outlined,
+          fieldName: 'businessName',
+        ),
+        const SizedBox(height: 12),
+
+        // SAT Regime selector
+        _buildSATRegimeSelector(),
+        const SizedBox(height: 16),
+
+        // Address Section
+        Text(
+          'onb_tax_address'.tr(),
+          style: TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 8),
+
+        _buildTextField(
+          controller: _streetAddressController,
+          label: '${'onb_address'.tr()} *',
+          icon: Icons.home_outlined,
+          fieldName: 'streetAddress',
+        ),
+        const SizedBox(height: 10),
+
+        Row(
+          children: [
+            Expanded(
+              flex: 2,
+              child: _buildTextField(
+                controller: _cityController,
+                label: '${'onb_city'.tr()} *',
+                icon: Icons.location_city_outlined,
+                fieldName: 'city',
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _buildTextField(
+                controller: _stateController,
+                label: '${'onb_state'.tr()} *',
+                icon: Icons.map_outlined,
+                hint: 'onb_state_hint_mx'.tr(),
+                fieldName: 'state',
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+
+        SizedBox(
+          width: 150,
+          child: _buildTextField(
+            controller: _zipCodeController,
+            label: '${'onb_zip'.tr()} *',
+            icon: Icons.markunread_mailbox_outlined,
+            keyboardType: TextInputType.number,
+            fieldName: 'zipCode',
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // SAT Certification
+        GestureDetector(
+          onTap: () {
+            HapticService.buttonPress();
+            setState(() => _certifySAT = !_certifySAT);
+          },
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: _certifySAT ? AppColors.success.withValues(alpha: 0.08) : AppColors.card,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: _certifySAT ? AppColors.success : AppColors.border,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  _certifySAT ? Icons.check_circle : Icons.circle_outlined,
+                  color: _certifySAT ? AppColors.success : AppColors.textTertiary,
+                  size: 22,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'onb_tax_certify_sat'.tr(),
+                    style: TextStyle(
+                      color: _certifySAT ? AppColors.textPrimary : AppColors.textSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSATRegimeSelector() {
+    final regimes = [
+      {'id': 'pfae', 'label': 'onb_tax_sat_regime_pfae'.tr()},
+      {'id': 'resico', 'label': 'onb_tax_sat_regime_resico'.tr()},
+      {'id': 'moral', 'label': 'onb_tax_sat_regime_moral'.tr()},
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'onb_tax_sat_regime'.tr(),
+          style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: AppColors.card,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: _satRegime,
+              isExpanded: true,
+              dropdownColor: AppColors.card,
+              style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+              items: regimes.map((r) => DropdownMenuItem(
+                value: r['id'],
+                child: Text(r['label']!, style: const TextStyle(fontSize: 13)),
+              )).toList(),
+              onChanged: (value) {
+                if (value != null) setState(() => _satRegime = value);
+              },
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -1294,8 +1991,8 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
       onTap: () => _showKeyboardForField('ssn', TextInputType.number),
       style: const TextStyle(color: AppColors.textPrimary, fontSize: 14, letterSpacing: 2),
       decoration: InputDecoration(
-        labelText: 'Social Security Number *',
-        hintText: '***-**-****',
+        labelText: '${'onb_tax_ssn'.tr()} *',
+        hintText: 'onb_tax_ssn_hint'.tr(),
         labelStyle: TextStyle(color: AppColors.textSecondary, fontSize: 13),
         hintStyle: TextStyle(color: AppColors.textTertiary, fontSize: 13),
         prefixIcon: Icon(Icons.lock_outline, color: AppColors.textTertiary, size: 20),
@@ -1320,17 +2017,17 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
 
   Widget _buildTaxClassificationSelector() {
     final classifications = [
-      {'id': 'individual', 'label': 'Individual / Sole Proprietor'},
-      {'id': 'llc_single', 'label': 'LLC (Single Member)'},
-      {'id': 'llc_partnership', 'label': 'LLC (Partnership)'},
-      {'id': 'corporation', 'label': 'C or S Corporation'},
+      {'id': 'individual', 'label': 'onb_tax_classification_individual'.tr()},
+      {'id': 'llc_single', 'label': 'onb_tax_classification_llc'.tr()},
+      {'id': 'llc_partnership', 'label': 'onb_tax_classification_partnership'.tr()},
+      {'id': 'corporation', 'label': 'onb_tax_classification_corp'.tr()},
     ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Tax Classification',
+          'onb_tax_classification'.tr(),
           style: TextStyle(
             color: AppColors.textSecondary,
             fontSize: 12,
@@ -1390,7 +2087,7 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
               ),
               const SizedBox(width: 8),
               Text(
-                'W-9 Certification',
+                'onb_tax_w9_title'.tr(),
                 style: TextStyle(
                   color: AppColors.textPrimary,
                   fontSize: 13,
@@ -1401,10 +2098,7 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Under penalties of perjury, I certify that:\n'
-            '1. The number shown is my correct taxpayer identification number\n'
-            '2. I am a U.S. citizen or other U.S. person\n'
-            '3. I am not subject to backup withholding',
+            'onb_tax_w9_text'.tr(),
             style: TextStyle(
               color: AppColors.textSecondary,
               fontSize: 10,
@@ -1437,7 +2131,7 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'I certify that the above information is correct',
+                    'onb_tax_certify_correct'.tr(),
                     style: TextStyle(
                       color: _certifyW9 ? AppColors.success : AppColors.textSecondary,
                       fontSize: 12,
@@ -1554,7 +2248,7 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
             Text(
               _birthDate != null
                   ? '${_birthDate!.month}/${_birthDate!.day}/${_birthDate!.year}'
-                  : 'Date of Birth',
+                  : 'onb_dob'.tr(),
               style: TextStyle(
                 color: _birthDate != null
                     ? AppColors.textPrimary
@@ -1570,17 +2264,17 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
 
   Widget _buildVehicleTypeSelector() {
     final types = [
-      {'id': 'sedan', 'label': 'Sedan', 'icon': Icons.directions_car},
-      {'id': 'suv', 'label': 'SUV', 'icon': Icons.directions_car},
-      {'id': 'van', 'label': 'Van', 'icon': Icons.airport_shuttle},
-      {'id': 'truck', 'label': 'Truck', 'icon': Icons.local_shipping},
+      {'id': 'sedan', 'label': 'onb_vehicle_type_sedan'.tr(), 'icon': Icons.directions_car},
+      {'id': 'suv', 'label': 'onb_vehicle_type_suv'.tr(), 'icon': Icons.directions_car},
+      {'id': 'van', 'label': 'onb_vehicle_type_van'.tr(), 'icon': Icons.airport_shuttle},
+      {'id': 'truck', 'label': 'onb_vehicle_type_truck'.tr(), 'icon': Icons.local_shipping},
     ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Vehicle Type',
+          'onb_vehicle_type'.tr(),
           style: TextStyle(
             color: AppColors.textSecondary,
             fontSize: 12,
@@ -1680,9 +2374,9 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
         final expText = expiryDate != null ? ' • Exp: ${_formatDate(expiryDate)}' : '';
         verificationText = '$extractedText$expText';
       } else if (ocrExtracted) {
-        verificationText = 'Data extracted';
+        verificationText = 'onb_doc_uploaded'.tr();
       } else {
-        verificationText = 'Pending admin review';
+        verificationText = 'onb_doc_pending_review'.tr();
       }
     }
 
@@ -1750,7 +2444,7 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
                     )
                   else
                     Text(
-                      hasImage ? 'Tap to change' : subtitle,
+                      hasImage ? 'onb_doc_tap_change'.tr() : subtitle,
                       style: TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 11,
@@ -1791,7 +2485,7 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
   }
 
   Widget _buildBottomButton() {
-    final isLastStep = _currentStep == 3;
+    final isLastStep = _isLastStep;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -1837,7 +2531,7 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        isLastStep ? 'SUBMIT APPLICATION' : 'CONTINUE',
+                        isLastStep ? 'onb_btn_submit'.tr() : 'onb_btn_continue'.tr(),
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 14,
@@ -1863,6 +2557,19 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
 }
 
 /// Custom input formatter for SSN (formats as XXX-XX-XXXX)
+class _UpperCaseInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    return TextEditingValue(
+      text: newValue.text.toUpperCase(),
+      selection: newValue.selection,
+    );
+  }
+}
+
 class _SSNInputFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(

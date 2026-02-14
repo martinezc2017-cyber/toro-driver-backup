@@ -1,4 +1,5 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SupabaseConfig {
@@ -27,13 +28,86 @@ class SupabaseConfig {
   static SupabaseClient get client => Supabase.instance.client;
 
   static Future<void> initialize() async {
+    // Pre-flight: test if Android Keystore is healthy BEFORE Supabase tries to use it.
+    // If corrupted (debug/release switch, system update), clear storage proactively
+    // so Supabase starts fresh instead of crashing on a stale/unreadable token.
+    if (!kIsWeb) {
+      await _checkKeystoreHealth();
+    }
+
+    try {
+      await _doInitialize();
+    } catch (e) {
+      final errorStr = e.toString();
+
+      // Android Keystore corruption (e.g. switching between release/debug APKs)
+      // flutter_secure_storage fails with "unwrap key failed" or "BadPaddingException"
+      if (errorStr.contains('unwrap key') ||
+          errorStr.contains('BadPaddingException') ||
+          errorStr.contains('StorageCipher') ||
+          errorStr.contains('InvalidKeyException') ||
+          errorStr.contains('KeyStoreException')) {
+        debugPrint('[SUPABASE] Keystore corrupted — clearing secure storage and retrying');
+        try {
+          const storage = FlutterSecureStorage();
+          await storage.deleteAll();
+        } catch (_) {}
+        // Retry after clearing corrupted keys
+        try {
+          await _doInitialize();
+        } catch (retryError) {
+          debugPrint('[SUPABASE] Retry also failed: $retryError');
+          // Still continue — app will show login screen
+        }
+        return;
+      }
+
+      // Session recovery can fail with invalid/stale refresh tokens
+      // (e.g., after global signOut from another device, or token expiry)
+      if (errorStr.contains('refresh_token_not_found') ||
+          errorStr.contains('Invalid Refresh Token')) {
+        debugPrint('[SUPABASE] Stale refresh token — signing out');
+        try {
+          await Supabase.instance.client.auth.signOut();
+        } catch (_) {}
+        return;
+      }
+
+      // Unknown error — log but don't crash
+      debugPrint('[SUPABASE] Init error: $e');
+    }
+  }
+
+  /// Test if flutter_secure_storage can read/write.
+  /// If the Android Keystore is corrupted, this will fail and we clear everything
+  /// BEFORE Supabase tries to restore a session with an unreadable token.
+  static Future<void> _checkKeystoreHealth() async {
+    try {
+      const storage = FlutterSecureStorage();
+      const testKey = '_keystore_health_check';
+      await storage.write(key: testKey, value: 'ok');
+      final value = await storage.read(key: testKey);
+      await storage.delete(key: testKey);
+      if (value != 'ok') throw Exception('read mismatch');
+      debugPrint('[KEYSTORE] Health check passed');
+    } catch (e) {
+      debugPrint('[KEYSTORE] Health check FAILED: $e — clearing all secure storage');
+      try {
+        const storage = FlutterSecureStorage();
+        await storage.deleteAll();
+        debugPrint('[KEYSTORE] Cleared. User will need to re-login.');
+      } catch (clearError) {
+        debugPrint('[KEYSTORE] Could not clear: $clearError');
+      }
+    }
+  }
+
+  static Future<void> _doInitialize() async {
     await Supabase.initialize(
       url: supabaseUrl,
       anonKey: supabaseAnonKey,
       authOptions: FlutterAuthClientOptions(
-        // Use implicit flow for web (better OAuth support), PKCE for mobile
         authFlowType: kIsWeb ? AuthFlowType.implicit : AuthFlowType.pkce,
-        // Auto refresh token
         autoRefreshToken: true,
       ),
       realtimeClientOptions: const RealtimeClientOptions(
@@ -65,7 +139,7 @@ class SupabaseConfig {
   static const String payoutsTable = 'payouts';
 
   // Storage buckets
-  static const String profileImagesBucket = 'profile-images';
+  static const String profileImagesBucket = 'driver-documents';
   static const String documentsBucket = 'documents';
   static const String vehicleImagesBucket = 'vehicle-images';
 }

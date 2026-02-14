@@ -20,3 +20,12 @@ export 'mexico_tax_service.dart';
 export 'mexico_documents_service.dart';
 export 'mexico_pricing_service.dart';
 export 'mexico_cfdi_service.dart';
+
+// Bus tourism services
+export 'bus_route_service.dart';
+export 'bus_split_calculator.dart';
+export 'organizer_service.dart';
+export 'tourism_event_service.dart';
+
+// Cash control
+export 'cash_account_service.dart';

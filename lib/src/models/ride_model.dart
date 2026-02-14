@@ -189,6 +189,9 @@ class RideModel {
   // Lista de paradas intermedias [{name, lat, lng, order}]
   final List<Map<String, dynamic>>? waypoints;
 
+  // === VEHICLE TYPE ===
+  final String vehicleType; // 'standard', 'moto', 'xl', 'premium', 'black', 'pickup', 'bicycle', 'autobus'
+
   // === STRIPE PAYMENT ===
   // Payment Intent ID for capturing payment when ride completes
   final String? stripePaymentIntentId;
@@ -239,6 +242,7 @@ class RideModel {
     this.riderWalkingPad,
     this.isBookingForSomeoneElse = false,
     this.waypoints,
+    this.vehicleType = 'standard',
     this.stripePaymentIntentId,
   });
 
@@ -375,18 +379,25 @@ class RideModel {
       linkedReturnBookingId: json['linked_return_booking_id'] as String? ?? json['linkedReturnBookingId'] as String?,
       isRoundTrip: json['is_round_trip'] as bool? ?? json['isRoundTrip'] as bool? ?? false,
       returnTime: json['return_time'] as String? ?? json['returnTime'] as String?,
-      // Rider location tracking
-      riderGpsLat: (json['rider_gps_lat'] as num?)?.toDouble(),
-      riderGpsLng: (json['rider_gps_lng'] as num?)?.toDouble(),
-      riderGpsUpdatedAt: json['rider_gps_updated_at'] != null
-          ? DateTime.parse(json['rider_gps_updated_at'] as String)
-          : null,
+      // Rider location tracking - handle both column naming conventions
+      // Database uses: rider_lat, rider_lng, rider_location_updated_at
+      // Model uses: riderGpsLat, riderGpsLng, riderGpsUpdatedAt
+      riderGpsLat: (json['rider_lat'] as num?)?.toDouble() ??
+                   (json['rider_gps_lat'] as num?)?.toDouble(),
+      riderGpsLng: (json['rider_lng'] as num?)?.toDouble() ??
+                   (json['rider_gps_lng'] as num?)?.toDouble(),
+      riderGpsUpdatedAt: json['rider_location_updated_at'] != null
+          ? DateTime.parse(json['rider_location_updated_at'] as String)
+          : (json['rider_gps_updated_at'] != null
+              ? DateTime.parse(json['rider_gps_updated_at'] as String)
+              : null),
       riderWalkingPad: json['rider_walking_pad'] as String?,
       isBookingForSomeoneElse: json['is_booking_for_someone_else'] as bool? ??
           json['booking_for_someone_else'] as bool? ?? false,
       waypoints: json['waypoints'] != null
           ? List<Map<String, dynamic>>.from(json['waypoints'])
           : null,
+      vehicleType: json['vehicle_type'] as String? ?? 'standard',
       stripePaymentIntentId: json['stripe_payment_intent_id'] as String?,
     );
   }
@@ -438,6 +449,7 @@ class RideModel {
       'rider_walking_pad': riderWalkingPad,
       'is_booking_for_someone_else': isBookingForSomeoneElse,
       'waypoints': waypoints,
+      'vehicle_type': vehicleType,
       'stripe_payment_intent_id': stripePaymentIntentId,
     };
   }
@@ -488,6 +500,7 @@ class RideModel {
     String? riderWalkingPad,
     bool? isBookingForSomeoneElse,
     List<Map<String, dynamic>>? waypoints,
+    String? vehicleType,
     String? stripePaymentIntentId,
   }) {
     return RideModel(
@@ -536,6 +549,7 @@ class RideModel {
       riderWalkingPad: riderWalkingPad ?? this.riderWalkingPad,
       isBookingForSomeoneElse: isBookingForSomeoneElse ?? this.isBookingForSomeoneElse,
       waypoints: waypoints ?? this.waypoints,
+      vehicleType: vehicleType ?? this.vehicleType,
       stripePaymentIntentId: stripePaymentIntentId ?? this.stripePaymentIntentId,
     );
   }

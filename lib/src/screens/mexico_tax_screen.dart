@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 import '../utils/app_colors.dart';
 import '../services/mexico_tax_service.dart';
 import '../config/supabase_config.dart';
@@ -485,12 +486,12 @@ class _MexicoTaxScreenState extends State<MexicoTaxScreen> {
     );
   }
 
-  void _showRfcDialog() {
+  Future<void> _showRfcDialog() async {
     final controller = TextEditingController();
 
-    showDialog(
+    final rfc = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         backgroundColor: AppColors.surface,
         title: Text('mx_register_rfc'.tr()),
         content: Column(
@@ -518,32 +519,19 @@ class _MexicoTaxScreenState extends State<MexicoTaxScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: Text('mx_cancel'.tr()),
           ),
           ElevatedButton(
-            onPressed: () async {
+            onPressed: () {
               final rfc = controller.text.trim().toUpperCase();
               if (rfc.length < 12) {
-                ScaffoldMessenger.of(context).showSnackBar(
+                ScaffoldMessenger.of(dialogContext).showSnackBar(
                   SnackBar(content: Text('mx_rfc_invalid'.tr()), backgroundColor: AppColors.error),
                 );
                 return;
               }
-
-              Navigator.pop(context);
-
-              try {
-                await _taxService.updateRfc(_driverId!, rfc);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('mx_rfc_saved'.tr()), backgroundColor: AppColors.success),
-                );
-                _loadData();
-              } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
-                );
-              }
+              Navigator.pop(dialogContext, rfc);
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
             child: Text('mx_save'.tr()),
@@ -551,12 +539,40 @@ class _MexicoTaxScreenState extends State<MexicoTaxScreen> {
         ],
       ),
     );
+
+    if (rfc == null || rfc.isEmpty) return;
+    if (!mounted) return;
+
+    try {
+      await _taxService.updateRfc(_driverId!, rfc);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('mx_rfc_saved'.tr()), backgroundColor: AppColors.success),
+      );
+      _loadData();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
+      );
+    }
   }
 
-  void _downloadConstancia(String url) {
-    // TODO: Implement constancia download
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('mx_downloading_constancia'.tr())),
-    );
+  Future<void> _downloadConstancia(String url) async {
+    try {
+      if (await canLaunchUrlString(url)) {
+        await launchUrlString(url, mode: LaunchMode.externalApplication);
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('No se pudo abrir el enlace'), backgroundColor: AppColors.error),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
+      );
+    }
   }
 }

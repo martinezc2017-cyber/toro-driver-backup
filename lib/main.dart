@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:easy_localization/easy_localization.dart';
 import 'package:provider/provider.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
@@ -13,11 +14,16 @@ import 'src/services/mapbox_navigation_service.dart';
 import 'src/services/update_service.dart';
 import 'src/services/app_state_validator.dart';
 import 'src/services/notification_service.dart';
+import 'src/services/version_check_service.dart';
+import 'src/services/background_location_service.dart';
 
 // Theme
 import 'src/utils/app_theme.dart';
 import 'src/utils/app_colors.dart';
 import 'src/utils/haptic_service.dart';
+
+// In-app banner
+import 'src/services/in_app_banner_service.dart';
 
 // Providers
 import 'src/providers/auth_provider.dart';
@@ -52,10 +58,17 @@ import 'src/screens/bank_account_screen.dart';
 import 'src/screens/add_vehicle_screen.dart';
 import 'src/screens/driver_agreement_screen.dart';
 import 'src/widgets/animated_splash.dart';
+// Driver credential
+import 'src/screens/driver_credential_screen.dart';
 // Mexico screens
 import 'src/screens/mexico_documents_screen.dart';
 import 'src/screens/mexico_tax_screen.dart';
 import 'src/screens/mexico_invoices_screen.dart';
+// Organizer screens
+import 'src/screens/organizer/organizer_profile_screen.dart';
+// Tourism screens
+import 'src/screens/tourism/vehicle_request_screen.dart';
+import 'src/screens/tourism/driver_bid_screen.dart';
 
 /// FCM background handler - must be top-level function
 @pragma('vm:entry-point')
@@ -64,27 +77,37 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   debugPrint('FCM Background message: ${message.messageId}');
 }
 
+final _mainSw = Stopwatch();
+
 void main() async {
+  _mainSw.start();
+  debugPrint('[MAIN] start at ${_mainSw.elapsedMilliseconds}ms');
   WidgetsFlutterBinding.ensureInitialized();
+  debugPrint('[MAIN] binding done at ${_mainSw.elapsedMilliseconds}ms');
 
-  // Set Mapbox access token BEFORE any MapWidget is created
-  MapboxOptions.setAccessToken('pk.eyJ1IjoibWFydGluZXpjMjAxNyIsImEiOiJjbWtocWtoZHIwbW1iM2dvdXZ3bmp0ZjBiIn0.MjYgv6DuvLTkrBVbrhtFbg');
+  // Set Mapbox access token BEFORE any MapWidget is created (mobile only)
+  if (!kIsWeb) {
+    MapboxOptions.setAccessToken('pk.eyJ1IjoibWFydGluZXpjMjAxNyIsImEiOiJjbWtocWtoZHIwbW1iM2dvdXZ3bmp0ZjBiIn0.MjYgv6DuvLTkrBVbrhtFbg');
+  }
 
-  // Set system UI overlay style for futuristic dark theme
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
-      systemNavigationBarColor: AppColors.surface,
-      systemNavigationBarIconBrightness: Brightness.light,
-    ),
-  );
+  // Set system UI overlay style for futuristic dark theme (mobile only)
+  if (!kIsWeb) {
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        systemNavigationBarColor: AppColors.surface,
+        systemNavigationBarIconBrightness: Brightness.light,
+      ),
+    );
+  }
 
-  // Initialize services
-  await _initializeServices();
-
+  // EasyLocalization needs to init before runApp (lightweight)
   await EasyLocalization.ensureInitialized();
+  debugPrint('[MAIN] EasyLocalization done at ${_mainSw.elapsedMilliseconds}ms');
 
+  debugPrint('[MAIN] runApp at ${_mainSw.elapsedMilliseconds}ms');
+  // Run app IMMEDIATELY so splash shows while services init in background
   runApp(
     EasyLocalization(
       supportedLocales: const [Locale('en'), Locale('es'), Locale('es', 'MX')],
@@ -97,40 +120,89 @@ void main() async {
   );
 }
 
-Future<void> _initializeServices() async {
-  try {
-    await Firebase.initializeApp();
-    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-  } catch (e) {
-    debugPrint('Firebase not configured, skipping: $e');
-  }
+/// Phase 1: Only Firebase + Supabase (blocks splash)
+Future<void> _initCriticalServices() async {
+  final sw = Stopwatch()..start();
 
-  // Initialize Supabase
-  await SupabaseConfig.initialize();
+  // Run Firebase and Supabase in PARALLEL — they are independent SDKs
+  await Future.wait([
+    // Firebase (skip on web — no firebase_options.dart for web)
+    if (!kIsWeb) () async {
+      try {
+        await Firebase.initializeApp();
+        FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+        debugPrint('[SERVICES] Firebase done at ${sw.elapsedMilliseconds}ms');
+      } catch (e) {
+        debugPrint('[SERVICES] Firebase skipped: $e');
+      }
+    }(),
+    // Supabase
+    () async {
+      try {
+        await SupabaseConfig.initialize();
+        debugPrint('[SERVICES] Supabase done at ${sw.elapsedMilliseconds}ms');
+      } catch (e) {
+        debugPrint('[SERVICES] Supabase init error: $e');
+        // Don't try to access client if init failed — it may not exist
+      }
+    }(),
+  ]);
+  debugPrint('[SERVICES] CRITICAL done at ${sw.elapsedMilliseconds}ms');
+}
 
-  // Validate app state - clears stale state on version change
-  // Also syncs local state with server to prevent ghost rides
-  await AppStateValidator.instance.initialize();
-
-  // Initialize Stripe (optional - skip if not configured)
-  try {
-    await PaymentService.initialize();
-  } catch (e) {
-    // Stripe not configured, skipping
-  }
-
-  // Initialize push notifications early so background handler is registered
-  try {
-    await NotificationService().initialize();
-  } catch (e) {
-    debugPrint('Notification init error: $e');
-  }
-
-  // Initialize Haptic Service
-  await HapticService.initialize();
-
-  // Initialize Mapbox (set access token before any MapWidget is created)
-  await MapboxNavigationService().initialize();
+/// Phase 2: Everything else (runs AFTER splash, non-blocking)
+void _initBackgroundServices() {
+  final sw = Stopwatch()..start();
+  // Fire all in parallel, none blocks the UI
+  Future.wait([
+    () async {
+      await VersionCheckService().init();
+      debugPrint('[BG_SERVICES] VersionCheck done at ${sw.elapsedMilliseconds}ms');
+    }(),
+    () async {
+      await AppStateValidator.instance.initialize();
+      debugPrint('[BG_SERVICES] AppStateValidator done at ${sw.elapsedMilliseconds}ms');
+    }(),
+    () async {
+      try {
+        await PaymentService.initialize();
+        debugPrint('[BG_SERVICES] PaymentService done at ${sw.elapsedMilliseconds}ms');
+      } catch (e) {
+        debugPrint('[BG_SERVICES] PaymentService skipped: $e');
+      }
+    }(),
+    if (!kIsWeb) () async {
+      try {
+        await NotificationService().initialize().timeout(
+          const Duration(seconds: 5),
+          onTimeout: () => debugPrint('[BG_SERVICES] NotificationService TIMEOUT (5s)'),
+        );
+        debugPrint('[BG_SERVICES] NotificationService done at ${sw.elapsedMilliseconds}ms');
+      } catch (e) {
+        debugPrint('[BG_SERVICES] NotificationService error: $e');
+      }
+    }(),
+    () async {
+      await HapticService.initialize();
+      debugPrint('[BG_SERVICES] HapticService done at ${sw.elapsedMilliseconds}ms');
+    }(),
+    if (!kIsWeb) () async {
+      try {
+        await MapboxNavigationService().initialize();
+        debugPrint('[BG_SERVICES] Mapbox done at ${sw.elapsedMilliseconds}ms');
+      } catch (e) {
+        debugPrint('[BG_SERVICES] Mapbox error: $e');
+      }
+    }(),
+    if (!kIsWeb) () async {
+      try {
+        await initializeBackgroundLocationService();
+        debugPrint('[BG_SERVICES] BackgroundLocation done at ${sw.elapsedMilliseconds}ms');
+      } catch (e) {
+        debugPrint('[BG_SERVICES] BackgroundLocation error: $e');
+      }
+    }(),
+  ]).then((_) => debugPrint('[BG_SERVICES] ALL DONE at ${sw.elapsedMilliseconds}ms'));
 }
 
 class ToroDriverApp extends StatelessWidget {
@@ -147,6 +219,7 @@ class ToroDriverApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => EarningsProvider()),
       ],
       child: MaterialApp(
+        navigatorKey: InAppBannerService.navigatorKey,
         title: 'Toro Driver',
         debugShowCheckedModeBanner: false,
         // Futuristic Dark Theme - Uber Style
@@ -181,10 +254,17 @@ class ToroDriverApp extends StatelessWidget {
           '/bank-account': (context) => const BankAccountScreen(),
           '/add-vehicle': (context) => const AddVehicleScreen(),
           '/driver-agreement': (context) => const DriverAgreementScreen(),
+          // Driver credential
+          '/driver-credential': (context) => const DriverCredentialScreen(),
           // Mexico routes
           '/mexico-documents': (context) => const MexicoDocumentsScreen(),
           '/mexico-tax': (context) => const MexicoTaxScreen(),
           '/mexico-invoices': (context) => const MexicoInvoicesScreen(),
+          // Organizer routes
+          '/organizer-profile': (context) => const OrganizerProfileScreen(),
+          // Tourism routes
+          '/vehicle-requests': (context) => const VehicleRequestScreen(),
+          '/driver-bids': (context) => const DriverBidScreen(),
           '/logout': (context) => _buildLogoutScreen(context),
         },
       ),
@@ -365,7 +445,54 @@ class _SplashWrapper extends StatefulWidget {
 
 class _SplashWrapperState extends State<_SplashWrapper> {
   bool _showSplash = true;
-  bool _checkingUpdate = false;
+  /// Tells AnimatedSplash when to start its exit fade
+  final _exitSplash = ValueNotifier<bool>(false);
+
+  @override
+  void initState() {
+    super.initState();
+    debugPrint('[WRAPPER] initState at ${_mainSw.elapsedMilliseconds}ms');
+    // Initialize services + update check IN PARALLEL with splash animation
+    _initAllInBackground();
+  }
+
+  Future<void> _initAllInBackground() async {
+    debugPrint('[WRAPPER] services START at ${_mainSw.elapsedMilliseconds}ms');
+
+    try {
+      // Wait for BOTH: critical services AND minimum splash display time.
+      // Safety timeout of 12s prevents splash from getting stuck forever.
+      await Future.wait([
+        _initCriticalServices(),
+        Future.delayed(const Duration(milliseconds: 5500)), // min 5.5s splash
+      ]).timeout(
+        const Duration(seconds: 12),
+        onTimeout: () {
+          debugPrint('[WRAPPER] TIMEOUT after 12s — forcing splash exit');
+          return [null, null];
+        },
+      );
+    } catch (e) {
+      debugPrint('[WRAPPER] init error: $e — forcing splash exit');
+    }
+
+    debugPrint('[WRAPPER] ready at ${_mainSw.elapsedMilliseconds}ms');
+
+    // Tell splash it can now exit (always, even on error/timeout)
+    if (mounted) {
+      _exitSplash.value = true;
+    }
+
+    // Fire background services + update check (non-blocking)
+    _initBackgroundServices();
+    _checkForUpdates();
+  }
+
+  @override
+  void dispose() {
+    _exitSplash.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -373,28 +500,15 @@ class _SplashWrapperState extends State<_SplashWrapper> {
       return AnimatedSplash(
         title: 'TORO',
         subtitle: 'DRIVER',
-        duration: const Duration(milliseconds: 3500),
-        onComplete: () async {
-          if (mounted) {
-            setState(() {
-              _showSplash = false;
-              _checkingUpdate = true;
-            });
-            await _checkForUpdates();
-          }
+        triggerExit: _exitSplash,
+        onComplete: () {
+          debugPrint('[WRAPPER] onComplete → AuthWrapper at ${_mainSw.elapsedMilliseconds}ms');
+          setState(() => _showSplash = false);
         },
       );
     }
 
-    if (_checkingUpdate) {
-      return const Scaffold(
-        backgroundColor: Color(0xFF0A0A0A),
-        body: Center(
-          child: CircularProgressIndicator(color: Colors.white),
-        ),
-      );
-    }
-
+    // Go directly to AuthWrapper - no intermediate spinners
     return const AuthWrapper();
   }
 
@@ -408,11 +522,7 @@ class _SplashWrapperState extends State<_SplashWrapper> {
         await UpdateService.showUpdateDialog(context, updateInfo);
       }
     } catch (e) {
-      // Error checking for updates
-    } finally {
-      if (mounted) {
-        setState(() => _checkingUpdate = false);
-      }
+      // Error checking for updates - non-blocking
     }
   }
 }

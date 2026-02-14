@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../providers/riverpod_providers.dart';
 import '../services/statement_export_service.dart';
+import '../services/cash_account_service.dart';
 import '../utils/app_theme.dart';
 
 /// Uber/Lyft style earnings breakdown screen
@@ -28,6 +29,11 @@ class _EarningsBreakdownScreenState extends ConsumerState<EarningsBreakdownScree
   Map<String, dynamic> _summary = {};
   List<Map<String, dynamic>> _dailyBreakdown = [];
   List<Map<String, dynamic>> _transactions = [];
+
+  // Cash control data
+  final CashAccountService _cashService = CashAccountService();
+  Map<String, dynamic>? _cashAccount;
+  Map<String, dynamic> _cashSummary = {};
 
   // Current period
   late DateTime _weekStart;
@@ -65,6 +71,12 @@ class _EarningsBreakdownScreenState extends ConsumerState<EarningsBreakdownScree
         limit: 50,
       );
 
+      // Load cash control data in parallel
+      final cashResults = await Future.wait([
+        _cashService.getCashAccount(widget.driverId),
+        _cashService.getLedgerSummary(widget.driverId),
+      ]);
+
       setState(() {
         _breakdown = breakdown ?? {};
         _summary = _breakdown['summary'] ?? {};
@@ -72,6 +84,8 @@ class _EarningsBreakdownScreenState extends ConsumerState<EarningsBreakdownScree
           _breakdown['daily_breakdown'] ?? [],
         );
         _transactions = transactions;
+        _cashAccount = cashResults[0];
+        _cashSummary = cashResults[1] ?? {};
         _isLoading = false;
       });
     } catch (e) {
@@ -301,6 +315,13 @@ class _EarningsBreakdownScreenState extends ConsumerState<EarningsBreakdownScree
     );
   }
 
+  double get _platformFeePercent {
+    final gross = (_summary['gross_fares'] as num?)?.toDouble() ?? 0;
+    final fee = (_summary['platform_fee'] as num?)?.toDouble() ?? 0;
+    if (gross <= 0) return 0;
+    return (fee / gross) * 100;
+  }
+
   Widget _buildSummaryTab() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -316,7 +337,11 @@ class _EarningsBreakdownScreenState extends ConsumerState<EarningsBreakdownScree
               _buildRow('Surge', _summary['surge_earnings'], color: AppTheme.warning),
               _buildDivider(),
               _buildRow('Tarifa Bruta', _summary['gross_fares'], bold: true),
-              _buildRow('Comisión Toro (30%)', _summary['platform_fee'], negative: true),
+              _buildRow(
+                'Comisión Toro (${_platformFeePercent.toStringAsFixed(0)}%)',
+                _summary['platform_fee'],
+                negative: true,
+              ),
               _buildDivider(),
               _buildRow('Tarifa Neta', _summary['net_fares'], bold: true, color: AppTheme.success),
             ],
@@ -350,6 +375,10 @@ class _EarningsBreakdownScreenState extends ConsumerState<EarningsBreakdownScree
               ],
             ),
           const SizedBox(height: 16),
+
+          // Cash balance section
+          if (_cashAccount != null) _buildCashBalanceSection(),
+          if (_cashAccount != null) const SizedBox(height: 16),
 
           // Activity
           _buildSection(
@@ -766,6 +795,167 @@ class _EarningsBreakdownScreenState extends ConsumerState<EarningsBreakdownScree
         Text(value, style: const TextStyle(color: AppTheme.textMuted, fontSize: 12)),
       ],
     );
+  }
+
+  Widget _buildCashBalanceSection() {
+    final cashOwed = (_cashAccount?['current_balance'] as num?)?.toDouble() ?? 0;
+    final totalCashRides = (_cashAccount?['total_cash_rides_completed'] as num?)?.toInt() ?? 0;
+    final threshold = (_cashAccount?['auto_suspend_threshold'] as num?)?.toDouble() ?? 500;
+    final status = _cashAccount?['status'] as String? ?? 'active';
+    final totalDebits = (_cashSummary['total_debits'] as num?)?.toDouble() ?? 0;
+    final totalCredits = (_cashSummary['total_credits'] as num?)?.toDouble() ?? 0;
+    final byType = Map<String, double>.from(_cashSummary['by_source_type'] ?? {});
+
+    final isSuspended = status == 'suspended' || status == 'blocked';
+    final isNearThreshold = cashOwed >= threshold * 0.8;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.card,
+        borderRadius: BorderRadius.circular(12),
+        border: isSuspended
+            ? Border.all(color: AppTheme.error, width: 2)
+            : isNearThreshold
+                ? Border.all(color: AppTheme.warning, width: 1)
+                : null,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isSuspended
+                  ? AppTheme.error.withValues(alpha: 0.1)
+                  : isNearThreshold
+                      ? AppTheme.warning.withValues(alpha: 0.1)
+                      : null,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  isSuspended ? Icons.block : Icons.account_balance_wallet,
+                  color: isSuspended ? AppTheme.error : AppTheme.warning,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  isSuspended ? 'CUENTA SUSPENDIDA' : 'BALANCE EFECTIVO',
+                  style: TextStyle(
+                    color: isSuspended ? AppTheme.error : AppTheme.warning,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: (isSuspended ? AppTheme.error : AppTheme.warning).withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '\$${cashOwed.toStringAsFixed(2)}',
+                    style: TextStyle(
+                      color: isSuspended ? AppTheme.error : AppTheme.warning,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Cash rides count
+          _buildRow('Viajes en Efectivo', totalCashRides.toDouble(), icon: Icons.local_taxi),
+          _buildRow('Total Cobrado (efectivo)', totalDebits, icon: Icons.payments),
+          _buildRow('Depósitos Realizados', totalCredits, color: AppTheme.success, icon: Icons.upload),
+          _buildDivider(),
+
+          // Breakdown by type
+          if (byType.isNotEmpty) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Text(
+                'Desglose por tipo:',
+                style: TextStyle(color: AppTheme.textMuted, fontSize: 11),
+              ),
+            ),
+            for (final entry in byType.entries)
+              _buildRow(
+                _sourceTypeLabel(entry.key),
+                entry.value,
+                icon: _sourceTypeIcon(entry.key),
+              ),
+            _buildDivider(),
+          ],
+
+          // Net owed
+          _buildRow('DEBES A TORO', cashOwed, bold: true, color: AppTheme.warning),
+
+          // Threshold info
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: threshold > 0 ? (cashOwed / threshold).clamp(0.0, 1.0) : 0,
+                      backgroundColor: AppTheme.border,
+                      valueColor: AlwaysStoppedAnimation(
+                        cashOwed >= threshold ? AppTheme.error : AppTheme.warning,
+                      ),
+                      minHeight: 6,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Límite: \$${threshold.toStringAsFixed(0)}',
+                  style: const TextStyle(color: AppTheme.textMuted, fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+
+          if (isSuspended)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: Text(
+                'Tu cuenta está suspendida. Deposita para reactivar.',
+                style: TextStyle(color: AppTheme.error, fontSize: 12),
+              ),
+            ),
+
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+
+  String _sourceTypeLabel(String type) {
+    switch (type) {
+      case 'ride': return 'Viajes';
+      case 'carpool': return 'Carpool';
+      case 'package': return 'Paquetes';
+      case 'tourism': return 'Turismo';
+      default: return type;
+    }
+  }
+
+  IconData _sourceTypeIcon(String type) {
+    switch (type) {
+      case 'ride': return Icons.directions_car;
+      case 'carpool': return Icons.people;
+      case 'package': return Icons.inventory_2;
+      case 'tourism': return Icons.tour;
+      default: return Icons.attach_money;
+    }
   }
 
   Widget _buildPayoutCard() {

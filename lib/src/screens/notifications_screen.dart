@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import '../providers/driver_provider.dart';
 import '../services/notification_service.dart';
@@ -18,11 +19,53 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   List<Map<String, dynamic>> _notifications = [];
   bool _isLoading = true;
   String? _error;
+  RealtimeChannel? _channel;
 
   @override
   void initState() {
     super.initState();
     _loadNotifications();
+    _subscribeToNewNotifications();
+  }
+
+  @override
+  void dispose() {
+    if (_channel != null) {
+      Supabase.instance.client.removeChannel(_channel!);
+      _channel = null;
+    }
+    super.dispose();
+  }
+
+  void _subscribeToNewNotifications() {
+    final driverProvider = Provider.of<DriverProvider>(context, listen: false);
+    final driver = driverProvider.driver;
+
+    if (driver == null) return;
+
+    // Subscribe to new notifications via Realtime
+    _channel = Supabase.instance.client
+        .channel('notifications_screen_${driver.id}')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'notifications',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'user_id',
+            value: driver.id,
+          ),
+          callback: (payload) {
+            if (mounted && payload.newRecord.isNotEmpty) {
+              setState(() {
+                _notifications.insert(0, payload.newRecord);
+              });
+            }
+          },
+        )
+        .subscribe();
+
+    debugPrint('📱 Notifications screen subscribed to Realtime for driver ${driver.id}');
   }
 
   Future<void> _loadNotifications() async {
@@ -63,8 +106,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       setState(() {
         final index = _notifications.indexWhere((n) => n['id'] == notificationId);
         if (index != -1) {
-          _notifications[index]['is_read'] = true;
-          _notifications[index]['read_at'] = DateTime.now().toIso8601String();
+          _notifications[index]['read'] = true;
         }
       });
     } catch (e) {
@@ -81,9 +123,65 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       await _notificationService.markAllNotificationsAsRead(driver.id);
       setState(() {
         for (var notification in _notifications) {
-          notification['is_read'] = true;
-          notification['read_at'] = DateTime.now().toIso8601String();
+          notification['read'] = true;
         }
+      });
+      HapticService.lightImpact();
+    } catch (e) {
+      // Silently fail
+    }
+  }
+
+  Future<void> _deleteNotification(String notificationId) async {
+    try {
+      await Supabase.instance.client
+          .from('notifications')
+          .delete()
+          .eq('id', notificationId);
+      setState(() {
+        _notifications.removeWhere((n) => n['id'] == notificationId);
+      });
+      HapticService.lightImpact();
+    } catch (e) {
+      // Silently fail
+    }
+  }
+
+  Future<void> _clearAllNotifications() async {
+    final driverProvider = Provider.of<DriverProvider>(context, listen: false);
+    final driver = driverProvider.driver;
+    if (driver == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('Clear all?', style: TextStyle(color: AppColors.textPrimary)),
+        content: Text('This will delete all notifications.',
+            style: TextStyle(color: AppColors.textSecondary)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Clear all', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await Supabase.instance.client
+          .from('notifications')
+          .delete()
+          .eq('user_id', driver.id);
+      setState(() {
+        _notifications.clear();
       });
       HapticService.lightImpact();
     } catch (e) {
@@ -105,6 +203,27 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return Icons.account_balance_wallet;
       case 'system':
         return Icons.info;
+      case 'bid_request':
+      case 'bid_counter_offer':
+        return Icons.local_offer;
+      case 'bid_won':
+        return Icons.emoji_events;
+      case 'bid_lost':
+        return Icons.cancel_outlined;
+      case 'vehicle_request':
+        return Icons.directions_bus;
+      case 'event_update':
+        return Icons.event;
+      case 'tourism_warning':
+        return Icons.warning_amber;
+      case 'payment':
+      case 'weekly_statement':
+      case 'payment_approved':
+        return Icons.payments;
+      case 'account_blocked':
+        return Icons.block;
+      case 'account_unblocked':
+        return Icons.check_circle;
       default:
         return Icons.notifications;
     }
@@ -124,6 +243,26 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return Colors.purple;
       case 'system':
         return Colors.grey;
+      case 'bid_request':
+      case 'bid_counter_offer':
+      case 'vehicle_request':
+        return const Color(0xFF00D4FF); // TORO cyan
+      case 'bid_won':
+        return Colors.green;
+      case 'bid_lost':
+        return Colors.red;
+      case 'event_update':
+        return Colors.blue;
+      case 'tourism_warning':
+        return Colors.orange;
+      case 'payment':
+      case 'weekly_statement':
+      case 'payment_approved':
+        return Colors.green;
+      case 'account_blocked':
+        return Colors.red;
+      case 'account_unblocked':
+        return Colors.green;
       default:
         return AppColors.primary;
     }
@@ -141,7 +280,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final unreadCount = _notifications.where((n) => n['is_read'] != true).length;
+    final unreadCount = _notifications.where((n) => n['read'] != true).length;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -252,6 +391,20 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 ),
               ),
             ),
+          if (_notifications.isNotEmpty) ...[
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: _clearAllNotifications,
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.delete_outline, color: Colors.red, size: 18),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -333,14 +486,30 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         itemCount: _notifications.length,
         itemBuilder: (context, index) {
           final notification = _notifications[index];
-          return _buildNotificationItem(notification);
+          final notificationId = notification['id'] as String;
+          return Dismissible(
+            key: Key(notificationId),
+            direction: DismissDirection.endToStart,
+            background: Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.only(right: 20),
+              alignment: Alignment.centerRight,
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Icon(Icons.delete_outline, color: Colors.red),
+            ),
+            onDismissed: (_) => _deleteNotification(notificationId),
+            child: _buildNotificationItem(notification),
+          );
         },
       ),
     );
   }
 
   Widget _buildNotificationItem(Map<String, dynamic> notification) {
-    final isRead = notification['is_read'] == true;
+    final isRead = notification['read'] == true;
     final type = notification['type'] as String?;
     final title = notification['title'] as String? ?? 'Notification';
     final body = notification['body'] as String? ?? '';
@@ -371,16 +540,25 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: _getNotificationColor(type).withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                _getNotificationIcon(type),
-                color: _getNotificationColor(type),
-                size: 24,
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.asset(
+                'assets/images/toro_notification_logo.png',
+                width: 44,
+                height: 44,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: _getNotificationColor(type).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    _getNotificationIcon(type),
+                    color: _getNotificationColor(type),
+                    size: 24,
+                  ),
+                ),
               ),
             ),
             const SizedBox(width: 14),
@@ -445,24 +623,33 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final data = notification['data'] as Map<String, dynamic>?;
 
     switch (type) {
-      case 'ride_request':
-      case 'ride_update':
-        if (data != null && data['ride_id'] != null) {
-          // Navigate to ride details if needed
+      case 'tourism':
+      case 'bid_request':
+      case 'bid_counter_offer':
+        final eventId = data?['event_id'] as String?;
+        final bidId = data?['bid_id'] as String?;
+        if (eventId != null) {
+          Navigator.pushNamed(context, '/vehicle-requests',
+              arguments: {'event_id': eventId, 'bid_id': bidId});
         }
         break;
+      case 'bid_won':
+      case 'bid_lost':
+        Navigator.pushNamed(context, '/driver-bids');
+        break;
+      case 'ride_request':
+      case 'ride_update':
+        Navigator.pushNamed(context, '/rides');
+        break;
       case 'message':
-        if (data != null && data['conversation_id'] != null) {
-          // Navigate to chat if needed
-        }
+        Navigator.pushNamed(context, '/messages');
         break;
       case 'earning':
       case 'payout':
-        // Navigate to earnings
+      case 'payment':
         Navigator.pushNamed(context, '/earnings');
         break;
       default:
-        // Just mark as read
         break;
     }
   }

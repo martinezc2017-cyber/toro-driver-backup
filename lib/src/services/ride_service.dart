@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
 import '../models/ride_model.dart';
+import 'notification_service.dart';
 import 'state_pricing_service.dart';
 import 'location_service.dart';
 
@@ -14,6 +15,7 @@ class RideService {
     double? latitude,
     double? longitude,
     double radiusKm = 10.0,
+    String? driverId, // NEW: Filter out rides rejected by this driver
   }) async {
     // Use SQL function if location is provided for geo-queries
     if (latitude != null && longitude != null) {
@@ -26,10 +28,18 @@ class RideService {
         },
       );
 
-      return (response as List).map((json) => RideModel.fromJson(json)).toList();
+      var rides = (response as List).map((json) => RideModel.fromJson(json)).toList();
+
+      // Filter out rejected rides for this driver
+      if (driverId != null) {
+        rides = await filterRejectedRides(rides, driverId);
+      }
+
+      return rides;
     }
 
     // === 1. Query deliveries table (rides and packages) ===
+    debugPrint('RIDES_QUERY: Fetching pending deliveries...');
     final deliveriesResponse = await _client
         .from(SupabaseConfig.packageDeliveriesTable)
         .select('*')
@@ -37,6 +47,7 @@ class RideService {
         .isFilter('driver_id', null)
         .order('created_at', ascending: false)
         .limit(20);
+    debugPrint('RIDES_QUERY: Found ${(deliveriesResponse as List).length} pending deliveries');
 
     // === 2. Query share_ride_bookings table (carpools) ===
     List<dynamic> carpoolsResponse = [];
@@ -69,7 +80,36 @@ class RideService {
       rides.add(ride);
     }
 
+    // Filter out rejected rides for this driver
+    if (driverId != null) {
+      return await filterRejectedRides(rides, driverId);
+    }
+
     return rides;
+  }
+
+  // Filter out rides that this driver has rejected
+  // Public method to filter rejected rides - used by provider
+  Future<List<RideModel>> filterRejectedRides(List<RideModel> rides, String driverId) async {
+    try {
+      // Get all rejected ride IDs for this driver
+      final rejectedResponse = await _client
+          .from('ride_requests')
+          .select('reference_id')
+          .eq('driver_id', driverId)
+          .eq('status', 'rejected');
+
+      final rejectedIds = (rejectedResponse as List)
+          .map((r) => r['reference_id'] as String)
+          .toSet();
+
+      // Filter out rejected rides
+      return rides.where((ride) => !rejectedIds.contains(ride.id)).toList();
+    } catch (e) {
+      debugPrint('Error filtering rejected rides: $e');
+      // On error, return all rides (fail-safe)
+      return rides;
+    }
   }
 
   // Fetch rider profile separately and enrich the JSON
@@ -78,13 +118,17 @@ class RideService {
     try {
       final profile = await _client
           .from('profiles')
-          .select('full_name, avatar_url, rating')
+          .select('full_name, avatar_url, rating, phone')
           .eq('id', userId)
           .maybeSingle();
       if (profile != null) {
         json['passenger_name'] = profile['full_name'];
         json['passenger_image_url'] = profile['avatar_url'];
         json['passenger_rating'] = profile['rating'];
+        final phone = profile['phone'] as String?;
+        if (phone != null && phone.isNotEmpty) {
+          json['passenger_phone'] = phone;
+        }
       }
     } catch (e) {
       // Profile fetch failed - ride will show default name
@@ -216,6 +260,7 @@ class RideService {
               'responded_at': DateTime.now().toIso8601String(),
             })
             .eq('id', existing['id']);
+        debugPrint('✅ Ride response tracked (UPDATE): $status for $referenceId');
       } else {
         // Insert new request with response
         await _client.from('ride_requests').insert({
@@ -225,9 +270,12 @@ class RideService {
           'status': status,
           'responded_at': DateTime.now().toIso8601String(),
         });
+        debugPrint('✅ Ride response tracked (INSERT): $status for $referenceId');
       }
     } catch (e) {
-      // Don't throw - this is non-critical for the ride flow
+      // Log error but don't throw - this is non-critical for the ride flow
+      debugPrint('❌ ERROR tracking ride response: $e');
+      debugPrint('   driver=$driverId, ride=$referenceId, type=$serviceType, status=$status');
     }
   }
 
@@ -277,146 +325,177 @@ class RideService {
     return RideModel.fromJson(response);
   }
 
-  // Complete ride - uses SQL function for atomicity
+  // Complete ride - uses direct update to handle cash payments properly
   Future<RideModel> completeRide(String rideId, {double? tip}) async {
-    try {
-      final response = await _client.rpc(
-        'complete_ride',
-        params: {
-          'p_ride_id': rideId,
-          'p_tip': tip ?? 0,
-        },
-      );
+    // Get the ride first to check payment method
+    final ride = await getRide(rideId);
+    if (ride == null) throw Exception('Ride not found');
 
-      return RideModel.fromJson(response);
-    } catch (e) {
-      // Fallback to direct update if function doesn't exist
-      final ride = await getRide(rideId);
-      if (ride == null) throw Exception('Ride not found');
-
-      final now = DateTime.now();
-
-      // ========================================================================
-      // PRICING PER-STATE - Leer de pricing_config por estado
-      // Prioridad: 1) GPS coordinates, 2) fallback AZ
-      // ========================================================================
-      String stateCode = 'AZ';
-      if (ride.pickupLocation.latitude != 0) {
-        // Get state from pickup coordinates
-        stateCode = await _locationService.getStateCodeFromCoordinates(
-          ride.pickupLocation.latitude,
-          ride.pickupLocation.longitude,
-        );
-      }
-
-      StatePricing statePricing;
+    // For CASH payments, skip RPC and use direct update (to set payment_status in same call)
+    // For CARD payments, try RPC first
+    if (ride.paymentMethod != PaymentMethod.cash) {
       try {
-        statePricing = await StatePricingService.instance.getPricing(
-          stateCode: stateCode,
-          bookingType: BookingType.ride,
+        final response = await _client.rpc(
+          'complete_ride',
+          params: {
+            'p_ride_id': rideId,
+            'p_tip': tip ?? 0,
+          },
         );
-      } on NoPricingConfiguredError {
-        rethrow; // Propagar error - no hay fallback
+        return RideModel.fromJson(response);
+      } catch (e) {
+        // Fall through to direct update
+        debugPrint('RPC complete_ride failed, using direct update: $e');
       }
-
-      final driverCommissionPercent = statePricing.driverPercentage.toInt();
-      final platformFeePercent = statePricing.platformPercentage;
-      final taxPercent = statePricing.taxPercentage;
-      final insurancePercent = statePricing.insurancePercentage;
-
-      // Calculate driver earnings using ADMIN-defined percentage + tip
-      final fare = ride.fare > 0 ? ride.fare : statePricing.minimumFare;
-      final basedriverEarnings = fare * (driverCommissionPercent / 100);
-      final totalDriverEarnings = basedriverEarnings + (tip ?? 0);
-
-      // Calculate breakdown for records
-      final platformAmount = fare * (platformFeePercent / 100);
-      final taxAmount = fare * (taxPercent / 100);
-      final insuranceAmount = fare * (insurancePercent / 100);
-
-      // Calculate duration from timestamps
-      int durationMinutes = ride.estimatedMinutes;
-      if (ride.startedAt != null) {
-        durationMinutes = now.difference(ride.startedAt!).inMinutes;
-        if (durationMinutes < 1) durationMinutes = 1;
-      }
-
-      // Calculate distance in miles
-      double distanceMiles = ride.distanceKm * 0.621371;
-      if (distanceMiles == 0 && ride.pickupLocation.latitude != 0) {
-        // Calculate from coordinates using simple approximation
-        final latDiff = (ride.dropoffLocation.latitude - ride.pickupLocation.latitude).abs();
-        final lngDiff = (ride.dropoffLocation.longitude - ride.pickupLocation.longitude).abs();
-        distanceMiles = ((latDiff * 69) + (lngDiff * 54.6)) * 1.3; // approx road distance
-        if (distanceMiles < 0.5) distanceMiles = 0.5;
-      }
-
-      final updateData = <String, dynamic>{
-        'status': statusToDatabase(RideStatus.completed),
-        'completed_at': now.toIso8601String(),
-        'delivered_at': now.toIso8601String(), // CRITICAL: needed for earnings queries
-        'is_paid': true,
-        'final_price': fare,
-        'driver_earnings': totalDriverEarnings,
-        'duration_minutes': durationMinutes,
-        'distance_miles': distanceMiles,
-        // Complete breakdown from admin pricing config
-        'state_code': stateCode,
-        'driver_commission_percent': driverCommissionPercent,
-        'platform_fee_percent': platformFeePercent,
-        'platform_fee_amount': platformAmount,
-        'tax_percent': taxPercent,
-        'tax_amount': taxAmount,
-        'insurance_percent': insurancePercent,
-        'insurance_amount': insuranceAmount,
-      };
-
-      if (tip != null && tip > 0) {
-        updateData['tip_amount'] = tip;
-      }
-
-      // Update the correct table based on ride type
-      Map<String, dynamic> response;
-      if (ride.type == RideType.carpool) {
-        // Update share_ride_bookings for carpools
-        response = await _client
-            .from('share_ride_bookings')
-            .update(updateData)
-            .eq('id', rideId)
-            .select()
-            .single();
-        response['service_type'] = 'carpool'; // Ensure type is preserved
-      } else {
-        // Update deliveries for rides and packages
-        response = await _client
-            .from(SupabaseConfig.packageDeliveriesTable)
-            .update(updateData)
-            .eq('id', rideId)
-            .select()
-            .single();
-      }
-
-      final completedRide = RideModel.fromJson(response);
-
-      // ========================================================================
-      // CAPTURE STRIPE PAYMENT - Critical: charge the rider's card
-      // The pre-auth was created when rider booked, now we capture the funds
-      // ========================================================================
-      await _captureStripePayment(
-        rideId: rideId,
-        paymentIntentId: ride.stripePaymentIntentId,
-        amount: fare,
-        driverId: ride.driverId,
-        tipAmount: tip ?? 0,
-        stateCode: stateCode,
-        pickupAddress: ride.pickupLocation.address,
-        dropoffAddress: ride.dropoffLocation.address,
-        bookingType: ride.type == RideType.carpool ? 'carpool' :
-                     ride.type == RideType.package ? 'package' : 'ride',
-      );
-
-      return completedRide;
     }
+
+    final now = DateTime.now();
+
+    // ========================================================================
+    // PRICING PER-STATE - Leer de pricing_config por estado
+    // Prioridad: 1) GPS coordinates, 2) fallback AZ
+    // ========================================================================
+    String stateCode = 'AZ';
+    if (ride.pickupLocation.latitude != 0) {
+      // Get state from pickup coordinates
+      stateCode = await _locationService.getStateCodeFromCoordinates(
+        ride.pickupLocation.latitude,
+        ride.pickupLocation.longitude,
+      );
+    }
+
+    StatePricing statePricing;
+    try {
+      statePricing = await StatePricingService.instance.getPricing(
+        stateCode: stateCode,
+        bookingType: BookingType.ride,
+      );
+    } on NoPricingConfiguredError {
+      rethrow; // Propagar error - no hay fallback
+    }
+
+    final driverCommissionPercent = statePricing.driverPercentage.toInt();
+    final platformFeePercent = statePricing.platformPercentage;
+    final taxPercent = statePricing.taxPercentage;
+    final insurancePercent = statePricing.insurancePercentage;
+
+    // Calculate driver earnings using ADMIN-defined percentage + tip
+    final fare = ride.fare > 0 ? ride.fare : statePricing.minimumFare;
+    final basedriverEarnings = fare * (driverCommissionPercent / 100);
+    final totalDriverEarnings = basedriverEarnings + (tip ?? 0);
+
+    // Calculate breakdown for records
+    final platformAmount = fare * (platformFeePercent / 100);
+    final taxAmount = fare * (taxPercent / 100);
+    final insuranceAmount = fare * (insurancePercent / 100);
+
+    // Calculate duration from timestamps
+    int durationMinutes = ride.estimatedMinutes;
+    if (ride.startedAt != null) {
+      durationMinutes = now.difference(ride.startedAt!).inMinutes;
+      if (durationMinutes < 1) durationMinutes = 1;
+    }
+
+    // Calculate distance in miles
+    double distanceMiles = ride.distanceKm * 0.621371;
+    if (distanceMiles == 0 && ride.pickupLocation.latitude != 0) {
+      // Calculate from coordinates using simple approximation
+      final latDiff = (ride.dropoffLocation.latitude - ride.pickupLocation.latitude).abs();
+      final lngDiff = (ride.dropoffLocation.longitude - ride.pickupLocation.longitude).abs();
+      distanceMiles = ((latDiff * 69) + (lngDiff * 54.6)) * 1.3; // approx road distance
+      if (distanceMiles < 0.5) distanceMiles = 0.5;
+    }
+
+    // NOTE: Only update columns that EXIST in the deliveries table
+    // CRITICAL: For CASH payments, we MUST set payment_status = 'paid' in the SAME update
+    // as the status change, otherwise the database trigger will reject the transition
+    final updateData = <String, dynamic>{
+      'status': statusToDatabase(RideStatus.completed),
+      'completed_at': now.toIso8601String(),
+      'delivered_at': now.toIso8601String(), // CRITICAL: needed for earnings queries
+      'final_price': fare,
+      'driver_earnings': totalDriverEarnings,
+      'state_code': stateCode,
+      'platform_fee': platformAmount,
+      'tax_amount': taxAmount,
+      'payment_status': 'paid',  // ALWAYS mark as paid when completing
+      // === COMPLETE FINANCIAL AUDIT FIELDS ===
+      'insurance_amount': insuranceAmount,
+      'base_driver_earnings': basedriverEarnings,
+      'effective_platform_percent': platformFeePercent,
+      'variable_platform_active': statePricing.variablePlatformEnabled,
+      'actual_distance_miles': distanceMiles,
+      'actual_duration_minutes': durationMinutes,
+      'driver_percent_applied': driverCommissionPercent,
+      'insurance_percent_applied': insurancePercent,
+      'tax_percent_applied': taxPercent,
+    };
+
+    // For cash payments, also set cash confirmation fields
+    if (ride.paymentMethod == PaymentMethod.cash) {
+      updateData['cash_payment_confirmed'] = true;
+      updateData['cash_payment_confirmed_at'] = now.toIso8601String();
+    }
+
+    if (tip != null && tip > 0) {
+      updateData['tip_amount'] = tip;
+    }
+
+    // Update the correct table based on ride type
+    Map<String, dynamic> response;
+    if (ride.type == RideType.carpool) {
+      // Update share_ride_bookings for carpools
+      response = await _client
+          .from('share_ride_bookings')
+          .update(updateData)
+          .eq('id', rideId)
+          .select()
+          .single();
+      response['service_type'] = 'carpool'; // Ensure type is preserved
+    } else {
+      // Update deliveries for rides and packages
+      response = await _client
+          .from(SupabaseConfig.packageDeliveriesTable)
+          .update(updateData)
+          .eq('id', rideId)
+          .select()
+          .single();
+    }
+
+    final completedRide = RideModel.fromJson(response);
+
+    // ========================================================================
+    // CAPTURE STRIPE PAYMENT - Critical: charge the rider's card
+    // The pre-auth was created when rider booked, now we capture the funds
+    // ========================================================================
+    await _captureStripePayment(
+      rideId: rideId,
+      paymentIntentId: ride.stripePaymentIntentId,
+      amount: fare,
+      driverId: ride.driverId,
+      tipAmount: tip ?? 0,
+      stateCode: stateCode,
+      pickupAddress: ride.pickupLocation.address,
+      dropoffAddress: ride.dropoffLocation.address,
+      bookingType: ride.type == RideType.carpool ? 'carpool' :
+                   ride.type == RideType.package ? 'package' : 'ride',
+    );
+
+    // ========================================================================
+    // LOCAL NOTIFICATION: Show earnings breakdown to driver
+    // ========================================================================
+    try {
+      final notifService = NotificationService();
+      await notifService.showRideEarningNotification(
+        totalEarnings: totalDriverEarnings,
+        baseFare: basedriverEarnings,
+        tip: tip ?? 0,
+      );
+    } catch (e) {
+      debugPrint('Notification error (non-fatal): $e');
+    }
+
+    return completedRide;
   }
 
   /// Capture Stripe payment when ride completes
@@ -524,25 +603,48 @@ class RideService {
     return success;
   }
 
-  // Get driver's active ride
+  // Get driver's active ride - checks both deliveries and share_ride_bookings
   Future<RideModel?> getActiveRide(String driverId) async {
+    debugPrint('🔍 getActiveRide: Checking for driver $driverId');
+
+    // 1. Check deliveries table (standard rides)
     try {
-      final response = await _client
+      final deliveryResponse = await _client
           .from(SupabaseConfig.packageDeliveriesTable)
           .select()
           .eq('driver_id', driverId)
-          .inFilter('status', [
-            statusToDatabase(RideStatus.accepted),       // 'accepted'
-            statusToDatabase(RideStatus.arrivedAtPickup), // 'in_progress'
-            statusToDatabase(RideStatus.inProgress),      // 'in_progress'
-          ])
-          .maybeSingle();
+          .inFilter('status', ['accepted', 'in_progress'])
+          .order('created_at', ascending: false)
+          .limit(1);
 
-      if (response == null) return null;
-      return RideModel.fromJson(response);
+      if (deliveryResponse.isNotEmpty) {
+        debugPrint('✅ getActiveRide: Found active delivery: ${deliveryResponse.first['id']}');
+        return RideModel.fromJson(deliveryResponse.first);
+      }
     } catch (e) {
-      return null;
+      debugPrint('⚠️ getActiveRide deliveries error: $e');
     }
+
+    // 2. Check share_ride_bookings table (carpools)
+    try {
+      final carpoolResponse = await _client
+          .from('share_ride_bookings')
+          .select()
+          .eq('driver_id', driverId)
+          .inFilter('status', ['accepted', 'in_progress', 'matched', 'driver_assigned'])
+          .order('created_at', ascending: false)
+          .limit(1);
+
+      if (carpoolResponse.isNotEmpty) {
+        debugPrint('✅ getActiveRide: Found active carpool: ${carpoolResponse.first['id']}');
+        return RideModel.fromJson(carpoolResponse.first);
+      }
+    } catch (e) {
+      debugPrint('⚠️ getActiveRide carpools error: $e');
+    }
+
+    debugPrint('ℹ️ getActiveRide: No active ride found for driver $driverId');
+    return null;
   }
 
   // Get driver's ride history
@@ -605,9 +707,10 @@ class RideService {
       bookingType: bookingType,
     );
 
-    final distanceMiles = distanceKm * 0.621371;
+    // MX: per_mile_rate is actually per-km, no conversion needed
+    final distance = pricing.usesKilometers ? distanceKm : distanceKm * 0.621371;
     double fare = pricing.baseFare;
-    fare += distanceMiles * pricing.perMileRate;
+    fare += distance * pricing.perMileRate;
     fare += estimatedMinutes * pricing.perMinuteRate;
     fare += pricing.bookingFee;
     fare += pricing.serviceFee;
@@ -902,17 +1005,16 @@ class RideService {
     final platformAmount = fare * (platformFeePercent / 100);
 
     // Update the delivery with cash payment confirmed
+    // NOTE: payment_status = 'paid' is REQUIRED for the trigger to allow status → completed
     final updateData = <String, dynamic>{
-      'is_paid': true,
+      'final_price': fare,
+      'driver_earnings': driverEarnings,
+      'platform_fee': platformAmount,
+      'state_code': resolvedStateCode,
+      'payment_status': 'paid',  // CRITICAL: Trigger checks this before allowing completion
       'cash_payment_confirmed': true,
       'cash_payment_confirmed_at': now.toIso8601String(),
       'cash_payment_confirmed_by': driverId,
-      'final_price': fare,
-      'driver_earnings': driverEarnings,
-      'platform_fee_amount': platformAmount,
-      'driver_commission_percent': driverCommissionPercent,
-      'platform_fee_percent': platformFeePercent,
-      'state_code': resolvedStateCode,
     };
 
     // Update the correct table based on ride type
@@ -954,6 +1056,35 @@ class RideService {
     } catch (e) {
       // Transaction creation is non-critical, don't fail the whole operation
       debugPrint('Warning: Could not create cash_payment transaction: $e');
+    }
+
+    // =========================================================================
+    // CRITICAL: Process split for cash payments (driver_earnings + balance)
+    // Cash rides don't go through Stripe, so we must process the split manually
+    // =========================================================================
+    try {
+      final splitResponse = await _client.functions.invoke(
+        'process-cash-split',
+        body: {
+          'booking_id': rideId,
+          'driver_id': driverId,
+          'gross_amount': fare,
+          'tip_amount': 0.0, // Cash tips are not tracked in app
+          'state_code': resolvedStateCode,
+          'booking_type': ride.type == RideType.carpool ? 'carpool' : 'ride',
+          'pickup_address': ride.pickupLocation.address,
+          'dropoff_address': ride.dropoffLocation.address,
+        },
+      );
+      final splitData = splitResponse.data as Map<String, dynamic>?;
+      if (splitData?['success'] == true) {
+        debugPrint('✅ Cash split processed: driver gets \$${splitData?['driver_amount']}');
+      } else {
+        debugPrint('⚠️ Cash split warning: ${splitData?['error'] ?? 'unknown'}');
+      }
+    } catch (e) {
+      // Split processing failure is non-critical for the ride completion
+      debugPrint('Warning: Could not process cash split: $e');
     }
 
     return RideModel.fromJson(response);

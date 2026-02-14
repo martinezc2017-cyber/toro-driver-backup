@@ -1,7 +1,7 @@
 name: toro_driver
 description: "Toro Driver - Rideshare Driver App"
 publish_to: 'none'
-version: 1.2.0+4009
+version: 1.2.2+4012
 
 environment:
   sdk: ^3.10.4
@@ -80,12 +80,17 @@ dependencies:
   timeago: ^3.6.1
   qr_flutter: ^4.1.0
   share_plus: ^7.2.2
+  pasteboard: ^0.4.0
   pdf: ^3.10.8
   printing: ^5.14.2
 
   # Text to Speech & Wakelock (for navigation)
   flutter_tts: ^4.0.2
   wakelock_plus: ^1.2.8
+
+  # Background Service - GPS tracking when app is closed
+  flutter_background_service: ^5.0.5
+  flutter_background_service_android: ^6.2.2
 
   # UI Components
   shimmer: ^3.0.0

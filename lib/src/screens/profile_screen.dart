@@ -1,7 +1,9 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:image_picker/image_picker.dart';
 import '../core/logging/app_logger.dart';
 import '../providers/driver_provider.dart';
 import '../providers/auth_provider.dart';
@@ -21,6 +23,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     with TickerProviderStateMixin {
   late AnimationController _sparkleController;
   late AnimationController _pulseController;
+  bool _uploadingPhoto = false;
 
   @override
   void initState() {
@@ -172,10 +175,10 @@ class _ProfileScreenState extends State<ProfileScreen>
               bottom: 8,
               right: 8,
               child: GestureDetector(
-                onTap: () {
+                onTap: _uploadingPhoto ? null : () {
                   HapticService.lightImpact();
                   AppLogger.log('PROFILE -> Edit photo tapped');
-                  // TODO: Implement image picker
+                  _uploadProfilePhoto();
                 },
                 child: Container(
                   padding: const EdgeInsets.all(12),
@@ -190,7 +193,16 @@ class _ProfileScreenState extends State<ProfileScreen>
                       ),
                     ],
                   ),
-                  child: const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 18),
+                  child: _uploadingPhoto
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 18),
                 ),
               ),
             ),
@@ -460,6 +472,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     const neonRed = Color(0xFFEF4444);
 
     final menuItems = [
+      {'icon': Icons.badge_rounded, 'label': 'Mi Credencial', 'route': '/driver-credential', 'color': neonBlue},
       {'icon': Icons.account_circle_rounded, 'label': 'account'.tr(), 'route': '/account', 'color': neonBlue},
       {'icon': Icons.settings_rounded, 'label': 'settings'.tr(), 'route': '/settings', 'color': neonBlue},
       {'icon': Icons.history_rounded, 'label': 'history'.tr(), 'route': '/rides', 'color': neonBlue},
@@ -582,6 +595,62 @@ class _ProfileScreenState extends State<ProfileScreen>
         ],
       ),
     );
+  }
+
+  /// Upload profile photo
+  Future<void> _uploadProfilePhoto() async {
+    try {
+      // Pick image from gallery
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 85,
+      );
+
+      if (pickedFile == null) return;
+      if (!mounted) return;
+
+      setState(() => _uploadingPhoto = true);
+
+      // Upload using DriverProvider (updates UI automatically)
+      // Use bytes instead of File for web compatibility
+      final driverProvider = Provider.of<DriverProvider>(context, listen: false);
+      final imageBytes = await pickedFile.readAsBytes();
+      final imageUrl = await driverProvider.uploadProfileImage(imageBytes);
+
+      if (mounted) {
+        setState(() => _uploadingPhoto = false);
+
+        if (imageUrl != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Foto de perfil actualizada ✅'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Error al subir la foto'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      AppLogger.error('Error uploading profile photo: $e');
+      if (mounted) {
+        setState(() => _uploadingPhoto = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al subir la foto: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 }
 

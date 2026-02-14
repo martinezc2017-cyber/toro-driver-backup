@@ -1,0 +1,37 @@
+--------- beginning of main
+02-13 01:31:46.941  7511  7553 I flutter : [IMPORTANT:flutter/shell/platform/android/android_context_vk_impeller.cc(62)] Using the Impeller rendering backend (Vulkan).
+02-13 01:31:47.232  7511  7511 I flutter : [MAIN] start at 0ms
+02-13 01:31:47.235  7511  7511 I flutter : [MAIN] binding done at 2ms
+02-13 01:31:47.261  7511  7511 I flutter : [MAIN] EasyLocalization done at 28ms
+02-13 01:31:47.261  7511  7511 I flutter : [MAIN] runApp at 28ms
+02-13 01:31:47.354  7511  7511 I flutter : `flutter_background_service_android` threw an error: Exception: This class should only be used in the main isolate (UI App). The app may not function as expected until you remove this plugin from pubspec.yaml
+02-13 01:31:47.363  7511  7511 I flutter : [WRAPPER] initState at 131ms
+02-13 01:31:47.363  7511  7511 I flutter : [WRAPPER] services START at 131ms
+02-13 01:31:47.364  7511  7511 I flutter : [SPLASH] initState at 0ms
+02-13 01:31:47.381  7511  7511 I flutter : [SPLASH] FIRST frame at 17ms wall
+02-13 01:31:47.384  7511  7579 I flutter : [IMPORTANT:flutter/shell/platform/android/android_context_vk_impeller.cc(62)] Using the Impeller rendering backend (Vulkan).
+02-13 01:31:47.624  7511  7511 I flutter : [SPLASH] text at 247ms smooth (frame 8, delta=100ms)
+02-13 01:31:47.625  7511  7511 I flutter : [SERVICES] Firebase done at 261ms
+02-13 01:31:47.760  7511  7603 I flutter : [IMPORTANT:flutter/shell/platform/android/android_context_vk_impeller.cc(62)] Using the Impeller rendering backend (Vulkan).
+02-13 01:31:47.821  7511  7511 I flutter : [SPLASH] scan at 412ms smooth (frame 12, delta=16ms)
+02-13 01:31:47.821  7511  7511 I flutter : [KEYSTORE] Health check passed
+02-13 01:31:47.881  7511  7511 I flutter : [SERVICES] Supabase done at 517ms
+02-13 01:31:47.882  7511  7511 I flutter : [SERVICES] CRITICAL done at 518ms
+02-13 01:31:51.040  7511  7511 I flutter : [SPLASH] intro COMPLETE at 3500ms smooth (frame 180, 3676ms wall)
+02-13 01:31:52.870  7511  7511 I flutter : [WRAPPER] ready at 5637ms
+02-13 01:31:52.870  7511  7511 I flutter : [SPLASH] exit TRIGGERED at 5506ms (introComplete=true)
+02-13 01:31:52.870  7511  7511 I flutter : [SPLASH] exit fade started at 5506ms
+02-13 01:31:52.872  7511  7511 I flutter : [BG_SERVICES] Mapbox done at 2ms
+02-13 01:31:52.880  7511  7511 I flutter : 📱 VersionCheck: App v1.2.0+4010 (android)
+02-13 01:31:52.880  7511  7511 I flutter : [BG_SERVICES] VersionCheck done at 10ms
+02-13 01:31:52.961  7511  7511 I flutter : STATE_VALIDATOR -> Current: v1.2.0+4010, Last: v1.2.0+4010
+02-13 01:31:52.961  7511  7511 I flutter : STATE_VALIDATOR -> Not logged in, skipping server validation
+02-13 01:31:52.961  7511  7511 I flutter : [BG_SERVICES] AppStateValidator done at 91ms
+02-13 01:31:52.964  7511  7511 I flutter : [BG_SERVICES] PaymentService done at 93ms
+02-13 01:31:52.974  7511  7511 I flutter : [BG_SERVICES] HapticService done at 103ms
+02-13 01:31:52.975  7511  7511 I flutter : [BG_SERVICES] BackgroundLocation done at 105ms
+02-13 01:31:52.983  7511  7511 I flutter : [BG_SERVICES] NotificationService done at 112ms
+02-13 01:31:52.983  7511  7511 I flutter : [BG_SERVICES] ALL DONE at 113ms
+02-13 01:31:53.299  7511  7511 I flutter : [SPLASH] onComplete at 5935ms
+02-13 01:31:53.299  7511  7511 I flutter : [WRAPPER] onComplete → AuthWrapper at 6067ms
+02-13 01:31:53.302  7511  7511 I flutter : [AUTH] onAuthStateChange: event=AuthChangeEvent.initialSession, session=false, status=AuthStatus.initial, initialResolved=false

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 import '../utils/app_colors.dart';
 import '../config/supabase_config.dart';
 
@@ -641,6 +642,7 @@ class _MexicoInvoicesScreenState extends State<MexicoInvoicesScreen> {
         },
       );
 
+      if (!mounted) return;
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
 
       if (response.status == 200) {
@@ -652,6 +654,7 @@ class _MexicoInvoicesScreenState extends State<MexicoInvoicesScreen> {
         throw Exception(response.data['error'] ?? 'Error desconocido');
       }
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
@@ -659,11 +662,22 @@ class _MexicoInvoicesScreenState extends State<MexicoInvoicesScreen> {
     }
   }
 
-  void _downloadFile(String url, String type) {
-    // TODO: Implement file download
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('mx_downloading'.tr(namedArgs: {'type': type}))),
-    );
+  Future<void> _downloadFile(String url, String type) async {
+    try {
+      if (await canLaunchUrlString(url)) {
+        await launchUrlString(url, mode: LaunchMode.externalApplication);
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('No se pudo abrir el enlace'), backgroundColor: AppColors.error),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
+      );
+    }
   }
 
   String _getMonthName(int month) {

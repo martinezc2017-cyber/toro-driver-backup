@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/auth_provider.dart';
 import '../services/biometric_service.dart';
 import '../utils/app_colors.dart';
@@ -40,6 +41,11 @@ class _LoginScreenState extends State<LoginScreen>
   bool _showPasswordKeyboard = false;
   String? _activeField; // 'email', 'password', 'firstName', 'lastName', 'phone'
   late FocusNode _keyboardListenerFocus;
+  final FocusNode _emailFocusNode = FocusNode();
+  final FocusNode _passwordFocusNode = FocusNode();
+  final FocusNode _firstNameFocusNode = FocusNode();
+  final FocusNode _lastNameFocusNode = FocusNode();
+  final FocusNode _phoneFocusNode = FocusNode();
 
   // Helper to check if any keyboard is showing
   bool get _isKeyboardShowing => _showEmailKeyboard || _showPasswordKeyboard;
@@ -61,6 +67,10 @@ class _LoginScreenState extends State<LoginScreen>
   late Animation<double> _shimmerAnimation;
   late Animation<double> _pulseAnimation;
 
+  static const _prefKeyEmail = 'login_remembered_email';
+  static const _prefKeyEmailHistory = 'login_email_history';
+  final List<String> _emailHistory = [];
+
   @override
   void initState() {
     super.initState();
@@ -71,8 +81,125 @@ class _LoginScreenState extends State<LoginScreen>
     _lastNameController.addListener(() => setState(() {}));
     _phoneController.addListener(() => setState(() {}));
     AppLogger.log('OPEN -> LoginScreen');
+    _loadRememberedEmail();
     _checkBiometric();
     _initAnimations();
+  }
+
+  Future<void> _loadRememberedEmail() async {
+    final prefs = await SharedPreferences.getInstance();
+    // Load history
+    final historyList = prefs.getStringList(_prefKeyEmailHistory) ?? [];
+    if (mounted) {
+      setState(() {
+        _emailHistory.clear();
+        _emailHistory.addAll(historyList);
+      });
+    }
+    // Pre-fill last used email
+    final saved = prefs.getString(_prefKeyEmail);
+    if (saved != null && saved.isNotEmpty && _emailController.text.isEmpty) {
+      _emailController.text = saved;
+    }
+  }
+
+  Future<void> _saveEmail(String email) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_prefKeyEmail, email);
+    // Add to history (most recent first, max 5, no duplicates)
+    final history = prefs.getStringList(_prefKeyEmailHistory) ?? [];
+    history.remove(email);
+    history.insert(0, email);
+    if (history.length > 5) history.removeLast();
+    await prefs.setStringList(_prefKeyEmailHistory, history);
+    if (mounted) {
+      setState(() {
+        _emailHistory.clear();
+        _emailHistory.addAll(history);
+      });
+    }
+  }
+
+  void _showEmailHistoryDropdown() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Row(
+                children: [
+                  Icon(Icons.history, color: AppColors.primary, size: 20),
+                  const SizedBox(width: 8),
+                  Text('Correos recientes',
+                    style: TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            ..._emailHistory.map((email) => ListTile(
+              leading: Icon(Icons.email_outlined, color: AppColors.textSecondary, size: 20),
+              title: Text(email, style: TextStyle(color: AppColors.textPrimary, fontSize: 14)),
+              trailing: Icon(Icons.arrow_forward_ios, color: AppColors.textSecondary, size: 14),
+              onTap: () {
+                _emailController.text = email;
+                Navigator.pop(ctx);
+                HapticService.selectionClick();
+              },
+            )),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmailSuggestions() {
+    final query = _emailController.text.trim().toLowerCase();
+    if (query.isEmpty || _emailHistory.isEmpty) return const SizedBox.shrink();
+
+    final suggestions = _emailHistory
+        .where((e) => e.toLowerCase().contains(query) && e.toLowerCase() != query)
+        .toList();
+    if (suggestions.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.only(top: 4),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: suggestions.map((email) => InkWell(
+          onTap: () {
+            _emailController.text = email;
+            HapticService.selectionClick();
+          },
+          borderRadius: BorderRadius.circular(8),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Row(
+              children: [
+                Icon(Icons.history, color: AppColors.primary, size: 16),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(email, style: TextStyle(color: AppColors.textPrimary, fontSize: 13)),
+                ),
+                Icon(Icons.north_west, color: AppColors.textSecondary, size: 14),
+              ],
+            ),
+          ),
+        )).toList(),
+      ),
+    );
   }
 
   void _initAnimations() {
@@ -148,23 +275,12 @@ class _LoginScreenState extends State<LoginScreen>
         if (success) {
           AppLogger.log('BIOMETRIC LOGIN -> Success');
           HapticFeedback.mediumImpact();
-          if (mounted) {
-            Navigator.pushReplacementNamed(context, '/home');
-          }
+          // AuthWrapper handles navigation automatically via Consumer
         }
       }
     } catch (e) {
       AppLogger.log('BIOMETRIC LOGIN ERROR -> $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Biometric authentication error'),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-        );
-      }
+      // Don't show error for biometric - just let user login manually
     }
   }
 
@@ -182,6 +298,11 @@ class _LoginScreenState extends State<LoginScreen>
     _cityLightsController.dispose();
     _carFlowController.dispose();
     _keyboardListenerFocus.dispose();
+    _emailFocusNode.dispose();
+    _passwordFocusNode.dispose();
+    _firstNameFocusNode.dispose();
+    _lastNameFocusNode.dispose();
+    _phoneFocusNode.dispose();
     super.dispose();
   }
 
@@ -192,6 +313,9 @@ class _LoginScreenState extends State<LoginScreen>
     final authProvider = context.read<AuthProvider>();
     final email = _emailController.text.trim();
     final password = _passwordController.text;
+
+    // Save email to history BEFORE auth (AuthWrapper may navigate away before async save completes)
+    await _saveEmail(email);
 
     bool success;
     if (_isLogin) {
@@ -206,6 +330,7 @@ class _LoginScreenState extends State<LoginScreen>
         firstName: _firstNameController.text.trim(),
         lastName: _lastNameController.text.trim(),
         phone: _phoneController.text.trim(),
+        role: 'driver',
       );
     }
 
@@ -608,44 +733,34 @@ class _LoginScreenState extends State<LoginScreen>
         return Transform.scale(
           scale: _pulseAnimation.value,
           child: Container(
-            width: 100,
-            height: 100,
             decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: const Color(0xFF1A1A1A),
-              border: Border.all(
-                color: const Color(0xFF3A3A3A),
-                width: 2,
-              ),
+              borderRadius: BorderRadius.circular(28),
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.primary.withValues(alpha: 0.4),
-                  blurRadius: 25,
-                  spreadRadius: 5,
+                  color: const Color(0xFF00D9FF).withValues(alpha: 0.35),
+                  blurRadius: 30,
+                  spreadRadius: 2,
                 ),
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.5),
-                  blurRadius: 15,
-                  offset: const Offset(0, 6),
+                  color: Colors.black.withValues(alpha: 0.4),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
                 ),
               ],
             ),
-            child: ClipOval(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(28),
               child: Image.asset(
-                'assets/images/toro_logo.png',
+                'assets/images/toro_logo_new.png',
+                width: 120,
+                height: 120,
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) {
-                  // Fallback to icon if image not found
-                  return Container(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: AppColors.primaryGradient,
-                    ),
-                    child: const Icon(
-                      Icons.local_taxi_rounded,
-                      size: 50,
-                      color: Colors.white,
-                    ),
+                  return Image.asset(
+                    'assets/images/toro_logo.png',
+                    width: 120,
+                    height: 120,
+                    fit: BoxFit.cover,
                   );
                 },
               ),
@@ -762,7 +877,7 @@ class _LoginScreenState extends State<LoginScreen>
               ),
               const SizedBox(width: 12),
               Text(
-                _isLogin ? 'Sign In' : 'Create Account',
+                _isLogin ? 'Driver Sign In' : 'Create Driver Account',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -807,11 +922,12 @@ class _LoginScreenState extends State<LoginScreen>
             icon: Icons.email_outlined,
             keyboardType: TextInputType.emailAddress,
             validator: (v) {
-              if (v!.isEmpty) return 'Enter your email';
-              if (!v.contains('@')) return 'Invalid email';
+              if (v!.trim().isEmpty) return 'Enter your email';
               return null;
             },
           ),
+          // Autocomplete suggestions from email history
+          if (_isLogin) _buildEmailSuggestions(),
           const SizedBox(height: 12),
 
           // Password field
@@ -879,14 +995,24 @@ class _LoginScreenState extends State<LoginScreen>
     bool isEmailField = label.toLowerCase().contains('email') || label.toLowerCase().contains('correo');
     bool isPhoneField = keyboardType == TextInputType.phone;
 
+    // Pick the right FocusNode for this field
+    final FocusNode fieldFocus = isEmailField ? _emailFocusNode
+        : isPhoneField ? _phoneFocusNode
+        : controller == _firstNameController ? _firstNameFocusNode
+        : controller == _lastNameController ? _lastNameFocusNode
+        : _emailFocusNode;
+
     return TextFormField(
       controller: controller,
+      focusNode: fieldFocus,
       keyboardType: TextInputType.none, // Disable system keyboard
-      readOnly: true, // Prevent direct input (use custom keyboard only)
+      readOnly: true,
+      showCursor: true,
+      cursorColor: AppColors.primary,
       validator: validator,
+      autovalidateMode: AutovalidateMode.onUserInteraction,
       style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
       onTap: () {
-        _keyboardListenerFocus.requestFocus();
         if (isEmailField) {
           setState(() {
             _showEmailKeyboard = true;
@@ -907,11 +1033,30 @@ class _LoginScreenState extends State<LoginScreen>
                           controller == _lastNameController ? 'lastName' : 'text';
           });
         }
+        // Keep focus on the text field so cursor blinks
+        fieldFocus.requestFocus();
       },
       decoration: InputDecoration(
         labelText: label,
         labelStyle: TextStyle(color: AppColors.textSecondary, fontSize: 13),
         prefixIcon: Icon(icon, color: AppColors.primary, size: 18),
+        suffixIcon: isEmailField && _emailHistory.isNotEmpty
+          ? IconButton(
+              icon: Icon(Icons.arrow_drop_down_circle_outlined, color: AppColors.primary, size: 20),
+              onPressed: _showEmailHistoryDropdown,
+              tooltip: 'Email history',
+            )
+          : IconButton(
+              icon: Icon(Icons.paste_rounded, color: AppColors.textSecondary, size: 18),
+              onPressed: () async {
+                final data = await Clipboard.getData(Clipboard.kTextPlain);
+                if (data?.text != null) {
+                  controller.text = data!.text!;
+                  HapticService.selectionClick();
+                }
+              },
+              tooltip: 'Paste',
+            ),
         filled: true,
         fillColor: AppColors.surface,
         isDense: true,
@@ -939,34 +1084,55 @@ class _LoginScreenState extends State<LoginScreen>
   Widget _buildPasswordField() {
     return TextFormField(
       controller: _passwordController,
+      focusNode: _passwordFocusNode,
       obscureText: _obscurePassword,
       keyboardType: TextInputType.none, // Disable system keyboard
-      readOnly: true, // Prevent direct input (use custom keyboard only)
+      readOnly: true,
+      showCursor: true,
+      cursorColor: AppColors.primary,
+      autovalidateMode: AutovalidateMode.onUserInteraction,
       validator: (v) {
         if (v!.isEmpty) return 'Enter your password';
         if (v.length < 6) return 'Minimum 6 characters';
         return null;
       },
       onTap: () {
-        _keyboardListenerFocus.requestFocus();
         setState(() {
           _showPasswordKeyboard = true;
           _showEmailKeyboard = false;
           _activeField = 'password';
         });
+        // Keep focus on the password field so cursor blinks
+        _passwordFocusNode.requestFocus();
       },
       style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
       decoration: InputDecoration(
         labelText: 'Password',
         labelStyle: TextStyle(color: AppColors.textSecondary, fontSize: 13),
         prefixIcon: Icon(Icons.lock_outline_rounded, color: AppColors.primary, size: 18),
-        suffixIcon: IconButton(
-          icon: Icon(
-            _obscurePassword ? Icons.visibility_off : Icons.visibility,
-            color: AppColors.textSecondary,
-            size: 18,
-          ),
-          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+        suffixIcon: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: Icon(Icons.paste_rounded, color: AppColors.textSecondary, size: 18),
+              onPressed: () async {
+                final data = await Clipboard.getData(Clipboard.kTextPlain);
+                if (data?.text != null) {
+                  _passwordController.text = data!.text!;
+                  HapticService.selectionClick();
+                }
+              },
+              tooltip: 'Paste',
+            ),
+            IconButton(
+              icon: Icon(
+                _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                color: AppColors.textSecondary,
+                size: 18,
+              ),
+              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+            ),
+          ],
         ),
         filled: true,
         fillColor: AppColors.surface,
@@ -1034,6 +1200,9 @@ class _LoginScreenState extends State<LoginScreen>
             final email = _emailController.text.trim();
             final password = _passwordController.text;
             final authProvider = context.read<AuthProvider>();
+
+            // Save email to history before auth (navigation may happen immediately)
+            await _saveEmail(email);
 
             final success = await authProvider.signIn(
               email: email,

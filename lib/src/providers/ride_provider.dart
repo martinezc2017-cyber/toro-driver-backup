@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart' show ChangeNotifier, debugPrint;
 import '../services/ride_service.dart';
 import '../services/driver_service.dart';
+import '../services/location_service.dart';
 import '../models/ride_model.dart';
 import '../models/driver_model.dart';
 
@@ -15,6 +16,7 @@ enum RideProviderStatus {
 class RideProvider with ChangeNotifier {
   final RideService _rideService = RideService();
   final DriverService _driverService = DriverService();
+  final LocationService _locationService = LocationService();
 
   // Test mode flag - Set to false to use real Supabase data
   static const bool isTestMode = false;
@@ -30,6 +32,7 @@ class RideProvider with ChangeNotifier {
   StreamSubscription? _activeRideSubscription;
   Timer? _refreshTimer;  // Periodic refresh as backup
   String? _currentDriverId;  // Store for refresh
+  final Set<String> _locallyDismissedIds = {};  // Keep dismissed rides hidden even if DB write fails
 
   RideProviderStatus get status => _status;
   RideModel? get activeRide => _activeRide;
@@ -44,6 +47,7 @@ class RideProvider with ChangeNotifier {
   Future<void> initialize(String driverId) async {
     _status = RideProviderStatus.loading;
     _currentDriverId = driverId;  // Store for periodic refresh
+    _locallyDismissedIds.clear();  // Fresh session, clear local dismissals
     notifyListeners();
 
     try {
@@ -60,15 +64,20 @@ class RideProvider with ChangeNotifier {
 
       // Check for active ride
       _activeRide = await _rideService.getActiveRide(driverId);
+      debugPrint('INIT: activeRide=${_activeRide?.id}, isActive=$isActiveDriver');
 
       if (_activeRide != null) {
         _status = RideProviderStatus.hasActiveRide;
+        debugPrint('INIT: Has active ride ${_activeRide!.id}, subscribing...');
         _subscribeToActiveRide(_activeRide!.id, rideType: _activeRide!.type);
       } else {
         _status = RideProviderStatus.idle;
         // Only subscribe to available rides if driver is active
         if (isActiveDriver) {
+          debugPrint('INIT: No active ride, subscribing to available rides');
           _subscribeToAvailableRides();
+        } else {
+          debugPrint('INIT: Driver NOT active, NOT subscribing to rides');
         }
       }
 
@@ -127,8 +136,15 @@ class RideProvider with ChangeNotifier {
   void _subscribeToAvailableRides() {
     _availableRidesSubscription?.cancel();
     _availableRidesSubscription = _rideService.streamAvailableRides().listen(
-      (rides) {
-        _availableRides = rides;
+      (rides) async {
+        // Apply rejected rides filter BEFORE updating UI
+        // This prevents showing rides that the driver already rejected
+        if (_currentDriverId != null) {
+          final filteredRides = await _rideService.filterRejectedRides(rides, _currentDriverId!);
+          _availableRides = filteredRides.where((r) => !_locallyDismissedIds.contains(r.id)).toList();
+        } else {
+          _availableRides = rides.where((r) => !_locallyDismissedIds.contains(r.id)).toList();
+        }
         notifyListeners();
       },
       onError: (e) {
@@ -145,16 +161,19 @@ class RideProvider with ChangeNotifier {
   // Always applies enriched data (profile names, split calculations)
   void _startPeriodicRefresh() {
     _refreshTimer?.cancel();
+    debugPrint('POLL: Starting periodic refresh (every 5s), status=$_status');
     _refreshTimer = Timer.periodic(const Duration(seconds: 5), (timer) async {
       if (_status == RideProviderStatus.hasActiveRide) {
+        debugPrint('POLL: Skipping - has active ride');
         return;
       }
       try {
-        final freshRides = await _rideService.getAvailableRides();
-        _availableRides = freshRides;
+        final freshRides = await _rideService.getAvailableRides(driverId: _currentDriverId);
+        debugPrint('POLL: Found ${freshRides.length} available rides');
+        _availableRides = freshRides.where((r) => !_locallyDismissedIds.contains(r.id)).toList();
         notifyListeners();
       } catch (e) {
-        // Ignore periodic refresh errors
+        debugPrint('POLL: Error fetching rides: $e');
       }
     });
   }
@@ -245,6 +264,14 @@ class RideProvider with ChangeNotifier {
 
       debugPrint('🚗 RideProvider: Ride accepted! Active ride: ${_activeRide?.id}, status: ${_activeRide?.status}');
 
+      // Start GPS tracking - shares driver location with rider
+      await _locationService.startRideTracking(
+        driverId: driverId,
+        rideId: rideId,
+        riderName: _activeRide?.passengerName,
+      );
+      debugPrint('🚗 RideProvider: GPS tracking started for ride $rideId');
+
       // Stop listening to available rides and periodic refresh
       _availableRidesSubscription?.cancel();
       _stopPeriodicRefresh();
@@ -275,6 +302,9 @@ class RideProvider with ChangeNotifier {
     final serviceType = ride.type == RideType.package ? 'delivery'
         : ride.type == RideType.carpool ? 'carpool'
         : 'ride';
+
+    // Track locally so periodic refresh doesn't bring them back
+    _locallyDismissedIds.add(rideId);
 
     // Track rejection for acceptance rate
     await _rideService.rejectRide(rideId, driverId, serviceType: serviceType);
@@ -319,6 +349,15 @@ class RideProvider with ChangeNotifier {
     }
   }
 
+  // Last completed ride data (for earnings popup)
+  RideModel? _lastCompletedRide;
+  RideModel? get lastCompletedRide => _lastCompletedRide;
+
+  /// Clear last completed ride (after showing popup)
+  void clearLastCompletedRide() {
+    _lastCompletedRide = null;
+  }
+
   // Complete ride
   Future<bool> completeRide({double? tip, required String driverId}) async {
     if (_activeRide == null) return false;
@@ -326,8 +365,15 @@ class RideProvider with ChangeNotifier {
     try {
       final completedRide = await _rideService.completeRide(_activeRide!.id, tip: tip);
 
+      // Stop GPS tracking when ride completes
+      _locationService.stopRideTracking();
+      debugPrint('🚗 RideProvider: GPS tracking stopped (ride completed)');
+
       // Update driver stats
       await _driverService.incrementRideCount(driverId, completedRide.driverEarnings);
+
+      // Save completed ride for earnings popup
+      _lastCompletedRide = completedRide;
 
       _activeRide = null;
       _status = RideProviderStatus.idle;
@@ -429,6 +475,10 @@ class RideProvider with ChangeNotifier {
     try {
       await _rideService.cancelRide(_activeRide!.id, reason);
 
+      // Stop GPS tracking when ride is cancelled
+      _locationService.stopRideTracking();
+      debugPrint('🚗 RideProvider: GPS tracking stopped (ride cancelled)');
+
       // CRITICAL: Cancel ALL timers and subscriptions FIRST to stop loops
       _activeRidePollTimer?.cancel();
       _activeRidePollTimer = null;
@@ -445,6 +495,9 @@ class RideProvider with ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
+      // Stop GPS tracking even on error
+      _locationService.stopRideTracking();
+
       // Even on error, stop the loops
       _activeRidePollTimer?.cancel();
       _activeRidePollTimer = null;
@@ -464,6 +517,10 @@ class RideProvider with ChangeNotifier {
     try {
       final success = await _rideService.forceReleaseAllActiveRides(driverId);
 
+      // Stop GPS tracking
+      _locationService.stopRideTracking();
+      debugPrint('🚗 RideProvider: GPS tracking stopped (force release)');
+
       // Clear local state regardless of DB result
       _activeRide = null;
       _status = RideProviderStatus.idle;
@@ -476,6 +533,9 @@ class RideProvider with ChangeNotifier {
       notifyListeners();
       return success;
     } catch (e) {
+      // Stop GPS tracking even on error
+      _locationService.stopRideTracking();
+
       // Still clear local state even on error
       _activeRide = null;
       _status = RideProviderStatus.idle;
@@ -530,6 +590,7 @@ class RideProvider with ChangeNotifier {
       _availableRides = await _rideService.getAvailableRides(
         latitude: latitude,
         longitude: longitude,
+        driverId: _currentDriverId,
       );
       notifyListeners();
     } catch (e) {
@@ -573,6 +634,9 @@ class RideProvider with ChangeNotifier {
     _activeRideSubscription?.cancel();
     _activeRidePollTimer?.cancel();
     _stopPeriodicRefresh();
+    // Stop GPS tracking on dispose
+    _locationService.stopRideTracking();
+    _locationService.dispose();
     super.dispose();
   }
 }

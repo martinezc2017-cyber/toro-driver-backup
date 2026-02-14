@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart' show kIsWeb, ChangeNotifier;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/auth_service.dart';
 import '../models/driver_model.dart';
+import '../core/logging/app_logger.dart';
 
 enum AuthStatus {
   initial,
@@ -18,6 +19,10 @@ class AuthProvider with ChangeNotifier {
   DriverModel? _driver;
   String? _error;
   StreamSubscription<AuthState>? _authSubscription;
+  Timer? _safetyTimer;
+
+  /// Hard timeout: if auth is not resolved after this, force unauthenticated.
+  static const _safetyTimeoutSeconds = 20;
 
   AuthStatus get status => _status;
   DriverModel? get driver => _driver;
@@ -30,9 +35,34 @@ class AuthProvider with ChangeNotifier {
     _init();
   }
 
+  // Track if we've already resolved the initial auth state
+  bool _initialResolved = false;
+  bool _isLoadingProfile = false;
+
   void _init() {
-    _authSubscription = _authService.authStateChanges.listen((authState) {
-      _handleAuthStateChange(authState);
+    _authSubscription = _authService.authStateChanges.listen(
+      (authState) {
+        _handleAuthStateChange(authState);
+      },
+      onError: (error) {
+        // Handle async auth errors (e.g., stale refresh token from session recovery)
+        AppLogger.log('[AUTH] Stream error: $error');
+        final errorStr = error.toString();
+        if (errorStr.contains('refresh_token_not_found') ||
+            errorStr.contains('Invalid Refresh Token')) {
+          AppLogger.log('[AUTH] Stale session detected, forcing unauthenticated');
+          _forceUnauthenticated(reason: 'stale_refresh_token');
+        }
+      },
+    );
+
+    // SAFETY NET: If after 10 seconds auth is still not resolved, force logout.
+    // This prevents the dark screen loop permanently.
+    _safetyTimer = Timer(const Duration(seconds: _safetyTimeoutSeconds), () {
+      if (!_initialResolved || _status == AuthStatus.initial || _status == AuthStatus.loading) {
+        AppLogger.log('[AUTH] SAFETY TIMEOUT after ${_safetyTimeoutSeconds}s — status=$_status, initialResolved=$_initialResolved');
+        _forceUnauthenticated(reason: 'safety_timeout');
+      }
     });
 
     // Check if this is an OAuth callback (token in URL fragment on web)
@@ -47,16 +77,13 @@ class AuthProvider with ChangeNotifier {
       }
     }
 
-    // Wait longer if OAuth callback detected, as Supabase needs time to process the token
     final delay = hasOAuthCallback ? 1500 : 500;
 
     Future.delayed(Duration(milliseconds: delay), () async {
       if (_status == AuthStatus.initial) {
-        // Check if already authenticated
         if (_authService.isAuthenticated) {
           await _loadDriverProfile(caller: '_init_delayed_check');
         } else {
-          // If OAuth callback detected but still not authenticated, try to recover session
           if (hasOAuthCallback) {
             await Future.delayed(const Duration(milliseconds: 1000));
             if (_authService.isAuthenticated) {
@@ -65,26 +92,63 @@ class AuthProvider with ChangeNotifier {
             }
           }
           _status = AuthStatus.unauthenticated;
+          _initialResolved = true;
           notifyListeners();
         }
       }
     });
   }
 
+  /// Force to unauthenticated state.
+  /// Used by safety timeout and stale token recovery.
+  void _forceUnauthenticated({required String reason}) {
+    AppLogger.log('[AUTH] _forceUnauthenticated reason=$reason');
+    _safetyTimer?.cancel();
+    _status = AuthStatus.unauthenticated;
+    _initialResolved = true;
+    _driver = null;
+    _isLoadingProfile = false;
+    notifyListeners();
+    // Only sign out for stale tokens, NOT for timeouts
+    // Signing out on timeout destroys a valid session and causes login loops
+    if (reason == 'stale_refresh_token') {
+      try {
+        _authService.signOut();
+      } catch (_) {}
+    }
+  }
+
   Future<void> _handleAuthStateChange(AuthState authState) async {
     final session = authState.session;
     final event = authState.event;
 
+    AppLogger.log('[AUTH] onAuthStateChange: event=$event, session=${session != null}, status=$_status, initialResolved=$_initialResolved');
+
     if (session != null) {
-      // Prevent infinite loop - only load if not already authenticated with same user
-      if (_status != AuthStatus.authenticated || _driver?.id != session.user.id) {
-        await _loadDriverProfile(caller: '_handleAuthStateChange');
+      // Only respond to explicit sign-in events, NOT stale session recovery
+      // This prevents the loop: stale token → loading → fail → unauthenticated → stale token...
+      if (event == AuthChangeEvent.signedIn) {
+        if (_status != AuthStatus.authenticated || _driver?.id != session.user.id) {
+          await _loadDriverProfile(caller: '_handleAuthStateChange($event)');
+        }
+      } else if (event == AuthChangeEvent.tokenRefreshed) {
+        // Only reload on token refresh if NOT yet authenticated
+        // Avoids loop when driver profile is null (new Google users without driver row)
+        if (_status != AuthStatus.authenticated) {
+          await _loadDriverProfile(caller: '_handleAuthStateChange(tokenRefreshed)');
+        }
+      } else if (event == AuthChangeEvent.initialSession) {
+        // Initial session: only load if we haven't already resolved
+        if (!_initialResolved && _status == AuthStatus.initial) {
+          await _loadDriverProfile(caller: '_handleAuthStateChange(initialSession)');
+        }
       }
+      // Ignore other events with session (like mfaChallenge, etc)
     } else {
-      // Only set unauthenticated on explicit sign out event
-      // For other events (like initial), let the delayed check handle it
+      // No session
       if (event == AuthChangeEvent.signedOut) {
         _status = AuthStatus.unauthenticated;
+        _initialResolved = true;
         _driver = null;
         notifyListeners();
       }
@@ -92,6 +156,15 @@ class AuthProvider with ChangeNotifier {
   }
 
   Future<void> _loadDriverProfile({String caller = 'unknown'}) async {
+    // Prevent concurrent calls that cause rebuild loops
+    if (_isLoadingProfile) {
+      AppLogger.log('[AUTH] _loadDriverProfile SKIPPED (already loading) from: $caller');
+      return;
+    }
+    _isLoadingProfile = true;
+    // Cancel safety timer once we start loading - prevents timeout during slow networks
+    _safetyTimer?.cancel();
+    AppLogger.log('[AUTH] _loadDriverProfile from: $caller | status=$_status | supaAuth=${_authService.isAuthenticated}');
     try {
       // Only change to loading if not already authenticated (avoid unmounting screens during refresh)
       if (_status != AuthStatus.authenticated) {
@@ -99,16 +172,31 @@ class AuthProvider with ChangeNotifier {
         notifyListeners();
       }
 
-      _driver = await _authService.getCurrentDriverProfile();
+      // Timeout: if profile fetch takes >8s, abort
+      _driver = await _authService.getCurrentDriverProfile()
+          .timeout(const Duration(seconds: 8), onTimeout: () {
+        AppLogger.log('[AUTH] getCurrentDriverProfile TIMEOUT after 8s');
+        return null;
+      });
+      // Retry once if null but authenticated (handles transient timeouts after hot restart)
+      if (_driver == null && _authService.isAuthenticated) {
+        AppLogger.log('[AUTH] driver null but authenticated, retrying once...');
+        await Future.delayed(const Duration(milliseconds: 500));
+        _driver = await _authService.getCurrentDriverProfile()
+            .timeout(const Duration(seconds: 8), onTimeout: () => null);
+      }
+      AppLogger.log('[AUTH] driver loaded: ${_driver?.id}, role: ${_driver?.role}');
 
-      // User is authenticated even if driver profile doesn't exist yet
-      // (new users need to register as driver)
       _status = _authService.isAuthenticated ? AuthStatus.authenticated : AuthStatus.unauthenticated;
+      AppLogger.log('[AUTH] final status: $_status');
       _error = null;
     } catch (e) {
+      AppLogger.log('[AUTH] ERROR in _loadDriverProfile: $e');
       _error = e.toString();
       _status = AuthStatus.unauthenticated;
     }
+    _isLoadingProfile = false;
+    _initialResolved = true;
     notifyListeners();
   }
 
@@ -119,6 +207,7 @@ class AuthProvider with ChangeNotifier {
     required String firstName,
     required String lastName,
     required String phone,
+    String role = 'driver',
   }) async {
     try {
       _status = AuthStatus.loading;
@@ -131,6 +220,7 @@ class AuthProvider with ChangeNotifier {
         firstName: firstName,
         lastName: lastName,
         phone: phone,
+        role: role,
       );
 
       await _loadDriverProfile(caller: 'signUp');
@@ -153,24 +243,30 @@ class AuthProvider with ChangeNotifier {
     required String email,
     required String password,
   }) async {
+    AppLogger.log('AUTH_PROVIDER -> signIn called with email: $email');
     try {
       _status = AuthStatus.loading;
       _error = null;
       notifyListeners();
 
-      await _authService.signIn(
+      final response = await _authService.signIn(
         email: email,
         password: password,
       );
+      AppLogger.log('AUTH_PROVIDER -> signIn response user: ${response.user?.id}');
+      AppLogger.log('AUTH_PROVIDER -> signIn response session: ${response.session != null}');
 
       await _loadDriverProfile(caller: 'signIn');
+      AppLogger.log('AUTH_PROVIDER -> after _loadDriverProfile, status: $_status, driver: ${_driver?.id}');
       return true;
     } on AuthException catch (e) {
+      AppLogger.log('AUTH_PROVIDER -> AuthException: ${e.message}');
       _error = _getAuthErrorMessage(e.message);
       _status = AuthStatus.unauthenticated;
       notifyListeners();
       return false;
     } catch (e) {
+      AppLogger.log('AUTH_PROVIDER -> Exception: $e');
       _error = 'Sign in error: $e';
       _status = AuthStatus.unauthenticated;
       notifyListeners();
@@ -336,6 +432,7 @@ class AuthProvider with ChangeNotifier {
 
   @override
   void dispose() {
+    _safetyTimer?.cancel();
     _authSubscription?.cancel();
     super.dispose();
   }

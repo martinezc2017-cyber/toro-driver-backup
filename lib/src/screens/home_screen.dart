@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
+import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart';
 // ignore: depend_on_referenced_packages
 import 'package:url_launcher/url_launcher_string.dart';
@@ -14,6 +16,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mapbox;
 import 'package:provider/provider.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../providers/driver_provider.dart';
 import '../providers/ride_provider.dart';
 import '../providers/earnings_provider.dart';
@@ -25,16 +28,33 @@ import '../utils/app_colors.dart';
 import '../utils/app_theme.dart';
 import '../utils/haptic_service.dart';
 import '../widgets/futuristic_widgets.dart' hide NeonButton, NeonSwitch;
-import '../widgets/neon_widgets.dart';
 import '../config/supabase_config.dart';
 import '../services/audit_service.dart';
 import '../services/mapbox_navigation_service.dart';
+import '../services/tourism_event_service.dart';
+import '../services/notification_service.dart';
+import '../services/cash_account_service.dart';
 import 'earnings_screen.dart';
 import 'rides_screen.dart';
 import 'profile_screen.dart';
-import 'map_screen.dart';
 import 'navigation_map_screen.dart';
+import 'tourism/vehicle_request_screen.dart';
+import 'organizer/organizer_home_screen.dart';
+import 'cash_balance_screen.dart';
+import 'account_suspended_screen.dart';
+import 'rental/browse_rentals_screen.dart';
 import '../widgets/toro_3d_pin.dart';
+import '../core/logging/app_logger.dart';
+
+/// Tracks which event chat screens are currently open on the driver side.
+/// Used to suppress chat notifications when the user is viewing the chat.
+class ActiveDriverChatTracker {
+  static final Set<String> _activeChats = {};
+
+  static void open(String eventId) => _activeChats.add(eventId);
+  static void close(String eventId) => _activeChats.remove(eventId);
+  static bool isOpen(String eventId) => _activeChats.contains(eventId);
+}
 
 /// TORO DRIVER - Luxury Uber Black Driver Home Screen
 /// Clean, powerful, confident, luxurious
@@ -49,6 +69,9 @@ class _HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   int _selectedNavIndex = 0;
 
+  // Mode toggle: Driver (normal rides) vs Tourism (events/rentals)
+  bool _isTourismMode = false;
+
   // Collapsible section states
   bool _showDailyEarnings = true;
   bool _showWeeklyEarnings = true;
@@ -56,6 +79,24 @@ class _HomeScreenState extends State<HomeScreen>
 
   // === APP LIFECYCLE OPTIMIZATION ===
   bool _isAppInBackground = false;
+
+  // === VEHICLE REQUESTS ===
+  int _pendingRequestsCount = 0;
+  final TourismEventService _tourismService = TourismEventService();
+  RealtimeChannel? _vehicleRequestsChannel;
+  RealtimeChannel? _notificationsChannel;
+  final NotificationService _notificationService = NotificationService();
+
+  // === NOTIFICATIONS ===
+  int _unreadNotificationsCount = 0;
+
+  // === TOURISM CHAT NOTIFICATIONS ===
+  RealtimeChannel? _chatMessagesChannel;
+
+  // === CASH CONTROL ===
+  final CashAccountService _cashService = CashAccountService();
+  double _cashOwed = 0;
+  String _cashAccountStatus = 'active';
 
   // Navigation mode removed - using NavigationMapScreen on tab 1 instead
 
@@ -70,7 +111,28 @@ class _HomeScreenState extends State<HomeScreen>
     // Listen for forced disconnect events
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _setupForceDisconnectListener();
+      _loadPendingRequestsCount();
+      _loadUnreadNotificationsCount();
+      _subscribeToVehicleRequests();
+      _subscribeToNotifications();
+      _subscribeToChatMessages();
+      _loadCashAccountStatus();
+      // Request permissions sequentially so dialogs don't overlap
+      _requestPermissionsSequentially();
+      // Run tourism schema diagnostics on startup
+      TourismEventService().validateSchemaConnections();
     });
+  }
+
+  Future<void> _requestPermissionsSequentially() async {
+    // Location first, then notifications - so dialogs don't overlap
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      await Geolocator.requestPermission();
+    }
+    // Small delay then request notifications
+    await Future.delayed(const Duration(milliseconds: 500));
+    NotificationService().requestPermissions();
   }
 
   @override
@@ -105,9 +167,480 @@ class _HomeScreenState extends State<HomeScreen>
         latitude: pos?.latitude,
         longitude: pos?.longitude,
       );
+      // Also refresh pending requests count
+      _loadPendingRequestsCount();
     } catch (e) {
       // Ignore refresh errors on resume
     }
+  }
+
+  // === VEHICLE REQUESTS MANAGEMENT ===
+
+  Future<void> _loadPendingRequestsCount() async {
+    try {
+      final driverProvider = Provider.of<DriverProvider>(context, listen: false);
+      final driver = driverProvider.driver;
+
+      if (driver == null) return;
+
+      final requests = await _tourismService.getPendingVehicleRequests(driver.id);
+
+      if (mounted) {
+        setState(() {
+          _pendingRequestsCount = requests.length;
+        });
+      }
+    } catch (e) {
+      // Silently fail - not critical
+      debugPrint('Error loading pending requests count: $e');
+    }
+  }
+
+  Future<void> _loadUnreadNotificationsCount() async {
+    try {
+      final driverProvider = Provider.of<DriverProvider>(context, listen: false);
+      final driver = driverProvider.driver;
+
+      if (driver == null) return;
+
+      final count = await _notificationService.getUnreadCount(driver.id);
+
+      if (mounted) {
+        setState(() {
+          _unreadNotificationsCount = count;
+        });
+      }
+    } catch (e) {
+      // Silently fail - not critical
+      debugPrint('Error loading unread notifications count: $e');
+    }
+  }
+
+  Future<void> _loadCashAccountStatus() async {
+    try {
+      final driverProvider = Provider.of<DriverProvider>(context, listen: false);
+      final driver = driverProvider.driver;
+      if (driver == null) return;
+
+      final account = await _cashService.getCashAccount(driver.id);
+      if (mounted && account != null) {
+        final balance = (account['current_balance'] as num?)?.toDouble() ?? 0;
+        final status = account['status'] as String? ?? 'active';
+
+        setState(() {
+          _cashOwed = balance;
+          _cashAccountStatus = status;
+        });
+
+        // Auto-navigate to suspended screen if account is suspended/blocked
+        if ((status == 'suspended' || status == 'blocked') && balance > 0) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => AccountSuspendedScreen(
+                amountOwed: balance,
+                blockedReason: account['blocked_reason'] as String?,
+              ),
+            ),
+          ).then((_) {
+            // Refresh status when returning from suspended screen
+            _loadCashAccountStatus();
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading cash account: $e');
+    }
+  }
+
+  void _subscribeToVehicleRequests() {
+    final driverProvider = Provider.of<DriverProvider>(context, listen: false);
+    final driver = driverProvider.driver;
+
+    if (driver == null) return;
+
+    _vehicleRequestsChannel = _tourismService.subscribeToVehicleRequests(
+      driver.id,
+      (request) {
+        // Reload count when new requests arrive
+        _loadPendingRequestsCount();
+      },
+    );
+  }
+
+  Future<void> _unsubscribeFromVehicleRequests() async {
+    if (_vehicleRequestsChannel != null) {
+      await _tourismService.unsubscribe(_vehicleRequestsChannel!);
+      _vehicleRequestsChannel = null;
+    }
+  }
+
+  void _subscribeToNotifications() {
+    final driverProvider = Provider.of<DriverProvider>(context, listen: false);
+    final driver = driverProvider.driver;
+
+    if (driver == null) {
+      debugPrint('⚠️ Cannot subscribe to notifications: driver is null');
+      // Retry after 1 second
+      Future.delayed(const Duration(seconds: 1), () {
+        if (mounted) {
+          _subscribeToNotifications();
+        }
+      });
+      return;
+    }
+
+    // Don't subscribe twice
+    if (_notificationsChannel != null) {
+      debugPrint('⚠️ Already subscribed to notifications');
+      return;
+    }
+
+    // Subscribe to notifications table for real-time push notifications
+    _notificationsChannel = Supabase.instance.client
+        .channel('notifications_${driver.id}')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'notifications',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'user_id',
+            value: driver.id,
+          ),
+          callback: (payload) {
+            if (mounted && payload.newRecord.isNotEmpty) {
+              debugPrint('🔔 Received notification from Realtime: ${payload.newRecord}');
+              _handleNewNotification(payload.newRecord);
+            }
+          },
+        )
+        .subscribe();
+
+    debugPrint('🔔 Subscribed to notifications for driver ${driver.id}');
+  }
+
+  Future<void> _unsubscribeFromNotifications() async {
+    if (_notificationsChannel != null) {
+      await Supabase.instance.client.removeChannel(_notificationsChannel!);
+      _notificationsChannel = null;
+    }
+  }
+
+  // === TOURISM CHAT MESSAGE NOTIFICATIONS ===
+
+  void _subscribeToChatMessages() {
+    final driverProvider = Provider.of<DriverProvider>(context, listen: false);
+    final driver = driverProvider.driver;
+    if (driver == null) {
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) _subscribeToChatMessages();
+      });
+      return;
+    }
+
+    if (_chatMessagesChannel != null) return; // Already subscribed
+
+    _chatMessagesChannel = Supabase.instance.client
+        .channel('tourism_chat_driver_${driver.id}')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'tourism_messages',
+          callback: (payload) {
+            if (mounted && payload.newRecord.isNotEmpty) {
+              _handleChatMessage(payload.newRecord, driver.id);
+            }
+          },
+        )
+        .subscribe();
+
+    debugPrint('🔔 Subscribed to tourism chat messages for driver ${driver.id}');
+  }
+
+  void _handleChatMessage(Map<String, dynamic> record, String currentUserId) {
+    final senderId = record['sender_id'] as String? ?? '';
+    final eventId = record['event_id'] as String? ?? '';
+    final senderName = record['sender_name'] as String? ?? '';
+    final message = record['message'] as String? ?? '';
+    final messageType = record['message_type'] as String? ?? 'text';
+
+    // Skip own messages
+    if (senderId == currentUserId) return;
+
+    // Skip if chat screen for this event is currently open
+    if (ActiveDriverChatTracker.isOpen(eventId)) return;
+
+    // Skip system messages
+    if (messageType == 'system') return;
+
+    // Determine notification content
+    String title;
+    String body;
+
+    switch (messageType) {
+      case 'emergency':
+        title = 'ALERTA DE EMERGENCIA';
+        body = message.isNotEmpty ? message : 'Alerta de emergencia en el evento';
+        // Use high-priority channel for emergencies
+        _notificationService.showRideRequestNotification(
+          rideId: eventId,
+          pickupAddress: body,
+          fare: 0,
+        );
+        // Also show in-app emergency dialog
+        if (mounted) {
+          _showEmergencyDialog(title, body, eventId);
+        }
+        return;
+      case 'call_to_bus':
+        title = 'Regresen al autobus';
+        body = senderName.isNotEmpty ? 'De: $senderName' : '';
+        break;
+      case 'announcement':
+        title = 'Aviso del evento';
+        body = message;
+        break;
+      case 'image':
+      case 'gif':
+        title = senderName.isNotEmpty ? senderName : 'Nuevo mensaje';
+        body = 'Imagen';
+        break;
+      case 'location':
+        title = senderName.isNotEmpty ? senderName : 'Nuevo mensaje';
+        body = 'Ubicacion compartida';
+        break;
+      default:
+        title = senderName.isNotEmpty ? senderName : 'Nuevo mensaje';
+        body = message;
+    }
+
+    _notificationService.showMessageNotification(
+      conversationId: eventId,
+      senderName: title,
+      message: body,
+    );
+  }
+
+  Future<void> _unsubscribeFromChatMessages() async {
+    if (_chatMessagesChannel != null) {
+      await Supabase.instance.client.removeChannel(_chatMessagesChannel!);
+      _chatMessagesChannel = null;
+    }
+  }
+
+  /// Show emergency dialog for tourism emergencies (driver side)
+  void _showEmergencyDialog(String title, String body, String eventId) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.red.withOpacity(0.3),
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppColors.card,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Colors.red, width: 2),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.15),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 28),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'ALERTA DE EMERGENCIA',
+                style: TextStyle(color: Colors.red, fontWeight: FontWeight.w900, fontSize: 16),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          body.isNotEmpty ? body : 'Se ha emitido una alerta de emergencia.',
+          style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Entendido', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _handleNewNotification(Map<String, dynamic> notification) {
+    final String title = notification['title'] ?? 'Toro Driver';
+    final String body = notification['body'] ?? '';
+    final String type = notification['type'] ?? 'system';
+
+    // Parse data — may come as Map or JSON string from realtime
+    Map<String, dynamic> data = {};
+    final rawData = notification['data'];
+    if (rawData is Map<String, dynamic>) {
+      data = rawData;
+    } else if (rawData is Map) {
+      data = Map<String, dynamic>.from(rawData);
+    } else if (rawData is String && rawData.isNotEmpty) {
+      try {
+        data = Map<String, dynamic>.from(jsonDecode(rawData));
+      } catch (_) {}
+    }
+
+    debugPrint('🔔 New notification: type=$type, title=$title');
+
+    // Show local notification based on type
+    switch (type) {
+      case 'vehicle_request':
+        // Use general notification for vehicle requests (shows title/body from DB)
+        _notificationService.showGeneralNotification(
+          title: title,
+          body: body,
+          data: data,
+        );
+        // Reload badge count
+        _loadPendingRequestsCount();
+        break;
+
+      case 'bid_request':
+        _notificationService.showGeneralNotification(
+          title: title,
+          body: body,
+          data: data,
+        );
+        break;
+
+      case 'bid_won':
+        // Winning bid - high priority notification + in-app banner
+        _notificationService.showGeneralNotification(
+          title: title,
+          body: body,
+          data: data,
+        );
+        // Show prominent in-app banner
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.emoji_events, color: Colors.amber, size: 28),
+                  const SizedBox(width: 12),
+                  Expanded(child: Text(body, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600))),
+                ],
+              ),
+              backgroundColor: Colors.green.shade700,
+              duration: const Duration(seconds: 6),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+        break;
+
+      case 'bid_lost':
+        _notificationService.showGeneralNotification(
+          title: title,
+          body: body,
+          data: data,
+        );
+        break;
+
+      case 'bid_response':
+      case 'counter_offer':
+        _notificationService.showGeneralNotification(
+          title: title,
+          body: body,
+          data: data,
+        );
+        break;
+
+      case 'event_update':
+      case 'tourism_warning':
+      case 'tourism_event_updated':
+        _notificationService.showGeneralNotification(
+          title: title,
+          body: body,
+          data: data,
+        );
+        break;
+
+      // === LVL 4: EMERGENCY BROADCAST ===
+      case 'tourism_emergency_broadcast':
+      case 'tourism_emergency':
+        // High-priority system notification
+        _notificationService.showGeneralNotification(
+          title: title,
+          body: body,
+          data: {'type': type, ...data},
+        );
+        // Show blocking emergency dialog
+        if (mounted) {
+          _showEmergencyDialog(title, body, data['event_id'] as String? ?? '');
+        }
+        break;
+
+      // === TOURISM ANNOUNCEMENTS ===
+      case 'tourism_organizer_announcement':
+        _notificationService.showGeneralNotification(
+          title: title,
+          body: body,
+          data: data,
+        );
+        // Show in-app banner
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.campaign_rounded, color: Colors.white, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(child: Text(body, style: const TextStyle(color: Colors.white), maxLines: 2, overflow: TextOverflow.ellipsis)),
+                ],
+              ),
+              backgroundColor: const Color(0xFF1565C0),
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 5),
+            ),
+          );
+        }
+        break;
+
+      // === TOURISM INVITATION ===
+      case 'tourism_invitation':
+      case 'tourism_invitation_accepted':
+      case 'tourism_join_accepted':
+      case 'tourism_join_rejected':
+        _notificationService.showGeneralNotification(
+          title: title,
+          body: body,
+          data: data,
+        );
+        break;
+
+      case 'payment':
+        // Extract amount and description from notification data
+        final double amount = (data['amount'] as num?)?.toDouble() ?? 0.0;
+        final String description = data['description']?.toString() ?? body;
+        _notificationService.showEarningNotification(
+          amount: amount,
+          description: description,
+        );
+        break;
+
+      default:
+        _notificationService.showGeneralNotification(
+          title: title,
+          body: body,
+          data: data,
+        );
+    }
+
+    // Update unread notifications badge count
+    _loadUnreadNotificationsCount();
   }
 
   void _setupForceDisconnectListener() {
@@ -304,6 +837,12 @@ class _HomeScreenState extends State<HomeScreen>
   void dispose() {
     // Remove lifecycle observer
     WidgetsBinding.instance.removeObserver(this);
+    // Cleanup vehicle requests subscription
+    _unsubscribeFromVehicleRequests();
+    // Cleanup notifications subscription
+    _unsubscribeFromNotifications();
+    // Cleanup chat messages subscription
+    _unsubscribeFromChatMessages();
     // Remove listener when disposing
     try {
       final driverProvider = Provider.of<DriverProvider>(
@@ -319,18 +858,22 @@ class _HomeScreenState extends State<HomeScreen>
 
   @override
   Widget build(BuildContext context) {
-    final scaffold = AnnotatedRegion<SystemUiOverlayStyle>(
-      value: const SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
-        systemNavigationBarColor: AppColors.surface,
-        systemNavigationBarIconBrightness: Brightness.light,
-      ),
-      child: Scaffold(
-        backgroundColor: AppColors.background,
-        body: _buildBody(),
-        bottomNavigationBar: _selectedNavIndex == 1 ? null : _buildBottomNav(),
-      ),
+    final scaffold = Consumer<DriverProvider>(
+      builder: (context, driverProvider, child) {
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          value: const SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: Brightness.light,
+            systemNavigationBarColor: AppColors.surface,
+            systemNavigationBarIconBrightness: Brightness.light,
+          ),
+          child: Scaffold(
+            backgroundColor: AppColors.background,
+            body: _buildBody(),
+            bottomNavigationBar: (_selectedNavIndex == 1 || _isTourismMode || _isOrganizer) ? null : _buildBottomNav(),
+          ),
+        );
+      },
     );
 
     // On web, constrain to mobile-like width
@@ -344,7 +887,24 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  /// Check if current user is an organizer (no driver features needed)
+  bool get _isOrganizer {
+    try {
+      final driverProvider = Provider.of<DriverProvider>(context, listen: false);
+      return driverProvider.driver?.role == 'organizer';
+    } catch (_) {
+      return false;
+    }
+  }
+
   Widget _buildBody() {
+    // Organizer users go straight to Tourism/Organizer mode - no driver features
+    if (_isOrganizer) {
+      return OrganizerHomeScreen(
+        onSwitchToDriverMode: null, // No switch back for organizers
+      );
+    }
+
     switch (_selectedNavIndex) {
       case 1:
         return NavigationMapScreen(
@@ -359,6 +919,18 @@ class _HomeScreenState extends State<HomeScreen>
       case 4:
         return const ProfileScreen();
       default:
+        // If in Tourism Mode, show Organizer content
+        if (_isTourismMode) {
+          return OrganizerHomeScreen(
+            onSwitchToDriverMode: () {
+              setState(() {
+                _isTourismMode = false;
+              });
+            },
+          );
+        }
+
+        // Normal Driver Mode
         return Consumer<RideProvider>(
           builder: (context, rideProvider, child) {
             // Normal home screen
@@ -376,6 +948,8 @@ class _HomeScreenState extends State<HomeScreen>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
+                          if (_cashOwed > 0 || _cashAccountStatus != 'active')
+                            _buildCashOwedBanner(),
                           _buildIncomingRides(),
                           _buildEarningsCard(),
                           const SizedBox(height: 12),
@@ -752,14 +1326,141 @@ class _HomeScreenState extends State<HomeScreen>
               // Status Bar - FireGlow style
               Expanded(child: _FireGlowStatusBar(isOnline: isOnline)),
               const SizedBox(width: 12),
+              // Mode Toggle: Driver vs Tourism
+              GestureDetector(
+                onTap: () {
+                  HapticService.lightImpact();
+                  setState(() {
+                    _isTourismMode = !_isTourismMode;
+                  });
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: _isTourismMode
+                          ? const Color(0xFFFF9500)
+                          : const Color(0xFF3B82F6),
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Driver Mode
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          gradient: !_isTourismMode
+                              ? const LinearGradient(
+                                  colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
+                                )
+                              : null,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.local_taxi_rounded,
+                              color: !_isTourismMode
+                                  ? Colors.white
+                                  : AppColors.textTertiary,
+                              size: 16,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Driver',
+                              style: TextStyle(
+                                color: !_isTourismMode
+                                    ? Colors.white
+                                    : AppColors.textTertiary,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      // Tourism Mode
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          gradient: _isTourismMode
+                              ? const LinearGradient(
+                                  colors: [Color(0xFFFF9500), Color(0xFFFF6B00)],
+                                )
+                              : null,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.directions_bus_rounded,
+                              color: _isTourismMode
+                                  ? Colors.white
+                                  : AppColors.textTertiary,
+                              size: 16,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Turismo',
+                              style: TextStyle(
+                                color: _isTourismMode
+                                    ? Colors.white
+                                    : AppColors.textTertiary,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Vehicle Requests
+              _LuxuryIconButton(
+                icon: Icons.event_note,
+                onTap: () async {
+                  HapticService.lightImpact();
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const VehicleRequestScreen(),
+                    ),
+                  );
+                  // Refresh count when returning from screen
+                  _loadPendingRequestsCount();
+                },
+                badgeCount: _pendingRequestsCount,
+              ),
+              const SizedBox(width: 8),
               // Notifications
               _LuxuryIconButton(
                 icon: Icons.notifications_none_rounded,
-                onTap: () {
+                onTap: () async {
                   HapticService.lightImpact();
-                  Navigator.pushNamed(context, '/notifications');
+                  await Navigator.pushNamed(context, '/notifications');
+                  // Refresh count when returning from notifications screen
+                  _loadUnreadNotificationsCount();
                 },
-                hasBadge: true,
+                badgeCount: _unreadNotificationsCount,
               ),
             ],
           ),
@@ -906,6 +1607,104 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════════════════
+  // CASH OWED BANNER
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildCashOwedBanner() {
+    final isSuspended = _cashAccountStatus == 'suspended' || _cashAccountStatus == 'blocked';
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const CashBalanceScreen()),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: isSuspended
+                ? [const Color(0xFFDC2626), const Color(0xFFB91C1C)]
+                : [const Color(0xFFF59E0B), const Color(0xFFD97706)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: (isSuspended ? const Color(0xFFDC2626) : const Color(0xFFF59E0B))
+                  .withOpacity(0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Icon(
+              isSuspended ? Icons.block_rounded : Icons.account_balance_wallet_rounded,
+              color: Colors.white,
+              size: 32,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    isSuspended ? 'CUENTA SUSPENDIDA' : 'DEBES A TORO',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '\$${_cashOwed.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  Text(
+                    isSuspended
+                        ? 'Deposita para reactivar tu cuenta'
+                        : 'De viajes en efectivo',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.85),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                isSuspended ? 'Depositar' : 'Ver',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   // INCOMING RIDES - Shows available ride requests with FireGlow style
   // ═══════════════════════════════════════════════════════════════════════════
 
@@ -1435,12 +2234,12 @@ class _HomeScreenState extends State<HomeScreen>
                   indent: 56,
                 ),
                 _buildRentalActionItem(
-                  icon: Icons.receipt_long_rounded,
-                  label: 'Mis Rentas',
-                  subtitle: 'Acuerdos de renta activos',
+                  icon: Icons.garage_rounded,
+                  label: 'Mis Vehiculos',
+                  subtitle: 'Ver, editar o eliminar vehiculos',
                   onTap: () {
                     HapticService.lightImpact();
-                    _showMyRentalsSheet();
+                    _showMyVehiclesSheet();
                   },
                 ),
                 Divider(
@@ -1449,12 +2248,15 @@ class _HomeScreenState extends State<HomeScreen>
                   indent: 56,
                 ),
                 _buildRentalActionItem(
-                  icon: Icons.gps_fixed_rounded,
-                  label: 'GPS Tracking',
-                  subtitle: 'Rastreo de vehiculos rentados',
+                  icon: Icons.search_rounded,
+                  label: 'Buscar Vehiculo de Renta',
+                  subtitle: 'Encuentra vehiculos disponibles',
                   onTap: () {
                     HapticService.lightImpact();
-                    _showGpsTrackingSheet();
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const BrowseRentalsScreen()),
+                    );
                   },
                 ),
                 const SizedBox(height: 4),
@@ -1545,11 +2347,30 @@ class _HomeScreenState extends State<HomeScreen>
 
     if (userId == null) return;
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => _PublishVehicleSheet(userId: userId),
+    // Use full-screen route instead of bottom sheet to prevent accidental dismissal
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (ctx) => _PublishVehicleSheet(userId: userId),
+        fullscreenDialog: true,
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // MY VEHICLES LIST (VIEW/EDIT/DELETE)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  void _showMyVehiclesSheet() {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final userId = authProvider.driverId;
+
+    if (userId == null) return;
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (ctx) => _MyVehiclesSheet(userId: userId),
+        fullscreenDialog: true,
+      ),
     );
   }
 
@@ -1714,12 +2535,12 @@ class _LuxuryToggle extends StatelessWidget {
 class _LuxuryIconButton extends StatefulWidget {
   final IconData icon;
   final VoidCallback onTap;
-  final bool hasBadge;
+  final int? badgeCount;
 
   const _LuxuryIconButton({
     required this.icon,
     required this.onTap,
-    this.hasBadge = false,
+    this.badgeCount,
   });
 
   @override
@@ -1750,18 +2571,33 @@ class _LuxuryIconButtonState extends State<_LuxuryIconButton> {
           ),
         ),
         child: Stack(
+          clipBehavior: Clip.none,
           children: [
             Icon(widget.icon, color: AppColors.textSecondary, size: 22),
-            if (widget.hasBadge)
+            if (widget.badgeCount != null && widget.badgeCount! > 0)
               Positioned(
-                right: 0,
-                top: 0,
+                right: -4,
+                top: -4,
                 child: Container(
-                  width: 6,
-                  height: 6,
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                   decoration: BoxDecoration(
                     color: AppColors.error,
-                    shape: BoxShape.circle,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: AppColors.surface,
+                      width: 1.5,
+                    ),
+                  ),
+                  constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                  child: Text(
+                    widget.badgeCount! > 99 ? '99+' : widget.badgeCount.toString(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      height: 1.0,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
                 ),
               ),
@@ -2017,23 +2853,27 @@ class _FireGlowStatusBarState extends State<_FireGlowStatusBar>
               ),
               const SizedBox(width: 8),
               // Animated text with crossfade
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 500),
-                transitionBuilder: (child, animation) {
-                  return FadeTransition(opacity: animation, child: child);
-                },
-                child: Text(
-                  _positiveMessages[_messageIndex],
-                  key: ValueKey<int>(_messageIndex),
-                  style: TextStyle(
-                    color: Color.lerp(
-                      _fireColor,
-                      _warmWhite,
-                      glowIntensity * 0.5,
+              Flexible(
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 500),
+                  transitionBuilder: (child, animation) {
+                    return FadeTransition(opacity: animation, child: child);
+                  },
+                  child: Text(
+                    _positiveMessages[_messageIndex],
+                    key: ValueKey<int>(_messageIndex),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                    style: TextStyle(
+                      color: Color.lerp(
+                        _fireColor,
+                        _warmWhite,
+                        glowIntensity * 0.5,
+                      ),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.3,
                     ),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.3,
                   ),
                 ),
               ),
@@ -2114,6 +2954,19 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
     }
   }
 
+  static String _getVehicleTypeLabel(String vehicleType) {
+    switch (vehicleType) {
+      case 'moto': return 'Toro Moto';
+      case 'xl': return 'Toro XL';
+      case 'premium': return 'Premium';
+      case 'black': return 'Black';
+      case 'pickup': return 'Pickup';
+      case 'bicycle': return 'Eco';
+      case 'autobus': return 'Bus';
+      default: return vehicleType;
+    }
+  }
+
   // Format recurring days (1-7) to day letters (L M X J V S D)
   String _formatRecurringDays(List<int> days) {
     const dayLetters = [
@@ -2185,6 +3038,28 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                         ],
                       ),
                     ),
+                    // Vehicle type badge (if not standard)
+                    if (widget.ride.vehicleType != 'standard') ...[
+                      const SizedBox(width: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFA855F7).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: const Color(0xFFA855F7).withValues(alpha: 0.4),
+                          ),
+                        ),
+                        child: Text(
+                          _getVehicleTypeLabel(widget.ride.vehicleType),
+                          style: const TextStyle(
+                            color: Color(0xFFA855F7),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
                     if (widget.ride.isGoodTipper) ...[
                       const SizedBox(width: 4),
                       Text('💰', style: const TextStyle(fontSize: 14)),
@@ -3540,77 +4415,18 @@ class _TamagotchiPetState extends State<_TamagotchiPet>
 class _NavOptionButton extends StatelessWidget {
   final IconData icon;
   final String label;
-  final String? sublabel;
   final Color color;
   final VoidCallback onTap;
-  final bool featured;
 
   const _NavOptionButton({
     required this.icon,
     required this.label,
-    this.sublabel,
     required this.color,
     required this.onTap,
-    this.featured = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    if (featured) {
-      // Featured style - full width with gradient
-      return GestureDetector(
-        onTap: () {
-          HapticService.mediumImpact();
-          onTap();
-        },
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [color, color.withValues(alpha: 0.8)],
-            ),
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: color.withValues(alpha: 0.4),
-                blurRadius: 15,
-                offset: const Offset(0, 5),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: Colors.white, size: 28),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  if (sublabel != null)
-                    Text(
-                      sublabel!,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.8),
-                        fontSize: 12,
-                      ),
-                    ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
     // Default style
     return GestureDetector(
       onTap: () {
@@ -3699,7 +4515,12 @@ class _NavigationTrianglePainter extends CustomPainter {
 
 class _PublishVehicleSheet extends StatefulWidget {
   final String userId;
-  const _PublishVehicleSheet({required this.userId});
+  final Map<String, dynamic>? existingVehicle; // For editing
+
+  const _PublishVehicleSheet({
+    required this.userId,
+    this.existingVehicle,
+  });
 
   @override
   State<_PublishVehicleSheet> createState() => _PublishVehicleSheetState();
@@ -3708,8 +4529,77 @@ class _PublishVehicleSheet extends StatefulWidget {
 class _PublishVehicleSheetState extends State<_PublishVehicleSheet> {
   static const _accent = Color(0xFF8B5CF6);
 
+  // Contract text constant (used for display and storage)
+  // Generate contract text with vehicle and insurance information
+  String get _contractText {
+    final insuranceInfo = _insCompanyCtrl.text.trim().isNotEmpty
+        ? '\nINFORMACIÓN DE SEGURO:\n- Compañía: ${_insCompanyCtrl.text.trim()}\n- Póliza: ${_insPolicyCtrl.text.trim()}\n- Vencimiento: ${_insExpiry != null ? "${_insExpiry!.day}/${_insExpiry!.month}/${_insExpiry!.year}" : "No especificado"}\n'
+        : '\nINFORMACIÓN DE SEGURO: No proporcionada\n';
+
+    return '''CONTRATO DE PUBLICACIÓN DE VEHÍCULO
+
+NATURALEZA DE TORO:
+TORO es únicamente una plataforma tecnológica que FACILITA la conexión entre propietarios de vehículos y usuarios. TORO NO es propietaria, operadora, ni arrendadora de vehículos. TORO NO es responsable de ningún daño, pérdida, accidente o incidente que ocurra con el vehículo.
+
+INFORMACIÓN DEL VEHÍCULO:
+- Marca/Modelo: ${_makeCtrl.text.trim()} ${_modelCtrl.text.trim()}
+- Año: ${_yearCtrl.text.trim()}
+- Placas: ${_plateCtrl.text.trim()}
+- Color: ${_colorCtrl.text.trim().isNotEmpty ? _colorCtrl.text.trim() : "No especificado"}
+$insuranceInfo
+DECLARACIONES DEL PROPIETARIO:
+1. CONDICIONES DEL VEHÍCULO: Declaro bajo protesta de decir verdad que el vehículo descrito está en perfectas condiciones operativas, mecánicas, eléctricas y de seguridad. Cuenta con todos los sistemas requeridos por ley (frenos, luces, neumáticos, etc.) en óptimas condiciones.
+
+2. VERACIDAD DE LA INFORMACIÓN: Toda la información proporcionada (marca, modelo, año, placa, seguro, fotos, etc.) es VERIDICA y COMPLETA. Cualquier falsedad me hace responsable legal y económicamente.
+
+3. AUTORIZACIÓN DE PUBLICACIÓN: Autorizo a TORO a publicar mi vehículo en la plataforma digital y usar las fotografías/información para fines de marketing y promoción.
+
+RESPONSABILIDADES DEL PROPIETARIO:
+4. SEGURO VIGENTE: Me comprometo a mantener un seguro de auto VIGENTE y ADECUADO que cubra daños a terceros, responsabilidad civil, robo total, y daños materiales. Es MI RESPONSABILIDAD exclusiva mantener este seguro activo.
+
+5. MANTENIMIENTO: Soy el ÚNICO responsable del mantenimiento preventivo y correctivo del vehículo (aceite, frenos, neumáticos, afinaciones, etc.).
+
+6. ACCIDENTES Y DAÑOS: En caso de accidente, colisión, volcadura, o cualquier daño durante el uso del vehículo por usuarios de TORO, yo (propietario) soy el ÚNICO responsable legal y económico. TORO queda exenta de toda responsabilidad.
+
+7. USO INDEBIDO/ILEGAL: Si el vehículo es usado para actividades ilegales, tráfico de drogas, contrabando, o cualquier delito, yo (propietario) soy responsable y deslindo totalmente a TORO de cualquier consecuencia legal.
+
+8. VANDALISMO Y ROBO: Cualquier acto de vandalismo, grafiti, robo, robo de partes, o destrucción intencional del vehículo es MI responsabilidad. TORO no se hace responsable de la seguridad del vehículo.
+
+9. DESASTRES NATURALES: Daños causados por fenómenos naturales (tormentas, inundaciones, granizo, terremotos, huracanes, incendios forestales, rayos, etc.) son responsabilidad exclusiva del propietario y su aseguradora.
+
+10. DEFECTOS OCULTOS: Cualquier defecto mecánico, eléctrico o estructural del vehículo (fallas de motor, transmisión, frenos, etc.) que cause daños o accidentes es responsabilidad exclusiva del propietario.
+
+11. CHOFER ASIGNADO: El chofer asignado debe tener licencia vigente y experiencia comprobable. Soy responsable de verificar sus credenciales. Cualquier negligencia del chofer es mi responsabilidad.
+
+COMISIONES Y PAGOS:
+12. COMISIÓN DE PLATAFORMA: Acepto que TORO aplique una comisión/multiplicador sobre el precio base para cubrir costos operativos de la plataforma (tecnología, soporte, marketing, etc.).
+
+SISTEMA DE TURISMO Y EVENTOS:
+13. MANEJO DE PAGOS: Reconozco que TORO no maneja ni procesa pagos de pasajeros en el sistema de turismo. Soy responsable de coordinarme directamente con el organizador del evento para acordar tarifas, formas de pago y cualquier asunto financiero relacionado con el viaje.
+
+14. COBRO POR KILOMETRAJE: Entiendo que TORO cobra una comisión basada en los kilómetros recorridos registrados en la aplicación durante eventos de turismo. Al aceptar este contrato, acepto la propuesta comercial de TORO y me comprometo a pagar dicha comisión según los términos establecidos en la plataforma.
+
+15. COMUNICACIÓN CON ORGANIZADORES: Es mi responsabilidad mantener comunicación directa con los coordinadores u organizadores que publiquen eventos en mi vehículo. TORO solo facilita la conexión y el registro de kilometraje, pero no participa en negociaciones de precio ni cobros a pasajeros.
+
+INDEMNIZACIÓN A TORO:
+16. INDEMNIZACIÓN TOTAL: Me comprometo a indemnizar, defender y mantener libre de daño a TORO, sus accionistas, empleados, y socios de cualquier demanda, reclamo, pérdida, daño, lesión, muerte, o gasto (incluyendo honorarios legales) que surja del uso de mi vehículo en la plataforma.
+
+DERECHO DE RETIRO:
+17. RETIRO DEL VEHÍCULO: Puedo retirar mi vehículo de la plataforma en cualquier momento, siempre que NO tenga contratos o reservas activas pendientes.
+
+JURISDICCIÓN Y LEY APLICABLE:
+18. Este contrato se rige por las leyes de México. Cualquier disputa será resuelta en los tribunales competentes.
+
+FIRMA DIGITAL:
+Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos anteriores. Esta firma digital tiene la misma validez legal que una firma manuscrita. Se registrará: mi email, ubicación GPS, fecha/hora exacta, y datos del chofer asignado.
+
+⚠️ HE LEÍDO Y COMPRENDIDO TODOS LOS TÉRMINOS. ACEPTO TODA LA RESPONSABILIDAD.''';
+  }
+
   // Step tracker
-  int _currentStep = 0; // 0=Vehicle, 1=Insurance, 2=Pricing, 3=Location, 4=Contract
+  // Autobus: 0=Vehicle+Driver, 1=Insurance, 2=Photos, 3=Contract
+  // Others:  0=Vehicle, 1=Pricing+Photos, 2=Insurance+INE, 3=Contract
+  int _currentStep = 0;
 
   // Vehicle info controllers
   final _makeCtrl = TextEditingController();
@@ -3718,7 +4608,32 @@ class _PublishVehicleSheetState extends State<_PublishVehicleSheet> {
   final _colorCtrl = TextEditingController();
   final _plateCtrl = TextEditingController();
   final _vinCtrl = TextEditingController();
+  final _descriptionCtrl = TextEditingController();
   String _vehicleType = 'sedan';
+
+  // Pricing controllers (owner sets prices)
+  final _weeklyPriceCtrl = TextEditingController();
+  final _dailyPriceCtrl = TextEditingController();
+  final _depositCtrl = TextEditingController();
+  final _pickupAddressCtrl = TextEditingController();
+
+  // Vehicle photos (all types)
+  final List<XFile> _vehiclePhotos = [];
+  final _imagePicker = ImagePicker();
+  bool _isPickingPhotos = false;
+
+  // Owner document (INE or License - required)
+  XFile? _ownerDocument;
+  String _ownerDocumentType = 'ine'; // 'ine' or 'licencia'
+  bool _isPickingDocument = false;
+
+  // Features checklist
+  final List<String> _selectedFeatures = [];
+  static const _availableFeatures = [
+    'Aire Acondicionado', 'Bluetooth', 'GPS', 'Camara Reversa',
+    'Asientos de Piel', 'Techo Solar', 'USB/AUX', 'Transmision Automatica',
+    'CarPlay/Android Auto', 'Sensores de Estacionamiento',
+  ];
 
   // Autobus: assigned driver
   final _driverEmailCtrl = TextEditingController();
@@ -3727,24 +4642,19 @@ class _PublishVehicleSheetState extends State<_PublishVehicleSheet> {
   bool _driverVerified = false;
   bool _verifyingDriver = false;
 
+  // Autobus: vehicle details (public info)
+  final _totalSeatsCtrl = TextEditingController();
+  final _unitNumberCtrl = TextEditingController(); // Fleet unit number
+  final _ownerNameCtrl = TextEditingController();
+  final _ownerPhoneCtrl = TextEditingController();
+
+  // Autobus: Photos only (Step 2 for autobus only) - kept for backwards compat
+  List<XFile> get _busPhotos => _vehiclePhotos;
+
   // Insurance controllers
   final _insCompanyCtrl = TextEditingController();
   final _insPolicyCtrl = TextEditingController();
   DateTime? _insExpiry;
-
-  // Pricing controllers
-  final _weeklyPriceCtrl = TextEditingController();
-  final _perKmPriceCtrl = TextEditingController();
-  final _depositCtrl = TextEditingController();
-
-  // Location
-  double? _pickupLat;
-  double? _pickupLng;
-  String? _pickupAddress;
-
-  // Availability
-  DateTime? _availableFrom;
-  DateTime? _availableTo;
 
   // Contract signing
   bool _agreedToTerms = false;
@@ -3752,6 +4662,118 @@ class _PublishVehicleSheetState extends State<_PublishVehicleSheet> {
   String? _error;
 
   final _vehicleTypes = ['sedan', 'SUV', 'van', 'truck', 'autobus'];
+
+  @override
+  void initState() {
+    super.initState();
+    // Auto-fill owner info from logged-in driver's profile for NEW listings
+    if (widget.existingVehicle == null) {
+      _loadOwnerProfile();
+    }
+    // Pre-fill form if editing existing vehicle
+    if (widget.existingVehicle != null) {
+      final vehicle = widget.existingVehicle!;
+      final source = vehicle['_source'] ?? 'bus';
+      final isRental = source == 'rental';
+
+      _vehicleType = vehicle['vehicle_type'] ?? 'autobus';
+
+      if (isRental) {
+        // Rental vehicle field names
+        _makeCtrl.text = vehicle['vehicle_make'] ?? '';
+        _modelCtrl.text = vehicle['vehicle_model'] ?? '';
+        _yearCtrl.text = vehicle['vehicle_year']?.toString() ?? '';
+        _colorCtrl.text = vehicle['vehicle_color'] ?? '';
+        _plateCtrl.text = vehicle['vehicle_plate'] ?? '';
+        _vinCtrl.text = vehicle['vehicle_vin'] ?? '';
+        _descriptionCtrl.text = vehicle['description'] ?? '';
+        _weeklyPriceCtrl.text = (vehicle['weekly_price_base'] ?? '').toString();
+        _dailyPriceCtrl.text = (vehicle['daily_price'] ?? '').toString();
+        _depositCtrl.text = (vehicle['deposit_amount'] ?? '').toString();
+        _pickupAddressCtrl.text = vehicle['pickup_address'] ?? '';
+        _ownerNameCtrl.text = vehicle['owner_name'] ?? '';
+        _ownerPhoneCtrl.text = vehicle['owner_phone'] ?? '';
+        _ownerDocumentType = vehicle['owner_document_type'] ?? 'ine';
+        if (vehicle['features'] != null) {
+          _selectedFeatures.addAll(List<String>.from(vehicle['features']));
+        }
+      } else {
+        // Bus vehicle field names
+        _makeCtrl.text = vehicle['make'] ?? '';
+        _modelCtrl.text = vehicle['model'] ?? '';
+        _yearCtrl.text = vehicle['year']?.toString() ?? '';
+        _colorCtrl.text = vehicle['color'] ?? '';
+        _plateCtrl.text = vehicle['plate'] ?? '';
+      }
+
+      // Insurance fields (shared)
+      _insCompanyCtrl.text = vehicle['insurance_company'] ?? '';
+      _insPolicyCtrl.text = vehicle['insurance_policy_number'] ?? '';
+      if (vehicle['insurance_expiry'] != null) {
+        try {
+          _insExpiry = DateTime.parse(vehicle['insurance_expiry']);
+        } catch (_) {}
+      }
+
+      // Autobus specific fields
+      if (_vehicleType == 'autobus') {
+        _totalSeatsCtrl.text = vehicle['total_seats']?.toString() ?? '';
+        _unitNumberCtrl.text = vehicle['unit_number'] ?? '';
+        _ownerNameCtrl.text = vehicle['owner_name'] ?? '';
+        _ownerPhoneCtrl.text = vehicle['owner_phone'] ?? '';
+        _loadDriverInfo(vehicle['owner_id']);
+      }
+    }
+  }
+
+  /// Auto-fill owner name/phone/email from the logged-in driver's profile
+  Future<void> _loadOwnerProfile() async {
+    try {
+      final result = await SupabaseConfig.client
+          .from('drivers')
+          .select('name, phone, email')
+          .eq('id', widget.userId)
+          .single();
+
+      if (mounted) {
+        setState(() {
+          if (_ownerNameCtrl.text.isEmpty) {
+            _ownerNameCtrl.text = result['name'] ?? '';
+          }
+          if (_ownerPhoneCtrl.text.isEmpty) {
+            _ownerPhoneCtrl.text = result['phone'] ?? '';
+          }
+        });
+      }
+    } catch (e) {
+      // Non-critical - user can type manually
+    }
+  }
+
+  // Load driver info when editing (pre-fill chofer fields)
+  Future<void> _loadDriverInfo(String? driverId) async {
+    if (driverId == null) return;
+
+    try {
+      final result = await SupabaseConfig.client
+          .from('drivers')
+          .select('id, name, email, is_verified')
+          .eq('id', driverId)
+          .single();
+
+      if (mounted) {
+        setState(() {
+          _assignedDriverId = result['id'];
+          _assignedDriverName = result['name'];
+          _driverEmailCtrl.text = result['email'] ?? '';
+          _driverVerified = result['is_verified'] == true;
+        });
+      }
+    } catch (e) {
+      AppLogger.log('Error loading driver info: $e');
+      // Non-critical error, just continue
+    }
+  }
 
   @override
   void dispose() {
@@ -3762,45 +4784,80 @@ class _PublishVehicleSheetState extends State<_PublishVehicleSheet> {
     _plateCtrl.dispose();
     _vinCtrl.dispose();
     _driverEmailCtrl.dispose();
+    _totalSeatsCtrl.dispose();
+    _unitNumberCtrl.dispose();
+    _ownerNameCtrl.dispose();
+    _ownerPhoneCtrl.dispose();
     _insCompanyCtrl.dispose();
     _insPolicyCtrl.dispose();
-    _weeklyPriceCtrl.dispose();
-    _perKmPriceCtrl.dispose();
-    _depositCtrl.dispose();
     super.dispose();
   }
 
   String? _validateStep(int step) {
-    switch (step) {
-      case 0:
-        if (_makeCtrl.text.trim().isEmpty) return 'Ingresa la marca';
-        if (_modelCtrl.text.trim().isEmpty) return 'Ingresa el modelo';
-        if (_yearCtrl.text.trim().isEmpty) return 'Ingresa el año';
-        final year = int.tryParse(_yearCtrl.text.trim());
-        if (year == null || year < 1990 || year > 2030) return 'Año invalido';
-        if (_plateCtrl.text.trim().isEmpty) return 'Ingresa la placa';
-        if (_vehicleType == 'autobus' && !_driverVerified) {
-          return 'Autobus requiere un chofer aprobado por Toro';
-        }
-        return null;
-      case 1:
-        // Insurance is optional but if company is entered, policy is required
-        if (_insCompanyCtrl.text.trim().isNotEmpty && _insPolicyCtrl.text.trim().isEmpty) {
-          return 'Ingresa el numero de poliza';
-        }
-        return null;
-      case 2:
-        if (_weeklyPriceCtrl.text.trim().isEmpty) return 'Ingresa el precio semanal';
-        if (double.tryParse(_weeklyPriceCtrl.text.trim()) == null) return 'Precio semanal invalido';
-        return null;
-      case 3:
-        if (_pickupLat == null || _pickupLng == null) return 'Selecciona la ubicacion de entrega';
-        return null;
-      case 4:
-        if (!_agreedToTerms) return 'Debes aceptar los terminos del contrato';
-        return null;
-      default:
-        return null;
+    if (_vehicleType == 'autobus') {
+      // Autobus: 0=Vehicle+Driver, 1=Insurance, 2=Photos, 3=Contract
+      switch (step) {
+        case 0:
+          if (_makeCtrl.text.trim().isEmpty) return 'Ingresa la marca';
+          if (_modelCtrl.text.trim().isEmpty) return 'Ingresa el modelo';
+          if (_yearCtrl.text.trim().isEmpty) return 'Ingresa el año';
+          final year = int.tryParse(_yearCtrl.text.trim());
+          if (year == null || year < 1990 || year > 2030) return 'Año invalido';
+          if (_plateCtrl.text.trim().isEmpty) return 'Ingresa la placa';
+          if (!_driverVerified) return 'Autobus requiere un chofer aprobado por Toro';
+          // Validate total seats (required)
+          if (_totalSeatsCtrl.text.trim().isEmpty) return 'Ingresa el total de asientos';
+          final totalSeats = int.tryParse(_totalSeatsCtrl.text.trim());
+          if (totalSeats == null || totalSeats < 1 || totalSeats > 100) return 'Total de asientos invalido (1-100)';
+          return null;
+        case 1:
+          // Insurance is optional but if company is entered, policy is required
+          if (_insCompanyCtrl.text.trim().isNotEmpty && _insPolicyCtrl.text.trim().isEmpty) {
+            return 'Ingresa el numero de poliza';
+          }
+          return null;
+        case 2:
+          // Photos (minimum 1)
+          if (_busPhotos.isEmpty) return 'Debes tomar al menos 1 foto del autobus';
+          return null;
+        case 3:
+          // Contract
+          if (!_agreedToTerms) return 'Debes aceptar los terminos del contrato';
+          return null;
+        default:
+          return null;
+      }
+    } else {
+      // Others: 0=Vehicle, 1=Photos+Pricing, 2=Insurance+INE, 3=Contract
+      switch (step) {
+        case 0:
+          if (_makeCtrl.text.trim().isEmpty) return 'Ingresa la marca';
+          if (_modelCtrl.text.trim().isEmpty) return 'Ingresa el modelo';
+          if (_yearCtrl.text.trim().isEmpty) return 'Ingresa el año';
+          final year = int.tryParse(_yearCtrl.text.trim());
+          if (year == null || year < 1990 || year > 2030) return 'Año invalido';
+          if (_plateCtrl.text.trim().isEmpty) return 'Ingresa la placa';
+          return null;
+        case 1:
+          // Photos & Pricing - at least weekly price required
+          if (_weeklyPriceCtrl.text.trim().isEmpty) return 'Ingresa el precio por semana';
+          final weekly = double.tryParse(_weeklyPriceCtrl.text.trim());
+          if (weekly == null || weekly <= 0) return 'Precio semanal invalido';
+          return null;
+        case 2:
+          // Insurance + INE - INE/license is required
+          if (_ownerDocument == null) return 'Debes subir tu INE o licencia';
+          if (_insCompanyCtrl.text.trim().isNotEmpty && _insPolicyCtrl.text.trim().isEmpty) {
+            return 'Ingresa el numero de poliza';
+          }
+          return null;
+        case 3:
+          // Contract
+          if (!_agreedToTerms) return 'Debes aceptar los terminos del contrato';
+          return null;
+        default:
+          return null;
+      }
     }
   }
 
@@ -3824,39 +4881,6 @@ class _PublishVehicleSheetState extends State<_PublishVehicleSheet> {
         _currentStep--;
       });
       HapticService.lightImpact();
-    }
-  }
-
-  Future<void> _getCurrentLocation() async {
-    try {
-      final pos = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
-      );
-      // Reverse geocode via Mapbox
-      String address = '${pos.latitude.toStringAsFixed(5)}, ${pos.longitude.toStringAsFixed(5)}';
-      try {
-        final url = 'https://api.mapbox.com/geocoding/v5/mapbox.places/${pos.longitude},${pos.latitude}.json'
-            '?access_token=pk.eyJ1IjoibWFydGluZXpjMjAxNyIsImEiOiJjbWtocWtoZHIwbW1iM2dvdXZ3bmp0ZjBiIn0.MjYgv6DuvLTkrBVbrhtFbg&limit=1';
-        final resp = await http.get(Uri.parse(url));
-        if (resp.statusCode == 200) {
-          final data = jsonDecode(resp.body);
-          final features = data['features'] as List?;
-          if (features != null && features.isNotEmpty) {
-            address = features[0]['place_name'] as String? ?? address;
-          }
-        }
-      } catch (_) {}
-      if (mounted) {
-        setState(() {
-          _pickupLat = pos.latitude;
-          _pickupLng = pos.longitude;
-          _pickupAddress = address;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _error = 'Error obteniendo ubicacion: $e');
-      }
     }
   }
 
@@ -3899,6 +4923,108 @@ class _PublishVehicleSheetState extends State<_PublishVehicleSheet> {
     }
   }
 
+  Future<void> _pickBusPhotos({required bool useCamera}) async {
+    if (_isPickingPhotos) return; // Prevent multiple calls
+
+    setState(() => _isPickingPhotos = true);
+
+    try {
+      if (useCamera) {
+        // Take photo with camera
+        final XFile? photo = await _imagePicker.pickImage(
+          source: ImageSource.camera,
+          maxWidth: 1920,
+          maxHeight: 1080,
+          imageQuality: 85,
+          preferredCameraDevice: CameraDevice.rear,
+        );
+
+        if (photo != null && mounted) {
+          setState(() {
+            _busPhotos.add(photo);
+            if (_busPhotos.length > 10) {
+              _busPhotos.removeAt(0); // Remove oldest if over 10
+            }
+          });
+          HapticService.lightImpact();
+        }
+      } else {
+        // Pick from gallery
+        final List<XFile> pickedFiles = await _imagePicker.pickMultiImage(
+          maxWidth: 1920,
+          maxHeight: 1080,
+          imageQuality: 85,
+        );
+
+        if (pickedFiles.isNotEmpty && mounted) {
+          setState(() {
+            _busPhotos.addAll(pickedFiles);
+            if (_busPhotos.length > 10) {
+              _busPhotos.removeRange(10, _busPhotos.length); // Max 10 photos
+            }
+          });
+          HapticService.lightImpact();
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _error = useCamera ? 'Error tomando foto: $e' : 'Error seleccionando fotos: $e');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isPickingPhotos = false);
+      }
+    }
+  }
+
+  void _removeBusPhoto(int index) {
+    setState(() {
+      _busPhotos.removeAt(index);
+    });
+    HapticService.lightImpact();
+  }
+
+  void _moveBusPhotoUp(int index) {
+    if (index == 0) return; // Already first
+    setState(() {
+      final photo = _busPhotos.removeAt(index);
+      _busPhotos.insert(index - 1, photo);
+    });
+    HapticService.lightImpact();
+  }
+
+  void _moveBusPhotoDown(int index) {
+    if (index == _busPhotos.length - 1) return; // Already last
+    setState(() {
+      final photo = _busPhotos.removeAt(index);
+      _busPhotos.insert(index + 1, photo);
+    });
+    HapticService.lightImpact();
+  }
+
+  Future<List<String>> _uploadBusPhotos() async {
+    final List<String> photoUrls = [];
+    try {
+      for (final photo in _busPhotos) {
+        final bytes = await photo.readAsBytes();
+        final fileName = '${DateTime.now().millisecondsSinceEpoch}_${photo.name}';
+        final path = '${widget.userId}/bus_photos/$fileName';
+
+        await SupabaseConfig.client.storage
+            .from('vehicle-documents')
+            .uploadBinary(path, bytes, fileOptions: const FileOptions(contentType: 'image/jpeg', upsert: true));
+
+        final url = SupabaseConfig.client.storage.from('vehicle-documents').getPublicUrl(path);
+        photoUrls.add(url);
+      }
+    } catch (e) {
+      // Log upload error
+      AppLogger.log('ERROR subiendo fotos del autobus: $e');
+      rethrow; // Re-throw to show error to user
+    }
+    return photoUrls;
+  }
+
   Future<void> _submitListing() async {
     final validation = _validateStep(_currentStep);
     if (validation != null) {
@@ -3920,55 +5046,173 @@ class _PublishVehicleSheetState extends State<_PublishVehicleSheet> {
         );
       } catch (_) {}
 
-      final data = <String, dynamic>{
-        'owner_id': widget.userId,
-        'vehicle_type': _vehicleType,
-        'vehicle_make': _makeCtrl.text.trim(),
-        'vehicle_model': _modelCtrl.text.trim(),
-        'vehicle_year': int.parse(_yearCtrl.text.trim()),
-        'vehicle_color': _colorCtrl.text.trim().isNotEmpty ? _colorCtrl.text.trim() : null,
-        'vehicle_plate': _plateCtrl.text.trim(),
-        'vehicle_vin': _vinCtrl.text.trim().isNotEmpty ? _vinCtrl.text.trim() : null,
-        // Legacy columns
-        'make': _makeCtrl.text.trim(),
-        'model': _modelCtrl.text.trim(),
-        'year': int.parse(_yearCtrl.text.trim()),
-        'plate_number': _plateCtrl.text.trim(),
-        // Insurance
-        'insurance_company': _insCompanyCtrl.text.trim().isNotEmpty ? _insCompanyCtrl.text.trim() : null,
-        'insurance_policy_number': _insPolicyCtrl.text.trim().isNotEmpty ? _insPolicyCtrl.text.trim() : null,
-        'insurance_expiry': _insExpiry?.toIso8601String().substring(0, 10),
-        // Pricing
-        'weekly_price': double.parse(_weeklyPriceCtrl.text.trim()),
-        'per_km_price': _perKmPriceCtrl.text.trim().isNotEmpty ? double.parse(_perKmPriceCtrl.text.trim()) : null,
-        'deposit_amount': _depositCtrl.text.trim().isNotEmpty ? double.parse(_depositCtrl.text.trim()) : 0,
-        // Location
-        'pickup_lat': _pickupLat,
-        'pickup_lng': _pickupLng,
-        'pickup_address': _pickupAddress,
-        // Availability
-        'available_from': _availableFrom?.toIso8601String().substring(0, 10),
-        'available_to': _availableTo?.toIso8601String().substring(0, 10),
-        // Contract signing
-        'owner_signed_at': DateTime.now().toIso8601String(),
-        'owner_sign_lat': signPos?.latitude,
-        'owner_sign_lng': signPos?.longitude,
-        'status': 'active',
-        'created_at': DateTime.now().toIso8601String(),
-      };
+      // If autobus: ONLY insert into bus_vehicles (tourism system)
+      if (_vehicleType == 'autobus') {
+        // Upload bus photos first
+        final photoUrls = await _uploadBusPhotos();
 
-      // Autobus: include assigned driver
-      if (_vehicleType == 'autobus' && _assignedDriverId != null) {
-        data['assigned_driver_id'] = _assignedDriverId;
+        final busData = <String, dynamic>{
+          'vehicle_name': '${_makeCtrl.text.trim()} ${_modelCtrl.text.trim()} ${_yearCtrl.text.trim()}',
+          'make': _makeCtrl.text.trim(),
+          'model': _modelCtrl.text.trim(),
+          'year': int.parse(_yearCtrl.text.trim()),
+          'plate': _plateCtrl.text.trim(),
+          'color': _colorCtrl.text.trim().isNotEmpty ? _colorCtrl.text.trim() : null,
+          // Public information (optional for privacy)
+          'total_seats': int.parse(_totalSeatsCtrl.text.trim()),
+          'unit_number': _unitNumberCtrl.text.trim().isNotEmpty ? _unitNumberCtrl.text.trim() : null,
+          'owner_name': _ownerNameCtrl.text.trim().isNotEmpty ? _ownerNameCtrl.text.trim() : null,
+          'owner_phone': _ownerPhoneCtrl.text.trim().isNotEmpty ? _ownerPhoneCtrl.text.trim() : null,
+          // Insurance information
+          'insurance_company': _insCompanyCtrl.text.trim().isNotEmpty ? _insCompanyCtrl.text.trim() : null,
+          'insurance_policy_number': _insPolicyCtrl.text.trim().isNotEmpty ? _insPolicyCtrl.text.trim() : null,
+          'insurance_expiry': _insExpiry?.toIso8601String().substring(0, 10),
+          'updated_at': DateTime.now().toIso8601String(),
+        };
+
+        // Only update image_urls if new photos were uploaded
+        if (photoUrls.isNotEmpty) {
+          busData['image_urls'] = photoUrls;
+        }
+
+        // If editing, update; otherwise, insert
+        if (widget.existingVehicle != null) {
+          // UPDATE existing vehicle
+          await SupabaseConfig.client
+              .from('bus_vehicles')
+              .update(busData)
+              .eq('id', widget.existingVehicle!['id']);
+        } else {
+          // INSERT new vehicle (only for new vehicles)
+          busData['owner_id'] = _assignedDriverId ?? widget.userId;
+          busData['vehicle_type'] = 'autobus';
+          busData['amenities'] = <String>[];
+          busData['image_urls'] = photoUrls;
+          busData['is_active'] = true;
+          busData['country_code'] = 'MX';
+          busData['available_for_tourism'] = true;
+          // Contract signing info
+          busData['owner_signed_at'] = DateTime.now().toIso8601String();
+          busData['owner_sign_lat'] = signPos?.latitude;
+          busData['owner_sign_lng'] = signPos?.longitude;
+          busData['owner_sign_email'] = widget.userId;
+          busData['assigned_driver_email'] = _driverEmailCtrl.text.trim();
+          busData['contract_text'] = _contractText;
+          busData['created_at'] = DateTime.now().toIso8601String();
+
+          await SupabaseConfig.client.from('bus_vehicles').insert(busData);
+        }
+      } else {
+        // Other vehicles: insert into rental_vehicle_listings with photos + INE + pricing
+        // Upload vehicle photos
+        final photoUrls = <String>[];
+        for (final photo in _vehiclePhotos) {
+          try {
+            final ext = photo.path.split('.').last.toLowerCase();
+            final fileName = '${DateTime.now().millisecondsSinceEpoch}_${photo.name}';
+            final path = '${widget.userId}/vehicles/$fileName';
+            if (kIsWeb) {
+              final bytes = await photo.readAsBytes();
+              await SupabaseConfig.client.storage.from('rental-media').uploadBinary(path, bytes, fileOptions: FileOptions(contentType: 'image/$ext', upsert: true));
+            } else {
+              await SupabaseConfig.client.storage.from('rental-media').upload(path, File(photo.path), fileOptions: FileOptions(contentType: 'image/$ext', upsert: true));
+            }
+            final url = SupabaseConfig.client.storage.from('rental-media').getPublicUrl(path);
+            photoUrls.add(url);
+          } catch (e) {
+            debugPrint('Error uploading photo: $e');
+          }
+        }
+
+        // Upload owner document (INE/License)
+        String? documentUrl;
+        if (_ownerDocument != null) {
+          try {
+            final ext = _ownerDocument!.path.split('.').last.toLowerCase();
+            final fileName = '${DateTime.now().millisecondsSinceEpoch}_document.$ext';
+            final path = '${widget.userId}/documents/$fileName';
+            if (kIsWeb) {
+              final bytes = await _ownerDocument!.readAsBytes();
+              await SupabaseConfig.client.storage.from('rental-media').uploadBinary(path, bytes, fileOptions: FileOptions(contentType: 'image/$ext', upsert: true));
+            } else {
+              await SupabaseConfig.client.storage.from('rental-media').upload(path, File(_ownerDocument!.path), fileOptions: FileOptions(contentType: 'image/$ext', upsert: true));
+            }
+            documentUrl = SupabaseConfig.client.storage.from('rental-media').getPublicUrl(path);
+          } catch (e) {
+            debugPrint('Error uploading document: $e');
+          }
+        }
+
+        final make = _makeCtrl.text.trim();
+        final model = _modelCtrl.text.trim();
+        final year = _yearCtrl.text.trim();
+
+        final data = <String, dynamic>{
+          'owner_id': widget.userId,
+          'vehicle_type': _vehicleType,
+          'vehicle_make': make,
+          'vehicle_model': model,
+          'vehicle_year': int.parse(year),
+          'vehicle_color': _colorCtrl.text.trim().isNotEmpty ? _colorCtrl.text.trim() : null,
+          'vehicle_plate': _plateCtrl.text.trim(),
+          'vehicle_vin': _vinCtrl.text.trim().isNotEmpty ? _vinCtrl.text.trim() : null,
+          'title': '$make $model $year',
+          'description': _descriptionCtrl.text.trim().isNotEmpty ? _descriptionCtrl.text.trim() : null,
+          // Photos
+          'image_urls': photoUrls,
+          // Owner document
+          'owner_document_url': documentUrl,
+          'owner_document_type': _ownerDocumentType,
+          // Pricing (owner sets prices)
+          'weekly_price_base': double.tryParse(_weeklyPriceCtrl.text.trim()) ?? 0,
+          'daily_price': double.tryParse(_dailyPriceCtrl.text.trim()) ?? 0,
+          'deposit_amount': double.tryParse(_depositCtrl.text.trim()) ?? 0,
+          // Features
+          'features': _selectedFeatures,
+          // Pickup location
+          'pickup_address': _pickupAddressCtrl.text.trim().isNotEmpty ? _pickupAddressCtrl.text.trim() : null,
+          // Owner contact
+          'owner_name': _ownerNameCtrl.text.trim().isNotEmpty ? _ownerNameCtrl.text.trim() : null,
+          'owner_phone': _ownerPhoneCtrl.text.trim().isNotEmpty ? _ownerPhoneCtrl.text.trim() : null,
+          // Insurance
+          'insurance_company': _insCompanyCtrl.text.trim().isNotEmpty ? _insCompanyCtrl.text.trim() : null,
+          'insurance_policy_number': _insPolicyCtrl.text.trim().isNotEmpty ? _insPolicyCtrl.text.trim() : null,
+          'insurance_expiry': _insExpiry?.toIso8601String().substring(0, 10),
+          // Contract signing
+          'owner_signed_at': DateTime.now().toIso8601String(),
+          'owner_sign_lat': signPos?.latitude,
+          'owner_sign_lng': signPos?.longitude,
+          'status': 'active',
+          'currency': 'MXN',
+        };
+
+        final isEditing = widget.existingVehicle != null && (widget.existingVehicle!['_source'] == 'rental');
+        if (isEditing) {
+          // Keep existing photos if no new ones uploaded
+          if (photoUrls.isEmpty) {
+            data.remove('image_urls');
+          }
+          if (documentUrl == null) {
+            data.remove('owner_document_url');
+          }
+          data.remove('owner_id'); // Cannot change owner
+          data['updated_at'] = DateTime.now().toIso8601String();
+          await SupabaseConfig.client
+              .from('rental_vehicle_listings')
+              .update(data)
+              .eq('id', widget.existingVehicle!['id']);
+        } else {
+          await SupabaseConfig.client.from('rental_vehicle_listings').insert(data);
+        }
       }
-
-      await SupabaseConfig.client.from('rental_vehicle_listings').insert(data);
 
       if (mounted) {
         Navigator.of(context).pop(true); // true = refresh
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Vehiculo publicado exitosamente'),
+            content: Text(_vehicleType == 'autobus'
+              ? 'Autobus publicado exitosamente para turismo'
+              : 'Vehiculo publicado exitosamente'),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -3985,65 +5229,38 @@ class _PublishVehicleSheetState extends State<_PublishVehicleSheet> {
     }
   }
 
-  Future<void> _pickDate({required bool isFrom}) async {
-    final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: isFrom ? (_availableFrom ?? now) : (_availableTo ?? now.add(const Duration(days: 30))),
-      firstDate: now,
-      lastDate: now.add(const Duration(days: 365)),
-      builder: (ctx, child) => Theme(
-        data: ThemeData.dark().copyWith(
-          colorScheme: const ColorScheme.dark(primary: _PublishVehicleSheetState._accent),
-        ),
-        child: child!,
-      ),
-    );
-    if (picked != null && mounted) {
-      setState(() {
-        if (isFrom) {
-          _availableFrom = picked;
-        } else {
-          _availableTo = picked;
-        }
-      });
-    }
+  bool _isLastStep() {
+    return _vehicleType == 'autobus' ? _currentStep == 3 : _currentStep == 3;
   }
 
   @override
   Widget build(BuildContext context) {
-    final stepTitles = ['Vehiculo', 'Seguro', 'Precios', 'Ubicacion', 'Contrato'];
-    return Container(
-      constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.92),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        border: Border.all(color: _accent.withValues(alpha: 0.2), width: 1),
+    final stepTitles = _vehicleType == 'autobus'
+        ? ['Vehiculo', 'Seguro', 'Fotos', 'Contrato']
+        : ['Vehiculo', 'Fotos y Precio', 'Seguro e ID', 'Contrato'];
+    return Scaffold(
+      backgroundColor: AppColors.surface,
+      appBar: AppBar(
+        backgroundColor: AppColors.surface,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.close_rounded, color: AppColors.textTertiary),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Row(
+          children: [
+            const Icon(Icons.directions_car_rounded, color: _accent, size: 24),
+            const SizedBox(width: 12),
+            Text('Publicar Vehiculo', style: TextStyle(color: AppColors.textPrimary, fontSize: 20, fontWeight: FontWeight.w700)),
+          ],
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Divider(color: AppColors.border.withValues(alpha: 0.5), height: 1),
+        ),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+      body: Column(
         children: [
-          // Drag handle
-          Center(
-            child: Container(
-              margin: const EdgeInsets.only(top: 12),
-              width: 40, height: 4,
-              decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)),
-            ),
-          ),
-          // Title row
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 12, 0),
-            child: Row(
-              children: [
-                const Icon(Icons.directions_car_rounded, color: _accent, size: 24),
-                const SizedBox(width: 12),
-                Text('Publicar Vehiculo', style: TextStyle(color: AppColors.textPrimary, fontSize: 20, fontWeight: FontWeight.w700)),
-                const Spacer(),
-                IconButton(onPressed: () => Navigator.of(context).pop(), icon: Icon(Icons.close_rounded, color: AppColors.textTertiary)),
-              ],
-            ),
-          ),
           // Step indicator
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
@@ -4131,9 +5348,9 @@ class _PublishVehicleSheetState extends State<_PublishVehicleSheet> {
                   child: SizedBox(
                     height: 50,
                     child: ElevatedButton(
-                      onPressed: _isSubmitting ? null : (_currentStep == 4 ? _submitListing : _nextStep),
+                      onPressed: _isSubmitting ? null : (_isLastStep() ? _submitListing : _nextStep),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _currentStep == 4 ? AppColors.success : _accent,
+                        backgroundColor: _isLastStep() ? AppColors.success : _accent,
                         disabledBackgroundColor: _accent.withValues(alpha: 0.3),
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -4142,7 +5359,7 @@ class _PublishVehicleSheetState extends State<_PublishVehicleSheet> {
                       child: _isSubmitting
                           ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
                           : Text(
-                              _currentStep == 4 ? 'Firmar y Publicar' : 'Siguiente',
+                              _isLastStep() ? 'Firmar y Publicar' : 'Siguiente',
                               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                             ),
                     ),
@@ -4157,14 +5374,380 @@ class _PublishVehicleSheetState extends State<_PublishVehicleSheet> {
   }
 
   Widget _buildStepContent() {
-    switch (_currentStep) {
-      case 0: return _buildVehicleStep();
-      case 1: return _buildInsuranceStep();
-      case 2: return _buildPricingStep();
-      case 3: return _buildLocationStep();
-      case 4: return _buildContractStep();
-      default: return const SizedBox.shrink();
+    // Autobus: 0=Vehicle+Driver, 1=Insurance, 2=Photos, 3=Contract
+    // Others:  0=Vehicle, 1=Photos+Pricing, 2=Insurance+INE, 3=Contract
+
+    if (_vehicleType == 'autobus') {
+      switch (_currentStep) {
+        case 0: return _buildVehicleStep();
+        case 1: return _buildInsuranceStep();
+        case 2: return _buildPhotosStep();
+        case 3: return _buildContractStep();
+        default: return const SizedBox.shrink();
+      }
+    } else {
+      switch (_currentStep) {
+        case 0: return _buildVehicleStep();
+        case 1: return _buildPhotosPricingStep();
+        case 2: return _buildInsuranceDocumentStep();
+        case 3: return _buildContractStep();
+        default: return const SizedBox.shrink();
+      }
     }
+  }
+
+  // ── Step 1 (non-autobus): Photos + Pricing ──
+  Widget _buildPhotosPricingStep() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // PHOTOS SECTION
+        _sectionLabel('Fotos del Vehiculo'),
+        const SizedBox(height: 4),
+        Text('Agrega fotos claras de tu vehiculo (minimo 3)', style: TextStyle(color: AppColors.textTertiary, fontSize: 12)),
+        const SizedBox(height: 12),
+        // Photo grid
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            mainAxisSpacing: 8,
+            crossAxisSpacing: 8,
+            childAspectRatio: 1,
+          ),
+          itemCount: _vehiclePhotos.length + 1,
+          itemBuilder: (ctx, i) {
+            if (i == _vehiclePhotos.length) {
+              // Add photo button
+              return GestureDetector(
+                onTap: _isPickingPhotos ? null : _pickVehiclePhotos,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.cardSecondary,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: _accent.withValues(alpha: 0.3), style: BorderStyle.solid),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(_isPickingPhotos ? Icons.hourglass_top_rounded : Icons.add_a_photo_rounded, color: _accent, size: 28),
+                      const SizedBox(height: 6),
+                      Text(_isPickingPhotos ? 'Cargando...' : 'Agregar', style: TextStyle(color: _accent, fontSize: 11, fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                ),
+              );
+            }
+            // Photo thumbnail
+            return Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: kIsWeb
+                      ? Image.network(_vehiclePhotos[i].path, fit: BoxFit.cover, width: double.infinity, height: double.infinity)
+                      : Image.file(File(_vehiclePhotos[i].path), fit: BoxFit.cover, width: double.infinity, height: double.infinity),
+                ),
+                Positioned(
+                  top: 4, right: 4,
+                  child: GestureDetector(
+                    onTap: () => setState(() => _vehiclePhotos.removeAt(i)),
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.6), shape: BoxShape.circle),
+                      child: const Icon(Icons.close_rounded, color: Colors.white, size: 16),
+                    ),
+                  ),
+                ),
+                if (i == 0)
+                  Positioned(
+                    bottom: 4, left: 4,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(color: _accent, borderRadius: BorderRadius.circular(4)),
+                      child: const Text('Principal', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700)),
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
+
+        // DESCRIPTION
+        const SizedBox(height: 24),
+        _sectionLabel('Descripcion (opcional)'),
+        const SizedBox(height: 8),
+        _field(_descriptionCtrl, 'Describe tu vehiculo...', 'Vehiculo en excelente estado, bien cuidado...', maxLines: 3),
+
+        // FEATURES
+        const SizedBox(height: 24),
+        _sectionLabel('Caracteristicas'),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8, runSpacing: 8,
+          children: _availableFeatures.map((f) {
+            final sel = _selectedFeatures.contains(f);
+            return GestureDetector(
+              onTap: () {
+                HapticService.lightImpact();
+                setState(() {
+                  if (sel) { _selectedFeatures.remove(f); } else { _selectedFeatures.add(f); }
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: sel ? _accent.withValues(alpha: 0.15) : AppColors.card,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: sel ? _accent.withValues(alpha: 0.5) : AppColors.border),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(sel ? Icons.check_circle_rounded : Icons.circle_outlined, color: sel ? _accent : AppColors.textDisabled, size: 16),
+                    const SizedBox(width: 6),
+                    Text(f, style: TextStyle(color: sel ? _accent : AppColors.textSecondary, fontSize: 12)),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+
+        // PRICING
+        const SizedBox(height: 24),
+        _sectionLabel('Precios (tu defines los precios)'),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(child: _field(_dailyPriceCtrl, 'Precio/Dia', '500', isNumber: true, prefix: '\$')),
+            const SizedBox(width: 12),
+            Expanded(child: _field(_weeklyPriceCtrl, 'Precio/Semana', '2500', isNumber: true, prefix: '\$')),
+          ],
+        ),
+        const SizedBox(height: 12),
+        _field(_depositCtrl, 'Deposito (opcional)', '5000', isNumber: true, prefix: '\$'),
+        const SizedBox(height: 12),
+        _field(_pickupAddressCtrl, 'Direccion de Entrega', 'Av. Reforma 123, CDMX'),
+      ],
+    );
+  }
+
+  Future<void> _pickVehiclePhotos() async {
+    setState(() => _isPickingPhotos = true);
+    try {
+      final picked = await _imagePicker.pickMultiImage(
+        maxWidth: 1920,
+        maxHeight: 1080,
+        imageQuality: 85,
+      );
+      if (picked.isNotEmpty && mounted) {
+        setState(() => _vehiclePhotos.addAll(picked));
+      }
+    } catch (e) {
+      debugPrint('Error picking photos: $e');
+    }
+    if (mounted) setState(() => _isPickingPhotos = false);
+  }
+
+  // ── Step 2 (non-autobus): Insurance + INE/License ──
+  Widget _buildInsuranceDocumentStep() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Insurance section (same as existing)
+        _sectionLabel('Seguro del Vehiculo'),
+        const SizedBox(height: 12),
+        _field(_insCompanyCtrl, 'Compania de Seguro', 'GNP, Qualitas, AXA...'),
+        const SizedBox(height: 12),
+        _field(_insPolicyCtrl, 'Numero de Poliza', 'POL-123456'),
+        const SizedBox(height: 12),
+        // Expiry date picker
+        GestureDetector(
+          onTap: () async {
+            final d = await showDatePicker(
+              context: context,
+              initialDate: _insExpiry ?? DateTime.now().add(const Duration(days: 180)),
+              firstDate: DateTime.now(),
+              lastDate: DateTime.now().add(const Duration(days: 365 * 3)),
+              builder: (ctx, child) => Theme(
+                data: Theme.of(ctx).copyWith(colorScheme: ColorScheme.dark(primary: _accent, surface: AppColors.card)),
+                child: child!,
+              ),
+            );
+            if (d != null) setState(() => _insExpiry = d);
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: AppColors.card,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.calendar_today_rounded, color: AppColors.textTertiary, size: 18),
+                const SizedBox(width: 12),
+                Text(
+                  _insExpiry != null
+                      ? '${_insExpiry!.day}/${_insExpiry!.month}/${_insExpiry!.year}'
+                      : 'Fecha de Vencimiento del Seguro',
+                  style: TextStyle(
+                    color: _insExpiry != null ? AppColors.textPrimary : AppColors.textDisabled,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // OWNER DOCUMENT SECTION (INE or License - Required)
+        const SizedBox(height: 28),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFFEF4444).withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFFEF4444).withValues(alpha: 0.3)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.badge_rounded, color: const Color(0xFFEF4444), size: 20),
+                  const SizedBox(width: 8),
+                  Text('Identificacion Oficial (Obligatorio)', style: TextStyle(color: const Color(0xFFEF4444), fontSize: 14, fontWeight: FontWeight.w700)),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Sube una foto de tu INE o Licencia de Conducir. Es requerido para verificar tu identidad como propietario.',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+              ),
+              const SizedBox(height: 12),
+              // Document type selector
+              Row(
+                children: [
+                  _docTypeChip('INE', 'ine'),
+                  const SizedBox(width: 8),
+                  _docTypeChip('Licencia', 'licencia'),
+                ],
+              ),
+              const SizedBox(height: 12),
+              // Upload button / preview
+              GestureDetector(
+                onTap: _isPickingDocument ? null : _pickOwnerDocument,
+                child: Container(
+                  height: 120,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: AppColors.card,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: _ownerDocument != null ? AppColors.success.withValues(alpha: 0.5) : AppColors.border,
+                      width: _ownerDocument != null ? 2 : 1,
+                    ),
+                  ),
+                  child: _ownerDocument != null
+                      ? Stack(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(11),
+                              child: kIsWeb
+                                  ? Image.network(_ownerDocument!.path, fit: BoxFit.cover, width: double.infinity, height: double.infinity)
+                                  : Image.file(File(_ownerDocument!.path), fit: BoxFit.cover, width: double.infinity, height: double.infinity),
+                            ),
+                            Positioned(
+                              top: 8, right: 8,
+                              child: GestureDetector(
+                                onTap: () => setState(() => _ownerDocument = null),
+                                child: Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.6), shape: BoxShape.circle),
+                                  child: const Icon(Icons.close_rounded, color: Colors.white, size: 16),
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              bottom: 8, left: 8,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(color: AppColors.success, borderRadius: BorderRadius.circular(6)),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.check_circle_rounded, color: Colors.white, size: 14),
+                                    const SizedBox(width: 4),
+                                    Text(_ownerDocumentType == 'ine' ? 'INE' : 'Licencia', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                      : Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(_isPickingDocument ? Icons.hourglass_top_rounded : Icons.add_photo_alternate_rounded,
+                                color: _accent, size: 36),
+                            const SizedBox(height: 8),
+                            Text(
+                              _isPickingDocument ? 'Cargando...' : 'Tomar foto o seleccionar',
+                              style: TextStyle(color: _accent, fontSize: 13, fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Owner contact info
+        const SizedBox(height: 24),
+        _sectionLabel('Informacion de Contacto'),
+        const SizedBox(height: 12),
+        _field(_ownerNameCtrl, 'Nombre Completo', 'Juan Perez'),
+        const SizedBox(height: 12),
+        _field(_ownerPhoneCtrl, 'Telefono', '+52 55 1234 5678'),
+      ],
+    );
+  }
+
+  Widget _docTypeChip(String label, String type) {
+    final sel = _ownerDocumentType == type;
+    return GestureDetector(
+      onTap: () { HapticService.lightImpact(); setState(() => _ownerDocumentType = type); },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: sel ? _accent.withValues(alpha: 0.15) : AppColors.card,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: sel ? _accent.withValues(alpha: 0.5) : AppColors.border),
+        ),
+        child: Text(label, style: TextStyle(color: sel ? _accent : AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w600)),
+      ),
+    );
+  }
+
+  Future<void> _pickOwnerDocument() async {
+    setState(() => _isPickingDocument = true);
+    try {
+      final picked = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1920,
+        maxHeight: 1080,
+        imageQuality: 90,
+      );
+      if (picked != null && mounted) {
+        setState(() => _ownerDocument = picked);
+      }
+    } catch (e) {
+      debugPrint('Error picking document: $e');
+    }
+    if (mounted) setState(() => _isPickingDocument = false);
   }
 
   // ── Step 0: Vehicle Info ──
@@ -4188,7 +5771,11 @@ class _PublishVehicleSheetState extends State<_PublishVehicleSheet> {
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: sel ? _accent.withValues(alpha: 0.6) : AppColors.border, width: sel ? 1.5 : 1),
                 ),
-                child: Text(t.toUpperCase(), style: TextStyle(color: sel ? _accent : AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w600)),
+                child: Text(
+                  t == 'autobus' ? 'TRANSPORTE\nTURISMO' : t.toUpperCase(),
+                  style: TextStyle(color: sel ? _accent : AppColors.textSecondary, fontSize: t == 'autobus' ? 12 : 13, fontWeight: FontWeight.w600),
+                  textAlign: TextAlign.center,
+                ),
               ),
             );
           }).toList(),
@@ -4286,17 +5873,295 @@ class _PublishVehicleSheetState extends State<_PublishVehicleSheet> {
               ],
             ),
           ),
+          // ── Autobus: Public information (optional for privacy) ──
+          const SizedBox(height: 24),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.info_outline, color: AppColors.primary, size: 20),
+                    const SizedBox(width: 8),
+                    const Text('Información Pública', style: TextStyle(color: AppColors.primary, fontSize: 14, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Esta información se mostrará públicamente a otros organizadores. Déjala vacía si prefieres privacidad.',
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                ),
+                const SizedBox(height: 16),
+                // Total seats (required)
+                _field(_totalSeatsCtrl, 'Total de Asientos *', '30', isNumber: true),
+                const SizedBox(height: 12),
+                // Unit number (optional - for fleet management)
+                _field(_unitNumberCtrl, 'Número de Unidad (opcional)', 'Unidad 1'),
+                const SizedBox(height: 12),
+                // Owner name (optional)
+                _field(_ownerNameCtrl, 'Nombre del Dueño (opcional)', 'Juan Pérez'),
+                const SizedBox(height: 12),
+                // Owner phone (optional)
+                _field(_ownerPhoneCtrl, 'Teléfono del Dueño (opcional)', '686-123-4567'),
+                const SizedBox(height: 8),
+                Text(
+                  '💡 Los campos opcionales se pueden dejar vacíos para mantener tu privacidad.',
+                  style: TextStyle(color: AppColors.textTertiary, fontSize: 11, fontStyle: FontStyle.italic),
+                ),
+              ],
+            ),
+          ),
         ],
       ],
     );
   }
 
-  // ── Step 1: Insurance ──
+  // ── Step 2: Photos (only for autobus) ──
+  Widget _buildPhotosStep() {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _sectionLabel('Fotos del Autobus *'),
+          const SizedBox(height: 4),
+          Text(
+            'Minimo 1 foto (obligatorio), maximo 10. La primera foto sera la principal publicada.',
+            style: TextStyle(color: AppColors.textDisabled, fontSize: 12),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '⚠️ Las fotos seran publicas y visibles para los turistas. Puedes reordenarlas.',
+            style: TextStyle(color: Colors.orange, fontSize: 11, fontWeight: FontWeight.w500),
+          ),
+          const SizedBox(height: 12),
+
+          // Photo grid
+          if (_busPhotos.isEmpty)
+            Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => _pickBusPhotos(useCamera: true),
+                    child: Container(
+                      height: 100,
+                      decoration: BoxDecoration(
+                        color: AppColors.card,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.border, style: BorderStyle.solid),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.camera_alt, color: _accent, size: 32),
+                          const SizedBox(height: 6),
+                          Text('Tomar Foto', style: TextStyle(color: _accent, fontSize: 13, fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => _pickBusPhotos(useCamera: false),
+                    child: Container(
+                      height: 100,
+                      decoration: BoxDecoration(
+                        color: AppColors.card,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.border, style: BorderStyle.solid),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.photo_library, color: _accent, size: 32),
+                          const SizedBox(height: 6),
+                          Text('Galería', style: TextStyle(color: _accent, fontSize: 13, fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            )
+          else
+            Column(
+              children: [
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    crossAxisSpacing: 8,
+                    mainAxisSpacing: 8,
+                    childAspectRatio: 1,
+                  ),
+                  itemCount: _busPhotos.length + (_busPhotos.length < 10 ? 1 : 0),
+                  itemBuilder: (ctx, index) {
+                    if (index == _busPhotos.length) {
+                      // Add photo button - shows menu to choose camera or gallery
+                      return GestureDetector(
+                        onTap: () {
+                          showModalBottomSheet(
+                            context: context,
+                            builder: (ctx) => Container(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  ListTile(
+                                    leading: Icon(Icons.camera_alt, color: _accent),
+                                    title: const Text('Tomar Foto'),
+                                    onTap: () {
+                                      Navigator.pop(ctx);
+                                      _pickBusPhotos(useCamera: true);
+                                    },
+                                  ),
+                                  ListTile(
+                                    leading: Icon(Icons.photo_library, color: _accent),
+                                    title: const Text('Seleccionar de Galería'),
+                                    onTap: () {
+                                      Navigator.pop(ctx);
+                                      _pickBusPhotos(useCamera: false);
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: AppColors.card,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.add, color: _accent, size: 24),
+                              const SizedBox(height: 4),
+                              Text('Agregar', style: TextStyle(color: _accent, fontSize: 11)),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
+
+                    // Photo thumbnail
+                    return Stack(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.file(
+                            File(_busPhotos[index].path),
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                            height: double.infinity,
+                          ),
+                        ),
+                        // Position number badge (1 = main photo)
+                        Positioned(
+                          top: 4,
+                          left: 4,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: index == 0 ? Colors.green : Colors.black.withValues(alpha: 0.7),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              '${index + 1}',
+                              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ),
+                        // Delete button
+                        Positioned(
+                          top: 4,
+                          right: 4,
+                          child: GestureDetector(
+                            onTap: () => _removeBusPhoto(index),
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: Colors.red.withValues(alpha: 0.8),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.close, color: Colors.white, size: 14),
+                            ),
+                          ),
+                        ),
+                        // Reorder buttons (bottom)
+                        Positioned(
+                          bottom: 4,
+                          left: 4,
+                          right: 4,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              if (index > 0)
+                                GestureDetector(
+                                  onTap: () => _moveBusPhotoUp(index),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withValues(alpha: 0.7),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: const Icon(Icons.arrow_back, color: Colors.white, size: 14),
+                                  ),
+                                ),
+                              if (index > 0 && index < _busPhotos.length - 1) const SizedBox(width: 4),
+                              if (index < _busPhotos.length - 1)
+                                GestureDetector(
+                                  onTap: () => _moveBusPhotoDown(index),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withValues(alpha: 0.7),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: const Icon(Icons.arrow_forward, color: Colors.white, size: 14),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '${_busPhotos.length}/10 fotos (minimo 1)',
+                  style: TextStyle(
+                    color: _busPhotos.isNotEmpty ? const Color(0xFF22C55E) : const Color(0xFFEAB308),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+
+          const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+
+  // ── Step 1 (autobus) / Step 1 (others): Insurance ──
   Widget _buildInsuranceStep() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionLabel('Seguro del Vehiculo (Opcional)'),
+        _sectionLabel('Seguro del Vehiculo'),
         const SizedBox(height: 4),
         Text(
           'Si tu vehiculo tiene seguro, ingresa los datos para proteccion adicional',
@@ -4348,105 +6213,12 @@ class _PublishVehicleSheetState extends State<_PublishVehicleSheet> {
     );
   }
 
-  // ── Step 2: Pricing ──
-  Widget _buildPricingStep() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _sectionLabel('Precios de Renta'),
-        const SizedBox(height: 4),
-        Text(
-          'Toro aplica un multiplicador sobre tu precio para cubrir costos de plataforma',
-          style: TextStyle(color: AppColors.textDisabled, fontSize: 12),
-        ),
-        const SizedBox(height: 16),
-        _priceField(_weeklyPriceCtrl, 'Precio Semanal *', 'Ej: 350.00'),
-        const SizedBox(height: 12),
-        _priceField(_perKmPriceCtrl, 'Precio por Km (opcional)', 'Ej: 2.50'),
-        const SizedBox(height: 12),
-        _priceField(_depositCtrl, 'Deposito (opcional)', 'Ej: 500.00'),
-        const SizedBox(height: 20),
-        _sectionLabel('Disponibilidad (Opcional)'),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _dateTile('Desde', _availableFrom, () => _pickDate(isFrom: true)),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _dateTile('Hasta', _availableTo, () => _pickDate(isFrom: false)),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  // ── Step 3: Location ──
-  Widget _buildLocationStep() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _sectionLabel('Ubicacion de Entrega/Recogida'),
-        const SizedBox(height: 4),
-        Text(
-          'Donde se entregara y recogerá el vehiculo',
-          style: TextStyle(color: AppColors.textDisabled, fontSize: 12),
-        ),
-        const SizedBox(height: 16),
-        SizedBox(
-          width: double.infinity,
-          height: 50,
-          child: OutlinedButton.icon(
-            onPressed: _getCurrentLocation,
-            icon: const Icon(Icons.my_location_rounded, size: 20),
-            label: const Text('Usar Mi Ubicacion Actual'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: _accent,
-              side: BorderSide(color: _accent.withValues(alpha: 0.5)),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-          ),
-        ),
-        if (_pickupAddress != null) ...[
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: AppColors.success.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.location_on_rounded, color: AppColors.success, size: 20),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Ubicacion seleccionada', style: TextStyle(color: AppColors.success, fontSize: 12, fontWeight: FontWeight.w600)),
-                      const SizedBox(height: 4),
-                      Text(_pickupAddress!, style: TextStyle(color: AppColors.textPrimary, fontSize: 13), maxLines: 2, overflow: TextOverflow.ellipsis),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-
-  // ── Step 4: Contract ──
+  // ── Step 3 (autobus) / Step 2 (others): Contract ──
   Widget _buildContractStep() {
     final make = _makeCtrl.text.trim();
     final model = _modelCtrl.text.trim();
     final year = _yearCtrl.text.trim();
     final plate = _plateCtrl.text.trim();
-    final weekly = _weeklyPriceCtrl.text.trim();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -4462,14 +6234,13 @@ class _PublishVehicleSheetState extends State<_PublishVehicleSheet> {
           ),
           child: Column(
             children: [
-              _summaryRow('Tipo', _vehicleType.toUpperCase()),
+              _summaryRow('Tipo', _vehicleType == 'autobus' ? 'TRANSPORTE TURISMO' : _vehicleType.toUpperCase()),
               _summaryRow('Vehiculo', '$year $make $model'),
               _summaryRow('Placa', plate),
               if (_colorCtrl.text.trim().isNotEmpty) _summaryRow('Color', _colorCtrl.text.trim()),
               if (_vinCtrl.text.trim().isNotEmpty) _summaryRow('VIN', _vinCtrl.text.trim()),
               if (_insCompanyCtrl.text.trim().isNotEmpty) _summaryRow('Seguro', _insCompanyCtrl.text.trim()),
-              _summaryRow('Precio Semanal', '\$$weekly'),
-              if (_pickupAddress != null) _summaryRow('Ubicacion', _pickupAddress!),
+              if (_vehicleType == 'autobus') _summaryRow('Fotos', '${_busPhotos.length} fotos'),
             ],
           ),
         ),
@@ -4484,14 +6255,8 @@ class _PublishVehicleSheetState extends State<_PublishVehicleSheet> {
             border: Border.all(color: AppColors.border),
           ),
           child: Text(
-            'Al firmar este contrato, acepto que:\n\n'
-            '• El vehiculo descrito esta en condiciones operativas\n'
-            '• La informacion proporcionada es veridica\n'
-            '• Autorizo a Toro a listar mi vehiculo en la plataforma\n'
-            '• Toro aplicara un multiplicador sobre el precio para cubrir costos de plataforma\n'
-            '• Soy responsable del seguro y mantenimiento del vehiculo\n'
-            '• Puedo retirar mi vehiculo en cualquier momento que no tenga un contrato activo',
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 13, height: 1.5),
+            _contractText,
+            style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, height: 1.5),
           ),
         ),
         const SizedBox(height: 16),
@@ -4529,73 +6294,24 @@ class _PublishVehicleSheetState extends State<_PublishVehicleSheet> {
     style: TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w600),
   );
 
-  Widget _field(TextEditingController ctrl, String label, String hint, {bool isNumber = false}) {
+  Widget _field(TextEditingController ctrl, String label, String hint, {bool isNumber = false, String? prefix, int maxLines = 1}) {
     return TextField(
       controller: ctrl,
-      keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+      keyboardType: isNumber ? TextInputType.number : (maxLines > 1 ? TextInputType.multiline : TextInputType.text),
+      maxLines: maxLines,
       style: TextStyle(color: AppColors.textPrimary, fontSize: 15),
       decoration: InputDecoration(
         labelText: label,
         labelStyle: TextStyle(color: AppColors.textTertiary, fontSize: 13),
         hintText: hint,
         hintStyle: TextStyle(color: AppColors.textDisabled),
+        prefixText: prefix,
+        prefixStyle: TextStyle(color: AppColors.textSecondary, fontSize: 15, fontWeight: FontWeight.w600),
         filled: true, fillColor: AppColors.card,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.border)),
         enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.border)),
         focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _accent, width: 1.5)),
-      ),
-    );
-  }
-
-  Widget _priceField(TextEditingController ctrl, String label, String hint) {
-    return TextField(
-      controller: ctrl,
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      style: TextStyle(color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.w500),
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: TextStyle(color: AppColors.textTertiary, fontSize: 13),
-        hintText: hint,
-        hintStyle: TextStyle(color: AppColors.textDisabled),
-        prefixText: '\$ ',
-        prefixStyle: TextStyle(color: _accent, fontSize: 15, fontWeight: FontWeight.w600),
-        filled: true, fillColor: AppColors.card,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.border)),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.border)),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _accent, width: 1.5)),
-      ),
-    );
-  }
-
-  Widget _dateTile(String label, DateTime? date, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: AppColors.card,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: TextStyle(color: AppColors.textDisabled, fontSize: 11, fontWeight: FontWeight.w500)),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                Icon(Icons.calendar_today_rounded, color: _accent, size: 16),
-                const SizedBox(width: 8),
-                Text(
-                  date != null ? '${date.day}/${date.month}/${date.year}' : 'Seleccionar',
-                  style: TextStyle(color: date != null ? AppColors.textPrimary : AppColors.textDisabled, fontSize: 14),
-                ),
-              ],
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -4786,7 +6502,7 @@ class _MyRentalsSheetState extends State<_MyRentalsSheet> {
                         : ListView.separated(
                             padding: const EdgeInsets.all(16),
                             itemCount: _listings.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 12),
+                            separatorBuilder: (_, _) => const SizedBox(height: 12),
                             itemBuilder: (context, index) => _buildListingCard(_listings[index]),
                           ),
           ),
@@ -5214,7 +6930,7 @@ class _GpsTrackingSheetState extends State<_GpsTrackingSheet> {
                         : ListView.separated(
                             padding: const EdgeInsets.all(16),
                             itemCount: _rentedVehicles.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 14),
+                            separatorBuilder: (_, _) => const SizedBox(height: 14),
                             itemBuilder: (context, index) {
                               final vehicle = _rentedVehicles[index];
                               return _buildTrackedVehicle(vehicle);
@@ -5372,6 +7088,423 @@ class _GpsTrackingSheetState extends State<_GpsTrackingSheet> {
             Text('Historial (${checkins.length})', style: TextStyle(color: AppColors.textDisabled, fontSize: 11)),
           ],
         ],
+      ),
+    );
+  }
+}
+// Add this to the end of home_screen.dart (before the last closing brace)
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MY VEHICLES SHEET - View/Edit/Delete published vehicles
+// ═══════════════════════════════════════════════════════════════════════════
+
+class _MyVehiclesSheet extends StatefulWidget {
+  final String userId;
+
+  const _MyVehiclesSheet({required this.userId});
+
+  @override
+  State<_MyVehiclesSheet> createState() => _MyVehiclesSheetState();
+}
+
+class _MyVehiclesSheetState extends State<_MyVehiclesSheet> {
+  List<Map<String, dynamic>> _vehicles = [];
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadVehicles();
+  }
+
+  Future<void> _loadVehicles() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      // Load bus_vehicles
+      final busVehicles = await SupabaseConfig.client
+          .from('bus_vehicles')
+          .select()
+          .eq('owner_id', widget.userId)
+          .order('created_at', ascending: false);
+
+      // Load rental_vehicle_listings
+      final rentalVehicles = await SupabaseConfig.client
+          .from('rental_vehicle_listings')
+          .select()
+          .eq('owner_id', widget.userId)
+          .neq('status', 'deleted')
+          .order('created_at', ascending: false);
+
+      // Merge both lists, tag source
+      final all = <Map<String, dynamic>>[];
+      for (final v in busVehicles) {
+        all.add({...Map<String, dynamic>.from(v), '_source': 'bus'});
+      }
+      for (final v in rentalVehicles) {
+        all.add({...Map<String, dynamic>.from(v), '_source': 'rental'});
+      }
+
+      setState(() {
+        _vehicles = all;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = 'Error al cargar vehiculos: $e';
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _deleteVehicle(String vehicleId, String vehicleName, {String source = 'bus'}) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Eliminar Vehiculo'),
+        content: Text('¿Estas seguro de eliminar "$vehicleName"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      if (source == 'rental') {
+        // Soft-delete rental listings
+        await SupabaseConfig.client
+            .from('rental_vehicle_listings')
+            .update({'status': 'deleted'})
+            .eq('id', vehicleId);
+      } else {
+        await SupabaseConfig.client
+            .from('bus_vehicles')
+            .delete()
+            .eq('id', vehicleId);
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Vehiculo eliminado'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+        _loadVehicles();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al eliminar: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.surface,
+      appBar: AppBar(
+        backgroundColor: AppColors.card,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.close, color: AppColors.textPrimary),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Row(
+          children: [
+            const Icon(Icons.garage_rounded, color: AppColors.primary, size: 24),
+            const SizedBox(width: 12),
+            Text(
+              'Mis Vehiculos',
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Divider(
+            color: AppColors.border.withValues(alpha: 0.5),
+            height: 1,
+          ),
+        ),
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+              ? _buildError()
+              : _vehicles.isEmpty
+                  ? _buildEmpty()
+                  : _buildVehiclesList(),
+    );
+  }
+
+  Widget _buildError() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, size: 64, color: AppColors.error),
+            const SizedBox(height: 16),
+            Text(
+              _error ?? 'Error desconocido',
+              style: const TextStyle(fontSize: 16),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: _loadVehicles,
+              child: const Text('Reintentar'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmpty() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.directions_bus_rounded,
+                size: 80, color: AppColors.textTertiary.withValues(alpha: 0.5)),
+            const SizedBox(height: 16),
+            const Text(
+              'No tienes vehiculos publicados',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Publica tu primer vehiculo para empezar',
+              style: TextStyle(color: AppColors.textSecondary),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVehiclesList() {
+    return RefreshIndicator(
+      onRefresh: _loadVehicles,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: _vehicles.length,
+        itemBuilder: (context, index) {
+          final vehicle = _vehicles[index];
+          return _buildVehicleCard(vehicle);
+        },
+      ),
+    );
+  }
+
+  Widget _buildVehicleCard(Map<String, dynamic> vehicle) {
+    final source = vehicle['_source'] ?? 'bus';
+    final isRental = source == 'rental';
+
+    // Common fields
+    final make = vehicle[isRental ? 'vehicle_make' : 'make'] ?? '';
+    final model = vehicle[isRental ? 'vehicle_model' : 'model'] ?? '';
+    final year = vehicle[isRental ? 'vehicle_year' : 'year'];
+    final imageUrls = vehicle['image_urls'] as List<dynamic>?;
+    final firstPhoto = (imageUrls != null && imageUrls.isNotEmpty)
+        ? imageUrls[0].toString()
+        : null;
+
+    // Bus-specific
+    final vehicleName = isRental
+        ? (vehicle['title'] ?? '$make $model')
+        : (vehicle['vehicle_name'] ?? 'Sin nombre');
+    final totalSeats = vehicle['total_seats'] ?? 0;
+    final unitNumber = vehicle['unit_number'] as String?;
+
+    // Rental-specific
+    final weeklyPrice = vehicle['weekly_price_base'];
+    final dailyPrice = vehicle['daily_price'];
+    final status = vehicle['status'] as String?;
+    final isActive = isRental ? status == 'active' : (vehicle['is_active'] ?? false);
+    final vehicleType = vehicle['vehicle_type'] as String?;
+
+    final accentColor = isRental ? const Color(0xFF8B5CF6) : AppColors.primary;
+    final typeIcon = isRental ? Icons.directions_car_rounded : Icons.directions_bus_rounded;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 0,
+      color: AppColors.card,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: AppColors.border.withValues(alpha: 0.5)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            // Vehicle photo
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: firstPhoto != null
+                  ? Image.network(
+                      firstPhoto,
+                      width: 85,
+                      height: 85,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        width: 85, height: 85,
+                        color: accentColor.withValues(alpha: 0.1),
+                        child: Icon(typeIcon, color: accentColor, size: 32),
+                      ),
+                    )
+                  : Container(
+                      width: 85, height: 85,
+                      color: accentColor.withValues(alpha: 0.1),
+                      child: Icon(typeIcon, color: accentColor, size: 32),
+                    ),
+            ),
+            const SizedBox(width: 12),
+            // Vehicle info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Name + type badge
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          vehicleName,
+                          style: TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w700),
+                          maxLines: 1, overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Container(
+                        margin: const EdgeInsets.only(left: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: accentColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          isRental ? (vehicleType ?? 'Renta').toUpperCase() : (unitNumber ?? 'BUS'),
+                          style: TextStyle(color: accentColor, fontSize: 9, fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '$make $model ${year != null ? "($year)" : ""}',
+                    style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      if (isRental && weeklyPrice != null) ...[
+                        Icon(Icons.attach_money_rounded, size: 14, color: AppColors.success),
+                        const SizedBox(width: 2),
+                        Text(
+                          '\$${(weeklyPrice as num).toStringAsFixed(0)}/sem',
+                          style: const TextStyle(color: AppColors.success, fontSize: 12, fontWeight: FontWeight.w600),
+                        ),
+                        if (dailyPrice != null && dailyPrice is num && dailyPrice > 0) ...[
+                          Text(' · ', style: TextStyle(color: AppColors.textDisabled, fontSize: 12)),
+                          Text(
+                            '\$${dailyPrice.toStringAsFixed(0)}/dia',
+                            style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                          ),
+                        ],
+                      ] else if (!isRental) ...[
+                        Icon(Icons.event_seat, size: 14, color: AppColors.success),
+                        const SizedBox(width: 4),
+                        Text(
+                          '$totalSeats asientos',
+                          style: const TextStyle(color: AppColors.success, fontSize: 12, fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: isActive
+                              ? AppColors.success.withValues(alpha: 0.15)
+                              : AppColors.error.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          isActive ? 'Activo' : 'Inactivo',
+                          style: TextStyle(
+                            color: isActive ? AppColors.success : AppColors.error,
+                            fontSize: 10, fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            // Action buttons
+            Column(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.edit_rounded, size: 20),
+                  color: accentColor,
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (ctx) => _PublishVehicleSheet(
+                        userId: widget.userId,
+                        existingVehicle: vehicle,
+                      ),
+                    ).then((_) => _loadVehicles());
+                  },
+                  tooltip: 'Editar',
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline_rounded, size: 20),
+                  color: AppColors.error,
+                  onPressed: () => _deleteVehicle(
+                    vehicle['id'].toString(),
+                    vehicleName,
+                    source: source,
+                  ),
+                  tooltip: 'Eliminar',
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

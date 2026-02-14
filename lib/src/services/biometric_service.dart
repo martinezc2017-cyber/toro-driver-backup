@@ -25,7 +25,7 @@ class BiometricService {
       final canCheckBiometrics = await _localAuth.canCheckBiometrics;
       final isDeviceSupported = await _localAuth.isDeviceSupported();
       return canCheckBiometrics && isDeviceSupported;
-    } on PlatformException catch (e) {
+    } catch (e) {
       AppLogger.log('BIOMETRIC -> Error checking availability: $e');
       return false;
     }
@@ -35,7 +35,7 @@ class BiometricService {
   Future<List<BiometricType>> getAvailableBiometrics() async {
     try {
       return await _localAuth.getAvailableBiometrics();
-    } on PlatformException catch (e) {
+    } catch (e) {
       AppLogger.log('BIOMETRIC -> Error getting types: $e');
       return [];
     }
@@ -43,8 +43,15 @@ class BiometricService {
 
   /// Check if biometric login is enabled for this driver
   Future<bool> isBiometricEnabled() async {
-    final enabled = await _secureStorage.read(key: _biometricEnabledKey);
-    return enabled == 'true';
+    try {
+      final enabled = await _secureStorage.read(key: _biometricEnabledKey);
+      return enabled == 'true';
+    } catch (e) {
+      AppLogger.log('BIOMETRIC -> SecureStorage read error (corrupted keystore?): $e');
+      // Keystore corrupted (e.g. after reinstall) - disable biometric
+      try { await _secureStorage.deleteAll(); } catch (_) {}
+      return false;
+    }
   }
 
   /// Enable biometric login and store credentials securely
@@ -122,9 +129,14 @@ class BiometricService {
 
   /// Check if has stored credentials
   Future<bool> hasStoredCredentials() async {
-    final email = await _secureStorage.read(key: _storedEmailKey);
-    final password = await _secureStorage.read(key: _storedPasswordKey);
-    return email != null && password != null;
+    try {
+      final email = await _secureStorage.read(key: _storedEmailKey);
+      final password = await _secureStorage.read(key: _storedPasswordKey);
+      return email != null && password != null;
+    } catch (e) {
+      AppLogger.log('BIOMETRIC -> SecureStorage read error: $e');
+      return false;
+    }
   }
 
   /// Get biometric type name for display

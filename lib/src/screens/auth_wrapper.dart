@@ -1,6 +1,11 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../core/legal/consent_service.dart';
+import '../core/legal/legal_constants.dart';
+import '../core/logging/app_logger.dart';
+import '../config/supabase_config.dart';
 import '../providers/auth_provider.dart';
 import '../providers/driver_provider.dart';
 import '../providers/ride_provider.dart';
@@ -8,22 +13,17 @@ import '../providers/earnings_provider.dart';
 import '../models/driver_model.dart';
 import '../utils/app_colors.dart';
 import 'home_screen.dart';
+import 'tourism/tourism_driver_home_screen.dart';
 import 'login_screen.dart';
 import 'pending_approval_screen.dart';
 import 'terms_acceptance_screen.dart';
-// AccountChoiceScreen removed - users go directly to Home
-// Go Online button is blocked until documents complete
+import 'driver_onboarding_screen.dart';
 
 class AuthWrapper extends StatefulWidget {
   const AuthWrapper({super.key});
 
-  // BYPASS: Cambia a true para saltar login en pruebas
   static const bool bypassAuth = false;
-  // ID Format: A=Admin, U=User + YYYYMMDD + sequential number
   static const String testDriverId = 'A20251231001';
-
-  // Key for local terms acceptance
-  static const String termsAcceptedKey = 'toro_driver_terms_accepted_v1';
 
   @override
   State<AuthWrapper> createState() => _AuthWrapperState();
@@ -32,31 +32,61 @@ class AuthWrapper extends StatefulWidget {
 class _AuthWrapperState extends State<AuthWrapper> {
   bool? _localTermsAccepted;
   bool _checkingLocalTerms = true;
+  String? _initializedDriverId;
+  bool _initCallbackScheduled = false;
 
   @override
   void initState() {
     super.initState();
-    // Check local terms acceptance
     _checkLocalTermsAcceptance();
-    // Defer initialization to avoid calling during build
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeProviders();
+      // Try to sync any pending consent records
+      ConsentService.instance.initialize().then((_) {
+        ConsentService.instance.syncPendingConsents();
+      });
     });
   }
 
   Future<void> _checkLocalTermsAcceptance() async {
     final prefs = await SharedPreferences.getInstance();
-    final accepted = prefs.getBool(AuthWrapper.termsAcceptedKey) ?? false;
+    final accepted = prefs.getBool(LegalConstants.termsAcceptedKey) ?? false;
+    final acceptedVersion = prefs.getString(LegalConstants.termsVersionKey);
+    final acceptedLanguage = prefs.getString(LegalConstants.termsLanguageKey);
+
+    bool needsReAccept = false;
+
+    if (accepted) {
+      // Check version mismatch - force re-acceptance on new legal bundle
+      if (acceptedVersion != null && acceptedVersion != LegalConstants.legalBundleVersion) {
+        AppLogger.log('LEGAL_CHECK -> Version mismatch: accepted=$acceptedVersion current=${LegalConstants.legalBundleVersion}');
+        needsReAccept = true;
+      }
+
+      // Check language change - if user changed language, must re-accept in new language
+      if (acceptedLanguage != null && mounted) {
+        try {
+          final currentLang = context.locale.languageCode;
+          final acceptedLang = acceptedLanguage.split('_').first.split('-').first;
+          if (currentLang != acceptedLang) {
+            AppLogger.log('LEGAL_CHECK -> Language changed: accepted=$acceptedLang current=$currentLang');
+            needsReAccept = true;
+          }
+        } catch (_) {
+          // EasyLocalization might not be ready yet
+        }
+      }
+    }
+
     if (mounted) {
       setState(() {
-        _localTermsAccepted = accepted;
+        _localTermsAccepted = accepted && !needsReAccept;
         _checkingLocalTerms = false;
       });
     }
   }
 
   Future<void> _initializeProviders() async {
-    // If bypass is enabled, use test driver ID
     if (AuthWrapper.bypassAuth) {
       final driverId = AuthWrapper.testDriverId;
       context.read<DriverProvider>().initialize(driverId);
@@ -66,88 +96,180 @@ class _AuthWrapperState extends State<AuthWrapper> {
     }
 
     final authProvider = context.read<AuthProvider>();
-
-    // Wait for auth to be ready
     if (authProvider.isAuthenticated && authProvider.driverId != null) {
-      final driverId = authProvider.driverId!;
-
-      // Initialize other providers with driver ID
-      context.read<DriverProvider>().initialize(driverId);
-      context.read<RideProvider>().initialize(driverId);
-      context.read<EarningsProvider>().initialize(driverId);
+      _initDriverProviders(authProvider.driverId!);
     }
+  }
+
+  void _initDriverProviders(String driverId) {
+    if (_initializedDriverId == driverId) return;
+    _initializedDriverId = driverId;
+    context.read<DriverProvider>().initialize(driverId);
+    context.read<RideProvider>().initialize(driverId);
+    context.read<EarningsProvider>().initialize(driverId);
   }
 
   @override
   Widget build(BuildContext context) {
-    // BYPASS: Skip auth and go directly to home
     if (AuthWrapper.bypassAuth) {
       return const HomeScreen();
     }
 
-    // Show loading while checking local terms
     if (_checkingLocalTerms) {
       return _buildLoadingScreen();
     }
 
-    // FIRST: Check if terms accepted locally (before login)
     if (_localTermsAccepted != true) {
       return const TermsAcceptanceScreen();
     }
 
     return Consumer<AuthProvider>(
-      builder: (context, authProvider, child) {
-        // Show loading while checking auth status
-        if (authProvider.status == AuthStatus.initial ||
-            authProvider.status == AuthStatus.loading) {
+      builder: (context, authProvider, _) {
+        if (authProvider.status == AuthStatus.initial) {
           return _buildLoadingScreen();
         }
 
-        // Show login if not authenticated
         if (!authProvider.isAuthenticated) {
+          _initializedDriverId = null;
           return const LoginScreen();
         }
 
-        // Check if user is registered as a driver
         final driver = authProvider.driver;
 
-        // Initialize providers if driver exists
-        if (driver != null && authProvider.driverId != null) {
-          // Check driver status - only block if suspended or rejected
-          final driverStatus = driver.status;
-          if (driverStatus == DriverStatus.suspended || driverStatus == DriverStatus.rejected) {
-            return const PendingApprovalScreen();
-          }
+        // CRITICAL: If authenticated but no driver profile, go to onboarding
+        // This prevents the loop where HomeScreen tries to use null driver
+        if (driver == null) {
+          debugPrint('[AUTH_WRAPPER] Authenticated but no driver profile - going to onboarding');
+          return const DriverOnboardingScreen();
+        }
 
+        final driverStatus = driver.status;
+        if (driverStatus == DriverStatus.suspended || driverStatus == DriverStatus.rejected) {
+          return const PendingApprovalScreen();
+        }
+
+        // Initialize providers only once per driver ID - prevent scheduling multiple callbacks
+        final driverId = driver.id;
+        if (_initializedDriverId != driverId && !_initCallbackScheduled) {
+          _initCallbackScheduled = true;
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            final driverId = authProvider.driverId!;
-            context.read<DriverProvider>().initialize(driverId);
-            context.read<RideProvider>().initialize(driverId);
-            context.read<EarningsProvider>().initialize(driverId);
+            _initCallbackScheduled = false;
+            if (mounted) {
+              _initDriverProviders(driverId);
+            }
           });
         }
 
-        // Go to Home - driver can complete registration from Profile → Documents
-        // Go Online button is already blocked until all documents are complete
+        if (driver.vehicleMode == 'tourism' && driver.activeTourismEventId != null) {
+          // Wrap in try-catch builder to prevent crash loop if event is invalid/limbo
+          return _SafeTourismWrapper(eventId: driver.activeTourismEventId!);
+        }
+
         return const HomeScreen();
       },
     );
   }
 
   Widget _buildLoadingScreen() {
-    // Simple loading indicator - no logo/text to avoid looking like another splash
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: Center(
-        child: SizedBox(
-          width: 40,
-          height: 40,
-          child: CircularProgressIndicator(
-            color: AppColors.primary,
-            strokeWidth: 3,
-          ),
-        ),
-      ),
+    // Just dark background - no spinner. Splash already covers the loading time,
+    // this only shows for a brief moment during auth state resolution.
+    return const Scaffold(
+      backgroundColor: Color(0xFF030B1A),
     );
+  }
+}
+
+/// Safe wrapper that validates the tourism event exists before showing
+/// TourismDriverHomeScreen. Falls back to HomeScreen if event is invalid/limbo.
+class _SafeTourismWrapper extends StatefulWidget {
+  final String eventId;
+  const _SafeTourismWrapper({required this.eventId});
+
+  @override
+  State<_SafeTourismWrapper> createState() => _SafeTourismWrapperState();
+}
+
+class _SafeTourismWrapperState extends State<_SafeTourismWrapper> {
+  bool _checked = false;
+  bool _eventValid = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _validateEvent();
+  }
+
+  Future<void> _validateEvent() async {
+    try {
+      final event = await SupabaseConfig.client
+          .from('tourism_events')
+          .select('id, status')
+          .eq('id', widget.eventId)
+          .maybeSingle()
+          .timeout(const Duration(seconds: 5), onTimeout: () {
+        debugPrint('[TOURISM] ⚠️ Event validation TIMEOUT after 5s');
+        return null;
+      });
+
+      if (mounted) {
+        setState(() {
+          _checked = true;
+          _eventValid = event != null;
+        });
+
+        // If event doesn't exist or timed out, clear the limbo reference
+        if (event == null) {
+          _clearLimboEvent();
+        }
+      }
+    } catch (e) {
+      debugPrint('[TOURISM] Event validation error: $e');
+      if (mounted) {
+        setState(() {
+          _checked = true;
+          _eventValid = false;
+        });
+        _clearLimboEvent();
+      }
+    }
+  }
+
+  void _clearLimboEvent() {
+    final authProvider = context.read<AuthProvider>();
+    final driver = authProvider.driver;
+    if (driver != null) {
+      authProvider.updateDriver(driver.copyWith(
+        activeTourismEventId: null,
+        vehicleMode: 'personal',
+      ));
+      // Also clear in database
+      SupabaseConfig.client
+          .from('drivers')
+          .update({
+            'active_tourism_event_id': null,
+            'vehicle_mode': 'personal',
+          })
+          .eq('id', driver.id)
+          .then((_) {})
+          .catchError((_) {});
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_checked) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: Center(
+          child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 3),
+        ),
+      );
+    }
+
+    if (_eventValid) {
+      return TourismDriverHomeScreen(eventId: widget.eventId);
+    }
+
+    return const HomeScreen();
   }
 }

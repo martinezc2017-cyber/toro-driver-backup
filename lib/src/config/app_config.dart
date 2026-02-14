@@ -1,7 +1,9 @@
 class AppConfig {
   // App Info
   static const String appName = 'Toro Driver';
-  static const String appVersion = '1.0.0';
+  // Version is loaded dynamically via VersionCheckService.init()
+  // This fallback is only used if PackageInfo fails
+  static const String appVersion = '1.1.0';
 
   // API Endpoints (for external services)
   static const String googleMapsApiKey = 'YOUR_GOOGLE_MAPS_API_KEY';

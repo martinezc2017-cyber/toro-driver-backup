@@ -8,8 +8,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/document_ocr_service.dart';
 import '../utils/app_colors.dart';
 import '../utils/haptic_service.dart';
-import '../widgets/custom_keyboard.dart';
-
 /// Screen for drivers to register their vehicle
 /// Required fields: Make, Model, Year, Color, Plate, Type
 /// Optional: VIN
@@ -47,12 +45,6 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   String _selectedType = 'sedan';
   bool _isLoading = false;
 
-  // Custom keyboard state
-  bool _showTextKeyboard = false;
-  bool _showNumericKeyboard = false;
-  String? _activeField;
-  late FocusNode _keyboardListenerFocus;
-
   final List<Map<String, dynamic>> _vehicleTypes = [
     {'value': 'sedan', 'label': 'Sedan', 'icon': Icons.directions_car},
     {'value': 'suv', 'label': 'SUV', 'icon': Icons.directions_car_filled},
@@ -63,7 +55,6 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   @override
   void initState() {
     super.initState();
-    _keyboardListenerFocus = FocusNode();
     _makeController.addListener(() => setState(() {}));
     _modelController.addListener(() => setState(() {}));
     _yearController.addListener(() => setState(() {}));
@@ -84,7 +75,6 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
     _vinController.dispose();
     _insuranceCompanyController.dispose();
     _insurancePolicyController.dispose();
-    _keyboardListenerFocus.dispose();
     super.dispose();
   }
 
@@ -326,88 +316,6 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
     }
   }
 
-  void _handleExternalKeyboardInput(String char) {
-    final controller = _getControllerForField(_activeField!);
-    if (controller == null) return;
-
-    final value = controller.value;
-    final start = value.selection.baseOffset;
-    final end = value.selection.extentOffset;
-
-    if (start < 0) {
-      controller.text += char;
-    } else {
-      final newText = value.text.replaceRange(start, end, char);
-      controller.value = value.copyWith(
-        text: newText,
-        selection: TextSelection.collapsed(offset: start + char.length),
-      );
-    }
-    setState(() {});
-  }
-
-  void _handleExternalBackspace() {
-    final controller = _getControllerForField(_activeField!);
-    if (controller == null || controller.text.isEmpty) return;
-
-    final value = controller.value;
-    final start = value.selection.baseOffset;
-    final end = value.selection.extentOffset;
-
-    if (start < 0) {
-      controller.text = value.text.substring(0, value.text.length - 1);
-    } else if (start == end) {
-      controller.value = value.copyWith(
-        text: value.text.replaceRange(start - 1, end, ''),
-        selection: TextSelection.collapsed(offset: start - 1),
-      );
-    } else {
-      controller.value = value.copyWith(
-        text: value.text.replaceRange(start, end, ''),
-        selection: TextSelection.collapsed(offset: start),
-      );
-    }
-    setState(() {});
-  }
-
-  TextEditingController? _getControllerForField(String fieldName) {
-    switch (fieldName) {
-      case 'make':
-        return _makeController;
-      case 'model':
-        return _modelController;
-      case 'year':
-        return _yearController;
-      case 'color':
-        return _colorController;
-      case 'plate':
-        return _plateController;
-      case 'vin':
-        return _vinController;
-      case 'insuranceCompany':
-        return _insuranceCompanyController;
-      case 'insurancePolicy':
-        return _insurancePolicyController;
-      default:
-        return null;
-    }
-  }
-
-  void _showKeyboardForField(String fieldName, TextInputType keyboardType) {
-    _keyboardListenerFocus.requestFocus();
-    setState(() {
-      _showTextKeyboard = false;
-      _showNumericKeyboard = false;
-      _activeField = fieldName;
-
-      if (keyboardType == TextInputType.number) {
-        _showNumericKeyboard = true;
-      } else {
-        _showTextKeyboard = true;
-      }
-    });
-  }
-
   Future<void> _submitVehicle() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -558,81 +466,34 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return KeyboardListener(
-      focusNode: _keyboardListenerFocus,
-      onKeyEvent: (event) {
-        if (_activeField == null) return;
-        if (event is! KeyDownEvent) return;
-        if (event.logicalKey == LogicalKeyboardKey.backspace) {
-          _handleExternalBackspace();
-        } else if (event.character != null && event.character!.isNotEmpty) {
-          _handleExternalKeyboardInput(event.character!);
-        }
-      },
-      child: Scaffold(
-        backgroundColor: AppColors.background,
-        body: Stack(
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: Column(
           children: [
-            SafeArea(
-              child: Column(
-                children: [
-                  _buildHeader(),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      physics: const BouncingScrollPhysics(),
-                      padding: const EdgeInsets.all(16),
-                      child: Form(
-                        key: _formKey,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildVehicleTypeSelector(),
-                            const SizedBox(height: 24),
-                            _buildFormSection(),
-                            const SizedBox(height: 24),
-                            _buildInsuranceSection(),
-                            const SizedBox(height: 32),
-                            _buildSubmitButton(),
-                            const SizedBox(height: 80),
-                          ],
-                        ),
-                      ),
-                    ),
+            _buildHeader(),
+            Expanded(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.all(16),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildVehicleTypeSelector(),
+                      const SizedBox(height: 24),
+                      _buildFormSection(),
+                      const SizedBox(height: 24),
+                      _buildInsuranceSection(),
+                      const SizedBox(height: 32),
+                      _buildSubmitButton(),
+                      const SizedBox(height: 80),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
-            // Custom Keyboard Overlays
-            if (_showTextKeyboard)
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: CustomTextKeyboard(
-                  controller:
-                      _getControllerForField(_activeField!) ?? _makeController,
-                  onDone: () {
-                    setState(() => _showTextKeyboard = false);
-                    _activeField = null;
-                  },
-                  onChanged: () => setState(() {}),
-                ),
-              ),
-            if (_showNumericKeyboard)
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: CustomNumericKeyboard(
-                  controller:
-                      _getControllerForField(_activeField!) ?? _yearController,
-                  onDone: () {
-                    setState(() => _showNumericKeyboard = false);
-                    _activeField = null;
-                  },
-                  onChanged: () => setState(() {}),
-                ),
-              ),
           ],
         ),
       ),
@@ -1598,8 +1459,6 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
     String? Function(String?)? validator,
     String? fieldName,
   }) {
-    final fieldId = fieldName ?? label.toLowerCase().replaceAll(' ', '');
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1614,10 +1473,9 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
         const SizedBox(height: 8),
         TextFormField(
           controller: controller,
-          keyboardType: TextInputType.none,
+          keyboardType: keyboardType,
           textCapitalization: textCapitalization,
           validator: validator,
-          onTap: () => _showKeyboardForField(fieldId, keyboardType),
           style: TextStyle(color: AppColors.textPrimary, fontSize: 16),
           decoration: InputDecoration(
             hintText: hint,

@@ -196,6 +196,14 @@ class RideModel {
   // Payment Intent ID for capturing payment when ride completes
   final String? stripePaymentIntentId;
 
+  // === NEGOTIATION (Didi-style) ===
+  // Drivers at QR Tier 1+ can propose a higher price
+  final double? driverProposedPrice;
+  final String? negotiationStatus; // null, 'proposed', 'accepted', 'rejected'
+  final String? proposingDriverId;
+  final DateTime? negotiationExpiresAt;
+  final int driverQrTier;
+
   RideModel({
     required this.id,
     this.driverId,
@@ -244,6 +252,12 @@ class RideModel {
     this.waypoints,
     this.vehicleType = 'standard',
     this.stripePaymentIntentId,
+    // Negotiation
+    this.driverProposedPrice,
+    this.negotiationStatus,
+    this.proposingDriverId,
+    this.negotiationExpiresAt,
+    this.driverQrTier = 0,
   });
 
   double get totalEarnings => driverEarnings + tip;
@@ -399,6 +413,14 @@ class RideModel {
           : null,
       vehicleType: json['vehicle_type'] as String? ?? 'standard',
       stripePaymentIntentId: json['stripe_payment_intent_id'] as String?,
+      // Negotiation
+      driverProposedPrice: (json['driver_proposed_price'] as num?)?.toDouble(),
+      negotiationStatus: json['negotiation_status'] as String?,
+      proposingDriverId: json['proposing_driver_id'] as String?,
+      negotiationExpiresAt: json['negotiation_expires_at'] != null
+          ? DateTime.tryParse(json['negotiation_expires_at'] as String)
+          : null,
+      driverQrTier: (json['driver_qr_tier'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -451,6 +473,12 @@ class RideModel {
       'waypoints': waypoints,
       'vehicle_type': vehicleType,
       'stripe_payment_intent_id': stripePaymentIntentId,
+      // Negotiation
+      'driver_proposed_price': driverProposedPrice,
+      'negotiation_status': negotiationStatus,
+      'proposing_driver_id': proposingDriverId,
+      'negotiation_expires_at': negotiationExpiresAt?.toIso8601String(),
+      'driver_qr_tier': driverQrTier,
     };
   }
 
@@ -502,6 +530,12 @@ class RideModel {
     List<Map<String, dynamic>>? waypoints,
     String? vehicleType,
     String? stripePaymentIntentId,
+    // Negotiation
+    double? driverProposedPrice,
+    String? negotiationStatus,
+    String? proposingDriverId,
+    DateTime? negotiationExpiresAt,
+    int? driverQrTier,
   }) {
     return RideModel(
       id: id ?? this.id,
@@ -551,8 +585,22 @@ class RideModel {
       waypoints: waypoints ?? this.waypoints,
       vehicleType: vehicleType ?? this.vehicleType,
       stripePaymentIntentId: stripePaymentIntentId ?? this.stripePaymentIntentId,
+      // Negotiation
+      driverProposedPrice: driverProposedPrice ?? this.driverProposedPrice,
+      negotiationStatus: negotiationStatus ?? this.negotiationStatus,
+      proposingDriverId: proposingDriverId ?? this.proposingDriverId,
+      negotiationExpiresAt: negotiationExpiresAt ?? this.negotiationExpiresAt,
+      driverQrTier: driverQrTier ?? this.driverQrTier,
     );
   }
+
+  // === NEGOTIATION HELPERS ===
+  bool get hasActiveNegotiation => negotiationStatus == 'proposed';
+  bool get isNegotiationAccepted => negotiationStatus == 'accepted';
+  bool get isNegotiationRejected => negotiationStatus == 'rejected';
+  double get effectiveFare => isNegotiationAccepted && driverProposedPrice != null
+      ? driverProposedPrice!
+      : fare;
 }
 
 

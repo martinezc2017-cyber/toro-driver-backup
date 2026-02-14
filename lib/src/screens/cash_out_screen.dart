@@ -3,8 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../utils/app_theme.dart';
 import '../providers/riverpod_providers.dart';
-import '../widgets/custom_keyboard.dart';
-
 /// Instant Cash Out Screen - Like Uber/Lyft instant pay
 class CashOutScreen extends ConsumerStatefulWidget {
   final String driverId;
@@ -29,14 +27,9 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
 
   final _amountController = TextEditingController();
 
-  // Custom keyboard state
-  bool _showNumericKeyboard = false;
-  late FocusNode _keyboardListenerFocus;
-
   @override
   void initState() {
     super.initState();
-    _keyboardListenerFocus = FocusNode();
     _amountController.addListener(() => setState(() {}));
     _loadData();
   }
@@ -240,83 +233,53 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return KeyboardListener(
-      focusNode: _keyboardListenerFocus,
-      onKeyEvent: (event) {
-        if (!_showNumericKeyboard) return;
-        if (event is! KeyDownEvent) return;
-        if (event.logicalKey == LogicalKeyboardKey.backspace) {
-          _handleExternalBackspace();
-        } else if (event.character != null && event.character!.isNotEmpty) {
-          _handleExternalKeyboardInput(event.character!);
-        }
-      },
-      child: Scaffold(
+    return Scaffold(
+      backgroundColor: AppTheme.background,
+      appBar: AppBar(
         backgroundColor: AppTheme.background,
-        appBar: AppBar(
-          backgroundColor: AppTheme.background,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.close, color: Colors.white),
-            onPressed: () => Navigator.pop(context),
-          ),
-          title: const Text(
-            'Cash Out',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-          ),
-          centerTitle: true,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.close, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
         ),
-        body: Stack(
-          children: [
-            _isLoading
-                ? const Center(
-                    child: CircularProgressIndicator(color: AppTheme.primary),
-                  )
-                : SingleChildScrollView(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Balance card
-                        _buildBalanceCard(),
-                        const SizedBox(height: 24),
-                        // Amount input
-                        _buildAmountSection(),
-                        const SizedBox(height: 24),
-                        // Quick amounts
-                        _buildQuickAmounts(),
-                        const SizedBox(height: 24),
-                        // Payment method
-                        _buildPaymentMethodSection(),
-                        const SizedBox(height: 24),
-                        // Fee breakdown
-                        _buildFeeBreakdown(),
-                        const SizedBox(height: 32),
-                        // Cash out button
-                        _buildCashOutButton(),
-                        const SizedBox(height: 16),
-                        // Disclaimer
-                        _buildDisclaimer(),
-                      ],
-                    ),
-                  ),
-            // Custom Keyboard Overlay
-            if (_showNumericKeyboard)
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: CustomNumericKeyboard(
-                  controller: _amountController,
-                  onDone: () {
-                    setState(() => _showNumericKeyboard = false);
-                  },
-                  onChanged: () => setState(() {}),
-                ),
-              ),
-          ],
+        title: const Text(
+          'Cash Out',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
+        centerTitle: true,
       ),
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(color: AppTheme.primary),
+            )
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Balance card
+                  _buildBalanceCard(),
+                  const SizedBox(height: 24),
+                  // Amount input
+                  _buildAmountSection(),
+                  const SizedBox(height: 24),
+                  // Quick amounts
+                  _buildQuickAmounts(),
+                  const SizedBox(height: 24),
+                  // Payment method
+                  _buildPaymentMethodSection(),
+                  const SizedBox(height: 24),
+                  // Fee breakdown
+                  _buildFeeBreakdown(),
+                  const SizedBox(height: 32),
+                  // Cash out button
+                  _buildCashOutButton(),
+                  const SizedBox(height: 16),
+                  // Disclaimer
+                  _buildDisclaimer(),
+                ],
+              ),
+            ),
     );
   }
 
@@ -415,7 +378,7 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
               Expanded(
                 child: TextField(
                   controller: _amountController,
-                  keyboardType: TextInputType.none,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 32,
@@ -431,7 +394,6 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
                     hintText: '0.00',
                     hintStyle: TextStyle(color: AppTheme.textMuted),
                   ),
-                  onTap: _toggleNumericKeyboard,
                   onChanged: (value) {
                     final amount = double.tryParse(value) ?? 0;
                     setState(() => _selectedAmount = amount);
@@ -936,54 +898,6 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
   @override
   void dispose() {
     _amountController.dispose();
-    _keyboardListenerFocus.dispose();
     super.dispose();
-  }
-
-  void _handleExternalKeyboardInput(String char) {
-    final value = _amountController.value;
-    final start = value.selection.baseOffset;
-    final end = value.selection.extentOffset;
-
-    if (start < 0) {
-      _amountController.text += char;
-    } else {
-      final newText = value.text.replaceRange(start, end, char);
-      _amountController.value = value.copyWith(
-        text: newText,
-        selection: TextSelection.collapsed(offset: start + char.length),
-      );
-    }
-    setState(() {});
-  }
-
-  void _handleExternalBackspace() {
-    if (_amountController.text.isEmpty) return;
-
-    final value = _amountController.value;
-    final start = value.selection.baseOffset;
-    final end = value.selection.extentOffset;
-
-    if (start < 0) {
-      _amountController.text = value.text.substring(0, value.text.length - 1);
-    } else if (start == end) {
-      _amountController.value = value.copyWith(
-        text: value.text.replaceRange(start - 1, end, ''),
-        selection: TextSelection.collapsed(offset: start - 1),
-      );
-    } else {
-      _amountController.value = value.copyWith(
-        text: value.text.replaceRange(start, end, ''),
-        selection: TextSelection.collapsed(offset: start),
-      );
-    }
-    setState(() {});
-  }
-
-  void _toggleNumericKeyboard() {
-    _keyboardListenerFocus.requestFocus();
-    setState(() {
-      _showNumericKeyboard = true;
-    });
   }
 }

@@ -12,8 +12,6 @@ import '../services/driver_service.dart';
 import '../services/document_ocr_service.dart';
 import '../utils/app_colors.dart';
 import '../utils/haptic_service.dart';
-import '../widgets/custom_keyboard.dart';
-
 /// Multi-step onboarding for new drivers and organizers
 /// Step 0: Role Selection (Driver or Organizer)
 /// Driver path:    Step 1: Personal Info -> Step 2: Vehicle -> Step 3: Documents -> Step 4: Tax (W-9)
@@ -108,14 +106,6 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
     return year < 2012;
   }
 
-  // Custom keyboard state
-  bool _showEmailKeyboard = false;
-  bool _showTextKeyboard = false;
-  bool _showPhoneKeyboard = false;
-  bool _showNumericKeyboard = false;
-  String? _activeField;
-  late FocusNode _keyboardListenerFocus;
-
   /// Total number of steps based on role
   /// Driver: roleSelect, personal, vehicle, documents, tax = 5
   /// Organizer: roleSelect, personal, organizerInfo, tax = 4
@@ -127,7 +117,6 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
   @override
   void initState() {
     super.initState();
-    _keyboardListenerFocus = FocusNode();
     _detectCountry();
     // Listen to year changes to update UI for inspection report requirement
     _vehicleYearController.addListener(_onYearChanged);
@@ -177,7 +166,6 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
 
   @override
   void dispose() {
-    _keyboardListenerFocus.dispose();
     _vehicleYearController.removeListener(_onYearChanged);
     _firstNameController.dispose();
     _lastNameController.dispose();
@@ -722,199 +710,46 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
     }
   }
 
-  void _handleExternalKeyboardInput(String char) {
-    if (_activeField == null) return;
-
-    final controller = _getControllerForField(_activeField!);
-    if (controller == null) return;
-
-    final value = controller.value;
-    final start = value.selection.baseOffset;
-    final end = value.selection.extentOffset;
-
-    if (start < 0) {
-      controller.text += char;
-    } else {
-      final newText = value.text.replaceRange(start, end, char);
-      controller.value = value.copyWith(
-        text: newText,
-        selection: TextSelection.collapsed(offset: start + char.length),
-      );
-    }
-
-    setState(() {});
-  }
-
-  void _handleExternalBackspace() {
-    if (_activeField == null) return;
-
-    final controller = _getControllerForField(_activeField!);
-    if (controller == null || controller.text.isEmpty) return;
-
-    final value = controller.value;
-    final start = value.selection.baseOffset;
-    final end = value.selection.extentOffset;
-
-    if (start < 0) {
-      controller.text = value.text.substring(0, value.text.length - 1);
-    } else if (start == end) {
-      controller.value = value.copyWith(
-        text: value.text.replaceRange(start - 1, end, ''),
-        selection: TextSelection.collapsed(offset: start - 1),
-      );
-    } else {
-      controller.value = value.copyWith(
-        text: value.text.replaceRange(start, end, ''),
-        selection: TextSelection.collapsed(offset: start),
-      );
-    }
-
-    setState(() {});
-  }
-
-  TextEditingController? _getControllerForField(String fieldName) {
-    switch (fieldName) {
-      case 'firstName': return _firstNameController;
-      case 'lastName': return _lastNameController;
-      case 'phone': return _phoneController;
-      case 'address': return _addressController;
-      case 'vehicleMake': return _vehicleMakeController;
-      case 'vehicleModel': return _vehicleModelController;
-      case 'vehicleYear': return _vehicleYearController;
-      case 'vehicleColor': return _vehicleColorController;
-      case 'licensePlate': return _licensePlateController;
-      case 'ssn': return _ssnController;
-      case 'legalName': return _legalNameController;
-      case 'businessName': return _businessNameController;
-      case 'streetAddress': return _streetAddressController;
-      case 'city': return _cityController;
-      case 'state': return _stateController;
-      case 'zipCode': return _zipCodeController;
-      case 'orgCompanyName': return _orgCompanyNameController;
-      case 'orgPhone': return _orgPhoneController;
-      case 'orgState': return _orgStateController;
-      case 'rfc': return _rfcController;
-      case 'curp': return _curpController;
-      default: return null;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    return KeyboardListener(
-      focusNode: _keyboardListenerFocus,
-      onKeyEvent: (event) {
-        // Handle physical keyboard input
-        if (event.logicalKey == LogicalKeyboardKey.backspace) {
-          _handleExternalBackspace();
-        } else if (event.character != null && event.character!.isNotEmpty) {
-          _handleExternalKeyboardInput(event.character!);
-        }
-      },
-      child: Scaffold(
-        backgroundColor: AppColors.background,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
-            onPressed: _currentStep > 0 ? _previousStep : () => Navigator.pop(context),
-          ),
-          title: Text(
-            'onb_step_x_of_y'.tr(namedArgs: {'current': '${_currentStep + 1}', 'total': '$_totalSteps'}),
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 14,
-            ),
-          ),
-          centerTitle: true,
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
+          onPressed: _currentStep > 0 ? _previousStep : () => Navigator.pop(context),
         ),
-        body: SafeArea(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 400),
-              child: Stack(
-                children: [
-                  Column(
-                    children: [
-                      // Progress indicator
-                      _buildProgressIndicator(),
+        title: Text(
+          'onb_step_x_of_y'.tr(namedArgs: {'current': '${_currentStep + 1}', 'total': '$_totalSteps'}),
+          style: const TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 14,
+          ),
+        ),
+        centerTitle: true,
+      ),
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 400),
+            child: Column(
+              children: [
+                // Progress indicator
+                _buildProgressIndicator(),
 
-                      // Content
-                      Expanded(
-                        child: SingleChildScrollView(
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                          child: _buildStepContent(),
-                        ),
-                      ),
-
-                      // Bottom button
-                      _buildBottomButton(),
-                    ],
+                // Content
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                    child: _buildStepContent(),
                   ),
-                  // Keyboard overlay
-                  if (_showTextKeyboard)
-                    Positioned(
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      child: CustomTextKeyboard(
-                        controller: _getControllerForField(_activeField!) ?? TextEditingController(),
-                        onDone: () => setState(() {
-                          _showTextKeyboard = false;
-                          _activeField = null;
-                          FocusScope.of(context).unfocus();
-                        }),
-                        onChanged: () => setState(() {}),
-                      ),
-                    ),
-                  if (_showEmailKeyboard)
-                    Positioned(
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      child: CustomEmailKeyboard(
-                        controller: _getControllerForField(_activeField!) ?? TextEditingController(),
-                        onDone: () => setState(() {
-                          _showEmailKeyboard = false;
-                          _activeField = null;
-                          FocusScope.of(context).unfocus();
-                        }),
-                        onChanged: () => setState(() {}),
-                      ),
-                    ),
-                  if (_showPhoneKeyboard)
-                    Positioned(
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      child: CustomPhoneKeyboard(
-                        controller: _getControllerForField(_activeField!) ?? TextEditingController(),
-                        onDone: () => setState(() {
-                          _showPhoneKeyboard = false;
-                          _activeField = null;
-                          FocusScope.of(context).unfocus();
-                        }),
-                        onChanged: () => setState(() {}),
-                      ),
-                    ),
-                  if (_showNumericKeyboard)
-                    Positioned(
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      child: CustomNumericKeyboard(
-                        controller: _getControllerForField(_activeField!) ?? TextEditingController(),
-                        onDone: () => setState(() {
-                          _showNumericKeyboard = false;
-                          _activeField = null;
-                          FocusScope.of(context).unfocus();
-                        }),
-                        onChanged: () => setState(() {}),
-                      ),
-                    ),
-                ],
-              ),
+                ),
+
+                // Bottom button
+                _buildBottomButton(),
+              ],
             ),
           ),
         ),
@@ -1767,14 +1602,13 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
         // RFC Field
         TextFormField(
           controller: _rfcController,
-          keyboardType: TextInputType.none,
+          keyboardType: TextInputType.text,
           textCapitalization: TextCapitalization.characters,
           inputFormatters: [
             FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
             LengthLimitingTextInputFormatter(13),
             _UpperCaseInputFormatter(),
           ],
-          onTap: () => _showKeyboardForField('rfc', TextInputType.text),
           style: const TextStyle(color: AppColors.textPrimary, fontSize: 14, letterSpacing: 1.5),
           decoration: InputDecoration(
             labelText: '${'onb_tax_rfc'.tr()} *',
@@ -1795,14 +1629,13 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
         // CURP Field
         TextFormField(
           controller: _curpController,
-          keyboardType: TextInputType.none,
+          keyboardType: TextInputType.text,
           textCapitalization: TextCapitalization.characters,
           inputFormatters: [
             FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
             LengthLimitingTextInputFormatter(18),
             _UpperCaseInputFormatter(),
           ],
-          onTap: () => _showKeyboardForField('curp', TextInputType.text),
           style: const TextStyle(color: AppColors.textPrimary, fontSize: 14, letterSpacing: 1.5),
           decoration: InputDecoration(
             labelText: '${'onb_tax_curp'.tr()} *',
@@ -1981,14 +1814,13 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
   Widget _buildSSNField() {
     return TextFormField(
       controller: _ssnController,
-      keyboardType: TextInputType.none, // Disable system keyboard
+      keyboardType: TextInputType.number,
       obscureText: true,
       inputFormatters: [
         FilteringTextInputFormatter.digitsOnly,
         LengthLimitingTextInputFormatter(9),
         _SSNInputFormatter(),
       ],
-      onTap: () => _showKeyboardForField('ssn', TextInputType.number),
       style: const TextStyle(color: AppColors.textPrimary, fontSize: 14, letterSpacing: 2),
       decoration: InputDecoration(
         labelText: '${'onb_tax_ssn'.tr()} *',
@@ -2158,10 +1990,9 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
   }) {
     return TextFormField(
       controller: controller,
-      keyboardType: TextInputType.none, // Disable system keyboard
+      keyboardType: keyboardType ?? TextInputType.text,
       textCapitalization: textCapitalization,
       style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
-      onTap: fieldName != null ? () => _showKeyboardForField(fieldName, keyboardType) : null,
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
@@ -2185,29 +2016,6 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
         ),
       ),
     );
-  }
-
-  void _showKeyboardForField(String fieldName, TextInputType? keyboardType) {
-    setState(() {
-      _activeField = fieldName;
-
-      // Hide all keyboards first
-      _showTextKeyboard = false;
-      _showEmailKeyboard = false;
-      _showPhoneKeyboard = false;
-      _showNumericKeyboard = false;
-
-      // Show appropriate keyboard based on field type
-      if (keyboardType == TextInputType.phone) {
-        _showPhoneKeyboard = true;
-      } else if (keyboardType == TextInputType.number) {
-        _showNumericKeyboard = true;
-      } else if (keyboardType == TextInputType.emailAddress) {
-        _showEmailKeyboard = true;
-      } else {
-        _showTextKeyboard = true;
-      }
-    });
   }
 
   Widget _buildDatePicker() {

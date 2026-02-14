@@ -3,7 +3,14 @@
 /// ============================================================================
 /// Single source of truth for ALL financial calculations.
 /// This file handles the breakdown of ride payments:
-///   GROSS → Platform Fee → Insurance → Tax → Driver Base → QR Bonus → Tips
+///   GROSS → Platform Fee → Insurance → Tax → Driver Base → Tips
+///
+/// NEW QR MODEL (v2):
+///   QR tiers REDUCE platform commission, NOT add bonus %.
+///   Tier 0: base (20%) | Tier 1: 19% | Tier 2: 18% | Tier 3: 17% |
+///   Tier 4: 16% | Tier 5: 15%
+///   Driver gets the difference (64% → up to 69%).
+///   Tax (IVA 16%) stays fixed.
 ///
 /// MUST be kept in sync with:
 /// - toro/lib/core/services/split_calculator.dart (rider app)
@@ -19,66 +26,69 @@ class SplitConfig {
   final double driverPercent;
   final double insurancePercent;
   final double taxPercent;
-  final double qrPointValue; // Value per QR level (e.g., 1.0 = 1%)
 
-  // Variable Platform Tiers (Toro Nivelar)
-  final bool variablePlatformEnabled;
-  final double platformTier1MaxFare;
-  final double platformTier1Percent;
-  final double platformTier2MaxFare;
-  final double platformTier2Percent;
-  final double platformTier3MaxFare;
-  final double platformTier3Percent;
-  final double platformTier4Percent;
-
-  // QR Tier System (configurable per state from pricing_config)
-  final bool qrUseTiers; // true = tier mode (MX), false = linear (US)
-  final int qrMaxLevel; // max QR scans per week
+  // QR Commission Reduction Tiers (replaces old bonus % system)
+  // Each tier reduces platform commission by 1% (configurable)
+  final int qrMaxLevel; // max QR scans per week (30 for MX)
   final int qrTier1Max;
-  final double qrTier1Bonus;
+  final double qrTier1CommissionReduction; // 1% = platform goes from 20→19
   final int qrTier2Max;
-  final double qrTier2Bonus;
+  final double qrTier2CommissionReduction; // 2%
   final int qrTier3Max;
-  final double qrTier3Bonus;
+  final double qrTier3CommissionReduction; // 3%
   final int qrTier4Max;
-  final double qrTier4Bonus;
-  final double qrTier5Bonus;
+  final double qrTier4CommissionReduction; // 4%
+  final double qrTier5CommissionReduction; // 5% (max, platform = 15%)
 
   const SplitConfig({
     required this.platformFeePercent,
     required this.driverPercent,
     required this.insurancePercent,
     required this.taxPercent,
-    this.qrPointValue = 1.0,
-    this.variablePlatformEnabled = false,
-    this.platformTier1MaxFare = 10.0,
-    this.platformTier1Percent = 5.0,
-    this.platformTier2MaxFare = 20.0,
-    this.platformTier2Percent = 15.0,
-    this.platformTier3MaxFare = 35.0,
-    this.platformTier3Percent = 23.4,
-    this.platformTier4Percent = 25.0,
-    this.qrUseTiers = false,
-    this.qrMaxLevel = 15,
+    this.qrMaxLevel = 30,
     this.qrTier1Max = 6,
-    this.qrTier1Bonus = 2.0,
+    this.qrTier1CommissionReduction = 1.0,
     this.qrTier2Max = 12,
-    this.qrTier2Bonus = 4.0,
+    this.qrTier2CommissionReduction = 2.0,
     this.qrTier3Max = 18,
-    this.qrTier3Bonus = 6.0,
+    this.qrTier3CommissionReduction = 3.0,
     this.qrTier4Max = 24,
-    this.qrTier4Bonus = 8.0,
-    this.qrTier5Bonus = 10.0,
+    this.qrTier4CommissionReduction = 4.0,
+    this.qrTier5CommissionReduction = 5.0,
   });
 
-  /// Get effective platform % based on fare amount
-  /// When variable is disabled, returns flat platformFeePercent
-  double getEffectivePlatformPercent(double fareAmount) {
-    if (!variablePlatformEnabled) return platformFeePercent;
-    if (fareAmount <= platformTier1MaxFare) return platformTier1Percent;
-    if (fareAmount <= platformTier2MaxFare) return platformTier2Percent;
-    if (fareAmount <= platformTier3MaxFare) return platformTier3Percent;
-    return platformTier4Percent;
+  /// Get effective platform % after QR tier commission reduction
+  /// Tier 0: base (20%) | Tier 5: base - 5% (15%)
+  double getEffectivePlatformPercent({int driverQRLevel = 0}) {
+    final reduction = getQRCommissionReduction(driverQRLevel);
+    // Minimum 15% platform fee (safety floor)
+    return math.max(15.0, platformFeePercent - reduction);
+  }
+
+  /// Get the commission reduction for a given QR level
+  double getQRCommissionReduction(int qrLevel) {
+    if (qrLevel <= 0) return 0;
+    if (qrLevel <= qrTier1Max) return qrTier1CommissionReduction;
+    if (qrLevel <= qrTier2Max) return qrTier2CommissionReduction;
+    if (qrLevel <= qrTier3Max) return qrTier3CommissionReduction;
+    if (qrLevel <= qrTier4Max) return qrTier4CommissionReduction;
+    return qrTier5CommissionReduction;
+  }
+
+  /// Get driver's effective percentage after QR reduction
+  double getEffectiveDriverPercent({int driverQRLevel = 0}) {
+    final reduction = getQRCommissionReduction(driverQRLevel);
+    return driverPercent + reduction;
+  }
+
+  /// Get the QR tier number (0-5) for a given level
+  int getQRTier(int qrLevel) {
+    if (qrLevel <= 0) return 0;
+    if (qrLevel <= qrTier1Max) return 1;
+    if (qrLevel <= qrTier2Max) return 2;
+    if (qrLevel <= qrTier3Max) return 3;
+    if (qrLevel <= qrTier4Max) return 4;
+    return 5;
   }
 
   /// Validate that percentages add up correctly (flat mode)
@@ -95,34 +105,16 @@ class SplitConfig {
       driverPercent: (json['driver_percentage'] as num?)?.toDouble() ?? 0,
       insurancePercent: (json['insurance_percentage'] as num?)?.toDouble() ?? 0,
       taxPercent: (json['tax_percentage'] as num?)?.toDouble() ?? 0,
-      qrPointValue: (json['qr_point_value'] as num?)?.toDouble() ?? 1.0,
-      variablePlatformEnabled:
-          json['variable_platform_enabled'] == true,
-      platformTier1MaxFare:
-          (json['platform_tier_1_max_fare'] as num?)?.toDouble() ?? 10.0,
-      platformTier1Percent:
-          (json['platform_tier_1_percent'] as num?)?.toDouble() ?? 5.0,
-      platformTier2MaxFare:
-          (json['platform_tier_2_max_fare'] as num?)?.toDouble() ?? 20.0,
-      platformTier2Percent:
-          (json['platform_tier_2_percent'] as num?)?.toDouble() ?? 15.0,
-      platformTier3MaxFare:
-          (json['platform_tier_3_max_fare'] as num?)?.toDouble() ?? 35.0,
-      platformTier3Percent:
-          (json['platform_tier_3_percent'] as num?)?.toDouble() ?? 23.4,
-      platformTier4Percent:
-          (json['platform_tier_4_percent'] as num?)?.toDouble() ?? 25.0,
-      qrUseTiers: json['qr_use_tiers'] == true,
-      qrMaxLevel: (json['qr_max_level'] as num?)?.toInt() ?? 15,
+      qrMaxLevel: (json['qr_max_level'] as num?)?.toInt() ?? 30,
       qrTier1Max: (json['qr_tier_1_max'] as num?)?.toInt() ?? 6,
-      qrTier1Bonus: (json['qr_tier_1_bonus'] as num?)?.toDouble() ?? 2.0,
+      qrTier1CommissionReduction: (json['qr_tier_1_bonus'] as num?)?.toDouble() ?? 1.0,
       qrTier2Max: (json['qr_tier_2_max'] as num?)?.toInt() ?? 12,
-      qrTier2Bonus: (json['qr_tier_2_bonus'] as num?)?.toDouble() ?? 4.0,
+      qrTier2CommissionReduction: (json['qr_tier_2_bonus'] as num?)?.toDouble() ?? 2.0,
       qrTier3Max: (json['qr_tier_3_max'] as num?)?.toInt() ?? 18,
-      qrTier3Bonus: (json['qr_tier_3_bonus'] as num?)?.toDouble() ?? 6.0,
+      qrTier3CommissionReduction: (json['qr_tier_3_bonus'] as num?)?.toDouble() ?? 3.0,
       qrTier4Max: (json['qr_tier_4_max'] as num?)?.toInt() ?? 24,
-      qrTier4Bonus: (json['qr_tier_4_bonus'] as num?)?.toDouble() ?? 8.0,
-      qrTier5Bonus: (json['qr_tier_5_bonus'] as num?)?.toDouble() ?? 10.0,
+      qrTier4CommissionReduction: (json['qr_tier_4_bonus'] as num?)?.toDouble() ?? 4.0,
+      qrTier5CommissionReduction: (json['qr_tier_5_bonus'] as num?)?.toDouble() ?? 5.0,
     );
   }
 
@@ -131,26 +123,16 @@ class SplitConfig {
     'driver_percentage': driverPercent,
     'insurance_percentage': insurancePercent,
     'tax_percentage': taxPercent,
-    'qr_point_value': qrPointValue,
-    'variable_platform_enabled': variablePlatformEnabled,
-    'platform_tier_1_max_fare': platformTier1MaxFare,
-    'platform_tier_1_percent': platformTier1Percent,
-    'platform_tier_2_max_fare': platformTier2MaxFare,
-    'platform_tier_2_percent': platformTier2Percent,
-    'platform_tier_3_max_fare': platformTier3MaxFare,
-    'platform_tier_3_percent': platformTier3Percent,
-    'platform_tier_4_percent': platformTier4Percent,
-    'qr_use_tiers': qrUseTiers,
     'qr_max_level': qrMaxLevel,
     'qr_tier_1_max': qrTier1Max,
-    'qr_tier_1_bonus': qrTier1Bonus,
+    'qr_tier_1_bonus': qrTier1CommissionReduction,
     'qr_tier_2_max': qrTier2Max,
-    'qr_tier_2_bonus': qrTier2Bonus,
+    'qr_tier_2_bonus': qrTier2CommissionReduction,
     'qr_tier_3_max': qrTier3Max,
-    'qr_tier_3_bonus': qrTier3Bonus,
+    'qr_tier_3_bonus': qrTier3CommissionReduction,
     'qr_tier_4_max': qrTier4Max,
-    'qr_tier_4_bonus': qrTier4Bonus,
-    'qr_tier_5_bonus': qrTier5Bonus,
+    'qr_tier_4_bonus': qrTier4CommissionReduction,
+    'qr_tier_5_bonus': qrTier5CommissionReduction,
   };
 }
 
@@ -159,11 +141,14 @@ class SplitBreakdown {
   final double grossAmount;
   final double tipAmount;
   final int driverQRLevel;
+  final int driverQRTier;
   final double platformFee;
+  final double platformPercent;
   final double insuranceFee;
   final double taxFee;
   final double driverBase;
-  final double qrBonus;
+  final double driverPercent;
+  final double qrCommissionReduction;
   final double driverTotalEarnings;
   final double riderPaid;
 
@@ -171,11 +156,14 @@ class SplitBreakdown {
     required this.grossAmount,
     required this.tipAmount,
     required this.driverQRLevel,
+    required this.driverQRTier,
     required this.platformFee,
+    required this.platformPercent,
     required this.insuranceFee,
     required this.taxFee,
     required this.driverBase,
-    required this.qrBonus,
+    required this.driverPercent,
+    required this.qrCommissionReduction,
     required this.driverTotalEarnings,
     required this.riderPaid,
   });
@@ -194,11 +182,14 @@ class SplitBreakdown {
     'gross_amount': grossAmount,
     'tip_amount': tipAmount,
     'driver_qr_level': driverQRLevel,
+    'driver_qr_tier': driverQRTier,
     'platform_fee': platformFee,
+    'platform_percent': platformPercent,
     'insurance_fee': insuranceFee,
     'tax_fee': taxFee,
     'driver_base': driverBase,
-    'qr_bonus': qrBonus,
+    'driver_percent': driverPercent,
+    'qr_commission_reduction': qrCommissionReduction,
     'driver_total_earnings': driverTotalEarnings,
     'rider_paid': riderPaid,
   };
@@ -214,9 +205,9 @@ class SplitCalculator {
 
   /// Calculate the complete split breakdown
   ///
-  /// Uses variable platform tiers when enabled:
-  ///   Short trips → lower platform % → driver earns more
-  ///   Long trips → normal/higher platform %
+  /// QR tiers reduce platform commission:
+  ///   More QR scans → lower platform % → driver earns more
+  ///   Tax (IVA) stays fixed at configured rate
   SplitBreakdown calculate({
     required double grossAmount,
     double tipAmount = 0,
@@ -226,9 +217,11 @@ class SplitCalculator {
     tipAmount = math.max(0, tipAmount);
     driverQRLevel = driverQRLevel.clamp(0, config.qrMaxLevel);
 
-    // Use variable platform % based on fare tier (Toro Nivelar)
+    // QR tiers reduce platform commission
     final effectivePlatformPercent =
-        config.getEffectivePlatformPercent(grossAmount);
+        config.getEffectivePlatformPercent(driverQRLevel: driverQRLevel);
+    final qrReduction = config.getQRCommissionReduction(driverQRLevel);
+    final qrTier = config.getQRTier(driverQRLevel);
 
     final platformFee = _round(grossAmount * (effectivePlatformPercent / 100));
     final insuranceFee = _round(grossAmount * (config.insurancePercent / 100));
@@ -236,32 +229,27 @@ class SplitCalculator {
     final driverBase = _round(
       grossAmount - platformFee - insuranceFee - taxFee,
     );
-    final qrBonus = _calculateQRBonus(driverBase, driverQRLevel);
-    final driverTotalEarnings = _round(driverBase + qrBonus + tipAmount);
+    final effectiveDriverPercent = grossAmount > 0
+        ? (driverBase / grossAmount) * 100
+        : config.driverPercent;
+    final driverTotalEarnings = _round(driverBase + tipAmount);
     final riderPaid = _round(grossAmount + tipAmount);
 
     return SplitBreakdown(
       grossAmount: grossAmount,
       tipAmount: tipAmount,
       driverQRLevel: driverQRLevel,
+      driverQRTier: qrTier,
       platformFee: platformFee,
+      platformPercent: effectivePlatformPercent,
       insuranceFee: insuranceFee,
       taxFee: taxFee,
       driverBase: driverBase,
-      qrBonus: qrBonus,
+      driverPercent: effectiveDriverPercent,
+      qrCommissionReduction: qrReduction,
       driverTotalEarnings: driverTotalEarnings,
       riderPaid: riderPaid,
     );
-  }
-
-  /// QR bonus = % extra de las GANANCIAS del driver (driverBase), NO del gross
-  /// 5 Tiers × 6 QRs cada uno, máximo 30 QRs activos por semana
-  /// Tier 1 (1-6 QRs) = +2%, Tier 2 (7-12) = +4%, Tier 3 (13-18) = +6%,
-  /// Tier 4 (19-24) = +8%, Tier 5 (25-30) = +10%
-  double _calculateQRBonus(double driverBaseEarnings, int qrLevel) {
-    if (qrLevel <= 0) return 0;
-    final bonusPercent = _getQRTierPercent(qrLevel) * config.qrPointValue;
-    return _round(driverBaseEarnings * (bonusPercent / 100));
   }
 
   double _round(double value) {
@@ -275,14 +263,10 @@ class SplitCalculator {
     int driverQRLevel = 0,
   }) {
     final driverBaseWithoutTip = driverEarnings - tipAmount;
-    final qrBonusPercent = _getQRTierPercent(driverQRLevel) * config.qrPointValue;
-    // driverBaseWithoutTip = driverBase + qrBonus = driverBase * (1 + qrBonusPercent/100)
-    final driverBase = qrBonusPercent > 0
-        ? driverBaseWithoutTip / (1 + qrBonusPercent / 100)
-        : driverBaseWithoutTip;
-    // driverBase = gross * (driverPercent / 100)
-    final estimatedGross = config.driverPercent > 0
-        ? _round((driverBase * 100) / config.driverPercent)
+    final effectiveDriverPercent =
+        config.getEffectiveDriverPercent(driverQRLevel: driverQRLevel);
+    final estimatedGross = effectiveDriverPercent > 0
+        ? _round((driverBaseWithoutTip * 100) / effectiveDriverPercent)
         : 0.0;
 
     return calculate(
@@ -292,26 +276,18 @@ class SplitCalculator {
     );
   }
 
-  /// Returns the QR bonus percent for a given QR level
-  /// Tier mode (MX): jumps at config breakpoints
-  /// Linear mode (US): qrLevel * 1.0 (each QR = qrPointValue%)
-  double _getQRTierPercent(int qrLevel) {
-    if (qrLevel <= 0) return 0;
-    if (!config.qrUseTiers) return qrLevel.toDouble(); // Linear: 1 QR = 1%
-    // Tier mode: bonus jumps at configurable breakpoints
-    if (qrLevel <= config.qrTier1Max) return config.qrTier1Bonus;
-    if (qrLevel <= config.qrTier2Max) return config.qrTier2Bonus;
-    if (qrLevel <= config.qrTier3Max) return config.qrTier3Bonus;
-    if (qrLevel <= config.qrTier4Max) return config.qrTier4Bonus;
-    return config.qrTier5Bonus;
-  }
-
+  /// Get driver's effective percentage including QR tier benefit
   double getDriverPercentage({int driverQRLevel = 0}) {
-    return config.driverPercent + _getQRTierPercent(driverQRLevel) * config.qrPointValue;
+    return config.getEffectiveDriverPercent(driverQRLevel: driverQRLevel);
   }
 
-  double getPlatformTotalPercentage() {
-    return config.platformFeePercent +
+  /// Get platform's effective percentage including QR tier reduction
+  double getPlatformPercentage({int driverQRLevel = 0}) {
+    return config.getEffectivePlatformPercent(driverQRLevel: driverQRLevel);
+  }
+
+  double getPlatformTotalPercentage({int driverQRLevel = 0}) {
+    return config.getEffectivePlatformPercent(driverQRLevel: driverQRLevel) +
         config.insurancePercent +
         config.taxPercent;
   }
@@ -359,5 +335,7 @@ double calculateGrossFromDriverEarnings(
 //   );
 //   final config = SplitConfig.fromJson(pricing.toSplitConfig());
 //   final calculator = SplitCalculator(config);
-//   final breakdown = calculator.calculate(grossAmount: 20.0);
+//   final breakdown = calculator.calculate(grossAmount: 20.0, driverQRLevel: 8);
+//   // breakdown.platformPercent == 18% (Tier 2 reduction)
+//   // breakdown.driverPercent == 66%
 // ============================================================================

@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/message_model.dart';
@@ -12,8 +11,6 @@ import '../services/chat_service.dart';
 import '../services/report_service.dart';
 import '../utils/app_colors.dart';
 import '../utils/haptic_service.dart';
-import '../widgets/custom_keyboard.dart';
-
 /// Real-time Chat Screen - Driver to Rider messaging during active ride
 class MessagesScreen extends StatefulWidget {
   const MessagesScreen({super.key});
@@ -33,14 +30,9 @@ class _MessagesScreenState extends State<MessagesScreen> {
   bool _isSending = false;
   StreamSubscription? _messageSubscription;
 
-  // Custom keyboard state
-  bool _showTextKeyboard = false;
-  late FocusNode _keyboardListenerFocus;
-
   @override
   void initState() {
     super.initState();
-    _keyboardListenerFocus = FocusNode();
     _messageController.addListener(() => setState(() {}));
     _initializeChat();
   }
@@ -217,55 +209,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
     _messageSubscription?.cancel();
     _messageController.dispose();
     _scrollController.dispose();
-    _keyboardListenerFocus.dispose();
     super.dispose();
-  }
-
-  void _handleExternalKeyboardInput(String char) {
-    final value = _messageController.value;
-    final start = value.selection.baseOffset;
-    final end = value.selection.extentOffset;
-
-    if (start < 0) {
-      _messageController.text += char;
-    } else {
-      final newText = value.text.replaceRange(start, end, char);
-      _messageController.value = value.copyWith(
-        text: newText,
-        selection: TextSelection.collapsed(offset: start + char.length),
-      );
-    }
-    setState(() {});
-  }
-
-  void _handleExternalBackspace() {
-    if (_messageController.text.isEmpty) return;
-
-    final value = _messageController.value;
-    final start = value.selection.baseOffset;
-    final end = value.selection.extentOffset;
-
-    if (start < 0) {
-      _messageController.text = value.text.substring(0, value.text.length - 1);
-    } else if (start == end) {
-      _messageController.value = value.copyWith(
-        text: value.text.replaceRange(start - 1, end, ''),
-        selection: TextSelection.collapsed(offset: start - 1),
-      );
-    } else {
-      _messageController.value = value.copyWith(
-        text: value.text.replaceRange(start, end, ''),
-        selection: TextSelection.collapsed(offset: start),
-      );
-    }
-    setState(() {});
-  }
-
-  void _toggleTextKeyboard() {
-    _keyboardListenerFocus.requestFocus();
-    setState(() {
-      _showTextKeyboard = true;
-    });
   }
 
   @override
@@ -278,58 +222,28 @@ class _MessagesScreenState extends State<MessagesScreen> {
           return _buildNoActiveRide();
         }
 
-        return KeyboardListener(
-          focusNode: _keyboardListenerFocus,
-          onKeyEvent: (event) {
-            if (!_showTextKeyboard) return;
-            if (event is! KeyDownEvent) return;
-            if (event.logicalKey == LogicalKeyboardKey.backspace) {
-              _handleExternalBackspace();
-            } else if (event.character != null && event.character!.isNotEmpty) {
-              _handleExternalKeyboardInput(event.character!);
-            }
-          },
-          child: Scaffold(
-            backgroundColor: AppColors.background,
-            appBar: _buildAppBar(activeRide),
-            body: Stack(
-              children: [
-                Column(
-                  children: [
-                    // Quick responses
-                    _buildQuickResponses(),
+        return Scaffold(
+          backgroundColor: AppColors.background,
+          appBar: _buildAppBar(activeRide),
+          body: Column(
+            children: [
+              // Quick responses
+              _buildQuickResponses(),
 
-                    // Messages list
-                    Expanded(
-                      child: _isLoading
-                          ? const Center(
-                              child: CircularProgressIndicator(color: Color(0xFFFF9500)),
-                            )
-                          : _messages.isEmpty
-                              ? _buildEmptyChat(activeRide)
-                              : _buildMessagesList(activeRide),
-                    ),
+              // Messages list
+              Expanded(
+                child: _isLoading
+                    ? const Center(
+                        child: CircularProgressIndicator(color: Color(0xFFFF9500)),
+                      )
+                    : _messages.isEmpty
+                        ? _buildEmptyChat(activeRide)
+                        : _buildMessagesList(activeRide),
+              ),
 
-                    // Input field
-                    _buildInputField(),
-                  ],
-                ),
-                // Custom Keyboard Overlay
-                if (_showTextKeyboard)
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    child: CustomTextKeyboard(
-                      controller: _messageController,
-                      onDone: () {
-                        setState(() => _showTextKeyboard = false);
-                      },
-                      onChanged: () => setState(() {}),
-                    ),
-                  ),
-              ],
-            ),
+              // Input field
+              _buildInputField(),
+            ],
           ),
         );
       },
@@ -625,7 +539,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
               ),
               child: TextField(
                 controller: _messageController,
-                keyboardType: TextInputType.none,
+                keyboardType: TextInputType.text,
                 style: const TextStyle(color: AppColors.textPrimary),
                 decoration: InputDecoration(
                   hintText: 'Type a message...',
@@ -637,7 +551,6 @@ class _MessagesScreenState extends State<MessagesScreen> {
                   ),
                 ),
                 textCapitalization: TextCapitalization.sentences,
-                onTap: _toggleTextKeyboard,
                 onSubmitted: (_) => _sendMessage(),
               ),
             ),

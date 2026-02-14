@@ -6,6 +6,8 @@ import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'package:share_plus/share_plus.dart';
 // ignore: depend_on_referenced_packages
 import 'package:url_launcher/url_launcher_string.dart';
 import 'package:flutter/material.dart';
@@ -34,6 +36,8 @@ import '../services/mapbox_navigation_service.dart';
 import '../services/tourism_event_service.dart';
 import '../services/notification_service.dart';
 import '../services/cash_account_service.dart';
+import '../services/driver_qr_points_service.dart';
+import '../services/ride_service.dart';
 import 'earnings_screen.dart';
 import 'rides_screen.dart';
 import 'profile_screen.dart';
@@ -76,6 +80,7 @@ class _HomeScreenState extends State<HomeScreen>
   bool _showDailyEarnings = true;
   bool _showWeeklyEarnings = true;
   bool _showRentalSection = false; // Collapsed by default
+  bool _showQRTierExpanded = false; // QR tier panel expand/collapse
 
   // === APP LIFECYCLE OPTIMIZATION ===
   bool _isAppInBackground = false;
@@ -92,6 +97,10 @@ class _HomeScreenState extends State<HomeScreen>
 
   // === TOURISM CHAT NOTIFICATIONS ===
   RealtimeChannel? _chatMessagesChannel;
+
+  // === QR POINTS ===
+  final DriverQRPointsService _qrPointsService = DriverQRPointsService();
+  bool _qrServiceInitialized = false;
 
   // === CASH CONTROL ===
   final CashAccountService _cashService = CashAccountService();
@@ -117,6 +126,7 @@ class _HomeScreenState extends State<HomeScreen>
       _subscribeToNotifications();
       _subscribeToChatMessages();
       _loadCashAccountStatus();
+      _initQRService();
       // Request permissions sequentially so dialogs don't overlap
       _requestPermissionsSequentially();
       // Run tourism schema diagnostics on startup
@@ -251,6 +261,20 @@ class _HomeScreenState extends State<HomeScreen>
     } catch (e) {
       debugPrint('Error loading cash account: $e');
     }
+  }
+
+  void _initQRService() {
+    final driverProvider = Provider.of<DriverProvider>(context, listen: false);
+    final driver = driverProvider.driver;
+    if (driver == null || _qrServiceInitialized) return;
+
+    _qrPointsService.initialize(driver.id);
+    _qrPointsService.addListener(_onQRServiceUpdate);
+    _qrServiceInitialized = true;
+  }
+
+  void _onQRServiceUpdate() {
+    if (mounted) setState(() {});
   }
 
   void _subscribeToVehicleRequests() {
@@ -843,6 +867,9 @@ class _HomeScreenState extends State<HomeScreen>
     _unsubscribeFromNotifications();
     // Cleanup chat messages subscription
     _unsubscribeFromChatMessages();
+    // Cleanup QR points service
+    _qrPointsService.removeListener(_onQRServiceUpdate);
+    _qrPointsService.dispose();
     // Remove listener when disposing
     try {
       final driverProvider = Provider.of<DriverProvider>(
@@ -952,6 +979,8 @@ class _HomeScreenState extends State<HomeScreen>
                             _buildCashOwedBanner(),
                           _buildIncomingRides(),
                           _buildEarningsCard(),
+                          const SizedBox(height: 12),
+                          _buildQRTierPanel(),
                           const SizedBox(height: 12),
                           _buildTodayActivity(),
                           const SizedBox(height: 12),
@@ -1784,6 +1813,30 @@ class _HomeScreenState extends State<HomeScreen>
                 child: _FireGlowRideCard(
                   ride: ride,
                   pickupDistanceMiles: pickupDistanceMiles,
+                  driverQrTier: _qrPointsService.currentTier,
+                  onNegotiate: _qrPointsService.currentTier >= 1
+                      ? (proposedPrice) async {
+                          HapticService.mediumImpact();
+                          final driverId = driverProvider.driver?.id;
+                          if (driverId == null) return;
+                          final success = await rideProvider.proposePrice(
+                            rideId: ride.id,
+                            driverId: driverId,
+                            proposedPrice: proposedPrice,
+                            driverQrTier: _qrPointsService.currentTier,
+                          );
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(success
+                                    ? 'Oferta enviada: \$${proposedPrice.toStringAsFixed(2)}'
+                                    : rideProvider.error ?? 'Error al enviar oferta'),
+                                backgroundColor: success ? const Color(0xFF1E88E5) : Colors.red,
+                              ),
+                            );
+                          }
+                        }
+                      : null,
                   onTap: () {
                     HapticService.lightImpact();
                     _showRoutePreview(
@@ -1853,6 +1906,547 @@ class _HomeScreenState extends State<HomeScreen>
         );
       },
     );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // QR TIER PANEL - Blue transparent panel with tier info + QR code
+  // New model: QR scans per week → reduced Toro commission (not bonus %)
+  // Tier 0: 20% | Tier 1: 19% | Tier 2: 18% | Tier 3: 17% | Tier 4: 16% | Tier 5: 15%
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // Commission tiers: index 0 = no QR, 1-5 = tier 1-5
+  static const List<int> _tierMaxQRs = [0, 6, 12, 18, 24, 30];
+  static const List<double> _tierCommission = [20, 19, 18, 17, 16, 15];
+
+  int _getDriverTier(int qrLevel) {
+    if (qrLevel <= 0) return 0;
+    if (qrLevel <= 6) return 1;
+    if (qrLevel <= 12) return 2;
+    if (qrLevel <= 18) return 3;
+    if (qrLevel <= 24) return 4;
+    return 5;
+  }
+
+  double _getCommissionForTier(int tier) {
+    if (tier < 0 || tier > 5) return 20;
+    return _tierCommission[tier];
+  }
+
+  Widget _buildQRTierPanel() {
+    final driver = context.read<DriverProvider>().driver;
+    if (driver == null) return const SizedBox.shrink();
+
+    final qrCode = driver.qrCode ?? 'TORO-DRV-${driver.id.substring(0, 5).toUpperCase()}';
+    final qrLink = 'https://tororider.app/d/$qrCode';
+
+    // Live data from DriverQRPointsService
+    final qrLevel = _qrPointsService.currentLevel.level;
+    final currentTier = _qrPointsService.currentTier;
+    final currentCommission = _qrPointsService.effectivePlatformPercent;
+    final myRank = _qrPointsService.myStateRank;
+    final nextTierQRs = currentTier < 5
+        ? _tierMaxQRs[currentTier + 1] - qrLevel
+        : 0;
+    final nextCommission = currentTier < 5
+        ? _tierCommission[currentTier + 1]
+        : _tierCommission[5];
+    final progress = currentTier < 5 && _tierMaxQRs[currentTier + 1] > 0
+        ? qrLevel / _tierMaxQRs[currentTier + 1]
+        : 1.0;
+
+    const panelBlue = Color(0xFF1E88E5);
+    const panelSecondary = Color(0xFF00BCD4);
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            panelBlue.withValues(alpha: 0.40),
+            panelSecondary.withValues(alpha: 0.30),
+            AppColors.card.withValues(alpha: 0.85),
+          ],
+        ),
+        border: Border.all(
+          color: panelBlue.withValues(alpha: 0.5),
+          width: 1.2,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // === HEADER - always visible, tap to expand ===
+          InkWell(
+            onTap: () => setState(() => _showQRTierExpanded = !_showQRTierExpanded),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              child: Row(
+                children: [
+                  // QR icon
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [panelBlue, panelSecondary],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.qr_code_2_rounded, color: Colors.white, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Text(
+                              'Mi Nivel QR',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF00FF66).withValues(alpha: 0.55),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: const Color(0xFF00FF66).withValues(alpha: 0.7),
+                                ),
+                              ),
+                              child: Text(
+                                currentTier > 0 ? 'Tier $currentTier' : '$qrLevel QRs',
+                                style: const TextStyle(
+                                  color: Color(0xFF00FF66),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Comisión Toro: ${currentCommission.toStringAsFixed(0)}%'
+                          '${myRank > 0 ? ' · #$myRank en ranking' : ''}'
+                          '${currentTier < 5 ? ' · $nextTierQRs QRs para ${nextCommission.toStringAsFixed(0)}%' : ' · Máximo'}',
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    _showQRTierExpanded ? Icons.expand_less : Icons.expand_more,
+                    color: Colors.white70,
+                    size: 28,
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // === PROGRESS BAR - always visible ===
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: Container(
+              height: 6,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(3),
+              ),
+              child: FractionallySizedBox(
+                alignment: Alignment.centerLeft,
+                widthFactor: progress.clamp(0, 1).toDouble(),
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF00FF66), Color(0xFF00CC99)],
+                    ),
+                    borderRadius: BorderRadius.circular(3),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF00FF66).withValues(alpha: 0.4),
+                        blurRadius: 6,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // === EXPANDED CONTENT ===
+          if (_showQRTierExpanded) ...[
+            const SizedBox(height: 12),
+
+            // Tier table
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  children: List.generate(5, (i) {
+                    final tierNum = i + 1;
+                    final prevMax = i == 0 ? 0 : _tierMaxQRs[i];
+                    final maxQR = _tierMaxQRs[tierNum];
+                    final commission = _tierCommission[tierNum];
+                    final isCurrent = currentTier == tierNum;
+                    final isReached = qrLevel >= (prevMax + 1);
+
+                    return Container(
+                      margin: EdgeInsets.only(bottom: i < 4 ? 4 : 0),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: isCurrent
+                            ? const Color(0xFF00FF66).withValues(alpha: 0.12)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(8),
+                        border: isCurrent
+                            ? Border.all(color: const Color(0xFF00FF66).withValues(alpha: 0.3))
+                            : null,
+                      ),
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: 50,
+                            child: Text(
+                              'Tier $tierNum',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: isCurrent ? FontWeight.bold : FontWeight.w500,
+                                color: isCurrent
+                                    ? const Color(0xFF00FF66)
+                                    : isReached
+                                        ? Colors.white
+                                        : Colors.white54,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: Text(
+                              '${prevMax + 1}-$maxQR QRs',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isCurrent ? Colors.white : Colors.white60,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            '${commission.toStringAsFixed(0)}%',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: isCurrent
+                                  ? const Color(0xFF00FF66)
+                                  : isReached
+                                      ? Colors.greenAccent
+                                      : Colors.white54,
+                            ),
+                          ),
+                          if (isCurrent) ...[
+                            const SizedBox(width: 6),
+                            const Icon(Icons.arrow_back_rounded, size: 12, color: Color(0xFF00FF66)),
+                          ],
+                        ],
+                      ),
+                    );
+                  }),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // QR Code + Share buttons
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              child: Row(
+                children: [
+                  // Mini QR
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: QrImageView(
+                      data: qrLink,
+                      version: QrVersions.auto,
+                      size: 80,
+                      backgroundColor: Colors.white,
+                      eyeStyle: const QrEyeStyle(
+                        eyeShape: QrEyeShape.square,
+                        color: Color(0xFF1E88E5),
+                      ),
+                      dataModuleStyle: const QrDataModuleStyle(
+                        dataModuleShape: QrDataModuleShape.square,
+                        color: Color(0xFF1E88E5),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // Share buttons
+                  Expanded(
+                    child: Column(
+                      children: [
+                        // Code display
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            qrCode,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              letterSpacing: 1.5,
+                              fontFamily: 'monospace',
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        // Action row
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildQRActionButton(
+                                icon: Icons.fullscreen,
+                                label: 'Ver QR',
+                                onTap: () => _showFullQRCode(qrLink, qrCode),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _buildQRActionButton(
+                                icon: Icons.share,
+                                label: 'Compartir',
+                                onTap: () => _shareDriverQR(qrCode, qrLink),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 10),
+
+            // How it works hint
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.lightbulb_outline, color: Colors.amber, size: 16),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Riders escanean tu QR → ambos ganan puntos → tu comisión baja',
+                        style: TextStyle(color: Colors.white60, fontSize: 11),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+
+          const SizedBox(height: 10),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQRActionButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: const Color(0xFF1E88E5).withValues(alpha: 0.25),
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: Colors.white, size: 18),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showFullQRCode(String qrLink, String code) {
+    const panelBlue = Color(0xFF1E88E5);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          border: Border.all(color: panelBlue.withValues(alpha: 0.3)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade600,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'Comparte tu código QR',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Riders escanean → ambos ganan puntos → tu comisión baja',
+              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            // Large QR
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: panelBlue.withValues(alpha: 0.3),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: QrImageView(
+                data: qrLink,
+                version: QrVersions.auto,
+                size: 220,
+                backgroundColor: Colors.white,
+                eyeStyle: const QrEyeStyle(eyeShape: QrEyeShape.square, color: panelBlue),
+                dataModuleStyle: const QrDataModuleStyle(dataModuleShape: QrDataModuleShape.square, color: panelBlue),
+              ),
+            ),
+            const SizedBox(height: 16),
+            // Code display
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              decoration: BoxDecoration(
+                color: panelBlue.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                code,
+                style: const TextStyle(
+                  fontSize: 20, fontWeight: FontWeight.bold,
+                  color: panelBlue, letterSpacing: 2,
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            // Buttons
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: qrLink));
+                      ScaffoldMessenger.of(ctx).showSnackBar(
+                        const SnackBar(content: Text('Link copiado')),
+                      );
+                    },
+                    icon: const Icon(Icons.copy, size: 18),
+                    label: const Text('Copiar Link'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: panelBlue,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _shareDriverQR(code, qrLink),
+                    icon: const Icon(Icons.share, size: 18),
+                    label: const Text('Compartir'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: panelBlue,
+                      side: const BorderSide(color: panelBlue),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(qrLink, style: TextStyle(fontSize: 11, color: AppColors.textTertiary)),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _shareDriverQR(String code, String link) async {
+    final message = 'Únete a TORO y escanea mi QR. '
+        'Ambos ganamos puntos para bajar comisiones.\n'
+        'Código: $code\n$link';
+    await Clipboard.setData(ClipboardData(text: link));
+    await Share.share(message, subject: 'TORO Driver - Mi código QR');
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -2892,6 +3486,8 @@ class _FireGlowRideCard extends StatefulWidget {
   final VoidCallback? onReject;
   final VoidCallback? onTap;
   final double? pickupDistanceMiles; // Distance from driver to pickup
+  final int driverQrTier; // Driver's QR tier (0-5) for negotiate eligibility
+  final void Function(double proposedPrice)? onNegotiate;
 
   const _FireGlowRideCard({
     required this.ride,
@@ -2899,6 +3495,8 @@ class _FireGlowRideCard extends StatefulWidget {
     this.onReject,
     this.onTap,
     this.pickupDistanceMiles,
+    this.driverQrTier = 0,
+    this.onNegotiate,
   });
 
   @override
@@ -2983,6 +3581,269 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
     return sortedDays
         .map((d) => d >= 1 && d <= 7 ? dayLetters[d] : '?')
         .join(' ');
+  }
+
+  // Negotiate dialog - slider to propose a higher price
+  void _showNegotiateDialog() {
+    final baseFare = widget.ride.fare;
+    final maxPercent = RideService.getMaxNegotiatePercent(widget.driverQrTier);
+    final maxPrice = baseFare * (1 + maxPercent / 100);
+    double proposedPrice = baseFare;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            final increase = proposedPrice - baseFare;
+            final increasePercent = baseFare > 0 ? (increase / baseFare) * 100 : 0.0;
+
+            return Container(
+              margin: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: const Color(0xFF1E88E5).withValues(alpha: 0.5),
+                ),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Header
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF1E88E5), Color(0xFF00BCD4)],
+                          ),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.handshake_rounded, color: Colors.white, size: 20),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Negociar Precio',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            Text(
+                              'Tier ${widget.driverQrTier} - Hasta +${maxPercent.toStringAsFixed(0)}%',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF1E88E5),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        icon: const Icon(Icons.close_rounded, color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Price display
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Precio original',
+                            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                          ),
+                          Text(
+                            '\$${baseFare.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              color: AppColors.textSecondary,
+                              decoration: TextDecoration.lineThrough,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          const Text(
+                            'Tu oferta',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF1E88E5),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Text(
+                            '\$${proposedPrice.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF1E88E5),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+
+                  // Increase indicator
+                  if (increase > 0)
+                    Container(
+                      margin: const EdgeInsets.only(top: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF00FF66).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '+\$${increase.toStringAsFixed(2)} (+${increasePercent.toStringAsFixed(0)}%)',
+                        style: const TextStyle(
+                          color: Color(0xFF00FF66),
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+
+                  const SizedBox(height: 16),
+
+                  // Slider
+                  SliderTheme(
+                    data: SliderThemeData(
+                      activeTrackColor: const Color(0xFF1E88E5),
+                      inactiveTrackColor: const Color(0xFF1E88E5).withValues(alpha: 0.2),
+                      thumbColor: const Color(0xFF1E88E5),
+                      overlayColor: const Color(0xFF1E88E5).withValues(alpha: 0.15),
+                      trackHeight: 6,
+                    ),
+                    child: Slider(
+                      value: proposedPrice,
+                      min: baseFare,
+                      max: maxPrice,
+                      divisions: ((maxPrice - baseFare) / 0.5).round().clamp(1, 100),
+                      onChanged: (value) {
+                        setModalState(() {
+                          proposedPrice = double.parse(value.toStringAsFixed(2));
+                        });
+                      },
+                    ),
+                  ),
+
+                  // Quick select buttons
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [5, 10, 15, 20, 25, 30]
+                        .where((p) => p <= maxPercent)
+                        .map((percent) {
+                      final price = baseFare * (1 + percent / 100);
+                      final isSelected = (proposedPrice - price).abs() < 0.01;
+                      return GestureDetector(
+                        onTap: () {
+                          setModalState(() {
+                            proposedPrice = double.parse(price.toStringAsFixed(2));
+                          });
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? const Color(0xFF1E88E5)
+                                : const Color(0xFF1E88E5).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: const Color(0xFF1E88E5).withValues(alpha: isSelected ? 1 : 0.3),
+                            ),
+                          ),
+                          child: Text(
+                            '+$percent%',
+                            style: TextStyle(
+                              color: isSelected ? Colors.white : const Color(0xFF1E88E5),
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+
+                  const SizedBox(height: 8),
+                  Text(
+                    'El rider tiene 30 seg para aceptar o rechazar',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textTertiary,
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Send offer button
+                  SizedBox(
+                    width: double.infinity,
+                    child: GestureDetector(
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        widget.onNegotiate?.call(proposedPrice);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF1E88E5), Color(0xFF00BCD4)],
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF1E88E5).withValues(alpha: 0.4),
+                              blurRadius: 12,
+                              spreadRadius: 1,
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.send_rounded, color: Colors.white, size: 18),
+                            const SizedBox(width: 8),
+                            Text(
+                              'ENVIAR OFERTA \$${proposedPrice.toStringAsFixed(2)}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -3425,10 +4286,10 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                   ),
                 ],
                 const SizedBox(height: 10),
-                // Buttons row - ACCEPT / REJECT prominently displayed
+                // Buttons row - REJECT / NEGOTIATE / ACCEPT
                 Row(
                   children: [
-                    // Reject button (X) - larger and more visible
+                    // Reject button (X)
                     GestureDetector(
                       behavior: HitTestBehavior.opaque,
                       onTap: () {
@@ -3436,7 +4297,7 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                       },
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
+                          horizontal: 12,
                           vertical: 12,
                         ),
                         decoration: BoxDecoration(
@@ -3447,28 +4308,53 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                             width: 1.5,
                           ),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.close_rounded,
-                              color: AppColors.error,
-                              size: 18,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              'RECHAZAR',
-                              style: TextStyle(
-                                color: AppColors.error,
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
+                        child: Icon(
+                          Icons.close_rounded,
+                          color: AppColors.error,
+                          size: 18,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    // Negotiate button - only for QR Tier 1+
+                    if (widget.driverQrTier >= 1 && widget.onNegotiate != null) ...[
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () => _showNegotiateDialog(),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF1E88E5), Color(0xFF00BCD4)],
+                            ),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.handshake_rounded,
+                                color: Colors.white,
+                                size: 16,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'NEGOCIAR',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(width: 8),
                     // Accept button - ACEPTAR VIAJE (clear CTA)
                     Expanded(
                       child: GestureDetector(
@@ -3507,7 +4393,7 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                               ),
                               const SizedBox(width: 6),
                               Text(
-                                'ACEPTAR VIAJE',
+                                'ACEPTAR',
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 13,

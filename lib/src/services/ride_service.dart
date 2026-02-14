@@ -230,6 +230,100 @@ class RideService {
     throw Exception('Ride not found after accept');
   }
 
+  // ============================================================================
+  // NEGOTIATION - Didi-style price negotiation for QR-tier drivers
+  // ============================================================================
+
+  /// Propose a new price for a ride (negotiation)
+  /// Only available for drivers at QR Tier 1+
+  /// Sets negotiation_status = 'proposed' on the ride
+  Future<RideModel> proposePrice({
+    required String rideId,
+    required String driverId,
+    required double proposedPrice,
+    required int driverQrTier,
+    String serviceType = 'ride',
+  }) async {
+    final expiresAt = DateTime.now().add(const Duration(seconds: 30));
+
+    final updateData = <String, dynamic>{
+      'driver_proposed_price': proposedPrice,
+      'negotiation_status': 'proposed',
+      'proposing_driver_id': driverId,
+      'negotiation_expires_at': expiresAt.toIso8601String(),
+      'driver_qr_tier': driverQrTier,
+    };
+
+    try {
+      await _trackRideResponse(driverId, rideId, serviceType, 'negotiating');
+    } catch (e) {
+      debugPrint('Warning: Could not track negotiation: $e');
+    }
+
+    Map<String, dynamic> response;
+    if (serviceType == 'carpool') {
+      response = await _client
+          .from('share_ride_bookings')
+          .update(updateData)
+          .eq('id', rideId)
+          .eq('status', 'pending')
+          .select()
+          .single();
+      response['service_type'] = 'carpool';
+    } else {
+      response = await _client
+          .from(SupabaseConfig.packageDeliveriesTable)
+          .update(updateData)
+          .eq('id', rideId)
+          .eq('status', 'pending')
+          .select()
+          .single();
+    }
+
+    return RideModel.fromJson(response);
+  }
+
+  /// Cancel a negotiation (driver withdraws their offer)
+  Future<void> cancelNegotiation({
+    required String rideId,
+    required String driverId,
+    String serviceType = 'ride',
+  }) async {
+    final updateData = <String, dynamic>{
+      'driver_proposed_price': null,
+      'negotiation_status': null,
+      'proposing_driver_id': null,
+      'negotiation_expires_at': null,
+      'driver_qr_tier': 0,
+    };
+
+    if (serviceType == 'carpool') {
+      await _client
+          .from('share_ride_bookings')
+          .update(updateData)
+          .eq('id', rideId)
+          .eq('proposing_driver_id', driverId);
+    } else {
+      await _client
+          .from(SupabaseConfig.packageDeliveriesTable)
+          .update(updateData)
+          .eq('id', rideId)
+          .eq('proposing_driver_id', driverId);
+    }
+  }
+
+  /// Get the max negotiate percentage for a QR tier
+  static double getMaxNegotiatePercent(int qrTier) {
+    switch (qrTier) {
+      case 1: return 10.0;
+      case 2: return 15.0;
+      case 3: return 20.0;
+      case 4: return 25.0;
+      case 5: return 30.0;
+      default: return 0.0; // Tier 0 cannot negotiate
+    }
+  }
+
   // Reject ride - driver declines the ride offer
   Future<void> rejectRide(String rideId, String driverId, {String serviceType = 'ride'}) async {
     await _trackRideResponse(driverId, rideId, serviceType, 'rejected');

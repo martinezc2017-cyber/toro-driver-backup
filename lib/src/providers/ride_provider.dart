@@ -292,6 +292,68 @@ class RideProvider with ChangeNotifier {
     }
   }
 
+  // ============================================================================
+  // NEGOTIATION - Didi-style price negotiation
+  // ============================================================================
+
+  /// Propose a new price for a ride
+  /// Returns true if the proposal was sent successfully
+  Future<bool> proposePrice({
+    required String rideId,
+    required String driverId,
+    required double proposedPrice,
+    required int driverQrTier,
+  }) async {
+    try {
+      // Get service type
+      String serviceType = 'ride';
+      try {
+        final ride = _availableRides.firstWhere((r) => r.id == rideId);
+        serviceType = ride.type == RideType.package ? 'delivery'
+            : ride.type == RideType.carpool ? 'carpool'
+            : 'ride';
+      } catch (_) {}
+
+      await _rideService.proposePrice(
+        rideId: rideId,
+        driverId: driverId,
+        proposedPrice: proposedPrice,
+        driverQrTier: driverQrTier,
+        serviceType: serviceType,
+      );
+
+      // Remove from available list (driver is now waiting for response)
+      _availableRides = _availableRides.where((r) => r.id != rideId).toList();
+      _error = null;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = 'Error al enviar oferta: $e';
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Cancel a pending negotiation
+  Future<void> cancelNegotiation(String rideId, String driverId) async {
+    try {
+      String serviceType = 'ride';
+      try {
+        final ride = _availableRides.firstWhere((r) => r.id == rideId);
+        serviceType = ride.type == RideType.carpool ? 'carpool' : 'ride';
+      } catch (_) {}
+
+      await _rideService.cancelNegotiation(
+        rideId: rideId,
+        driverId: driverId,
+        serviceType: serviceType,
+      );
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error cancelling negotiation: $e');
+    }
+  }
+
   // Dismiss/reject a ride - tracks rejection for acceptance rate
   Future<void> dismissRide(String rideId, String driverId) async {
     // Get service type before removing

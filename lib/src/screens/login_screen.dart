@@ -11,7 +11,6 @@ import '../services/biometric_service.dart';
 import '../utils/app_colors.dart';
 import '../utils/haptic_service.dart';
 import '../widgets/neon_widgets.dart';
-import '../widgets/custom_keyboard.dart';
 import '../core/logging/app_logger.dart';
 
 /// Luxury Dark Login Screen for TORO Driver
@@ -36,19 +35,11 @@ class _LoginScreenState extends State<LoginScreen>
   final _lastNameController = TextEditingController();
   final _phoneController = TextEditingController();
 
-  // Custom keyboard state
-  bool _showEmailKeyboard = false;
-  bool _showPasswordKeyboard = false;
-  String? _activeField; // 'email', 'password', 'firstName', 'lastName', 'phone'
-  late FocusNode _keyboardListenerFocus;
   final FocusNode _emailFocusNode = FocusNode();
   final FocusNode _passwordFocusNode = FocusNode();
   final FocusNode _firstNameFocusNode = FocusNode();
   final FocusNode _lastNameFocusNode = FocusNode();
   final FocusNode _phoneFocusNode = FocusNode();
-
-  // Helper to check if any keyboard is showing
-  bool get _isKeyboardShowing => _showEmailKeyboard || _showPasswordKeyboard;
 
   // Biometric state
   bool _biometricAvailable = false;
@@ -74,7 +65,6 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   void initState() {
     super.initState();
-    _keyboardListenerFocus = FocusNode();
     _emailController.addListener(() => setState(() {}));
     _passwordController.addListener(() => setState(() {}));
     _firstNameController.addListener(() => setState(() {}));
@@ -297,7 +287,6 @@ class _LoginScreenState extends State<LoginScreen>
     _particleController.dispose();
     _cityLightsController.dispose();
     _carFlowController.dispose();
-    _keyboardListenerFocus.dispose();
     _emailFocusNode.dispose();
     _passwordFocusNode.dispose();
     _firstNameFocusNode.dispose();
@@ -454,75 +443,12 @@ class _LoginScreenState extends State<LoginScreen>
     }
   }
 
-  void _handleExternalKeyboardInput(String char) {
-    final controller = _activeField == 'email' ? _emailController :
-        _activeField == 'password' ? _passwordController :
-        _activeField == 'firstName' ? _firstNameController :
-        _activeField == 'lastName' ? _lastNameController :
-        _activeField == 'phone' ? _phoneController : null;
-
-    if (controller == null) return;
-
-    final value = controller.value;
-    final start = value.selection.baseOffset;
-    final end = value.selection.extentOffset;
-
-    if (start < 0) {
-      controller.text += char;
-    } else {
-      final newText = value.text.replaceRange(start, end, char);
-      controller.value = value.copyWith(
-        text: newText,
-        selection: TextSelection.collapsed(offset: start + char.length),
-      );
-    }
-  }
-
-  void _handleExternalBackspace() {
-    final controller = _activeField == 'email' ? _emailController :
-        _activeField == 'password' ? _passwordController :
-        _activeField == 'firstName' ? _firstNameController :
-        _activeField == 'lastName' ? _lastNameController :
-        _activeField == 'phone' ? _phoneController : null;
-
-    if (controller == null || controller.text.isEmpty) return;
-
-    final value = controller.value;
-    final start = value.selection.baseOffset;
-    final end = value.selection.extentOffset;
-
-    if (start < 0) {
-      controller.text = value.text.substring(0, value.text.length - 1);
-    } else if (start == end) {
-      controller.value = value.copyWith(
-        text: value.text.replaceRange(start - 1, end, ''),
-        selection: TextSelection.collapsed(offset: start - 1),
-      );
-    } else {
-      controller.value = value.copyWith(
-        text: value.text.replaceRange(start, end, ''),
-        selection: TextSelection.collapsed(offset: start),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
 
-    return KeyboardListener(
-      focusNode: _keyboardListenerFocus,
-      onKeyEvent: (event) {
-        if (_activeField == null) return;
-        if (event is! KeyDownEvent) return;
-        if (event.logicalKey == LogicalKeyboardKey.backspace) {
-          _handleExternalBackspace();
-        } else if (event.character != null && event.character!.isNotEmpty) {
-          _handleExternalKeyboardInput(event.character!);
-        }
-      },
-      child: Scaffold(
-        backgroundColor: AppColors.background,
+    return Scaffold(
+      backgroundColor: AppColors.background,
       body: Stack(
         children: [
           // Animated city background with skyline and highway
@@ -535,15 +461,8 @@ class _LoginScreenState extends State<LoginScreen>
             child: Center(
               child: ConstrainedBox(
                 constraints: BoxConstraints(maxWidth: kIsWeb ? 420 : double.infinity),
-                child: AnimatedPadding(
-                  duration: const Duration(milliseconds: 250),
-                  curve: Curves.easeOut,
-                  padding: EdgeInsets.only(
-                    left: 20,
-                    right: 20,
-                    top: _isKeyboardShowing ? 8 : 20,
-                    bottom: _isKeyboardShowing ? 190 : 20,
-                  ),
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
                   child: SingleChildScrollView(
                     physics: const BouncingScrollPhysics(),
                     child: Form(
@@ -551,34 +470,22 @@ class _LoginScreenState extends State<LoginScreen>
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          // Logo section - hides when keyboard shows
-                          AnimatedSize(
-                            duration: const Duration(milliseconds: 250),
-                            curve: Curves.easeOut,
-                            child: AnimatedOpacity(
-                              duration: const Duration(milliseconds: 200),
-                              opacity: _isKeyboardShowing ? 0.0 : 1.0,
-                              child: _isKeyboardShowing
-                                  ? const SizedBox.shrink()
-                                  : Column(
-                                      children: [
-                                        const SizedBox(height: 20),
-                                        _buildAnimatedLogo(),
-                                        const SizedBox(height: 24),
-                                        _buildBrandName(),
-                                        const SizedBox(height: 8),
-                                        _buildTagline(),
-                                        const SizedBox(height: 40),
-                                      ],
-                                    ),
-                            ),
+                          // Logo section
+                          Column(
+                            children: [
+                              const SizedBox(height: 20),
+                              _buildAnimatedLogo(),
+                              const SizedBox(height: 24),
+                              _buildBrandName(),
+                              const SizedBox(height: 8),
+                              _buildTagline(),
+                              const SizedBox(height: 40),
+                            ],
                           ),
                           _buildAuthCard(),
-                          if (!_isKeyboardShowing) ...[
-                            const SizedBox(height: 24),
-                            _buildVersion(),
-                            const SizedBox(height: 20),
-                          ],
+                          const SizedBox(height: 24),
+                          _buildVersion(),
+                          const SizedBox(height: 20),
                         ],
                       ),
                     ),
@@ -587,40 +494,7 @@ class _LoginScreenState extends State<LoginScreen>
               ),
             ),
           ),
-
-          // Custom Keyboard Overlays with slide animation
-          AnimatedPositioned(
-            duration: const Duration(milliseconds: 250),
-            curve: Curves.easeOut,
-            left: 0,
-            right: 0,
-            bottom: _showEmailKeyboard ? 0 : -300,
-            child: CustomEmailKeyboard(
-              controller: _emailController,
-              onDone: () {
-                setState(() => _showEmailKeyboard = false);
-                _activeField = null;
-              },
-              onChanged: () => setState(() {}),
-            ),
-          ),
-          AnimatedPositioned(
-            duration: const Duration(milliseconds: 250),
-            curve: Curves.easeOut,
-            left: 0,
-            right: 0,
-            bottom: _showPasswordKeyboard ? 0 : -300,
-            child: CustomTextKeyboard(
-              controller: _passwordController,
-              onDone: () {
-                setState(() => _showPasswordKeyboard = false);
-                _activeField = null;
-              },
-              onChanged: () => setState(() {}),
-            ),
-          ),
         ],
-      ),
       ),
     );
   }
@@ -1005,37 +879,11 @@ class _LoginScreenState extends State<LoginScreen>
     return TextFormField(
       controller: controller,
       focusNode: fieldFocus,
-      keyboardType: TextInputType.none, // Disable system keyboard
-      readOnly: true,
-      showCursor: true,
+      keyboardType: keyboardType,
       cursorColor: AppColors.primary,
       validator: validator,
       autovalidateMode: AutovalidateMode.onUserInteraction,
       style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
-      onTap: () {
-        if (isEmailField) {
-          setState(() {
-            _showEmailKeyboard = true;
-            _showPasswordKeyboard = false;
-            _activeField = 'email';
-          });
-        } else if (isPhoneField) {
-          setState(() {
-            _showPasswordKeyboard = false;
-            _showEmailKeyboard = false;
-            _activeField = 'phone';
-          });
-        } else {
-          setState(() {
-            _showEmailKeyboard = false;
-            _showPasswordKeyboard = false;
-            _activeField = controller == _firstNameController ? 'firstName' :
-                          controller == _lastNameController ? 'lastName' : 'text';
-          });
-        }
-        // Keep focus on the text field so cursor blinks
-        fieldFocus.requestFocus();
-      },
       decoration: InputDecoration(
         labelText: label,
         labelStyle: TextStyle(color: AppColors.textSecondary, fontSize: 13),
@@ -1086,24 +934,12 @@ class _LoginScreenState extends State<LoginScreen>
       controller: _passwordController,
       focusNode: _passwordFocusNode,
       obscureText: _obscurePassword,
-      keyboardType: TextInputType.none, // Disable system keyboard
-      readOnly: true,
-      showCursor: true,
       cursorColor: AppColors.primary,
       autovalidateMode: AutovalidateMode.onUserInteraction,
       validator: (v) {
         if (v!.isEmpty) return 'Enter your password';
         if (v.length < 6) return 'Minimum 6 characters';
         return null;
-      },
-      onTap: () {
-        setState(() {
-          _showPasswordKeyboard = true;
-          _showEmailKeyboard = false;
-          _activeField = 'password';
-        });
-        // Keep focus on the password field so cursor blinks
-        _passwordFocusNode.requestFocus();
       },
       style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
       decoration: InputDecoration(

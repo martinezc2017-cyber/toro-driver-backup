@@ -342,6 +342,16 @@ class _EarningsBreakdownScreenState extends ConsumerState<EarningsBreakdownScree
                 _summary['platform_fee'],
                 negative: true,
               ),
+              // Show QR tier reduction info if applicable
+              if ((_summary['qr_commission_reduction'] as num?)?.toDouble() != null &&
+                  ((_summary['qr_commission_reduction'] as num?)?.toDouble() ?? 0) > 0)
+                _buildRow(
+                  '🎯 Reducción QR Tier ${_summary['qr_tier'] ?? ''}',
+                  null,
+                  color: const Color(0xFF00BCD4),
+                  icon: Icons.qr_code_2_rounded,
+                ),
+              _buildRow('IVA (16%)', _summary['tax_fee'], negative: true),
               _buildDivider(),
               _buildRow('Tarifa Neta', _summary['net_fares'], bold: true, color: AppTheme.success),
             ],

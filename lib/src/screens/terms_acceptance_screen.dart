@@ -1,5 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/legal/consent_service.dart';
 import '../core/legal/legal_constants.dart';
@@ -105,6 +106,9 @@ class _TermsAcceptanceScreenState extends State<TermsAcceptanceScreen> {
         'timeMs=$timeSpent',
       );
 
+      // Request GPS permission AFTER T&C accepted
+      await _requestLocationPermissions();
+
       if (mounted) {
         Navigator.pushReplacementNamed(context, '/auth');
       }
@@ -122,6 +126,101 @@ class _TermsAcceptanceScreenState extends State<TermsAcceptanceScreen> {
       if (mounted) {
         setState(() => _isProcessing = false);
       }
+    }
+  }
+
+  Future<void> _requestLocationPermissions() async {
+    try {
+      // 1. Check if GPS service is enabled on the device
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        AppLogger.log('TERMS -> GPS service disabled, showing dialog');
+        if (!mounted) return;
+        final shouldOpen = await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => AlertDialog(
+            icon: const Icon(Icons.location_off, size: 48, color: Colors.orange),
+            title: Text('gps_required_title'.tr()),
+            content: Text('gps_required_message'.tr()),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text('gps_skip'.tr()),
+              ),
+              FilledButton.icon(
+                onPressed: () => Navigator.pop(ctx, true),
+                icon: const Icon(Icons.location_on),
+                label: Text('gps_enable_button'.tr()),
+              ),
+            ],
+          ),
+        );
+        if (shouldOpen == true) {
+          await Geolocator.openLocationSettings();
+        }
+        return;
+      }
+
+      // 2. Check permission status
+      LocationPermission permission = await Geolocator.checkPermission();
+
+      if (permission == LocationPermission.denied) {
+        if (!mounted) return;
+        await showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            icon: const Icon(Icons.my_location, size: 48, color: Colors.blue),
+            title: Text('gps_permission_denied_title'.tr()),
+            content: Text('gps_permission_denied_message'.tr()),
+            actions: [
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text('gps_ok'.tr()),
+              ),
+            ],
+          ),
+        );
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          AppLogger.log('TERMS -> GPS permission denied by user');
+          return;
+        }
+      }
+
+      // 3. Handle permanently denied
+      if (permission == LocationPermission.deniedForever) {
+        AppLogger.log('TERMS -> GPS permission denied forever');
+        if (!mounted) return;
+        final shouldOpen = await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => AlertDialog(
+            icon: const Icon(Icons.location_disabled, size: 48, color: Colors.red),
+            title: Text('gps_permission_blocked_title'.tr()),
+            content: Text('gps_permission_blocked_message'.tr()),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text('gps_skip'.tr()),
+              ),
+              FilledButton.icon(
+                onPressed: () => Navigator.pop(ctx, true),
+                icon: const Icon(Icons.settings),
+                label: Text('gps_open_settings'.tr()),
+              ),
+            ],
+          ),
+        );
+        if (shouldOpen == true) {
+          await Geolocator.openAppSettings();
+        }
+        return;
+      }
+
+      AppLogger.log('TERMS -> GPS permission granted: $permission');
+    } catch (e) {
+      AppLogger.log('TERMS -> Error requesting GPS: $e');
     }
   }
 

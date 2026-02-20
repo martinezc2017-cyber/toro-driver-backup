@@ -108,6 +108,16 @@ ${getMexicoAddendum(languageCode)}
 ''';
   }
 
+  static String getOrganizerPlatformAgreement(String languageCode) {
+    switch (languageCode.toLowerCase()) {
+      case 'es':
+      case 'es-mx':
+        return _organizerAgreementEs;
+      default:
+        return _organizerAgreementEn;
+    }
+  }
+
   /// Default combined legal document (English)
   static String get combinedLegalDocument => getCombinedDocument('en');
 
@@ -1727,6 +1737,526 @@ En Mexico, tambien debe:
 
 ================================================================================
 FIN DE LA ADENDA DE MEXICO v${LegalConstants.mexicoAddendumVersion}
+================================================================================
+''';
+
+  // ============================================================================
+  // ORGANIZER PLATFORM AGREEMENT - ENGLISH
+  // ============================================================================
+
+  static String get _organizerAgreementEn => '''
+================================================================================
+ORGANIZER PLATFORM AGREEMENT v${LegalConstants.organizerAgreementVersion}
+${LegalConstants.companyLegalName}
+Effective Date: ${DateTime.now().toString().split(' ')[0]}
+================================================================================
+
+1. DEFINITIONS AND PARTIES
+
+This Organizer Platform Agreement ("Agreement") is entered into between:
+
+- ${LegalConstants.companyLegalName}, a company organized under the laws of the
+  ${LegalConstants.companyJurisdiction} ("TORO", "Company", "Platform", "we", "us")
+
+- You, the individual or entity registering as an event organizer on the TORO
+  platform ("Organizer", "you", "your")
+
+"Platform" refers to the TORO mobile application and related services.
+"Event" refers to any transportation event, trip, tour, or route you create.
+"Vehicle Provider" refers to drivers or vehicle owners who bid on your events.
+"Commission" refers to the percentage fee charged by TORO on transactions.
+
+--------------------------------------------------------------------------------
+
+2. SCOPE OF THE PLATFORM
+
+2.1 TORO operates as a technology marketplace that connects event organizers
+    with vehicle providers. TORO does NOT:
+    - Own, operate, or control any vehicles
+    - Employ or manage vehicle providers
+    - Guarantee the availability of vehicles
+    - Provide transportation services directly
+
+2.2 TORO provides:
+    - A digital platform to create and publish transportation events
+    - A bidding system for vehicle providers to offer their services
+    - Payment processing and invoicing tools
+    - Communication channels between organizers and providers
+    - Real-time GPS tracking during active events
+
+2.3 You acknowledge that TORO acts solely as an intermediary. The transportation
+    contract is between you (Organizer) and the Vehicle Provider.
+
+--------------------------------------------------------------------------------
+
+3. ORGANIZER OBLIGATIONS
+
+3.1 ACCURATE INFORMATION: You agree to provide truthful and accurate information
+    for all events, including but not limited to:
+    - Event dates, times, and locations
+    - Number of passengers or seats required
+    - Itinerary and route details
+    - Any special requirements or restrictions
+
+3.2 LEGAL COMPLIANCE: You are solely responsible for:
+    - Obtaining all necessary permits, licenses, and authorizations for your events
+    - Complying with local, state, and federal transportation regulations
+    - Ensuring your events comply with all applicable laws
+    - Obtaining appropriate insurance for your events if required by law
+
+3.3 PASSENGER SAFETY: You agree to:
+    - Not organize events involving illegal activities
+    - Inform passengers of safety requirements
+    - Provide accurate information about pickup/dropoff locations
+    - Cooperate with vehicle providers on safety matters
+
+3.4 PROHIBITED ACTIVITIES: You may NOT use the platform to:
+    - Organize events for the transport of illegal goods or substances
+    - Discriminate against passengers based on race, religion, gender,
+      sexual orientation, disability, or national origin
+    - Engage in fraudulent or deceptive practices
+    - Circumvent the platform to avoid commission fees
+    - Share your account credentials with third parties
+
+--------------------------------------------------------------------------------
+
+4. COMMISSIONS AND PAYMENTS
+
+4.1 SERVICE FEE: TORO charges a commission of 18% (eighteen percent) on the
+    total transaction amount for each completed event. This commission is
+    automatically deducted before funds are transferred to the Vehicle Provider.
+
+4.2 TRIAL PERIOD: The current commission rate may be subject to change. TORO
+    reserves the right to modify the commission rate with 30 days written notice.
+
+4.3 PAYMENT PROCESSING: All payments are processed through the TORO platform.
+    Direct payments between organizers and vehicle providers that bypass the
+    platform are strictly prohibited and may result in account termination.
+
+4.4 REFUNDS AND CANCELLATIONS: Refund and cancellation policies are established
+    per event. TORO may retain a portion of the commission for processing
+    cancelled events, as described in the cancellation policy.
+
+4.5 TAX RESPONSIBILITY: You are solely responsible for:
+    - Reporting all income earned through the platform to relevant tax authorities
+    - Paying all applicable federal, state, and local taxes
+    - Issuing any required tax documents to passengers (if applicable)
+    - Complying with sales tax, VAT, or other transaction tax requirements
+    TORO does not provide tax advice and is not responsible for your tax obligations.
+
+--------------------------------------------------------------------------------
+
+5. INTELLECTUAL PROPERTY
+
+5.1 The TORO name, logo, trademarks, and all platform content are the exclusive
+    property of ${LegalConstants.companyLegalName}.
+
+5.2 You are granted a limited, non-exclusive, non-transferable license to use
+    the TORO platform for organizing transportation events.
+
+5.3 You may not use the TORO brand in any external marketing, advertising, or
+    promotional materials without prior written consent.
+
+5.4 Any content you upload to the platform (event descriptions, images, logos)
+    remains your property, but you grant TORO a non-exclusive license to
+    display such content within the platform.
+
+--------------------------------------------------------------------------------
+
+6. PRIVACY AND DATA
+
+6.1 TORO collects and processes personal data as described in our Privacy Policy.
+
+6.2 Data collected from organizers may include:
+    - Name, email, phone number, company information
+    - Event creation and management history
+    - Financial transaction records
+    - Device information and IP addresses
+    - GPS location data (with your consent)
+
+6.3 We comply with applicable data protection laws including CCPA (California),
+    and applicable Mexican data protection regulations (LFPDPPP).
+
+6.4 You agree not to misuse personal data of passengers or vehicle providers
+    obtained through the platform.
+
+--------------------------------------------------------------------------------
+
+7. LIMITATION OF LIABILITY
+
+7.1 TORO IS A TECHNOLOGY MARKETPLACE, NOT A TRANSPORTATION PROVIDER.
+
+7.2 TO THE MAXIMUM EXTENT PERMITTED BY LAW, TORO SHALL NOT BE LIABLE FOR:
+    - Accidents, injuries, or property damage during transportation events
+    - Acts, omissions, or negligence of vehicle providers
+    - Delays, cancellations, or service interruptions by vehicle providers
+    - Loss of revenue or business opportunities
+    - Any indirect, incidental, special, or consequential damages
+
+7.3 TORO's total liability for any claim arising from this Agreement shall not
+    exceed the total commissions paid by or on behalf of you in the twelve (12)
+    months preceding the claim.
+
+7.4 THE PLATFORM IS PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT WARRANTIES OF
+    ANY KIND, EXPRESS OR IMPLIED.
+
+--------------------------------------------------------------------------------
+
+8. INDEMNIFICATION
+
+8.1 You agree to indemnify, defend, and hold harmless ${LegalConstants.companyLegalName},
+    its officers, directors, employees, agents, and affiliates from and against
+    any and all claims, damages, losses, liabilities, costs, and expenses
+    (including reasonable attorneys' fees) arising out of or related to:
+
+    a) Your use of the platform
+    b) Events you organize through the platform
+    c) Your breach of this Agreement
+    d) Your violation of any applicable law or regulation
+    e) Any claim by a passenger, vehicle provider, or third party related to
+       your events
+
+--------------------------------------------------------------------------------
+
+9. DISPUTE RESOLUTION
+
+9.1 ARBITRATION: Any dispute arising from this Agreement shall be resolved
+    through binding arbitration administered by the American Arbitration
+    Association (AAA) under its Commercial Arbitration Rules.
+
+9.2 CLASS ACTION WAIVER: You agree that any dispute resolution proceedings will
+    be conducted only on an individual basis and not as a class, consolidated,
+    or representative action.
+
+9.3 SMALL CLAIMS: Either party may bring claims in small claims court if the
+    claims qualify.
+
+9.4 GOVERNING LAW: This Agreement shall be governed by and construed in
+    accordance with the laws of the State of Delaware, United States, without
+    regard to conflict of laws principles.
+
+--------------------------------------------------------------------------------
+
+10. TERMINATION
+
+10.1 VOLUNTARY: You may terminate this Agreement at any time by deactivating
+     your organizer account through the platform.
+
+10.2 BY TORO: TORO may suspend or terminate your account at any time for:
+     - Violation of this Agreement or platform policies
+     - Fraudulent or illegal activity
+     - Repeated complaints from vehicle providers or passengers
+     - Inactivity exceeding 12 months
+     - At TORO's sole discretion with 30 days notice
+
+10.3 EFFECT: Upon termination:
+     - All pending events will be cancelled
+     - Outstanding payments will be processed within 30 days
+     - Your data will be retained as required by law
+
+--------------------------------------------------------------------------------
+
+11. GOVERNING LAW AND JURISDICTION
+
+11.1 FOR UNITED STATES ORGANIZERS:
+     This Agreement is governed by the laws of the State of Delaware.
+     Jurisdiction: Courts of the State of Delaware or the United States
+     District Court for the District of Delaware.
+
+11.2 FOR MEXICO ORGANIZERS:
+     This Agreement is governed by the applicable federal laws of Mexico.
+     Jurisdiction: Competent courts in Mexico City (Ciudad de Mexico).
+
+--------------------------------------------------------------------------------
+
+12. GENERAL PROVISIONS
+
+12.1 ENTIRE AGREEMENT: This Agreement constitutes the entire agreement between
+     you and TORO regarding the subject matter herein.
+
+12.2 SEVERABILITY: If any provision is found to be unenforceable, the remaining
+     provisions shall continue in full force and effect.
+
+12.3 AMENDMENTS: TORO may modify this Agreement with 30 days notice. Continued
+     use of the platform after modifications constitutes acceptance.
+
+12.4 ASSIGNMENT: You may not assign your rights under this Agreement without
+     TORO's written consent.
+
+12.5 NO WAIVER: TORO's failure to enforce any provision shall not constitute
+     a waiver of that provision.
+
+================================================================================
+By signing below, you acknowledge that you have read, understood, and agree to
+be bound by all terms and conditions of this Organizer Platform Agreement.
+================================================================================
+END OF ORGANIZER PLATFORM AGREEMENT v${LegalConstants.organizerAgreementVersion}
+================================================================================
+''';
+
+  // ============================================================================
+  // ORGANIZER PLATFORM AGREEMENT - SPANISH
+  // ============================================================================
+
+  static String get _organizerAgreementEs => '''
+================================================================================
+ACUERDO DE PLATAFORMA PARA ORGANIZADORES v${LegalConstants.organizerAgreementVersion}
+${LegalConstants.companyLegalName}
+Fecha de vigencia: ${DateTime.now().toString().split(' ')[0]}
+================================================================================
+
+1. DEFINICIONES Y PARTES
+
+Este Acuerdo de Plataforma para Organizadores ("Acuerdo") se celebra entre:
+
+- ${LegalConstants.companyLegalName}, una empresa organizada bajo las leyes del
+  ${LegalConstants.companyJurisdiction} ("TORO", "Empresa", "Plataforma", "nosotros")
+
+- Usted, la persona fisica o moral que se registra como organizador de eventos
+  en la plataforma TORO ("Organizador", "usted", "su")
+
+"Plataforma" se refiere a la aplicacion movil TORO y servicios relacionados.
+"Evento" se refiere a cualquier evento de transporte, viaje, tour o ruta que usted cree.
+"Proveedor de Vehiculo" se refiere a conductores o duenos de vehiculos que pujan por sus eventos.
+"Comision" se refiere al porcentaje cobrado por TORO sobre las transacciones.
+
+--------------------------------------------------------------------------------
+
+2. ALCANCE DE LA PLATAFORMA
+
+2.1 TORO opera como un mercado tecnologico que conecta organizadores de eventos
+    con proveedores de vehiculos. TORO NO:
+    - Posee, opera o controla ningun vehiculo
+    - Emplea o gestiona proveedores de vehiculos
+    - Garantiza la disponibilidad de vehiculos
+    - Proporciona servicios de transporte directamente
+
+2.2 TORO proporciona:
+    - Una plataforma digital para crear y publicar eventos de transporte
+    - Un sistema de pujas para que los proveedores ofrezcan sus servicios
+    - Herramientas de procesamiento de pagos y facturacion
+    - Canales de comunicacion entre organizadores y proveedores
+    - Rastreo GPS en tiempo real durante eventos activos
+
+2.3 Usted reconoce que TORO actua unicamente como intermediario. El contrato
+    de transporte es entre usted (Organizador) y el Proveedor de Vehiculo.
+
+--------------------------------------------------------------------------------
+
+3. OBLIGACIONES DEL ORGANIZADOR
+
+3.1 INFORMACION VERAZ: Usted se compromete a proporcionar informacion veridica
+    y precisa para todos los eventos, incluyendo pero no limitado a:
+    - Fechas, horarios y ubicaciones del evento
+    - Numero de pasajeros o asientos requeridos
+    - Detalles del itinerario y ruta
+    - Cualquier requisito o restriccion especial
+
+3.2 CUMPLIMIENTO LEGAL: Usted es el unico responsable de:
+    - Obtener todos los permisos, licencias y autorizaciones necesarios
+    - Cumplir con las regulaciones de transporte locales, estatales y federales
+    - Asegurar que sus eventos cumplan con todas las leyes aplicables
+    - Obtener seguros apropiados para sus eventos si lo requiere la ley
+
+3.3 SEGURIDAD DE PASAJEROS: Usted se compromete a:
+    - No organizar eventos que involucren actividades ilegales
+    - Informar a los pasajeros sobre los requisitos de seguridad
+    - Proporcionar informacion precisa sobre puntos de recogida/entrega
+    - Cooperar con los proveedores de vehiculos en materia de seguridad
+
+3.4 ACTIVIDADES PROHIBIDAS: Usted NO puede usar la plataforma para:
+    - Organizar eventos para el transporte de bienes o sustancias ilegales
+    - Discriminar a pasajeros por raza, religion, genero, orientacion sexual,
+      discapacidad u origen nacional
+    - Participar en practicas fraudulentas o enganosas
+    - Evadir la plataforma para evitar el pago de comisiones
+    - Compartir sus credenciales de cuenta con terceros
+
+--------------------------------------------------------------------------------
+
+4. COMISIONES Y PAGOS
+
+4.1 TARIFA DE SERVICIO: TORO cobra una comision del 18% (dieciocho por ciento)
+    sobre el monto total de la transaccion por cada evento completado. Esta
+    comision se deduce automaticamente antes de transferir los fondos al
+    Proveedor de Vehiculo.
+
+4.2 PERIODO DE PRUEBA: La tarifa de comision actual puede estar sujeta a
+    cambios. TORO se reserva el derecho de modificar la tarifa de comision
+    con 30 dias de aviso previo por escrito.
+
+4.3 PROCESAMIENTO DE PAGOS: Todos los pagos se procesan a traves de la
+    plataforma TORO. Los pagos directos entre organizadores y proveedores
+    de vehiculos que eviten la plataforma estan estrictamente prohibidos y
+    pueden resultar en la terminacion de la cuenta.
+
+4.4 REEMBOLSOS Y CANCELACIONES: Las politicas de reembolso y cancelacion se
+    establecen por evento. TORO puede retener una porcion de la comision por
+    procesar eventos cancelados, segun la politica de cancelacion.
+
+4.5 RESPONSABILIDAD FISCAL: Usted es el unico responsable de:
+    - Reportar todos los ingresos obtenidos a traves de la plataforma ante
+      las autoridades fiscales correspondientes
+    - Pagar todos los impuestos federales, estatales y locales aplicables
+    - Emitir cualquier documento fiscal requerido a los pasajeros (si aplica)
+    - Cumplir con los requisitos de IVA, ISR u otros impuestos sobre transacciones
+    TORO no proporciona asesoria fiscal y no es responsable de sus obligaciones tributarias.
+
+    PARA MEXICO: Es su responsabilidad cumplir con las obligaciones ante el SAT,
+    incluyendo la emision de CFDI (facturas electronicas) si asi lo requiere la ley.
+
+--------------------------------------------------------------------------------
+
+5. PROPIEDAD INTELECTUAL
+
+5.1 El nombre TORO, logotipo, marcas comerciales y todo el contenido de la
+    plataforma son propiedad exclusiva de ${LegalConstants.companyLegalName}.
+
+5.2 Se le otorga una licencia limitada, no exclusiva e intransferible para
+    usar la plataforma TORO para organizar eventos de transporte.
+
+5.3 No puede usar la marca TORO en ningun material de marketing, publicidad
+    o promocion externa sin consentimiento previo por escrito.
+
+5.4 Cualquier contenido que suba a la plataforma (descripciones de eventos,
+    imagenes, logotipos) sigue siendo de su propiedad, pero otorga a TORO
+    una licencia no exclusiva para mostrar dicho contenido dentro de la plataforma.
+
+--------------------------------------------------------------------------------
+
+6. PRIVACIDAD Y DATOS
+
+6.1 TORO recopila y procesa datos personales segun lo descrito en nuestra
+    Politica de Privacidad.
+
+6.2 Los datos recopilados de los organizadores pueden incluir:
+    - Nombre, correo electronico, telefono, informacion de la empresa
+    - Historial de creacion y gestion de eventos
+    - Registros de transacciones financieras
+    - Informacion del dispositivo y direcciones IP
+    - Datos de ubicacion GPS (con su consentimiento)
+
+6.3 Cumplimos con las leyes de proteccion de datos aplicables incluyendo CCPA
+    (California) y las regulaciones mexicanas de proteccion de datos (LFPDPPP).
+
+6.4 Usted se compromete a no hacer mal uso de los datos personales de
+    pasajeros o proveedores de vehiculos obtenidos a traves de la plataforma.
+
+--------------------------------------------------------------------------------
+
+7. LIMITACION DE RESPONSABILIDAD
+
+7.1 TORO ES UN MERCADO TECNOLOGICO, NO UN PROVEEDOR DE TRANSPORTE.
+
+7.2 EN LA MAXIMA MEDIDA PERMITIDA POR LA LEY, TORO NO SERA RESPONSABLE POR:
+    - Accidentes, lesiones o danos a la propiedad durante eventos de transporte
+    - Actos, omisiones o negligencia de los proveedores de vehiculos
+    - Retrasos, cancelaciones o interrupciones del servicio por proveedores
+    - Perdida de ingresos u oportunidades de negocio
+    - Cualquier dano indirecto, incidental, especial o consecuente
+
+7.3 La responsabilidad total de TORO por cualquier reclamo derivado de este
+    Acuerdo no excedera las comisiones totales pagadas por usted o en su
+    nombre en los doce (12) meses anteriores al reclamo.
+
+7.4 LA PLATAFORMA SE PROPORCIONA "TAL CUAL" Y "SEGUN DISPONIBILIDAD" SIN
+    GARANTIAS DE NINGUN TIPO, EXPRESAS O IMPLICITAS.
+
+--------------------------------------------------------------------------------
+
+8. INDEMNIZACION
+
+8.1 Usted acepta indemnizar, defender y mantener indemne a
+    ${LegalConstants.companyLegalName}, sus directivos, empleados, agentes y
+    afiliados de y contra cualquier reclamo, dano, perdida, responsabilidad,
+    costo y gasto (incluyendo honorarios razonables de abogados) que surjan
+    de o esten relacionados con:
+
+    a) Su uso de la plataforma
+    b) Eventos que organice a traves de la plataforma
+    c) Su incumplimiento de este Acuerdo
+    d) Su violacion de cualquier ley o regulacion aplicable
+    e) Cualquier reclamo de un pasajero, proveedor de vehiculo o tercero
+       relacionado con sus eventos
+
+--------------------------------------------------------------------------------
+
+9. RESOLUCION DE DISPUTAS
+
+9.1 ARBITRAJE: Cualquier disputa que surja de este Acuerdo se resolvera
+    mediante arbitraje vinculante administrado por la Asociacion Americana
+    de Arbitraje (AAA) bajo sus Reglas de Arbitraje Comercial.
+
+9.2 RENUNCIA A ACCION COLECTIVA: Usted acepta que cualquier procedimiento de
+    resolucion de disputas se llevara a cabo unicamente de forma individual y
+    no como una accion colectiva, consolidada o representativa.
+
+9.3 RECLAMOS MENORES: Cualquiera de las partes puede presentar reclamos en
+    tribunales de reclamos menores si los reclamos califican.
+
+9.4 LEY APLICABLE: Este Acuerdo se regira e interpretara de acuerdo con las
+    leyes del Estado de Delaware, Estados Unidos, sin tener en cuenta los
+    principios de conflicto de leyes.
+
+--------------------------------------------------------------------------------
+
+10. TERMINACION
+
+10.1 VOLUNTARIA: Usted puede terminar este Acuerdo en cualquier momento
+     desactivando su cuenta de organizador a traves de la plataforma.
+
+10.2 POR TORO: TORO puede suspender o terminar su cuenta en cualquier
+     momento por:
+     - Violacion de este Acuerdo o politicas de la plataforma
+     - Actividad fraudulenta o ilegal
+     - Quejas repetidas de proveedores de vehiculos o pasajeros
+     - Inactividad que exceda 12 meses
+     - A la entera discrecion de TORO con 30 dias de aviso
+
+10.3 EFECTO: Al terminar:
+     - Todos los eventos pendientes seran cancelados
+     - Los pagos pendientes se procesaran dentro de 30 dias
+     - Sus datos se conservaran segun lo requiera la ley
+
+--------------------------------------------------------------------------------
+
+11. LEY APLICABLE Y JURISDICCION
+
+11.1 PARA ORGANIZADORES EN ESTADOS UNIDOS:
+     Este Acuerdo se rige por las leyes del Estado de Delaware.
+     Jurisdiccion: Tribunales del Estado de Delaware o el Tribunal de
+     Distrito de los Estados Unidos para el Distrito de Delaware.
+
+11.2 PARA ORGANIZADORES EN MEXICO:
+     Este Acuerdo se rige por las leyes federales aplicables de Mexico.
+     Jurisdiccion: Tribunales competentes en la Ciudad de Mexico.
+
+--------------------------------------------------------------------------------
+
+12. DISPOSICIONES GENERALES
+
+12.1 ACUERDO COMPLETO: Este Acuerdo constituye el acuerdo completo entre
+     usted y TORO con respecto al tema aqui tratado.
+
+12.2 DIVISIBILIDAD: Si alguna disposicion se considera inaplicable, las
+     disposiciones restantes continuaran en plena vigencia y efecto.
+
+12.3 MODIFICACIONES: TORO puede modificar este Acuerdo con 30 dias de aviso.
+     El uso continuado de la plataforma despues de las modificaciones
+     constituye aceptacion.
+
+12.4 CESION: Usted no puede ceder sus derechos bajo este Acuerdo sin el
+     consentimiento escrito de TORO.
+
+12.5 NO RENUNCIA: La falta de TORO de hacer cumplir cualquier disposicion
+     no constituira una renuncia a dicha disposicion.
+
+================================================================================
+Al firmar a continuacion, usted reconoce que ha leido, entendido y acepta
+obligarse por todos los terminos y condiciones de este Acuerdo de Plataforma
+para Organizadores.
+================================================================================
+FIN DEL ACUERDO DE PLATAFORMA PARA ORGANIZADORES v${LegalConstants.organizerAgreementVersion}
 ================================================================================
 ''';
 }

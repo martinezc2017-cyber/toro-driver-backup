@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
@@ -60,10 +61,12 @@ class EventStop {
 /// Simplified event creation screen - all in one scrollable form
 class OrganizerCreateEventSimpleScreen extends StatefulWidget {
   final String? preSelectedVehicleId;
+  final String? serviceType; // fixed_route, tourism, special_event, shared_trip
 
   const OrganizerCreateEventSimpleScreen({
     super.key,
     this.preSelectedVehicleId,
+    this.serviceType,
   });
 
   @override
@@ -140,6 +143,11 @@ class _OrganizerCreateEventSimpleScreenState
   bool _contactInfoExpanded = true; // true if no data saved yet, false = compact card
   bool _savingCredential = false;
 
+  // Help tooltip expansion state per section
+  final Set<String> _expandedHelp = {};
+  // Commission legal disclaimer expanded
+  bool _feeDisclaimerExpanded = false;
+
   // Editable seat count per event
   final _eventSeatsController = TextEditingController();
 
@@ -199,8 +207,44 @@ class _OrganizerCreateEventSimpleScreenState
   @override
   void initState() {
     super.initState();
+    _applyServiceTypePreset();
     _loadSavedDefaults();
     _loadOrganizerAndVehicles();
+  }
+
+  String get _appBarTitle {
+    switch (widget.serviceType) {
+      case 'fixed_route': return 'Nueva Ruta';
+      case 'tourism': return 'Nuevo Tour';
+      case 'special_event': return 'Nuevo Evento';
+      case 'shared_trip': return 'Nuevo Viaje';
+      default: return 'Crear Evento';
+    }
+  }
+
+  /// Pre-configure event type based on the service card the user tapped
+  void _applyServiceTypePreset() {
+    final st = widget.serviceType;
+    if (st == null) return;
+    switch (st) {
+      case 'fixed_route':
+        _eventType = 'charter';
+        _serviceType = 'route';
+        break;
+      case 'tourism':
+        _eventType = 'tour';
+        _serviceType = 'route';
+        break;
+      case 'special_event':
+        _eventType = 'other';
+        _serviceType = 'route';
+        break;
+      case 'shared_trip':
+        _eventType = 'charter';
+        _serviceType = 'route';
+        _isBidPublic = true;
+        break;
+    }
   }
 
   /// Load saved defaults from SharedPreferences (Template System)
@@ -574,7 +618,7 @@ class _OrganizerCreateEventSimpleScreenState
         'passenger_visibility': passengerVisibility,
         'bid_visibility': _isBidPublic ? 'public' : 'private',
         'status': 'draft',
-        'country_code': 'MX',
+        'country_code': Provider.of<AuthProvider>(context, listen: false).driver?.countryCode ?? 'US',
         'created_at': DateTime.now().toIso8601String(),
       };
 
@@ -877,7 +921,7 @@ class _OrganizerCreateEventSimpleScreenState
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'Crear Evento',
+          _appBarTitle,
           style: TextStyle(
             color: AppColors.textPrimary,
             fontWeight: FontWeight.bold,
@@ -894,7 +938,9 @@ class _OrganizerCreateEventSimpleScreenState
               // Section 1: Credencial del Organizador (TOP - persists independently)
               _buildSectionHeader(
                 icon: Icons.badge,
-                title: 'Tu Credencial',
+                title: 'org_section_credencial'.tr(),
+                helpKey: 'credencial',
+                helpText: 'org_help_credencial'.tr(),
               ),
               const SizedBox(height: 16),
               _buildContactInfoSection(),
@@ -903,7 +949,9 @@ class _OrganizerCreateEventSimpleScreenState
               // Section 2: Basic Info
               _buildSectionHeader(
                 icon: Icons.event,
-                title: 'Información Básica',
+                title: 'org_section_info_basica'.tr(),
+                helpKey: 'info_basica',
+                helpText: 'org_help_info_basica'.tr(),
               ),
               const SizedBox(height: 16),
               _buildBasicInfoSection(),
@@ -912,7 +960,9 @@ class _OrganizerCreateEventSimpleScreenState
               // Section 3: Capacity
               _buildSectionHeader(
                 icon: Icons.event_seat,
-                title: 'Capacidad',
+                title: 'org_section_capacidad'.tr(),
+                helpKey: 'capacidad',
+                helpText: 'org_help_capacidad'.tr(),
               ),
               const SizedBox(height: 16),
               _buildCapacitySection(),
@@ -921,7 +971,9 @@ class _OrganizerCreateEventSimpleScreenState
               // Section 4: Bid Visibility (public/private)
               _buildSectionHeader(
                 icon: Icons.gavel_rounded,
-                title: 'Tipo de Puja',
+                title: 'org_section_tipo_puja'.tr(),
+                helpKey: 'tipo_puja',
+                helpText: 'org_help_tipo_puja'.tr(),
               ),
               const SizedBox(height: 12),
               Container(
@@ -964,7 +1016,7 @@ class _OrganizerCreateEventSimpleScreenState
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    'Publica',
+                                    'org_bid_public'.tr(),
                                     style: TextStyle(
                                       color: _isBidPublic
                                           ? AppColors.success
@@ -1007,7 +1059,7 @@ class _OrganizerCreateEventSimpleScreenState
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    'Privada',
+                                    'org_bid_private'.tr(),
                                     style: TextStyle(
                                       color: !_isBidPublic
                                           ? Colors.orange
@@ -1026,8 +1078,8 @@ class _OrganizerCreateEventSimpleScreenState
                     const SizedBox(height: 8),
                     Text(
                       _isBidPublic
-                          ? 'Cualquier chofer puede ver tu evento y enviar su puja.'
-                          : 'Solo los choferes que invites podran ver tu evento y pujar.',
+                          ? 'org_bid_public_desc'.tr()
+                          : 'org_bid_private_desc'.tr(),
                       style: const TextStyle(
                         color: AppColors.textTertiary,
                         fontSize: 12,
@@ -1049,9 +1101,9 @@ class _OrganizerCreateEventSimpleScreenState
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: const Text(
-                    'Crear Evento',
-                    style: TextStyle(
+                  child: Text(
+                    'org_create_event'.tr(),
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -1070,26 +1122,97 @@ class _OrganizerCreateEventSimpleScreenState
   Widget _buildSectionHeader({
     required IconData icon,
     required String title,
+    String? helpKey,
+    String? helpText,
   }) {
-    return Row(
+    final isHelpOpen = helpKey != null && _expandedHelp.contains(helpKey);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, color: AppColors.primary, size: 24),
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: AppColors.primary, size: 24),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            if (helpKey != null && helpText != null)
+              GestureDetector(
+                onTap: () {
+                  HapticService.lightImpact();
+                  setState(() {
+                    if (_expandedHelp.contains(helpKey)) {
+                      _expandedHelp.remove(helpKey);
+                    } else {
+                      _expandedHelp.add(helpKey);
+                    }
+                  });
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: isHelpOpen
+                        ? AppColors.primary.withValues(alpha: 0.15)
+                        : AppColors.card,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: isHelpOpen ? AppColors.primary : AppColors.border,
+                    ),
+                  ),
+                  child: Icon(
+                    isHelpOpen ? Icons.close : Icons.help_outline,
+                    color: isHelpOpen ? AppColors.primary : AppColors.textTertiary,
+                    size: 18,
+                  ),
+                ),
+              ),
+          ],
         ),
-        const SizedBox(width: 12),
-        Text(
-          title,
-          style: TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
+        if (isHelpOpen && helpText != null)
+          AnimatedSize(
+            duration: const Duration(milliseconds: 200),
+            child: Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(top: 10),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.lightbulb_outline, color: AppColors.gold, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      helpText,
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 13,
+                        height: 1.5,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-        ),
       ],
     );
   }
@@ -1110,7 +1233,7 @@ class _OrganizerCreateEventSimpleScreenState
             controller: _nameController,
             style: TextStyle(color: AppColors.textPrimary),
             decoration: InputDecoration(
-              labelText: 'Nombre del Evento',
+              labelText: 'org_event_name'.tr(),
               labelStyle: TextStyle(color: AppColors.textSecondary),
               prefixIcon: Icon(Icons.title, color: AppColors.textSecondary),
               border: OutlineInputBorder(
@@ -1123,13 +1246,13 @@ class _OrganizerCreateEventSimpleScreenState
               ),
             ),
             validator: (value) =>
-                value?.isEmpty ?? true ? 'Ingresa un nombre' : null,
+                value?.isEmpty ?? true ? 'org_event_name_required'.tr() : null,
           ),
           const SizedBox(height: 16),
 
           // Event Type
           Text(
-            'Tipo de Evento',
+            'org_event_type'.tr(),
             style: TextStyle(
               color: AppColors.textSecondary,
               fontSize: 14,
@@ -1245,8 +1368,8 @@ class _OrganizerCreateEventSimpleScreenState
                         Expanded(
                           child: Text(
                             _isOtherTypePublic
-                                ? 'Publico - Visible en marketplace'
-                                : 'Privado - Solo por invitacion',
+                                ? 'org_visibility_public'.tr()
+                                : 'org_visibility_private'.tr(),
                             style: TextStyle(
                               color: AppColors.textPrimary,
                               fontSize: 13,
@@ -1283,7 +1406,7 @@ class _OrganizerCreateEventSimpleScreenState
                                 color: AppColors.primary),
                             const SizedBox(width: 6),
                             Text(
-                              'Radio de busqueda: ${_searchRadiusKm.toStringAsFixed(1)} km',
+                              'org_search_radius'.tr(namedArgs: {'radius': _searchRadiusKm.toStringAsFixed(1)}),
                               style: TextStyle(
                                 color: AppColors.textPrimary,
                                 fontSize: 13,
@@ -1294,7 +1417,7 @@ class _OrganizerCreateEventSimpleScreenState
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Los pasajeros dentro de este radio del chofer en ruta veran el evento',
+                          'org_search_radius_desc'.tr(),
                           style: TextStyle(
                             color: AppColors.textSecondary,
                             fontSize: 11,
@@ -1337,7 +1460,7 @@ class _OrganizerCreateEventSimpleScreenState
 
           // Service Type
           Text(
-            'Tipo de Servicio',
+            'org_service_type'.tr(),
             style: TextStyle(
               color: AppColors.textSecondary,
               fontSize: 14,
@@ -1351,10 +1474,10 @@ class _OrganizerCreateEventSimpleScreenState
                 child: ChoiceChip(
                   label: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
-                      Icon(Icons.route, size: 16, color: Colors.white),
-                      SizedBox(width: 4),
-                      Text('Ruta Fija'),
+                    children: [
+                      const Icon(Icons.route, size: 16, color: Colors.white),
+                      const SizedBox(width: 4),
+                      Text('org_route_fixed'.tr()),
                     ],
                   ),
                   selected: _serviceType == 'route',
@@ -1373,10 +1496,10 @@ class _OrganizerCreateEventSimpleScreenState
                 child: ChoiceChip(
                   label: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
-                      Icon(Icons.location_on, size: 16, color: Colors.white),
-                      SizedBox(width: 4),
-                      Text('Área Libre'),
+                    children: [
+                      const Icon(Icons.location_on, size: 16, color: Colors.white),
+                      const SizedBox(width: 4),
+                      Text('org_area_free'.tr()),
                     ],
                   ),
                   selected: _serviceType == 'area',
@@ -1402,7 +1525,7 @@ class _OrganizerCreateEventSimpleScreenState
                 Icon(Icons.route, color: AppColors.primary, size: 20),
                 const SizedBox(width: 8),
                 Text(
-                  'Itinerario del Evento',
+                  'org_itinerary'.tr(),
                   style: TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 16,
@@ -1438,10 +1561,10 @@ class _OrganizerCreateEventSimpleScreenState
                 onPressed: _addNewStop,
                 icon: Icon(Icons.add_location_alt, size: 20),
                 label: Text(_stops.isEmpty
-                    ? 'Agregar Origen'
+                    ? 'org_add_origin'.tr()
                     : _stops.length == 1
-                        ? 'Agregar Destino'
-                        : 'Siguiente Parada'),
+                        ? 'org_add_destination'.tr()
+                        : 'org_next_stop'.tr()),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.primary,
                   side: BorderSide(color: AppColors.primary, width: 1.5),
@@ -1471,7 +1594,7 @@ class _OrganizerCreateEventSimpleScreenState
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Viaje Redondo',
+                            'org_round_trip'.tr(),
                             style: TextStyle(
                               color: AppColors.textPrimary,
                               fontSize: 14,
@@ -1479,7 +1602,7 @@ class _OrganizerCreateEventSimpleScreenState
                             ),
                           ),
                           Text(
-                            'Agregar vuelta automáticamente',
+                            'org_round_trip_desc'.tr(),
                             style: TextStyle(
                               color: AppColors.textSecondary,
                               fontSize: 12,
@@ -1520,9 +1643,9 @@ class _OrganizerCreateEventSimpleScreenState
               controller: _areaCenterController,
               style: TextStyle(color: AppColors.textPrimary),
               decoration: InputDecoration(
-                labelText: 'Centro de Operación',
+                labelText: 'org_area_center'.tr(),
                 labelStyle: TextStyle(color: AppColors.textSecondary),
-                hintText: 'Ej: Mexicali',
+                hintText: 'org_area_center_hint'.tr(),
                 hintStyle: TextStyle(color: AppColors.textTertiary),
                 prefixIcon: Icon(Icons.my_location, color: AppColors.textSecondary),
                 border: OutlineInputBorder(
@@ -1535,7 +1658,7 @@ class _OrganizerCreateEventSimpleScreenState
                 ),
               ),
               validator: (value) =>
-                  value?.isEmpty ?? true ? 'Ingresa el centro de operación' : null,
+                  value?.isEmpty ?? true ? 'org_area_center_required'.tr() : null,
             ),
             const SizedBox(height: 16),
             TextFormField(
@@ -1543,9 +1666,9 @@ class _OrganizerCreateEventSimpleScreenState
               style: TextStyle(color: AppColors.textPrimary),
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
-                labelText: 'Radio de Operación (km)',
+                labelText: 'org_area_radius'.tr(),
                 labelStyle: TextStyle(color: AppColors.textSecondary),
-                hintText: 'Ej: 50',
+                hintText: 'org_area_radius_hint'.tr(),
                 hintStyle: TextStyle(color: AppColors.textTertiary),
                 prefixIcon: Icon(Icons.radar, color: AppColors.textSecondary),
                 border: OutlineInputBorder(
@@ -1558,7 +1681,7 @@ class _OrganizerCreateEventSimpleScreenState
                 ),
               ),
               validator: (value) =>
-                  value?.isEmpty ?? true ? 'Ingresa el radio en kilómetros' : null,
+                  value?.isEmpty ?? true ? 'org_area_radius_required'.tr() : null,
             ),
             const SizedBox(height: 16),
           ],
@@ -1579,7 +1702,7 @@ class _OrganizerCreateEventSimpleScreenState
             },
             child: InputDecorator(
               decoration: InputDecoration(
-                labelText: 'Fecha del Evento',
+                labelText: 'org_event_date'.tr(),
                 labelStyle: TextStyle(color: AppColors.textSecondary),
                 prefixIcon: Icon(Icons.calendar_today, color: AppColors.textSecondary),
                 border: OutlineInputBorder(
@@ -1605,7 +1728,7 @@ class _OrganizerCreateEventSimpleScreenState
             },
             child: InputDecorator(
               decoration: InputDecoration(
-                labelText: 'Hora de Inicio',
+                labelText: 'org_start_time'.tr(),
                 labelStyle: TextStyle(color: AppColors.textSecondary),
                 prefixIcon: Icon(Icons.access_time, color: AppColors.textSecondary),
                 border: OutlineInputBorder(
@@ -1627,9 +1750,9 @@ class _OrganizerCreateEventSimpleScreenState
             style: TextStyle(color: AppColors.textPrimary),
             maxLines: 3,
             decoration: InputDecoration(
-              labelText: 'Descripción (Opcional)',
+              labelText: 'org_description'.tr(),
               labelStyle: TextStyle(color: AppColors.textSecondary),
-              hintText: 'Describe el evento...',
+              hintText: 'org_description_hint'.tr(),
               hintStyle: TextStyle(color: AppColors.textTertiary),
               alignLabelWithHint: true,
               border: OutlineInputBorder(
@@ -1767,14 +1890,17 @@ class _OrganizerCreateEventSimpleScreenState
       );
     }
 
+    // Use driver name (manually set by user) instead of profiles.full_name (Google OAuth)
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final driver = authProvider.driver;
     final profile = _organizerProfile?['profiles'];
-    final fullName = profile?['full_name'] ?? 'Sin nombre';
-    final phone = profile?['phone'] ?? '';
-    final photoUrl = profile?['avatar_url'];
+    final fullName = driver?.name ?? driver?.fullName ?? profile?['full_name'] ?? 'cred_no_name'.tr();
+    final phone = driver?.phone ?? profile?['phone'] ?? '';
+    final photoUrl = driver?.profileImageUrl ?? profile?['avatar_url'];
     final createdAt = _organizerProfile?['created_at'];
 
     // Calculate time with Toro
-    String timeWithToro = 'Nuevo';
+    String timeWithToro = 'org_time_new'.tr();
     if (createdAt != null) {
       try {
         final joinDate = DateTime.parse(createdAt);
@@ -1783,14 +1909,14 @@ class _OrganizerCreateEventSimpleScreenState
 
         if (difference.inDays >= 365) {
           final years = (difference.inDays / 365).floor();
-          timeWithToro = '$years año${years > 1 ? 's' : ''} con Toro';
+          timeWithToro = 'org_time_years'.tr(namedArgs: {'count': '$years'});
         } else if (difference.inDays >= 30) {
           final months = (difference.inDays / 30).floor();
-          timeWithToro = '$months mes${months > 1 ? 'es' : ''} con Toro';
+          timeWithToro = 'org_time_months'.tr(namedArgs: {'count': '$months'});
         } else if (difference.inDays > 0) {
-          timeWithToro = '${difference.inDays} día${difference.inDays > 1 ? 's' : ''} con Toro';
+          timeWithToro = 'org_time_days'.tr(namedArgs: {'count': '${difference.inDays}'});
         } else {
-          timeWithToro = 'Nuevo con Toro';
+          timeWithToro = 'org_time_new'.tr();
         }
       } catch (e) {
         AppLogger.log('Error calculating time with Toro: $e');
@@ -1894,7 +2020,7 @@ class _OrganizerCreateEventSimpleScreenState
                 IconButton(
                   onPressed: () => setState(() => _contactInfoExpanded = true),
                   icon: Icon(Icons.edit, color: AppColors.primary, size: 20),
-                  tooltip: 'Editar Credencial',
+                  tooltip: 'org_edit_credencial'.tr(),
                 ),
               ],
             ),
@@ -2031,7 +2157,7 @@ class _OrganizerCreateEventSimpleScreenState
 
           // Contact Fields Label
           Text(
-            'Información de Contacto',
+            'org_contact_info'.tr(),
             style: TextStyle(
               color: AppColors.textSecondary,
               fontSize: 13,
@@ -2046,7 +2172,7 @@ class _OrganizerCreateEventSimpleScreenState
             style: const TextStyle(color: AppColors.textPrimary),
             keyboardType: TextInputType.emailAddress,
             decoration: InputDecoration(
-              labelText: 'Email de Negocios',
+              labelText: 'org_business_email'.tr(),
               labelStyle: TextStyle(color: AppColors.textSecondary),
               prefixIcon: Icon(Icons.email, color: AppColors.textSecondary),
               hintText: 'contacto@empresa.com',
@@ -2069,7 +2195,7 @@ class _OrganizerCreateEventSimpleScreenState
             style: const TextStyle(color: AppColors.textPrimary),
             keyboardType: TextInputType.phone,
             decoration: InputDecoration(
-              labelText: 'Teléfono de Negocios',
+              labelText: 'org_business_phone'.tr(),
               labelStyle: TextStyle(color: AppColors.textSecondary),
               prefixIcon: Icon(Icons.business, color: AppColors.textSecondary),
               hintText: '664-123-4567',
@@ -2091,7 +2217,7 @@ class _OrganizerCreateEventSimpleScreenState
             controller: _contactFacebookController,
             style: const TextStyle(color: AppColors.textPrimary),
             decoration: InputDecoration(
-              labelText: 'Facebook de Negocios',
+              labelText: 'org_business_facebook'.tr(),
               labelStyle: TextStyle(color: AppColors.textSecondary),
               prefixIcon: Icon(Icons.facebook, color: AppColors.textSecondary),
               hintText: 'facebook.com/tupagina',
@@ -2150,7 +2276,7 @@ class _OrganizerCreateEventSimpleScreenState
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          _companyLogoUrl != null ? 'Logo Cargado' : 'Agregar Logo de Empresa',
+                          _companyLogoUrl != null ? 'org_logo_loaded'.tr() : 'org_add_logo'.tr(),
                           style: const TextStyle(
                             color: AppColors.textPrimary,
                             fontSize: 14,
@@ -2159,7 +2285,7 @@ class _OrganizerCreateEventSimpleScreenState
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'Tarjeta de presentación profesional',
+                          'org_logo_subtitle'.tr(),
                           style: TextStyle(
                             color: AppColors.textTertiary,
                             fontSize: 12,
@@ -2191,7 +2317,7 @@ class _OrganizerCreateEventSimpleScreenState
                     )
                   : const Icon(Icons.save, size: 20),
               label: Text(
-                _savingCredential ? 'Guardando...' : 'Guardar Credencial',
+                _savingCredential ? 'org_saving'.tr() : 'org_save_credencial'.tr(),
                 style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
@@ -2221,7 +2347,7 @@ class _OrganizerCreateEventSimpleScreenState
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Tu credencial se guarda por separado. No se pierde al borrar eventos.',
+                    'org_credencial_saved_note'.tr(),
                     style: TextStyle(
                       color: AppColors.textSecondary,
                       fontSize: 12,
@@ -2499,18 +2625,18 @@ class _OrganizerCreateEventSimpleScreenState
             style: const TextStyle(color: AppColors.textPrimary),
             keyboardType: TextInputType.number,
             decoration: InputDecoration(
-              labelText: 'Asientos que necesitas',
+              labelText: 'org_seats_needed'.tr(),
               labelStyle: TextStyle(color: AppColors.textSecondary),
               prefixIcon: Icon(Icons.event_seat, color: AppColors.textSecondary),
-              hintText: 'Ej: 20',
+              hintText: 'org_seats_hint'.tr(),
               hintStyle: TextStyle(color: AppColors.textTertiary),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppColors.border)),
               enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppColors.border)),
             ),
             validator: (value) {
-              if (value == null || value.isEmpty) return 'Indica cuántos asientos necesitas';
+              if (value == null || value.isEmpty) return 'org_seats_required'.tr();
               final seats = int.tryParse(value);
-              if (seats == null || seats <= 0) return 'Ingresa un número válido';
+              if (seats == null || seats <= 0) return 'org_seats_invalid'.tr();
               return null;
             },
             onChanged: (_) => setState(() {}),
@@ -2532,7 +2658,7 @@ class _OrganizerCreateEventSimpleScreenState
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Los choferes veran tu evento y te enviaran pujas con su precio. Tu eliges la mejor oferta.',
+                    'org_bid_info'.tr(),
                     style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
                   ),
                 ),
@@ -2541,26 +2667,82 @@ class _OrganizerCreateEventSimpleScreenState
           ),
           const SizedBox(height: 12),
 
-          // TORO 18% commission note
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(Icons.info_outline, color: AppColors.primary, size: 18),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'TORO cobra el 18% de comision por transaccion. Organizador y chofer se ponen de acuerdo sobre quien cubre la comision.',
-                    style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+          // TORO 18% commission + legal disclaimer (expandable)
+          GestureDetector(
+            onTap: () {
+              HapticService.lightImpact();
+              setState(() => _feeDisclaimerExpanded = !_feeDisclaimerExpanded);
+            },
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.info_outline, color: AppColors.primary, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'org_fee_title'.tr(),
+                          style: TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      Icon(
+                        _feeDisclaimerExpanded
+                            ? Icons.keyboard_arrow_up
+                            : Icons.keyboard_arrow_down,
+                        color: AppColors.textTertiary,
+                        size: 20,
+                      ),
+                    ],
                   ),
-                ),
-              ],
+                  if (_feeDisclaimerExpanded) ...[
+                    const SizedBox(height: 10),
+                    Divider(color: AppColors.border, height: 1),
+                    const SizedBox(height: 10),
+                    Text(
+                      'org_fee_detail'.tr(),
+                      style: TextStyle(color: AppColors.textSecondary, fontSize: 12, height: 1.4),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.orange.withValues(alpha: 0.2)),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.gavel, color: Colors.orange, size: 16),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'org_fee_legal'.tr(),
+                              style: TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 11,
+                                height: 1.5,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ),
           ),
         ],
@@ -3533,8 +3715,8 @@ class _SimpleMapPickerState extends State<_SimpleMapPicker> {
   bool _showSuggestions = false;
   Timer? _debounceTimer;
 
-  // Default center: Mexicali, BC
-  static const _defaultCenter = LatLng(32.6519, -115.4683);
+  // Default center: Phoenix, AZ (US)
+  static const _defaultCenter = LatLng(33.4484, -112.0740);
 
   @override
   void initState() {
@@ -3543,9 +3725,13 @@ class _SimpleMapPickerState extends State<_SimpleMapPicker> {
     _searchController = TextEditingController();
     _currentCenter = widget.initialLocation ?? _defaultCenter;
 
-    // Get initial address
+    // Auto-detect GPS on open (skip if initialLocation was provided)
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _reverseGeocode(_currentCenter);
+      if (widget.initialLocation != null) {
+        _reverseGeocode(_currentCenter);
+      } else {
+        _goToCurrentLocation();
+      }
     });
   }
 

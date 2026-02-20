@@ -58,6 +58,7 @@ import 'src/screens/bank_account_screen.dart';
 import 'src/screens/add_vehicle_screen.dart';
 import 'src/screens/driver_agreement_screen.dart';
 import 'src/widgets/animated_splash.dart';
+import 'features/splash/toro_splash_screen.dart';
 // Driver credential
 import 'src/screens/driver_credential_screen.dart';
 // Mexico screens
@@ -497,10 +498,7 @@ class _SplashWrapperState extends State<_SplashWrapper> {
   @override
   Widget build(BuildContext context) {
     if (_showSplash) {
-      return AnimatedSplash(
-        title: 'TORO',
-        subtitle: 'DRIVER',
-        triggerExit: _exitSplash,
+      return ToroSplashScreen(
         onComplete: () {
           debugPrint('[WRAPPER] onComplete → AuthWrapper at ${_mainSw.elapsedMilliseconds}ms');
           setState(() => _showSplash = false);

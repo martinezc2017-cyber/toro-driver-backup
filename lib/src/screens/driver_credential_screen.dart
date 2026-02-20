@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show FileOptions;
+import 'package:easy_localization/easy_localization.dart';
 import '../providers/auth_provider.dart';
 import '../config/supabase_config.dart';
 import '../services/organizer_service.dart';
@@ -125,10 +126,10 @@ class _DriverCredentialScreenState extends State<DriverCredentialScreen> {
           _expanded = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Credencial guardada'),
+          SnackBar(
+            content: Text('cred_saved'.tr()),
             backgroundColor: Colors.green,
-            duration: Duration(seconds: 2),
+            duration: const Duration(seconds: 2),
           ),
         );
       }
@@ -137,7 +138,7 @@ class _DriverCredentialScreenState extends State<DriverCredentialScreen> {
         setState(() => _saving = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error al guardar: $e'),
+            content: Text('${'cred_error_save'.tr()}: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -192,7 +193,7 @@ class _DriverCredentialScreenState extends State<DriverCredentialScreen> {
       if (mounted) Navigator.pop(context);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al subir: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('${'cred_error_upload'.tr()}: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -201,23 +202,23 @@ class _DriverCredentialScreenState extends State<DriverCredentialScreen> {
   @override
   Widget build(BuildContext context) {
     final driver = context.watch<AuthProvider>().driver;
-    final driverName = driver?.name ?? 'Sin nombre';
+    final driverName = driver?.name ?? 'cred_no_name'.tr();
     final photoUrl = driver?.profileImageUrl;
 
     // Calculate time with Toro
-    String timeWithToro = 'Nuevo';
+    String timeWithToro = 'cred_new'.tr();
     if (driver != null) {
       final difference = DateTime.now().difference(driver.createdAt);
       if (difference.inDays >= 365) {
         final years = (difference.inDays / 365).floor();
-        timeWithToro = '$years año${years > 1 ? 's' : ''} con Toro';
+        timeWithToro = 'cred_years_with_toro'.tr(namedArgs: {'count': '$years'});
       } else if (difference.inDays >= 30) {
         final months = (difference.inDays / 30).floor();
-        timeWithToro = '$months mes${months > 1 ? 'es' : ''} con Toro';
+        timeWithToro = 'cred_months_with_toro'.tr(namedArgs: {'count': '$months'});
       } else if (difference.inDays > 0) {
-        timeWithToro = '${difference.inDays} día${difference.inDays > 1 ? 's' : ''} con Toro';
+        timeWithToro = 'cred_days_with_toro'.tr(namedArgs: {'count': '${difference.inDays}'});
       } else {
-        timeWithToro = 'Nuevo con Toro';
+        timeWithToro = 'cred_new_with_toro'.tr();
       }
     }
 
@@ -230,9 +231,9 @@ class _DriverCredentialScreenState extends State<DriverCredentialScreen> {
           icon: Icon(Icons.arrow_back, color: AppColors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Mi Credencial',
-          style: TextStyle(
+        title: Text(
+          'cred_title'.tr(),
+          style: const TextStyle(
             color: AppColors.textPrimary,
             fontWeight: FontWeight.bold,
           ),
@@ -341,9 +342,9 @@ class _DriverCredentialScreenState extends State<DriverCredentialScreen> {
                             children: [
                               Icon(Icons.check_circle, color: AppColors.success, size: 18),
                               const SizedBox(width: 8),
-                              const Text(
-                                'Credencial Guardada',
-                                style: TextStyle(
+                              Text(
+                                'cred_saved_label'.tr(),
+                                style: const TextStyle(
                                   color: AppColors.textPrimary,
                                   fontSize: 15,
                                   fontWeight: FontWeight.w600,
@@ -354,7 +355,7 @@ class _DriverCredentialScreenState extends State<DriverCredentialScreen> {
                                 onPressed: () => setState(() => _expanded = true),
                                 icon: Icon(Icons.edit, size: 16, color: AppColors.primary),
                                 label: Text(
-                                  'Editar',
+                                  'cred_edit'.tr(),
                                   style: TextStyle(color: AppColors.primary, fontSize: 13),
                                 ),
                               ),
@@ -370,9 +371,9 @@ class _DriverCredentialScreenState extends State<DriverCredentialScreen> {
                               if (_phoneController.text.isNotEmpty)
                                 _chip(Icons.phone, _phoneController.text),
                               if (_facebookController.text.isNotEmpty)
-                                _chip(Icons.facebook, 'Facebook'),
+                                _chip(Icons.facebook, 'cred_facebook_label'.tr()),
                               if (_businessCardUrl != null)
-                                _chip(Icons.image, 'Logo/Tarjeta'),
+                                _chip(Icons.image, 'cred_logo_label'.tr()),
                             ],
                           ),
                         ],
@@ -391,7 +392,7 @@ class _DriverCredentialScreenState extends State<DriverCredentialScreen> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           Text(
-                            'Información de Contacto',
+                            'cred_contact_info'.tr(),
                             style: TextStyle(
                               color: AppColors.textSecondary,
                               fontSize: 13,
@@ -406,10 +407,10 @@ class _DriverCredentialScreenState extends State<DriverCredentialScreen> {
                             style: const TextStyle(color: AppColors.textPrimary),
                             keyboardType: TextInputType.emailAddress,
                             decoration: InputDecoration(
-                              labelText: 'Email de Negocios',
+                              labelText: 'cred_business_email'.tr(),
                               labelStyle: TextStyle(color: AppColors.textSecondary),
                               prefixIcon: Icon(Icons.email, color: AppColors.textSecondary),
-                              hintText: 'contacto@empresa.com',
+                              hintText: 'cred_email_hint'.tr(),
                               hintStyle: TextStyle(color: AppColors.textTertiary),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(8),
@@ -429,10 +430,10 @@ class _DriverCredentialScreenState extends State<DriverCredentialScreen> {
                             style: const TextStyle(color: AppColors.textPrimary),
                             keyboardType: TextInputType.phone,
                             decoration: InputDecoration(
-                              labelText: 'Teléfono de Negocios',
+                              labelText: 'cred_business_phone'.tr(),
                               labelStyle: TextStyle(color: AppColors.textSecondary),
                               prefixIcon: Icon(Icons.business, color: AppColors.textSecondary),
-                              hintText: '664-123-4567',
+                              hintText: 'cred_phone_hint'.tr(),
                               hintStyle: TextStyle(color: AppColors.textTertiary),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(8),
@@ -451,10 +452,10 @@ class _DriverCredentialScreenState extends State<DriverCredentialScreen> {
                             controller: _facebookController,
                             style: const TextStyle(color: AppColors.textPrimary),
                             decoration: InputDecoration(
-                              labelText: 'Facebook de Negocios',
+                              labelText: 'cred_business_facebook'.tr(),
                               labelStyle: TextStyle(color: AppColors.textSecondary),
                               prefixIcon: Icon(Icons.facebook, color: AppColors.textSecondary),
-                              hintText: 'facebook.com/tupagina',
+                              hintText: 'cred_facebook_hint'.tr(),
                               hintStyle: TextStyle(color: AppColors.textTertiary),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(8),
@@ -506,7 +507,7 @@ class _DriverCredentialScreenState extends State<DriverCredentialScreen> {
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          _businessCardUrl != null ? 'Logo/Tarjeta Cargada' : 'Agregar Logo o Tarjeta',
+                                          _businessCardUrl != null ? 'cred_logo_loaded'.tr() : 'cred_add_logo'.tr(),
                                           style: const TextStyle(
                                             color: AppColors.textPrimary,
                                             fontSize: 14,
@@ -515,7 +516,7 @@ class _DriverCredentialScreenState extends State<DriverCredentialScreen> {
                                         ),
                                         const SizedBox(height: 2),
                                         Text(
-                                          'Tarjeta de presentación profesional',
+                                          'cred_logo_subtitle'.tr(),
                                           style: TextStyle(
                                             color: AppColors.textTertiary,
                                             fontSize: 12,
@@ -547,7 +548,7 @@ class _DriverCredentialScreenState extends State<DriverCredentialScreen> {
                                     )
                                   : const Icon(Icons.save, size: 20),
                               label: Text(
-                                _saving ? 'Guardando...' : 'Guardar Credencial',
+                                _saving ? 'cred_saving'.tr() : 'cred_save'.tr(),
                                 style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                               ),
                               style: ElevatedButton.styleFrom(
@@ -579,7 +580,7 @@ class _DriverCredentialScreenState extends State<DriverCredentialScreen> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            'Tu credencial se muestra a organizadores y clientes cuando aceptas un evento.',
+                            'cred_info_note'.tr(),
                             style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
                           ),
                         ),

@@ -12,7 +12,8 @@ import '../models/driver_model.dart';
 import '../core/logging/app_logger.dart';
 
 class AuthService {
-  final SupabaseClient _client = SupabaseConfig.client;
+  /// Lazy getter — avoids accessing Supabase.instance before initialization.
+  SupabaseClient get _client => SupabaseConfig.client;
 
   // Callback URL para Windows Desktop - Puerto 5001
   static const int _desktopPort = 5001;
@@ -546,8 +547,8 @@ class AuthService {
     final now = DateTime.now().toIso8601String();
     final fullName = '$firstName $lastName'.trim();
 
-    // Detect country from GPS or device locale
-    String countryCode = 'MX'; // Default to Mexico
+    // Detect country from GPS ONLY - no locale fallback
+    String countryCode = 'US'; // Default to US
     double? signupLat;
     double? signupLng;
     try {
@@ -566,10 +567,8 @@ class AuthService {
         } else {
           countryCode = 'US';
         }
-      } else {
-        final locale = PlatformDispatcher.instance.locale;
-        if (locale.countryCode == 'MX') countryCode = 'MX';
       }
+      // No GPS permission = default US
     } catch (_) {}
 
     await _client.from(SupabaseConfig.driversTable).insert({

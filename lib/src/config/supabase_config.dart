@@ -20,7 +20,7 @@ class SupabaseConfig {
   // 4. Copia el Client ID aquí
   // 5. Configura el mismo Client ID en Supabase Dashboard > Auth > Providers > Google
   // ==========================================================================
-  static const String googleWebClientId = '';
+  static const String googleWebClientId = '732187337384-3tg9j5qq6al4jjkcnt89t3p6b9d49qe6.apps.googleusercontent.com';
 
   // Puerto para OAuth callback en Windows Desktop
   static const int desktopAuthPort = 5001;

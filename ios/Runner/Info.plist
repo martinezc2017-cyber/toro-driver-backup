@@ -71,5 +71,7 @@
 		</array>
 		<key>FlutterDeepLinkingEnabled</key>
 		<true/>
+		<key>UIViewControllerBasedStatusBarAppearance</key>
+		<false/>
 	</dict>
 </plist>

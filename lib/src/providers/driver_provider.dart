@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show ChangeNotifier, debugPrint;
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/driver_service.dart';
 import '../services/notification_service.dart';
 import '../models/driver_model.dart';
@@ -89,18 +90,36 @@ class DriverProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // Create mock driver for testing
+  // Create driver from real user auth data (not mock)
   DriverModel _createMockDriver(String driverId) {
+    // Get real user data from Supabase Auth
+    final user = Supabase.instance.client.auth.currentUser;
+    final userMetadata = user?.userMetadata;
+    
+    // Extract real name from metadata or use email as fallback
+    String realName = 'Driver';
+    if (userMetadata != null) {
+      final firstName = userMetadata['first_name'] ?? '';
+      final lastName = userMetadata['last_name'] ?? '';
+      if (firstName.isNotEmpty || lastName.isNotEmpty) {
+        realName = '$firstName $lastName'.trim();
+      }
+    }
+    // Fallback to email prefix if no name
+    if (realName == 'Driver' && user?.email != null) {
+      realName = user!.email!.split('@').first;
+    }
+    
     return DriverModel(
       id: driverId,
-      name: 'Carlos Martinez',
-      email: 'carlos@torodriver.com',
-      phone: '+52 555 123 4567',
-      rating: 4.92,
-      totalRides: 1247,
+      name: realName,
+      email: user?.email ?? 'driver@toro.com',
+      phone: userMetadata?['phone'] ?? '',
+      rating: 5.0,
+      totalRides: 0,
       isOnline: false,
       isVerified: true,
-      createdAt: DateTime.now().subtract(const Duration(days: 365)),
+      createdAt: DateTime.now().subtract(const Duration(days: 30)),
       updatedAt: DateTime.now(),
       preferences: {
         'notifications': true,

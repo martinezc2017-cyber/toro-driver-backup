@@ -12,6 +12,14 @@ class OrganizerModel {
   final String? createdAt;
   final String? updatedAt;
 
+  // Agreement / contract fields
+  final bool agreementSigned;
+  final String? agreementSignedAt;
+  final String? agreementCountry;
+  final String? agreementState;
+  final String? agreementDocumentHash;
+  final String? agreementSessionId;
+
   OrganizerModel({
     required this.id,
     required this.userId,
@@ -25,6 +33,12 @@ class OrganizerModel {
     this.stripeAccountId,
     this.createdAt,
     this.updatedAt,
+    this.agreementSigned = false,
+    this.agreementSignedAt,
+    this.agreementCountry,
+    this.agreementState,
+    this.agreementDocumentHash,
+    this.agreementSessionId,
   });
 
   factory OrganizerModel.fromJson(Map<String, dynamic> json) {
@@ -41,6 +55,12 @@ class OrganizerModel {
       stripeAccountId: json['stripe_account_id'] as String?,
       createdAt: json['created_at'] as String?,
       updatedAt: json['updated_at'] as String?,
+      agreementSigned: json['agreement_signed'] as bool? ?? false,
+      agreementSignedAt: json['agreement_signed_at'] as String?,
+      agreementCountry: json['agreement_country'] as String?,
+      agreementState: json['agreement_state'] as String?,
+      agreementDocumentHash: json['agreement_document_hash'] as String?,
+      agreementSessionId: json['agreement_session_id'] as String?,
     );
   }
 
@@ -58,6 +78,12 @@ class OrganizerModel {
       'stripe_account_id': stripeAccountId,
       'created_at': createdAt,
       'updated_at': updatedAt,
+      'agreement_signed': agreementSigned,
+      'agreement_signed_at': agreementSignedAt,
+      'agreement_country': agreementCountry,
+      'agreement_state': agreementState,
+      'agreement_document_hash': agreementDocumentHash,
+      'agreement_session_id': agreementSessionId,
     };
   }
 
@@ -74,6 +100,12 @@ class OrganizerModel {
     String? stripeAccountId,
     String? createdAt,
     String? updatedAt,
+    bool? agreementSigned,
+    String? agreementSignedAt,
+    String? agreementCountry,
+    String? agreementState,
+    String? agreementDocumentHash,
+    String? agreementSessionId,
   }) {
     return OrganizerModel(
       id: id ?? this.id,
@@ -88,6 +120,12 @@ class OrganizerModel {
       stripeAccountId: stripeAccountId ?? this.stripeAccountId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      agreementSigned: agreementSigned ?? this.agreementSigned,
+      agreementSignedAt: agreementSignedAt ?? this.agreementSignedAt,
+      agreementCountry: agreementCountry ?? this.agreementCountry,
+      agreementState: agreementState ?? this.agreementState,
+      agreementDocumentHash: agreementDocumentHash ?? this.agreementDocumentHash,
+      agreementSessionId: agreementSessionId ?? this.agreementSessionId,
     );
   }
 }

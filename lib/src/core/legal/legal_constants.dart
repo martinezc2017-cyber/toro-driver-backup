@@ -37,6 +37,12 @@ class LegalConstants {
   /// Mexico addendum version
   static const String mexicoAddendumVersion = '1.0';
 
+  /// Organizer Platform Agreement version
+  static const String organizerAgreementVersion = '1.0';
+
+  /// Driver Trial Mode Disclaimer version
+  static const String trialDisclaimerVersion = '1.0';
+
   /// Combined legal bundle version (for quick checking)
   static const String legalBundleVersion = '2026.02.09.1';
 
@@ -76,6 +82,9 @@ class LegalConstants {
 
   /// SharedPreferences key for the version accepted
   static const String termsVersionKey = 'toro_driver_terms_version_accepted';
+
+  /// SharedPreferences key for organizer agreement
+  static const String organizerAgreementKey = 'organizer_agreement_accepted';
 
   // ============================================================================
   // SUPPORTED LEGAL LANGUAGES

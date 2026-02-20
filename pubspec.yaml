@@ -1,7 +1,7 @@
 name: toro_driver
 description: "Toro Driver - Rideshare Driver App"
 publish_to: 'none'
-version: 1.2.2+4012
+version: 1.2.4+4014
 
 environment:
   sdk: ^3.10.4
@@ -111,6 +111,7 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.14.3
+  flutter_native_splash: ^2.4.0
 
 flutter_launcher_icons:
   android: true
@@ -128,3 +129,19 @@ flutter:
     - assets/lang/es.json
     - assets/images/
     - assets/animations/
+
+
+# Flutter Native Splash Configuration
+# NOTA: El splash visual real está en ToroSplashScreen (Flutter)
+# Esta configuración es solo para evitar pantalla blanca mientras carga Flutter
+flutter_native_splash:
+  color: "#000000"
+  color_dark: "#000000"
+  
+  android_12:
+    color: "#000000"
+    color_dark: "#000000"
+  
+  android: true
+  ios: true
+  web: false

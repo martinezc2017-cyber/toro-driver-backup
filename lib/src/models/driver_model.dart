@@ -93,6 +93,10 @@ class DriverModel {
   final String? onboardingStage;
   final bool canReceiveRides;
 
+  // Trial mode fields
+  final bool trialModeAccepted;
+  final String? trialAcceptedAt;
+
   // Compatibility fields (not in DB but used by UI)
   final String? username;
   final String? currentVehicleId;
@@ -120,8 +124,16 @@ class DriverModel {
   // Check if all required documents are signed
   bool get allDocumentsSigned => agreementSigned && icaSigned && safetyPolicySigned && bgcConsentSigned;
 
-  // Check if driver can go online (all docs + admin approved)
-  bool get canGoOnline => allDocumentsSigned && adminApproved && canReceiveRides && onboardingStage == 'approved';
+  // Check if driver can go online (all docs + admin approved, OR trial mode accepted)
+  bool get canGoOnline =>
+      (allDocumentsSigned && adminApproved && canReceiveRides && onboardingStage == 'approved') ||
+      trialModeAccepted;
+
+  // Check if driver is fully approved (not just trial)
+  bool get isFullyApproved => allDocumentsSigned && adminApproved && canReceiveRides && onboardingStage == 'approved';
+
+  // Check if driver is operating in trial mode (not fully approved but trial accepted)
+  bool get isTrialMode => trialModeAccepted && !isFullyApproved;
 
   DriverModel({
     required this.id,
@@ -174,6 +186,9 @@ class DriverModel {
     this.adminApprovedAt,
     this.onboardingStage,
     this.canReceiveRides = false,
+    // Trial mode
+    this.trialModeAccepted = false,
+    this.trialAcceptedAt,
     // Tourism mode
     this.vehicleMode = 'personal',
     this.activeTourismEventId,
@@ -183,7 +198,7 @@ class DriverModel {
     this.contactFacebook,
     this.businessCardUrl,
     // Country & tax fields
-    this.countryCode = 'MX',
+    this.countryCode = 'US',
     this.rfc,
     this.rfcValidated = false,
     this.curp,
@@ -324,6 +339,9 @@ class DriverModel {
           : null,
       onboardingStage: json['onboarding_stage'] as String?,
       canReceiveRides: json['can_receive_rides'] as bool? ?? false,
+      // Trial mode
+      trialModeAccepted: json['trial_mode_accepted'] as bool? ?? false,
+      trialAcceptedAt: json['trial_accepted_at'] as String?,
       // Tourism mode
       vehicleMode: json['vehicle_mode'] as String? ?? 'personal',
       activeTourismEventId: json['active_tourism_event_id'] as String?,
@@ -333,7 +351,7 @@ class DriverModel {
       contactFacebook: json['contact_facebook'] as String?,
       businessCardUrl: json['business_card_url'] as String?,
       // Country & tax fields
-      countryCode: json['country_code'] as String? ?? 'MX',
+      countryCode: json['country_code'] as String? ?? 'US',
       rfc: json['rfc'] as String?,
       rfcValidated: json['rfc_validated'] as bool? ?? false,
       curp: json['curp'] as String?,
@@ -392,6 +410,9 @@ class DriverModel {
       'admin_approved_at': adminApprovedAt?.toIso8601String(),
       'onboarding_stage': onboardingStage,
       'can_receive_rides': canReceiveRides,
+      // Trial mode
+      'trial_mode_accepted': trialModeAccepted,
+      'trial_accepted_at': trialAcceptedAt,
       // Tourism mode
       'vehicle_mode': vehicleMode,
       'active_tourism_event_id': activeTourismEventId,
@@ -460,6 +481,9 @@ class DriverModel {
     DateTime? adminApprovedAt,
     String? onboardingStage,
     bool? canReceiveRides,
+    // Trial mode
+    bool? trialModeAccepted,
+    String? trialAcceptedAt,
     // Tourism mode
     String? vehicleMode,
     String? activeTourismEventId,
@@ -539,6 +563,9 @@ class DriverModel {
       adminApprovedAt: adminApprovedAt ?? this.adminApprovedAt,
       onboardingStage: onboardingStage ?? this.onboardingStage,
       canReceiveRides: canReceiveRides ?? this.canReceiveRides,
+      // Trial mode
+      trialModeAccepted: trialModeAccepted ?? this.trialModeAccepted,
+      trialAcceptedAt: trialAcceptedAt ?? this.trialAcceptedAt,
       // Tourism mode
       vehicleMode: vehicleMode ?? this.vehicleMode,
       activeTourismEventId: activeTourismEventId ?? this.activeTourismEventId,

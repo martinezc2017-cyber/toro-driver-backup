@@ -1,10 +1,15 @@
+import 'dart:math';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/haptic_service.dart';
 import '../../services/tourism_event_service.dart';
 import '../../services/organizer_service.dart';
 import '../../config/supabase_config.dart';
+
+import 'organizer_agreement_screen.dart';
 import 'organizer_event_dashboard_screen.dart';
 import 'organizer_create_event_simple_screen.dart';
 import 'package:toro_driver/src/screens/organizer/organizer_bidding_screen.dart';
@@ -26,6 +31,10 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
   bool _loading = true;
   String? _error;
   late TabController _tabController;
+
+  // Organizer identity & agreement
+  String? _organizerId;
+  bool _agreementSigned = false;
 
   // Stats
   int _totalEvents = 0;
@@ -64,7 +73,7 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
 
       var organizerData = await SupabaseConfig.client
           .from('organizers')
-          .select('id')
+          .select('id, agreement_signed')
           .eq('user_id', userId)
           .maybeSingle();
 
@@ -75,15 +84,22 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
               'user_id': userId,
               'created_at': DateTime.now().toIso8601String(),
             })
-            .select('id')
+            .select('id, agreement_signed')
             .single();
         organizerData = newOrganizerData;
       }
 
       final organizerId = organizerData['id'] as String;
+      _organizerId = organizerId;
+      _agreementSigned = organizerData['agreement_signed'] == true;
 
-      final orgEvents = await _eventService.getMyEvents(organizerId);
-      final driverEvents = await _eventService.getEventsByDriver(userId);
+      // Parallel fetch: organizer events + driver events
+      final results = await Future.wait([
+        _eventService.getMyEvents(organizerId),
+        _eventService.getEventsByDriver(userId),
+      ]);
+      final orgEvents = results[0];
+      final driverEvents = results[1];
 
       final existingIds = orgEvents.map((e) => e['id']).toSet();
       for (final de in driverEvents) {
@@ -151,6 +167,11 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
 
   @override
   Widget build(BuildContext context) {
+    final hasEvents = _events.where((e) {
+      final s = e['status'] ?? 'draft';
+      return s != 'cancelled' && s != 'deleted';
+    }).isNotEmpty;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -158,69 +179,50 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
           children: [
             // Header compacto
             _buildHeader(),
-            // Tab bar
-            _buildTabBar(),
+            // Tab bar only when there are events
+            if (hasEvents) _buildTabBar(),
             // Content
             Expanded(
               child: _loading
                   ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
                   : _error != null
                       ? _buildError()
-                      : TabBarView(
-                          controller: _tabController,
-                          children: [
-                            _buildEventsList(0),
-                            _buildEventsList(1),
-                            _buildEventsList(2),
-                            _buildEventsList(3),
-                          ],
-                        ),
+                      : hasEvents
+                          ? TabBarView(
+                              controller: _tabController,
+                              children: [
+                                _buildEventsList(0),
+                                _buildEventsList(1),
+                                _buildEventsList(2),
+                                _buildEventsList(3),
+                              ],
+                            )
+                          : _buildWelcomeEmpty(),
             ),
           ],
         ),
       ),
-      floatingActionButton: _buildFAB(),
+      floatingActionButton: hasEvents ? _buildFAB() : null,
     );
   }
 
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 12, 12, 0),
-      child: Column(
+      padding: const EdgeInsets.fromLTRB(16, 2, 8, 0),
+      child: Row(
         children: [
-          // Title + refresh
-          Row(
-            children: [
-              const Expanded(
-                child: Text(
-                  'Mis Eventos',
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              IconButton(
-                onPressed: _loadEvents,
-                icon: const Icon(Icons.refresh_rounded, color: AppColors.textSecondary),
-              ),
-            ],
+          const Expanded(
+            child: Text('Mis Eventos',
+              style: TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w600),
+            ),
           ),
-          const SizedBox(height: 12),
-          // KPI row
-          Row(
-            children: [
-              _buildKPI('$_totalEvents', 'Eventos', Icons.event, Colors.blue),
-              const SizedBox(width: 10),
-              _buildKPI('$_activeEvents', 'Activos', Icons.play_circle_fill, AppColors.success),
-              const SizedBox(width: 10),
-              _buildKPI('$_totalPassengers', 'Pasajeros', Icons.people, Colors.orange),
-              const SizedBox(width: 10),
-              _buildKPI('\$${_totalRevenue.toStringAsFixed(0)}', 'Ingresos', Icons.attach_money, AppColors.primary),
-            ],
+          GestureDetector(
+            onTap: _loadEvents,
+            child: const Padding(
+              padding: EdgeInsets.all(6),
+              child: Icon(Icons.refresh_rounded, color: AppColors.textSecondary, size: 16),
+            ),
           ),
-          const SizedBox(height: 12),
         ],
       ),
     );
@@ -359,11 +361,10 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
   }
 
   Widget _buildEmptyState(int tabIndex) {
-    final labels = ['No tienes eventos creados', 'No tienes eventos activos',
+    final labels = ['No tienes eventos', 'No tienes eventos activos',
                     'No tienes eventos próximos', 'No tienes eventos completados'];
     final icons = [Icons.event_busy, Icons.play_circle_outline,
                    Icons.upcoming, Icons.check_circle_outline];
-
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -372,19 +373,33 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
           const SizedBox(height: 16),
           Text(labels[tabIndex],
             style: const TextStyle(color: AppColors.textSecondary, fontSize: 16)),
-          const SizedBox(height: 20),
-          OutlinedButton.icon(
-            onPressed: _createEvent,
-            icon: const Icon(Icons.add, size: 18),
-            label: const Text('Crear Evento'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.primary,
-              side: const BorderSide(color: AppColors.primary),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-          ),
         ],
       ),
+    );
+  }
+
+  Widget _buildExampleRow(String emoji, String text) {
+    return Row(
+      children: [
+        Text(emoji, style: const TextStyle(fontSize: 18)),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 13,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Welcome screen when organizer has zero events - EPIC VERSION
+  Widget _buildWelcomeEmpty() {
+    return _AnimatedEmptyState(
+      onCreateEvent: _createEvent,
     );
   }
 
@@ -464,54 +479,47 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
     return GestureDetector(
       onTap: () => _openEventDashboard(event),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 14),
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: urgentDate ? AppColors.primary.withOpacity(0.5) : AppColors.border,
             width: urgentDate ? 1.5 : 0.5,
           ),
         ),
-        child: Column(
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Cover image
+            // Thumbnail (cover or vehicle photo)
             if (imageUrl != null || vehiclePhoto != null)
               ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
+                borderRadius: BorderRadius.circular(8),
                 child: Image.network(
                   imageUrl ?? vehiclePhoto!,
-                  height: 100,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                  width: 60, height: 60, fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => _vehicleIcon(),
                 ),
-              ),
-
-            Padding(
-              padding: const EdgeInsets.all(14),
+              )
+            else
+              _vehicleIcon(),
+            const SizedBox(width: 10),
+            // Info
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Row 1: Title + Status badge
+                  // Row 1: Title + Status
                   Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
-                        child: Text(
-                          eventName,
-                          style: const TextStyle(
-                            color: AppColors.textPrimary,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            height: 1.2,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
+                        child: Text(eventName,
+                          style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w700),
+                          maxLines: 1, overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 4),
                       Builder(builder: (_) {
                         final bids = event['tourism_vehicle_bids'] as List<dynamic>? ?? [];
                         final currentUid = SupabaseConfig.client.auth.currentUser?.id;
@@ -525,7 +533,7 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
                           final m = b as Map<String, dynamic>;
                           return m['organizer_status'] == 'selected' && m['is_winning_bid'] == true;
                         });
-                        if (hasWinner) return _buildStatusChip('Chofer Asignado', AppColors.success);
+                        if (hasWinner) return _buildStatusChip('Asignado', AppColors.success);
                         if (receivedBids > 0 && (status == 'draft' || status == 'pending_vehicle')) {
                           return _buildStatusChip('$receivedBids Puja${receivedBids > 1 ? 's' : ''}', AppColors.primary);
                         }
@@ -533,204 +541,94 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
                       }),
                     ],
                   ),
-
-                  // Driver-assigned event badge
-                  if (event['_is_driver_event'] == true) ...[
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: AppColors.success.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.emoji_events, size: 14, color: AppColors.success),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              'Puja ganada — ${event['organizers']?['company_name'] ?? 'Organizador'}',
-                              style: TextStyle(fontSize: 11, color: AppColors.success, fontWeight: FontWeight.w600),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-
-                  const SizedBox(height: 10),
-
-                  // Row 2: Date + Time + Distance + Seats (unified info strip)
-                  Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-                    decoration: BoxDecoration(
-                      color: AppColors.background,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Row(
+                  const SizedBox(height: 2),
+                  // Row 2: Date + Time + Km + Passengers inline
+                  Row(
+                    children: [
+                      if (formattedDate.isNotEmpty) ...[
+                        Icon(Icons.calendar_today, size: 10, color: urgentDate ? AppColors.error : AppColors.textTertiary),
+                        const SizedBox(width: 2),
+                        Text(formattedDate, style: TextStyle(color: urgentDate ? AppColors.error : AppColors.textSecondary, fontSize: 10)),
+                        const SizedBox(width: 6),
+                      ],
+                      if (formattedTime.isNotEmpty) ...[
+                        Icon(Icons.access_time, size: 10, color: urgentDate ? AppColors.error : AppColors.textTertiary),
+                        const SizedBox(width: 2),
+                        Text(formattedTime, style: TextStyle(color: urgentDate ? AppColors.error : AppColors.textSecondary, fontSize: 10)),
+                        const SizedBox(width: 6),
+                      ],
+                      if (distKm > 0) ...[
+                        const Icon(Icons.straighten, size: 10, color: AppColors.textTertiary),
+                        const SizedBox(width: 2),
+                        Text('${distKm.toStringAsFixed(0)} km', style: const TextStyle(color: AppColors.textSecondary, fontSize: 10)),
+                        const SizedBox(width: 6),
+                      ],
+                      Icon(Icons.event_seat, size: 10, color: AppColors.success),
+                      const SizedBox(width: 2),
+                      Text('$confirmedPassengers/${maxPassengers > 0 ? maxPassengers : totalSeats ?? 0}',
+                        style: const TextStyle(color: AppColors.success, fontSize: 10, fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  // Row 3: Route
+                  if (originName != null)
+                    Row(
                       children: [
-                        if (formattedDate.isNotEmpty)
-                          Expanded(
-                            child: _infoChipCenter(Icons.calendar_today, formattedDate,
-                                color: urgentDate ? AppColors.error : null),
-                          ),
-                        if (formattedTime.isNotEmpty)
-                          Expanded(
-                            child: _infoChipCenter(Icons.access_time, formattedTime,
-                                color: urgentDate ? AppColors.error : null),
-                          ),
-                        if (distKm > 0)
-                          Expanded(
-                            child: _infoChipCenter(Icons.straighten, '${distKm.toStringAsFixed(0)} km'),
-                          ),
+                        Container(width: 5, height: 5, decoration: const BoxDecoration(color: AppColors.success, shape: BoxShape.circle)),
+                        const SizedBox(width: 4),
+                        Flexible(child: Text(originName, style: const TextStyle(color: AppColors.textTertiary, fontSize: 10), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                        if (destinationName != null) ...[
+                          const Padding(padding: EdgeInsets.symmetric(horizontal: 3), child: Icon(Icons.arrow_forward, size: 10, color: AppColors.textTertiary)),
+                          Container(width: 5, height: 5, decoration: const BoxDecoration(color: AppColors.error, shape: BoxShape.circle)),
+                          const SizedBox(width: 4),
+                          Flexible(child: Text(destinationName, style: const TextStyle(color: AppColors.textTertiary, fontSize: 10), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                        ],
+                      ],
+                    ),
+                  // Vehicle/driver compact
+                  if (vehicle != null) ...[
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        const Icon(Icons.directions_bus, size: 10, color: AppColors.textTertiary),
+                        const SizedBox(width: 3),
                         Expanded(
-                          child: _infoChipCenter(Icons.event_seat, '$confirmedPassengers/${totalSeats ?? maxPassengers}',
-                              color: AppColors.success),
+                          child: Text(
+                            '${make ?? ''} ${model ?? ''} ${year != null ? '($year)' : ''} · $driverName'.trim(),
+                            style: const TextStyle(color: AppColors.textTertiary, fontSize: 10),
+                            maxLines: 1, overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ],
                     ),
-                  ),
-
-                  // Row 3: Route
-                  if (originName != null) ...[
-                    const SizedBox(height: 10),
+                  ],
+                  // Driver-assigned badge
+                  if (event['_is_driver_event'] == true) ...[
+                    const SizedBox(height: 2),
                     Row(
                       children: [
-                        Container(width: 7, height: 7,
-                          decoration: const BoxDecoration(color: AppColors.success, shape: BoxShape.circle)),
-                        const SizedBox(width: 6),
+                        Icon(Icons.emoji_events, size: 10, color: AppColors.success),
+                        const SizedBox(width: 3),
                         Expanded(
-                          child: Text(originName,
-                            style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                          child: Text('Puja ganada — ${event['organizers']?['company_name'] ?? 'Organizador'}',
+                            style: TextStyle(fontSize: 10, color: AppColors.success, fontWeight: FontWeight.w600),
                             maxLines: 1, overflow: TextOverflow.ellipsis),
                         ),
-                        if (destinationName != null) ...[
-                          const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 6),
-                            child: Icon(Icons.arrow_forward, size: 14, color: AppColors.textTertiary),
-                          ),
-                          Container(width: 7, height: 7,
-                            decoration: const BoxDecoration(color: AppColors.error, shape: BoxShape.circle)),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(destinationName,
-                              style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
-                              maxLines: 1, overflow: TextOverflow.ellipsis),
-                          ),
-                        ],
                       ],
                     ),
                   ],
-
-                  // Vehicle info (compact row)
-                  if (vehicle != null) ...[
-                    const SizedBox(height: 10),
+                  // Warning
+                  if (event['_is_driver_event'] != true && (event['driver_id'] == null || vehicle == null)) ...[
+                    const SizedBox(height: 2),
                     Row(
                       children: [
-                        // Small vehicle photo
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: vehiclePhoto != null
-                              ? Image.network(vehiclePhoto, width: 44, height: 44, fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => _vehicleIcon())
-                              : _vehicleIcon(),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (make != null || model != null)
-                                Text(
-                                  '${make ?? ''} ${model ?? ''} ${year != null ? '($year)' : ''}'.trim(),
-                                  style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
-                                  maxLines: 1, overflow: TextOverflow.ellipsis,
-                                ),
-                              Row(
-                                children: [
-                                  if (driverPhoto != null)
-                                    CircleAvatar(
-                                      radius: 8,
-                                      backgroundImage: NetworkImage(driverPhoto),
-                                    )
-                                  else
-                                    const Icon(Icons.person_outline, size: 13, color: AppColors.textTertiary),
-                                  const SizedBox(width: 3),
-                                  Expanded(
-                                    child: Text(driverName,
-                                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
-                                      maxLines: 1, overflow: TextOverflow.ellipsis),
-                                  ),
-                                  if (driverPhone != null) ...[
-                                    const SizedBox(width: 4),
-                                    Icon(Icons.phone, size: 11, color: AppColors.textTertiary),
-                                    const SizedBox(width: 2),
-                                    Text(driverPhone,
-                                      style: const TextStyle(color: AppColors.textTertiary, fontSize: 10)),
-                                  ],
-                                  // Seats shown in unified info strip above
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
+                        Icon(Icons.warning_amber_rounded, size: 10, color: Colors.orange),
+                        const SizedBox(width: 3),
+                        Text(event['driver_id'] == null ? 'Falta chofer' : 'Falta unidad',
+                          style: TextStyle(fontSize: 10, color: Colors.orange, fontWeight: FontWeight.w500)),
                       ],
                     ),
                   ],
-
-                  // Warning: no driver/vehicle
-                  if (event['_is_driver_event'] != true && (event['driver_id'] == null || vehicle == null)) ...[
-                    const SizedBox(height: 10),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.orange.withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.warning_amber_rounded, size: 14, color: Colors.orange),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              event['driver_id'] == null ? 'Falta chofer con unidad' : 'Falta asignar unidad',
-                              style: TextStyle(fontSize: 11, color: Colors.orange, fontWeight: FontWeight.w500),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-
-                  // Bid section
-                  ..._buildBidSection(event),
-
-                  // Bottom: "Administrar" button
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [AppColors.primary, AppColors.primary.withOpacity(0.85)],
-                        ),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.settings, size: 16, color: Colors.white),
-                          SizedBox(width: 6),
-                          Text('Administrar',
-                            style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
-                        ],
-                      ),
-                    ),
-                  ),
                 ],
               ),
             ),
@@ -1004,8 +902,110 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
       backgroundColor: AppColors.primary,
       elevation: 4,
       icon: const Icon(Icons.add, color: Colors.white),
-      label: const Text('Nuevo Evento',
+      label: const Text('Nuevo',
         style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+    );
+  }
+
+  void _showServiceTypeSheet() {
+    HapticService.lightImpact();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle
+            Container(
+              width: 40, height: 4,
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const Text(
+              '¿Qué quieres organizar?',
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            _buildSheetOption(
+              emoji: '\u{1F68C}', title: 'Ruta Fija',
+              subtitle: 'Microbús, camión, escolar',
+              color: const Color(0xFF2196F3),
+              onTap: () { Navigator.pop(ctx); _createEventWithType('fixed_route'); },
+            ),
+            _buildSheetOption(
+              emoji: '\u{1F3D6}', title: 'Tour / Paseo',
+              subtitle: 'Excursión, turismo, playa',
+              color: const Color(0xFFFF9800),
+              onTap: () { Navigator.pop(ctx); _createEventWithType('tourism'); },
+            ),
+            _buildSheetOption(
+              emoji: '\u{1F3C8}', title: 'Evento Especial',
+              subtitle: 'Boda, fiesta, concierto',
+              color: const Color(0xFF9C27B0),
+              onTap: () { Navigator.pop(ctx); _createEventWithType('special_event'); },
+            ),
+            _buildSheetOption(
+              emoji: '\u{270B}', title: '¿Quién más va?',
+              subtitle: 'Junta gente al mismo destino',
+              color: const Color(0xFF4CAF50),
+              onTap: () { Navigator.pop(ctx); _createEventWithType('shared_trip'); },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSheetOption({
+    required String emoji,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: () {
+        HapticService.buttonPress();
+        onTap();
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: color.withOpacity(0.2)),
+        ),
+        child: Row(
+          children: [
+            Text(emoji, style: const TextStyle(fontSize: 26)),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: TextStyle(color: color, fontSize: 15, fontWeight: FontWeight.w700)),
+                  Text(subtitle, style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_forward_ios, color: color.withOpacity(0.4), size: 16),
+          ],
+        ),
+      ),
     );
   }
 
@@ -1101,11 +1101,489 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
     ).then((_) => _loadEvents());
   }
 
+  /// Gate: check agreement before allowing event creation.
+  Future<void> _ensureAgreementThen(VoidCallback onAgreementOk) async {
+    if (_agreementSigned) {
+      onAgreementOk();
+      return;
+    }
+    if (_organizerId == null) return;
+
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => OrganizerAgreementScreen(organizerId: _organizerId!),
+      ),
+    );
+
+    if (result == true && mounted) {
+      setState(() => _agreementSigned = true);
+      onAgreementOk();
+    }
+  }
+
   void _createEvent() {
     HapticService.lightImpact();
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const OrganizerCreateEventSimpleScreen()),
-    ).then((_) => _loadEvents());
+    _ensureAgreementThen(() {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const OrganizerCreateEventSimpleScreen()),
+      ).then((_) => _loadEvents());
+    });
   }
+
+  void _createEventWithType(String serviceType) {
+    HapticService.lightImpact();
+    _ensureAgreementThen(() {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => OrganizerCreateEventSimpleScreen(serviceType: serviceType),
+        ),
+      ).then((_) => _loadEvents());
+    });
+  }
+}
+
+
+// ============================================================
+// EPIC EMPTY STATE WIDGET - Matching Splash Screen Quality
+// ============================================================
+
+/// Animated empty state with particle background and glassmorphism
+class _AnimatedEmptyState extends StatefulWidget {
+  final VoidCallback onCreateEvent;
+
+  const _AnimatedEmptyState({required this.onCreateEvent});
+
+  @override
+  State<_AnimatedEmptyState> createState() => _AnimatedEmptyStateState();
+}
+
+class _AnimatedEmptyStateState extends State<_AnimatedEmptyState>
+    with TickerProviderStateMixin {
+  late AnimationController _fadeController;
+  late AnimationController _floatController;
+  late AnimationController _pulseController;
+  late Animation<double> _fadeAnimation;
+  late Animation<double> _floatAnimation;
+  late Animation<double> _pulseAnimation;
+
+  final List<_Particle> _particles = [];
+  final Random _random = Random();
+
+  @override
+  void initState() {
+    super.initState();
+    _initParticles();
+    _initAnimations();
+    _startAnimations();
+  }
+
+  void _initParticles() {
+    for (int i = 0; i < 40; i++) {
+      _particles.add(_Particle(
+        x: _random.nextDouble(),
+        y: _random.nextDouble(),
+        size: _random.nextDouble() * 2 + 0.5,
+        speedX: (_random.nextDouble() - 0.5) * 0.001,
+        speedY: (_random.nextDouble() - 0.5) * 0.001,
+        opacity: _random.nextDouble() * 0.5 + 0.3,
+      ));
+    }
+  }
+
+  void _initAnimations() {
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 1200),
+      vsync: this,
+    );
+
+    _floatController = AnimationController(
+      duration: const Duration(seconds: 3),
+      vsync: this,
+    )..repeat(reverse: true);
+
+    _pulseController = AnimationController(
+      duration: const Duration(seconds: 2),
+      vsync: this,
+    )..repeat(reverse: true);
+
+    _fadeAnimation = CurvedAnimation(
+      parent: _fadeController,
+      curve: Curves.easeOutQuart,
+    );
+
+    _floatAnimation = Tween<double>(begin: 0, end: 10).animate(
+      CurvedAnimation(
+        parent: _floatController,
+        curve: Curves.easeInOutSine,
+      ),
+    );
+
+    _pulseAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _pulseController,
+        curve: Curves.easeInOut,
+      ),
+    );
+  }
+
+  void _startAnimations() {
+    _fadeController.forward();
+  }
+
+  @override
+  void dispose() {
+    _fadeController.dispose();
+    _floatController.dispose();
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        // Animated particle background
+        _ParticleBackground(particles: _particles),
+
+        // Main content
+        FadeTransition(
+          opacity: _fadeAnimation,
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(height: 40),
+
+                  // Title with i18n
+                  Text(
+                    'organizer.first_trip_title'.tr(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // Subtitle
+                  Text(
+                    'organizer.first_trip_subtitle'.tr(),
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.6),
+                      fontSize: 16,
+                      height: 1.5,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+
+                  const SizedBox(height: 40),
+
+                  // Glassmorphism examples card
+                  Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Colors.white.withOpacity(0.1),
+                          Colors.white.withOpacity(0.05),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.2),
+                        width: 1,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 20,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(24),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                        child: Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.lightbulb_outline,
+                                    color: AppColors.primary,
+                                    size: 18,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'organizer.examples'.tr(),
+                                    style: TextStyle(
+                                      color: AppColors.primary,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              _buildGlassExampleRow(Icons.directions_bus, 'organizer.example_bus'.tr()),
+                              _buildGlassExampleRow(Icons.beach_access, 'organizer.example_beach'.tr()),
+                              _buildGlassExampleRow(Icons.sports_football, 'organizer.example_sports'.tr()),
+                              _buildGlassExampleRow(Icons.school, 'organizer.example_school'.tr()),
+                              _buildGlassExampleRow(Icons.route, 'organizer.example_city'.tr()),
+                              _buildGlassExampleRow(Icons.people, 'organizer.example_friends'.tr()),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  // Epic CTA Button
+                  GestureDetector(
+                    onTap: widget.onCreateEvent,
+                    child: AnimatedBuilder(
+                      animation: _pulseAnimation,
+                      builder: (context, child) {
+                        return Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 18),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                AppColors.primary,
+                                AppColors.primary.withOpacity(0.8),
+                              ],
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.primary.withOpacity(0.4 * _pulseAnimation.value),
+                                blurRadius: 20,
+                                spreadRadius: 4,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.add_circle_outline,
+                                color: Colors.white,
+                                size: 24,
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                'organizer.create_trip'.tr(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGlassExampleRow(IconData icon, String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              icon,
+              color: Colors.white.withOpacity(0.9),
+              size: 18,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.85),
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Particle background similar to splash screen
+class _ParticleBackground extends StatefulWidget {
+  final List<_Particle> particles;
+
+  const _ParticleBackground({required this.particles});
+
+  @override
+  State<_ParticleBackground> createState() => _ParticleBackgroundState();
+}
+
+class _ParticleBackgroundState extends State<_ParticleBackground>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(seconds: 10),
+      vsync: this,
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return CustomPaint(
+          size: Size.infinite,
+          painter: _ParticlePainter(
+            particles: widget.particles,
+            progress: _controller.value,
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _Particle {
+  double x, y;
+  double size;
+  double speedX, speedY;
+  double opacity;
+
+  _Particle({
+    required this.x,
+    required this.y,
+    required this.size,
+    required this.speedX,
+    required this.speedY,
+    required this.opacity,
+  });
+}
+
+class _ParticlePainter extends CustomPainter {
+  final List<_Particle> particles;
+  final double progress;
+
+  _ParticlePainter({required this.particles, required this.progress});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Dark gradient background
+    final bgPaint = Paint()
+      ..shader = RadialGradient(
+        colors: [
+          const Color(0xFF0A1628),
+          const Color(0xFF050A10),
+        ],
+        stops: const [0.0, 1.0],
+      ).createShader(
+        Rect.fromCenter(
+          center: Offset(size.width / 2, size.height / 2),
+          width: size.width,
+          height: size.height,
+        ),
+      );
+    canvas.drawRect(Offset.zero & size, bgPaint);
+
+    // Draw particles
+    for (var particle in particles) {
+      particle.x += particle.speedX;
+      particle.y += particle.speedY;
+
+      // Wrap around
+      if (particle.x < 0) particle.x = 1;
+      if (particle.x > 1) particle.x = 0;
+      if (particle.y < 0) particle.y = 1;
+      if (particle.y > 1) particle.y = 0;
+
+      final paint = Paint()
+        ..color = AppColors.primary.withOpacity(particle.opacity * 0.6)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
+
+      canvas.drawCircle(
+        Offset(particle.x * size.width, particle.y * size.height),
+        particle.size,
+        paint,
+      );
+    }
+
+    // Draw connections
+    final linePaint = Paint()
+      ..strokeWidth = 0.5
+      ..color = AppColors.primary.withOpacity(0.1);
+
+    for (int i = 0; i < particles.length; i++) {
+      for (int j = i + 1; j < particles.length; j++) {
+        final dx = (particles[i].x - particles[j].x) * size.width;
+        final dy = (particles[i].y - particles[j].y) * size.height;
+        final dist = sqrt(dx * dx + dy * dy);
+
+        if (dist < 100) {
+          linePaint.color = AppColors.primary.withOpacity(0.1 * (1 - dist / 100));
+          canvas.drawLine(
+            Offset(particles[i].x * size.width, particles[i].y * size.height),
+            Offset(particles[j].x * size.width, particles[j].y * size.height),
+            linePaint,
+          );
+        }
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }

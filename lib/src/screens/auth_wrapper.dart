@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/legal/consent_service.dart';
 import '../core/legal/legal_constants.dart';
 import '../core/logging/app_logger.dart';
@@ -13,6 +14,7 @@ import '../providers/earnings_provider.dart';
 import '../models/driver_model.dart';
 import '../utils/app_colors.dart';
 import 'home_screen.dart';
+import 'organizer/organizer_home_screen.dart';
 import 'tourism/tourism_driver_home_screen.dart';
 import 'login_screen.dart';
 import 'pending_approval_screen.dart';
@@ -139,7 +141,9 @@ class _AuthWrapperState extends State<AuthWrapper> {
         // CRITICAL: If authenticated but no driver profile, go to onboarding
         // This prevents the loop where HomeScreen tries to use null driver
         if (driver == null) {
-          debugPrint('[AUTH_WRAPPER] Authenticated but no driver profile - going to onboarding');
+          final email = Supabase.instance.client.auth.currentUser?.email ?? 'NO EMAIL';
+          final uid = Supabase.instance.client.auth.currentUser?.id ?? 'NO UID';
+          debugPrint('[AUTH_WRAPPER] Authenticated as: $email (uid: $uid) but no driver profile - going to onboarding');
           return const DriverOnboardingScreen();
         }
 
@@ -163,6 +167,14 @@ class _AuthWrapperState extends State<AuthWrapper> {
         if (driver.vehicleMode == 'tourism' && driver.activeTourismEventId != null) {
           // Wrap in try-catch builder to prevent crash loop if event is invalid/limbo
           return _SafeTourismWrapper(eventId: driver.activeTourismEventId!);
+        }
+
+        // Organizers go directly to OrganizerHomeScreen — skip driver HomeScreen
+        if (driver.role == 'organizer') {
+          return Scaffold(
+            backgroundColor: AppColors.background,
+            body: OrganizerHomeScreen(onSwitchToDriverMode: null),
+          );
         }
 
         return const HomeScreen();

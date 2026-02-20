@@ -10,7 +10,7 @@ import '../../utils/haptic_service.dart';
 import '../profile_screen.dart';
 import '../tourism/vehicle_request_screen.dart';
 import 'organizer_vehicles_tab.dart';
-import 'organizer_earnings_tab_new.dart';
+import 'organizer_events_history_tab.dart';
 import 'organizer_events_tab.dart';
 
 /// Main shell for the Organizer role.
@@ -19,7 +19,7 @@ import 'organizer_events_tab.dart';
 ///   0 - Eventos (tourism_events)
 ///   1 - Pujas (open events + invitations from [VehicleRequestScreen])
 ///   2 - Vehiculos
-///   3 - Ingresos
+///   3 - Historial
 ///   4 - Perfil (reuses the existing [ProfileScreen])
 class OrganizerHomeScreen extends StatefulWidget {
   /// Optional callback to switch back to Driver mode
@@ -52,7 +52,7 @@ class _OrganizerHomeScreenState extends State<OrganizerHomeScreen> {
       OrganizerEventsTab(),
       VehicleRequestScreen(embedded: true),
       OrganizerVehiclesTab(),
-      OrganizerEarningsTabNew(),
+      OrganizerEventsHistoryTab(),
       ProfileScreen(),
     ];
     _loadActiveBidCount();
@@ -225,7 +225,7 @@ class _OrganizerHomeScreenState extends State<OrganizerHomeScreen> {
       backgroundColor: AppColors.surface,
       elevation: 0,
       automaticallyImplyLeading: false,
-      toolbarHeight: 60,
+      toolbarHeight: 44,
       title: GestureDetector(
         onTap: () {
           HapticService.lightImpact();
@@ -377,7 +377,7 @@ class _OrganizerHomeScreenState extends State<OrganizerHomeScreen> {
             const BottomNavigationBarItem(
               icon: Icon(Icons.attach_money_outlined),
               activeIcon: Icon(Icons.attach_money),
-              label: 'Ingresos',
+              label: 'Historial',
             ),
             const BottomNavigationBarItem(
               icon: Icon(Icons.person_outline),

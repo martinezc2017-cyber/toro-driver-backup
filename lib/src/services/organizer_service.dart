@@ -96,6 +96,75 @@ class OrganizerService {
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Agreement / Contract
+  // ---------------------------------------------------------------------------
+
+  /// Check if organizer has signed the platform agreement.
+  ///
+  /// Checks organizers.agreement_signed first (fast path).
+  /// Falls back to legal_consents table if column doesn't exist yet.
+  Future<bool> hasSignedAgreement(String organizerId) async {
+    // 1. Try organizers table column (fast path)
+    try {
+      final response = await _client
+          .from('organizers')
+          .select('agreement_signed')
+          .eq('id', organizerId)
+          .maybeSingle();
+      if (response?['agreement_signed'] == true) return true;
+    } catch (e) {
+      debugPrint('ORGANIZER_SVC -> hasSignedAgreement column check: $e');
+    }
+
+    // 2. Fallback: check legal_consents table
+    try {
+      // Get the user_id for this organizer
+      final org = await _client
+          .from('organizers')
+          .select('user_id')
+          .eq('id', organizerId)
+          .maybeSingle();
+      final userId = org?['user_id'] as String?;
+      if (userId == null) return false;
+
+      final consent = await _client
+          .from('legal_consents')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('document_type', 'organizer_platform_agreement')
+          .limit(1)
+          .maybeSingle();
+      return consent != null;
+    } catch (e) {
+      debugPrint('ORGANIZER_SVC -> hasSignedAgreement fallback: $e');
+      return false;
+    }
+  }
+
+  /// Save agreement signature and audit data to organizers table.
+  ///
+  /// Does NOT rethrow - the caller also saves to legal_consents as backup.
+  Future<void> saveAgreementSignature(
+    String organizerId,
+    Map<String, dynamic> auditData,
+  ) async {
+    try {
+      auditData['updated_at'] = DateTime.now().toUtc().toIso8601String();
+      await _client
+          .from('organizers')
+          .update(auditData)
+          .eq('id', organizerId);
+    } catch (e) {
+      debugPrint('ORGANIZER_SVC -> saveAgreementSignature ERROR: $e');
+      // Don't rethrow - legal_consents is the real audit trail
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Storage
+  // ---------------------------------------------------------------------------
+
   /// Uploads a company logo to Supabase storage and returns the public URL.
   Future<String?> uploadCompanyLogo(String organizerId, String filePath, {Uint8List? bytes}) async {
     try {

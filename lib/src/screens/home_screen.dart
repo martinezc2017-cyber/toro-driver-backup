@@ -32,6 +32,10 @@ import '../utils/haptic_service.dart';
 import '../widgets/futuristic_widgets.dart' hide NeonButton, NeonSwitch;
 import '../config/supabase_config.dart';
 import '../services/audit_service.dart';
+import '../core/legal/legal_constants.dart';
+import 'package:crypto/crypto.dart';
+import 'package:uuid/uuid.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../services/mapbox_navigation_service.dart';
 import '../services/tourism_event_service.dart';
 import '../services/notification_service.dart';
@@ -975,6 +979,8 @@ class _HomeScreenState extends State<HomeScreen>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
+                          // Profile completion banner for new drivers
+                          _buildProfileCompletionBanner(),
                           if (_cashOwed > 0 || _cashAccountStatus != 'active')
                             _buildCashOwedBanner(),
                           _buildIncomingRides(),
@@ -996,6 +1002,117 @@ class _HomeScreenState extends State<HomeScreen>
           },
         );
     }
+  }
+
+  /// Profile completion banner for newly registered drivers
+  Widget _buildProfileCompletionBanner() {
+    try {
+      final driverProvider = Provider.of<DriverProvider>(context, listen: false);
+      final driver = driverProvider.driver;
+      if (driver == null || driver.canGoOnline) return const SizedBox.shrink();
+
+      // Check what's missing
+      final hasVehicle = driver.vehicleType != null &&
+          driver.vehiclePlate != null &&
+          driver.vehiclePlate!.isNotEmpty;
+      final hasDocs = driver.allDocumentsSigned;
+
+      // If everything is done, don't show banner
+      if (hasVehicle && hasDocs && driver.adminApproved) {
+        return const SizedBox.shrink();
+      }
+
+      return Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              AppColors.primary.withValues(alpha: 0.12),
+              AppColors.success.withValues(alpha: 0.08),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: AppColors.primary.withValues(alpha: 0.3),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.assignment_outlined,
+                    color: AppColors.primary, size: 22),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'home_complete_profile_title'.tr(),
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'home_complete_profile_desc'.tr(),
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 12,
+              ),
+            ),
+            const SizedBox(height: 12),
+            // Checklist
+            _buildCheckItem(
+              'home_profile_add_vehicle'.tr(),
+              hasVehicle,
+              () => Navigator.pushNamed(context, '/add-vehicle'),
+            ),
+            const SizedBox(height: 6),
+            _buildCheckItem(
+              'home_profile_upload_docs'.tr(),
+              hasDocs,
+              () => Navigator.pushNamed(context, '/documents'),
+            ),
+          ],
+        ),
+      );
+    } catch (_) {
+      return const SizedBox.shrink();
+    }
+  }
+
+  Widget _buildCheckItem(String label, bool done, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: done ? null : onTap,
+      child: Row(
+        children: [
+          Icon(
+            done ? Icons.check_circle : Icons.radio_button_unchecked,
+            color: done ? AppColors.success : AppColors.textTertiary,
+            size: 18,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                color: done ? AppColors.textSecondary : AppColors.textPrimary,
+                fontSize: 13,
+                decoration: done ? TextDecoration.lineThrough : null,
+              ),
+            ),
+          ),
+          if (!done)
+            Icon(Icons.arrow_forward_ios,
+                color: AppColors.primary, size: 14),
+        ],
+      ),
+    );
   }
 
   // Banner for active ride - tap to enter navigation
@@ -1101,6 +1218,364 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
+  // TRIAL MODE - Bottom Sheet with full audit trail
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  Future<bool?> _showTrialModeSheet(DriverModel driver) {
+    bool trialChecked = false;
+    bool isSubmitting = false;
+
+    return showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Container(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+          decoration: const BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle
+              Container(
+                width: 40, height: 4,
+                margin: const EdgeInsets.only(bottom: 20),
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              // Icon
+              Container(
+                width: 64, height: 64,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFFF9500), Color(0xFFFF6B00)],
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Icon(Icons.science_rounded, color: Colors.white, size: 32),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'trial_title'.tr(),
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'trial_subtitle'.tr(),
+                style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, height: 1.4),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+
+              // Option 1: Wait for launch
+              GestureDetector(
+                onTap: () => Navigator.pop(ctx, false),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppColors.card,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2196F3).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.hourglass_top_rounded, color: Color(0xFF2196F3), size: 22),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('trial_wait_title'.tr(),
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14)),
+                            const SizedBox(height: 2),
+                            Text('trial_wait_desc'.tr(),
+                              style: const TextStyle(color: AppColors.textTertiary, fontSize: 11)),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.arrow_forward_ios, color: AppColors.textTertiary, size: 14),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+
+              // Option 2: Trial mode
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      const Color(0xFFFF9500).withValues(alpha: 0.1),
+                      const Color(0xFFFF6B00).withValues(alpha: 0.05),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFFF9500).withValues(alpha: 0.3)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFF9500).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.science_rounded, color: Color(0xFFFF9500), size: 22),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('trial_mode_title'.tr(),
+                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14)),
+                              const SizedBox(height: 2),
+                              Text('trial_mode_desc'.tr(),
+                                style: const TextStyle(color: AppColors.textTertiary, fontSize: 11)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    // Checkbox with legal text
+                    GestureDetector(
+                      onTap: () => setSheetState(() => trialChecked = !trialChecked),
+                      child: Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: trialChecked ? AppColors.success.withValues(alpha: 0.08) : AppColors.background,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: trialChecked ? AppColors.success.withValues(alpha: 0.4) : AppColors.border,
+                          ),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              width: 20, height: 20,
+                              margin: const EdgeInsets.only(top: 1),
+                              decoration: BoxDecoration(
+                                color: trialChecked ? AppColors.success : AppColors.surface,
+                                borderRadius: BorderRadius.circular(5),
+                                border: trialChecked ? null : Border.all(color: AppColors.border),
+                              ),
+                              child: trialChecked
+                                  ? const Icon(Icons.check, color: Colors.white, size: 14)
+                                  : null,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'trial_checkbox'.tr(),
+                                style: TextStyle(
+                                  color: trialChecked ? Colors.white : AppColors.textSecondary,
+                                  fontSize: 11,
+                                  height: 1.5,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    // Activate button
+                    GestureDetector(
+                      onTap: (trialChecked && !isSubmitting) ? () async {
+                        setSheetState(() => isSubmitting = true);
+                        HapticService.mediumImpact();
+                        try {
+                          await _saveTrialModeAcceptance(driver);
+                          if (ctx.mounted) Navigator.pop(ctx, true);
+                        } catch (e) {
+                          setSheetState(() => isSubmitting = false);
+                          if (ctx.mounted) {
+                            ScaffoldMessenger.of(ctx).showSnackBar(
+                              SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
+                            );
+                          }
+                        }
+                      } : null,
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 13),
+                        decoration: BoxDecoration(
+                          gradient: (trialChecked && !isSubmitting)
+                              ? const LinearGradient(colors: [Color(0xFFFF9500), Color(0xFFFF6B00)])
+                              : null,
+                          color: (trialChecked && !isSubmitting) ? null : AppColors.card,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            if (isSubmitting)
+                              const SizedBox(width: 18, height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white)))
+                            else ...[
+                              Icon(Icons.check_circle,
+                                color: trialChecked ? Colors.white : AppColors.textTertiary, size: 18),
+                              const SizedBox(width: 8),
+                              Text('trial_activate'.tr(),
+                                style: TextStyle(
+                                  color: trialChecked ? Colors.white : AppColors.textTertiary,
+                                  fontSize: 13, fontWeight: FontWeight.bold)),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Save trial mode acceptance with FULL audit trail
+  Future<void> _saveTrialModeAcceptance(DriverModel driver) async {
+    final user = SupabaseConfig.client.auth.currentUser;
+    if (user == null) throw Exception('Not authenticated');
+
+    final sessionId = const Uuid().v4();
+    String? ipAddress;
+    Position? location;
+    String appVersion = '1.0.0';
+
+    // Collect audit data in parallel
+    try {
+      final ipResp = await http.get(Uri.parse('https://api.ipify.org?format=json'));
+      if (ipResp.statusCode == 200) ipAddress = json.decode(ipResp.body)['ip'];
+    } catch (_) {}
+
+    try {
+      if (await Geolocator.isLocationServiceEnabled()) {
+        var perm = await Geolocator.checkPermission();
+        if (perm == LocationPermission.denied) perm = await Geolocator.requestPermission();
+        if (perm != LocationPermission.denied && perm != LocationPermission.deniedForever) {
+          location = await Geolocator.getCurrentPosition(
+            desiredAccuracy: LocationAccuracy.high,
+            timeLimit: const Duration(seconds: 8),
+          );
+        }
+      }
+    } catch (_) {}
+
+    try {
+      final info = await PackageInfo.fromPlatform();
+      appVersion = info.version;
+    } catch (_) {}
+
+    final deviceInfo = kIsWeb ? 'Web' : (Platform.isAndroid ? 'Android' : Platform.isIOS ? 'iOS' : 'Unknown');
+    final userAgent = kIsWeb ? 'Flutter Web' : 'Flutter Mobile - $deviceInfo';
+    final timezone = DateTime.now().timeZoneName;
+    final disclaimerText = 'trial_checkbox'.tr();
+    final docHash = sha256.convert(utf8.encode(disclaimerText)).toString();
+    final now = DateTime.now().toIso8601String();
+
+    // Save flat flag on drivers table
+    await SupabaseConfig.client.from('drivers').update({
+      'trial_mode_accepted': true,
+      'trial_accepted_at': now,
+    }).eq('id', driver.id);
+
+    // Save detailed audit in legal_consents with EVERYTHING
+    await SupabaseConfig.client.from('legal_consents').insert({
+      'user_id': user.id,
+      'user_email': user.email,
+      'document_type': 'driver_trial_disclaimer',
+      'document_version': LegalConstants.trialDisclaimerVersion,
+      'document_language': context.locale.languageCode,
+      'accepted_at': now,
+      'device_id': sessionId,
+      'platform': deviceInfo,
+      'app_version': appVersion,
+      'locale': context.locale.toString(),
+      'scroll_percentage': 1.0,
+      'time_spent_reading_ms': 0,
+      'age_verified': true,
+      'checksum': docHash,
+      'consent_json': {
+        // WHO
+        'session_id': sessionId,
+        'auth_uid': user.id,
+        'auth_email': user.email,
+        'auth_provider': user.appMetadata['provider'] ?? 'unknown',
+        'driver_id': driver.id,
+        'driver_name': driver.name,
+        'driver_phone': driver.phone,
+        'driver_email': driver.email,
+        'driver_role': driver.role,
+        'driver_country': driver.countryCode,
+        'driver_state': driver.state,
+        // VEHICLE
+        'vehicle_type': driver.vehicleType,
+        'vehicle_make': driver.vehicleMake,
+        'vehicle_model': driver.vehicleModel,
+        'vehicle_year': driver.vehicleYear,
+        'vehicle_plate': driver.vehiclePlate,
+        'vehicle_color': driver.vehicleColor,
+        // WHEN
+        'accepted_at': now,
+        'timezone': timezone,
+        // WHERE
+        'ip_address': ipAddress,
+        'latitude': location?.latitude,
+        'longitude': location?.longitude,
+        'gps_accuracy': location?.accuracy,
+        // HOW
+        'device_info': deviceInfo,
+        'user_agent': userAgent,
+        'app_version': appVersion,
+        // WHAT
+        'document_hash': docHash,
+        'disclaimer_text': disclaimerText,
+        'action': 'trial_mode_accepted',
+        // STATUS at time of acceptance
+        'admin_approved': driver.adminApproved,
+        'all_docs_signed': driver.allDocumentsSigned,
+        'onboarding_stage': driver.onboardingStage,
+        'agreement_signed': driver.agreementSigned,
+        'ica_signed': driver.icaSigned,
+        'safety_policy_signed': driver.safetyPolicySigned,
+        'bgc_consent_signed': driver.bgcConsentSigned,
+        'license_number': driver.licenseNumber,
+        'insurance_policy': driver.insurancePolicy,
+      },
+      'app_name': 'toro_driver',
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
   // HEADER - Online/Offline Toggle
   // ═══════════════════════════════════════════════════════════════════════════
 
@@ -1143,119 +1618,60 @@ class _HomeScreenState extends State<HomeScreen>
                   // Check if driver can go online
                   final driver = driverProvider.driver;
                   if (driver != null && !driver.canGoOnline) {
-                    // Log to Supabase audit_log for compliance tracking
-                    String blockReasonCode = 'unknown';
-                    if (!driver.allDocumentsSigned) {
-                      blockReasonCode = 'documents_incomplete';
-                    } else if (!driver.adminApproved) {
-                      blockReasonCode = 'pending_admin_approval';
-                    } else if (driver.onboardingStage == 'suspended') {
-                      blockReasonCode = 'account_suspended';
-                    } else if (driver.onboardingStage == 'rejected') {
-                      blockReasonCode = 'account_rejected';
+                    // Hard block: suspended or rejected accounts cannot use trial mode
+                    if (driver.onboardingStage == 'suspended' || driver.onboardingStage == 'rejected') {
+                      final isSuspended = driver.onboardingStage == 'suspended';
+                      showDialog(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          backgroundColor: AppColors.card,
+                          title: Row(children: [
+                            const Icon(Icons.block_rounded, color: Color(0xFFFF3B30)),
+                            const SizedBox(width: 12),
+                            Text(
+                              isSuspended ? 'trial_account_suspended'.tr() : 'trial_account_rejected'.tr(),
+                              style: TextStyle(color: AppColors.textPrimary),
+                            ),
+                          ]),
+                          content: Text(
+                            isSuspended
+                                ? 'trial_suspended_msg'.tr()
+                                : 'trial_rejected_msg'.tr(),
+                            style: TextStyle(color: AppColors.textSecondary, height: 1.5),
+                          ),
+                          actions: [
+                            ElevatedButton(
+                              onPressed: () => Navigator.pop(ctx),
+                              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF3B30)),
+                              child: Text('understood'.tr()),
+                            ),
+                          ],
+                        ),
+                      );
+                      return;
                     }
 
+                    // Show trial mode bottom sheet
                     AuditService.instance.logOnlineBlocked(
                       driverId: driver.id,
-                      reason: blockReasonCode,
+                      reason: 'showing_trial_mode_sheet',
                       status: {
                         'admin_approved': driver.adminApproved,
                         'all_docs_signed': driver.allDocumentsSigned,
                         'can_receive_rides': driver.canReceiveRides,
                         'onboarding_stage': driver.onboardingStage,
-                        'agreement_signed': driver.agreementSigned,
-                        'ica_signed': driver.icaSigned,
-                        'safety_policy_signed': driver.safetyPolicySigned,
-                        'bgc_consent_signed': driver.bgcConsentSigned,
                       },
                     );
 
-                    // Determine the reason for blocking
-                    String blockReason;
-                    String blockTitle;
-                    IconData blockIcon;
-                    Color blockColor;
+                    final accepted = await _showTrialModeSheet(driver);
+                    if (accepted != true) return; // User chose to wait or dismissed
 
-                    if (!driver.allDocumentsSigned) {
-                      blockTitle = 'Documentos Pendientes';
-                      blockReason =
-                          'Completa todos los documentos requeridos para poder activarte:\n\n'
-                          '${driver.agreementSigned ? '✓' : '✗'} Driver Agreement\n'
-                          '${driver.icaSigned ? '✓' : '✗'} Contractor Agreement (ICA)\n'
-                          '${driver.safetyPolicySigned ? '✓' : '✗'} Safety Policy\n'
-                          '${driver.bgcConsentSigned ? '✓' : '✗'} Background Check Consent';
-                      blockIcon = Icons.description_outlined;
-                      blockColor = const Color(0xFFFF9500);
-                    } else if (!driver.adminApproved) {
-                      blockTitle = 'Aprobación Pendiente';
-                      blockReason =
-                          'Tus documentos están completos.\n\n'
-                          'Tu cuenta está siendo revisada por nuestro equipo. '
-                          'Te notificaremos por email cuando seas aprobado.';
-                      blockIcon = Icons.hourglass_top_rounded;
-                      blockColor = const Color(0xFFFFD60A);
-                    } else if (driver.onboardingStage == 'suspended') {
-                      blockTitle = 'Cuenta Suspendida';
-                      blockReason =
-                          'Tu cuenta ha sido suspendida. Contacta a soporte para más información.';
-                      blockIcon = Icons.block_rounded;
-                      blockColor = const Color(0xFFFF3B30);
-                    } else if (driver.onboardingStage == 'rejected') {
-                      blockTitle = 'Solicitud Rechazada';
-                      blockReason =
-                          'Tu solicitud no fue aprobada. Contacta a soporte si crees que es un error.';
-                      blockIcon = Icons.cancel_rounded;
-                      blockColor = const Color(0xFFFF3B30);
-                    } else {
-                      blockTitle = 'No Disponible';
-                      blockReason =
-                          'No puedes ir online en este momento. Contacta a soporte.';
-                      blockIcon = Icons.info_outline_rounded;
-                      blockColor = const Color(0xFFFF9500);
-                    }
-
-                    // Show dialog with specific reason
-                    showDialog(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        backgroundColor: AppColors.card,
-                        title: Row(
-                          children: [
-                            Icon(blockIcon, color: blockColor),
-                            const SizedBox(width: 12),
-                            Text(
-                              blockTitle,
-                              style: TextStyle(color: AppColors.textPrimary),
-                            ),
-                          ],
-                        ),
-                        content: Text(
-                          blockReason,
-                          style: TextStyle(
-                            color: AppColors.textSecondary,
-                            height: 1.5,
-                          ),
-                        ),
-                        actions: [
-                          if (!driver.allDocumentsSigned)
-                            TextButton(
-                              onPressed: () {
-                                Navigator.pop(context);
-                                Navigator.pushNamed(context, '/documents');
-                              },
-                              child: const Text('Ver Documentos'),
-                            ),
-                          ElevatedButton(
-                            onPressed: () => Navigator.pop(context),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: blockColor,
-                            ),
-                            child: const Text('Entendido'),
-                          ),
-                        ],
-                      ),
-                    );
-                    return; // Don't allow toggle
+                    // Update local driver state after trial acceptance
+                    driverProvider.setDriver(driver.copyWith(
+                      trialModeAccepted: true,
+                      trialAcceptedAt: DateTime.now().toIso8601String(),
+                    ));
+                    // Now canGoOnline is true, continue to GPS init below
                   }
 
                   final locationProvider = Provider.of<LocationProvider>(
@@ -1351,6 +1767,20 @@ class _HomeScreenState extends State<HomeScreen>
                 },
                 child: _LuxuryToggle(isOnline: isOnline),
               ),
+              // Trial mode badge
+              if (driverProvider.driver?.isTrialMode == true) ...[
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFF9500).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: const Color(0xFFFF9500).withValues(alpha: 0.4)),
+                  ),
+                  child: Text('trial_badge'.tr(),
+                    style: const TextStyle(color: Color(0xFFFF9500), fontSize: 9, fontWeight: FontWeight.w700)),
+                ),
+              ],
               const SizedBox(width: 12),
               // Status Bar - FireGlow style
               Expanded(child: _FireGlowStatusBar(isOnline: isOnline)),

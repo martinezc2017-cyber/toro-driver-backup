@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../core/logging/app_logger.dart';
 import '../providers/driver_provider.dart';
 import '../providers/auth_provider.dart';
@@ -87,6 +88,8 @@ class _ProfileScreenState extends State<ProfileScreen>
                   const SizedBox(height: 24),
                   _buildStatsCard(driver),
                   const SizedBox(height: 20),
+                  _buildCommunityCard(driver),
+                  const SizedBox(height: 20),
                   _buildMenuCard(),
                   const SizedBox(height: 80),
                 ],
@@ -119,8 +122,8 @@ class _ProfileScreenState extends State<ProfileScreen>
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    AppColors.primary.withValues(alpha: 0.2 + (_pulseController.value * 0.1)),
-                    AppColors.purple.withValues(alpha: 0.2 + (_pulseController.value * 0.1)),
+                    const Color(0xFF00FFFF).withValues(alpha: 0.2 + (_pulseController.value * 0.1)),
+                    const Color(0xFF00BFFF).withValues(alpha: 0.2 + (_pulseController.value * 0.1)),
                   ],
                 ),
               ),
@@ -134,7 +137,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                 gradient: AppColors.cyberGradient,
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.purple.withValues(alpha: 0.4),
+                    color: const Color(0xFF00FFFF).withValues(alpha: 0.4),
                     blurRadius: 20,
                     spreadRadius: 2,
                   ),
@@ -246,42 +249,10 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   Widget _buildRatingBadge({double? rating, required int totalRides}) {
-    // Si no hay viajes completados, mostrar "Sin calificaciones"
-    final hasRatings = totalRides > 0 && rating != null;
+    final displayRating = rating ?? 5.0;
+    final isNew = totalRides == 0;
+    final label = isNew ? 'NEW' : _getRatingLabel(displayRating);
 
-    if (!hasRatings) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        decoration: BoxDecoration(
-          color: AppColors.card,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: AppColors.border.withValues(alpha: 0.3),
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.star_outline_rounded,
-              color: AppColors.textSecondary,
-              size: 22,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              'no_ratings'.tr(),
-              style: TextStyle(
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-              ),
-            ),
-          ],
-        ),
-      ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.2, end: 0);
-    }
-
-    // Con calificaciones
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       decoration: BoxDecoration(
@@ -306,7 +277,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           const Icon(Icons.star_rounded, color: Colors.white, size: 22),
           const SizedBox(width: 8),
           Text(
-            rating.toStringAsFixed(2),
+            displayRating.toStringAsFixed(2),
             style: const TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.bold,
@@ -321,7 +292,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
-              _getRatingLabel(rating),
+              label,
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 11,
@@ -342,10 +313,10 @@ class _ProfileScreenState extends State<ProfileScreen>
     final usaRank = driver?.usaRank;
     final driverState = driver?.state ?? '';
 
-    // Determinar si hay calificaciones
-    final hasRatings = totalRides > 0 && rating != null;
-    final ratingValue = hasRatings ? rating.toStringAsFixed(1) : '-';
-    final ratingLabel = hasRatings ? 'rating'.tr() : 'no_ratings'.tr();
+    // Always show rating (5.0 default for new drivers)
+    final displayRating = rating ?? 5.0;
+    final ratingValue = displayRating.toStringAsFixed(1);
+    final ratingLabel = totalRides > 0 ? 'rating'.tr() : 'rating'.tr();
 
     return GlassCard(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 12),
@@ -466,13 +437,191 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
+  Widget _buildCommunityCard(DriverModel? driver) {
+    final isMexico = driver?.countryCode == 'MX';
+    final groupUrl = isMexico
+        ? 'https://www.facebook.com/groups/891201387249906'
+        : 'https://www.facebook.com/groups/788083457055317';
+    final groupLabel = isMexico ? 'community_facebook_mx'.tr() : 'community_facebook'.tr();
+    final groupSubtitle = isMexico ? 'TORO Comunidad México' : 'TORO Community USA';
+
+    return AnimatedBuilder(
+      animation: _sparkleController,
+      builder: (context, child) {
+        final value = _sparkleController.value;
+        final beginX = -3.0 + (value * 6.0);
+        final endX = -1.0 + (value * 6.0);
+
+        return Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(22),
+            gradient: LinearGradient(
+              begin: Alignment(beginX, -1),
+              end: Alignment(endX, 1),
+              colors: const [
+                Color(0xFF00FFFF),
+                Color(0xFF00D4FF),
+                Color(0xFF60A5FA),
+                Color(0xFF93C5FD),
+                Color(0xFF00D4FF),
+                Color(0xFF00FFFF),
+              ],
+              tileMode: TileMode.repeated,
+            ),
+          ),
+          child: Container(
+            margin: const EdgeInsets.all(2),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.card,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.people_rounded, color: AppColors.textSecondary, size: 18),
+                    const SizedBox(width: 8),
+                    Text(
+                      'community_title'.tr(),
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1877F2).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.facebook, color: Color(0xFF1877F2), size: 12),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Facebook',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
+                              color: const Color(0xFF1877F2).withValues(alpha: 0.9),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                // Official page
+                _buildSocialRow(
+                  icon: Icons.facebook,
+                  label: 'TORO Rideshare',
+                  subtitle: 'community_facebook'.tr(),
+                  url: 'https://www.facebook.com/TORORIDESHARE',
+                ),
+                const SizedBox(height: 8),
+                // Country group
+                _buildSocialRow(
+                  icon: Icons.groups_rounded,
+                  label: groupLabel,
+                  subtitle: groupSubtitle,
+                  url: groupUrl,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    ).animate().fadeIn(duration: 450.ms);
+  }
+
+  Widget _buildSocialRow({
+    required IconData icon,
+    required String label,
+    required String subtitle,
+    required String url,
+  }) {
+    return GestureDetector(
+      onTap: () {
+        HapticService.lightImpact();
+        launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1877F2).withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: const Color(0xFF1877F2).withValues(alpha: 0.2),
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1877F2).withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: const Color(0xFF1877F2), size: 16),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 10,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1877F2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                'community_join'.tr(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildMenuCard() {
     // All items use neon blue glow except logout (red)
     const neonBlue = Color(0xFF0066FF);
     const neonRed = Color(0xFFEF4444);
 
     final menuItems = [
-      {'icon': Icons.badge_rounded, 'label': 'Mi Credencial', 'route': '/driver-credential', 'color': neonBlue},
+      {'icon': Icons.badge_rounded, 'label': 'cred_title'.tr(), 'route': '/driver-credential', 'color': neonBlue},
       {'icon': Icons.account_circle_rounded, 'label': 'account'.tr(), 'route': '/account', 'color': neonBlue},
       {'icon': Icons.settings_rounded, 'label': 'settings'.tr(), 'route': '/settings', 'color': neonBlue},
       {'icon': Icons.history_rounded, 'label': 'history'.tr(), 'route': '/rides', 'color': neonBlue},
@@ -625,15 +774,15 @@ class _ProfileScreenState extends State<ProfileScreen>
 
         if (imageUrl != null) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Foto de perfil actualizada ✅'),
+            SnackBar(
+              content: Text('profile_photo_updated'.tr()),
               backgroundColor: Colors.green,
             ),
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Error al subir la foto'),
+            SnackBar(
+              content: Text('profile_photo_error'.tr()),
               backgroundColor: Colors.red,
             ),
           );
@@ -645,7 +794,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         setState(() => _uploadingPhoto = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error al subir la foto: $e'),
+            content: Text('${'profile_photo_error'.tr()}: $e'),
             backgroundColor: Colors.red,
           ),
         );

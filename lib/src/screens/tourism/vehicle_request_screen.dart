@@ -1310,10 +1310,8 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
 
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-      ),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      color: AppColors.surface,
       child: Row(
         children: [
           if (!widget.embedded)
@@ -1322,32 +1320,14 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                 HapticService.lightImpact();
                 Navigator.pop(context);
               },
-              child: Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: AppColors.card,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: AppColors.border.withValues(alpha: 0.2),
-                    width: 0.5,
-                  ),
-                ),
-                child: const Icon(
-                  Icons.arrow_back_ios_new_rounded,
-                  color: AppColors.textSecondary,
-                  size: 18,
-                ),
+              child: const Padding(
+                padding: EdgeInsets.only(right: 10),
+                child: Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textSecondary, size: 16),
               ),
             ),
-          if (!widget.embedded) const SizedBox(width: 16),
           const Expanded(
-            child: Text(
-              'Pujas Disponibles',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
-              ),
+            child: Text('Pujas Disponibles',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
             ),
           ),
           GestureDetector(
@@ -1356,18 +1336,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
               _loadRequests();
               _loadOpenEvents();
             },
-            child: Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: AppColors.gold.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.refresh,
-                color: AppColors.gold,
-                size: 20,
-              ),
-            ),
+            child: const Icon(Icons.refresh, color: AppColors.gold, size: 18),
           ),
         ],
       ),
@@ -1379,19 +1348,19 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
       color: AppColors.surface,
       child: TabBar(
         controller: _tabController,
+        isScrollable: true,
+        tabAlignment: TabAlignment.start,
         indicatorColor: AppColors.gold,
         indicatorWeight: 3,
         labelColor: AppColors.gold,
         unselectedLabelColor: AppColors.textTertiary,
-        labelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-        unselectedLabelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+        labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+        unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
         tabs: [
           Tab(
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.public, size: 16),
-                const SizedBox(width: 6),
                 const Text('Eventos Abiertos'),
                 if (_openEvents.isNotEmpty) ...[
                   const SizedBox(width: 6),
@@ -1414,8 +1383,6 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.mail_outline, size: 16),
-                const SizedBox(width: 6),
                 const Text('Invitaciones'),
                 if (_requests.isNotEmpty) ...[
                   const SizedBox(width: 6),
@@ -1438,8 +1405,6 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.history, size: 16),
-                const SizedBox(width: 6),
                 const Text('Mis Pujas'),
                 if (_myBids.isNotEmpty) ...[
                   const SizedBox(width: 6),
@@ -1484,38 +1449,40 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
 
     return Column(
       children: [
-        // Search filter
+        // Search filter - compact
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-          child: TextField(
-            controller: _filterController,
-            style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
-            decoration: InputDecoration(
-              hintText: 'Buscar por destino, organizador...',
-              hintStyle: const TextStyle(color: AppColors.textTertiary, fontSize: 14),
-              prefixIcon: const Icon(Icons.search, color: AppColors.textTertiary, size: 20),
-              suffixIcon: _filterText.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.clear, size: 18, color: AppColors.textTertiary),
-                      onPressed: () {
-                        _filterController.clear();
-                        setState(() => _filterText = '');
-                      },
-                    )
-                  : null,
-              filled: true,
-              fillColor: AppColors.card,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: AppColors.border.withValues(alpha: 0.3)),
+          padding: const EdgeInsets.fromLTRB(12, 6, 12, 4),
+          child: SizedBox(
+            height: 36,
+            child: TextField(
+              controller: _filterController,
+              style: const TextStyle(color: AppColors.textPrimary, fontSize: 12),
+              decoration: InputDecoration(
+                hintText: 'Buscar destino, organizador...',
+                hintStyle: const TextStyle(color: AppColors.textTertiary, fontSize: 12),
+                prefixIcon: const Icon(Icons.search, color: AppColors.textTertiary, size: 16),
+                prefixIconConstraints: const BoxConstraints(minWidth: 32),
+                suffixIcon: _filterText.isNotEmpty
+                    ? GestureDetector(
+                        onTap: () { _filterController.clear(); setState(() => _filterText = ''); },
+                        child: const Icon(Icons.clear, size: 14, color: AppColors.textTertiary),
+                      )
+                    : null,
+                suffixIconConstraints: const BoxConstraints(minWidth: 28),
+                filled: true,
+                fillColor: AppColors.card,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: AppColors.border.withValues(alpha: 0.3)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: AppColors.border.withValues(alpha: 0.3)),
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
               ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: AppColors.border.withValues(alpha: 0.3)),
-              ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              onChanged: (val) => setState(() => _filterText = val),
             ),
-            onChanged: (val) => setState(() => _filterText = val),
           ),
         ),
         Expanded(
@@ -1541,7 +1508,6 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
     final title = event['event_name'] as String? ?? 'Evento';
     final organizer = event['organizers'] as Map<String, dynamic>?;
     final organizerName = organizer?['company_name'] ?? 'Organizador';
-    final logoUrl = organizer?['company_logo_url'] as String?;
     final isVerified = organizer?['is_verified'] == true;
     final startDate = event['event_date'] as String?;
     final startTime = event['start_time'] as String?;
@@ -1550,121 +1516,114 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
     final itinerary = event['itinerary'] as List?;
     final alreadyBid = event['already_bid'] == true;
     final routeText = _buildRouteText(itinerary);
+    final createdAt = event['created_at'] as String?;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: alreadyBid
-              ? AppColors.success.withValues(alpha: 0.3)
-              : AppColors.gold.withValues(alpha: 0.3),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Row 1: logo + title + organizer + badge
-          Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: _buildSmallLogo(logoUrl, 34),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title,
-                      style: const TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w700),
-                      maxLines: 1, overflow: TextOverflow.ellipsis,
-                    ),
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(organizerName,
-                            style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
-                            maxLines: 1, overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        if (isVerified) ...[
-                          const SizedBox(width: 3),
-                          const Icon(Icons.verified, color: AppColors.primaryCyan, size: 12),
-                        ],
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                decoration: BoxDecoration(
-                  color: (alreadyBid ? AppColors.success : AppColors.gold).withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(alreadyBid ? 'PUJA ENVIADA' : 'ABIERTO',
-                  style: TextStyle(
-                    color: alreadyBid ? AppColors.success : AppColors.gold,
-                    fontSize: 9, fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ],
+    return GestureDetector(
+      onTap: () => _showOpenEventBidDialog(event),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: alreadyBid
+                ? AppColors.success.withValues(alpha: 0.3)
+                : AppColors.gold.withValues(alpha: 0.15),
+            width: 0.5,
           ),
-          const SizedBox(height: 8),
-          // Row 2: route inline
-          if (routeText.isNotEmpty)
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Row 1: title + badge + time ago
             Row(
               children: [
-                const Icon(Icons.route, color: AppColors.success, size: 14),
-                const SizedBox(width: 6),
                 Expanded(
-                  child: Text(routeText,
-                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 12, fontWeight: FontWeight.w500),
+                  child: Text(title,
+                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w700),
                     maxLines: 1, overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: (alreadyBid ? AppColors.success : AppColors.gold).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(alreadyBid ? 'ENVIADA' : 'ABIERTO',
+                    style: TextStyle(
+                      color: alreadyBid ? AppColors.success : AppColors.gold,
+                      fontSize: 8, fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ),
               ],
             ),
-          const SizedBox(height: 6),
-          // Row 3: all info chips in one line
-          Wrap(
-            spacing: 10,
-            runSpacing: 4,
-            children: [
-              _buildMiniChip(Icons.calendar_today, _formatDate(startDate)),
-              if (startTime != null && startTime.isNotEmpty)
-                _buildMiniChip(Icons.access_time, _formatTime(startTime)),
-              if (estimatedDistance != null)
-                _buildMiniChip(Icons.straighten, '${estimatedDistance.toStringAsFixed(0)} km'),
-              if (passengers != null)
-                _buildMiniChip(Icons.event_seat, '$passengers'),
-            ],
-          ),
-          const SizedBox(height: 10),
-          // Action button
-          if (!alreadyBid)
-            SizedBox(
-              width: double.infinity,
-              height: 40,
-              child: ElevatedButton.icon(
-                onPressed: () => _showOpenEventBidDialog(event),
-                icon: const Icon(Icons.gavel_rounded, size: 16),
-                label: const Text('Enviar Puja', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.gold,
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(vertical: 0),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  elevation: 0,
+            const SizedBox(height: 3),
+            // Row 2: organizer + route
+            Row(
+              children: [
+                Text(organizerName,
+                  style: const TextStyle(color: AppColors.textTertiary, fontSize: 10),
                 ),
-              ),
+                if (isVerified) ...[
+                  const SizedBox(width: 2),
+                  const Icon(Icons.verified, color: AppColors.primaryCyan, size: 10),
+                ],
+                if (routeText.isNotEmpty) ...[
+                  const SizedBox(width: 6),
+                  const Icon(Icons.route, color: AppColors.success, size: 10),
+                  const SizedBox(width: 3),
+                  Expanded(
+                    child: Text(routeText,
+                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 10),
+                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ] else
+                  const Spacer(),
+              ],
             ),
-        ],
+            const SizedBox(height: 4),
+            // Row 3: date + time + km + passengers + bid button
+            Row(
+              children: [
+                _buildMiniChip(Icons.calendar_today, _formatDate(startDate)),
+                const SizedBox(width: 8),
+                if (startTime != null && startTime.isNotEmpty) ...[
+                  _buildMiniChip(Icons.access_time, _formatTime(startTime)),
+                  const SizedBox(width: 8),
+                ],
+                if (estimatedDistance != null) ...[
+                  _buildMiniChip(Icons.straighten, '${estimatedDistance.toStringAsFixed(0)} km'),
+                  const SizedBox(width: 8),
+                ],
+                if (passengers != null)
+                  _buildMiniChip(Icons.event_seat, '$passengers'),
+                const Spacer(),
+                if (createdAt != null)
+                  Text(_formatTimeAgo(createdAt),
+                    style: const TextStyle(color: AppColors.textTertiary, fontSize: 9),
+                  ),
+                if (!alreadyBid) ...[
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.gold,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text('Pujar',
+                      style: TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

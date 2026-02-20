@@ -221,17 +221,17 @@ class GlassCard extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(borderRadius),
           border: Border.all(
-            color: borderColor ?? const Color(0xFF8B5CF6).withValues(alpha: 0.35),
+            color: borderColor ?? const Color(0xFF00FFFF).withValues(alpha: 0.35),
             width: 1.5,
           ),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF8B5CF6).withValues(alpha: 0.15),
+              color: const Color(0xFF00FFFF).withValues(alpha: 0.15),
               blurRadius: 12,
               spreadRadius: 0,
             ),
             BoxShadow(
-              color: const Color(0xFF7C3AED).withValues(alpha: 0.1),
+              color: const Color(0xFF00D4FF).withValues(alpha: 0.1),
               blurRadius: 20,
               spreadRadius: -4,
             ),

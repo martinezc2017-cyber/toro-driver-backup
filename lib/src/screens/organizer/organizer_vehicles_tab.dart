@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../../services/organizer_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/haptic_service.dart';
@@ -58,7 +59,7 @@ class _OrganizerVehiclesTabState extends State<OrganizerVehiclesTab> {
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _error = 'Error al cargar vehiculos: $e';
+          _error = '${'organizer.vehicles_load_error'.tr()}: $e';
         });
       }
     }
@@ -78,8 +79,8 @@ class _OrganizerVehiclesTabState extends State<OrganizerVehiclesTab> {
       appBar: AppBar(
         backgroundColor: AppColors.surface,
         elevation: 0,
-        title: const Text(
-          'Vehiculos Disponibles',
+        title: Text(
+          'organizer.vehicles_title'.tr(),
           style: TextStyle(
             color: AppColors.textPrimary,
             fontWeight: FontWeight.w700,
@@ -135,9 +136,9 @@ class _OrganizerVehiclesTabState extends State<OrganizerVehiclesTab> {
     HapticService.mediumImpact();
 
     const driverAppLink = 'https://play.google.com/store/apps/details?id=com.toro.driver';
-    const message = 'Únete a TORO Driver y gana dinero con tu vehículo de turismo. Descarga la app: $driverAppLink';
+    final message = 'organizer.invite_message'.tr(namedArgs: {'link': driverAppLink});
 
-    Share.share(message, subject: 'Únete a TORO Driver');
+    Share.share(message, subject: 'organizer.invite_driver'.tr());
   }
 
   Widget _buildFilterBar() {
@@ -163,8 +164,8 @@ class _OrganizerVehiclesTabState extends State<OrganizerVehiclesTab> {
                 controller: _stateFilterController,
                 style: const TextStyle(
                     color: AppColors.textPrimary, fontSize: 14),
-                decoration: const InputDecoration(
-                  hintText: 'Filtrar por estado (ej: AZ)',
+                decoration: InputDecoration(
+                  hintText: 'organizer.filter_state_hint'.tr(),
                   hintStyle:
                       TextStyle(color: AppColors.textTertiary, fontSize: 13),
                   prefixIcon: Icon(Icons.filter_list,
@@ -205,7 +206,7 @@ class _OrganizerVehiclesTabState extends State<OrganizerVehiclesTab> {
                 size: 48, color: AppColors.error.withValues(alpha: 0.7)),
             const SizedBox(height: 16),
             Text(
-              _error ?? 'Error desconocido',
+              _error ?? 'common.unknown_error'.tr(),
               style: const TextStyle(
                   color: AppColors.textSecondary, fontSize: 14),
               textAlign: TextAlign.center,
@@ -220,7 +221,7 @@ class _OrganizerVehiclesTabState extends State<OrganizerVehiclesTab> {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: const Text('Reintentar'),
+              child: Text('common.retry'.tr()),
             ),
           ],
         ),
@@ -239,14 +240,14 @@ class _OrganizerVehiclesTabState extends State<OrganizerVehiclesTab> {
                 size: 48,
                 color: AppColors.textTertiary.withValues(alpha: 0.5)),
             const SizedBox(height: 16),
-            const Text(
-              'No se encontraron vehiculos',
+            Text(
+              'organizer.no_vehicles_found'.tr(),
               style:
                   TextStyle(color: AppColors.textSecondary, fontSize: 14),
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Intenta cambiar el filtro de estado',
+            Text(
+              'organizer.try_change_filter'.tr(),
               style:
                   TextStyle(color: AppColors.textTertiary, fontSize: 12),
             ),
@@ -257,13 +258,13 @@ class _OrganizerVehiclesTabState extends State<OrganizerVehiclesTab> {
   }
 
   Widget _buildVehicleCard(Map<String, dynamic> vehicle) {
-    final vehicleName = vehicle['vehicle_name'] ?? 'Sin nombre';
+    final vehicleName = vehicle['vehicle_name'] ?? 'common.no_name'.tr();
     final vehicleType = vehicle['vehicle_type'] ?? 'autobus';
     // CHOFER DE TORO (driver assigned to operate the bus)
-    final driverName = vehicle['driver_name'] ?? 'Sin chofer';
+    final driverName = vehicle['driver_name'] ?? 'common.no_driver'.tr();
     final driverPhone = vehicle['driver_phone'] ?? '';
     // OWNER (dueño del camión/compañía)
-    final ownerName = vehicle['owner_name'] ?? 'Propietario';
+    final ownerName = vehicle['owner_name'] ?? 'common.owner'.tr();
     final ownerPhone = vehicle['owner_phone'] ?? '';
     final totalSeats = vehicle['total_seats'] ?? 0;
     final vehicleId = vehicle['id']?.toString() ?? '';
@@ -277,7 +278,7 @@ class _OrganizerVehiclesTabState extends State<OrganizerVehiclesTab> {
     final typeIcon =
         vehicleType == 'minibus' ? Icons.airport_shuttle : Icons.directions_bus;
     final typeLabel =
-        vehicleType == 'minibus' ? 'Minibus' : 'Autobus';
+        vehicleType == 'minibus' ? 'organizer.vehicle_type_minibus'.tr() : 'organizer.vehicle_type_bus'.tr();
 
     return GestureDetector(
       onTap: () {
@@ -371,7 +372,7 @@ class _OrganizerVehiclesTabState extends State<OrganizerVehiclesTab> {
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              'asientos',
+                              'organizer.seats'.tr(),
                               style: TextStyle(
                                 color: AppColors.success.withValues(alpha: 0.8),
                                 fontSize: 13,
@@ -526,7 +527,7 @@ class _OrganizerVehiclesTabState extends State<OrganizerVehiclesTab> {
                               ),
                             ),
                             Text(
-                              'Asientos disponibles',
+                              'organizer.seats_available'.tr(),
                               style: TextStyle(
                                 color: AppColors.success.withValues(alpha: 0.8),
                                 fontSize: 14,
@@ -568,19 +569,19 @@ class _OrganizerVehiclesTabState extends State<OrganizerVehiclesTab> {
               ),
               const SizedBox(height: 16),
               // Details
-              _detailRow(Icons.category, 'Tipo',
+              _detailRow(Icons.category, 'common.type'.tr(),
                   vehicleType == 'minibus' ? 'Minibus' : 'Autobus'),
               // CHOFER DE TORO (principal)
-              _detailRow(Icons.drive_eta, 'Chofer de Toro', driverName),
+              _detailRow(Icons.drive_eta, 'organizer.toro_driver'.tr(), driverName),
               if (driverPhone.isNotEmpty)
-                _detailRow(Icons.phone, 'Tel. Chofer', driverPhone),
+                _detailRow(Icons.phone, 'organizer.driver_phone'.tr(), driverPhone),
               const SizedBox(height: 8),
               // OWNER (dueño del camión)
-              _detailRow(Icons.business, 'Propietario', ownerName),
+              _detailRow(Icons.business, 'common.owner'.tr(), ownerName),
               if (ownerPhone.isNotEmpty)
-                _detailRow(Icons.phone_outlined, 'Tel. Propietario', ownerPhone),
+                _detailRow(Icons.phone_outlined, 'organizer.owner_phone'.tr(), ownerPhone),
               if (state.isNotEmpty)
-                _detailRow(Icons.location_on, 'Estado', state),
+                _detailRow(Icons.location_on, 'common.state'.tr(), state),
               const SizedBox(height: 24),
               // Contactar button
               SizedBox(
@@ -597,13 +598,13 @@ class _OrganizerVehiclesTabState extends State<OrganizerVehiclesTab> {
                       await _organizerService.contactBusOwner(
                         ownerId,
                         '', // organizerId -- filled by backend
-                        'Hola, me interesa tu vehiculo "$vehicleName" para una ruta.',
+                        'organizer.contact_message'.tr(namedArgs: {'vehicleName': vehicleName}),
                       );
                       if (ctx.mounted) {
                         Navigator.pop(ctx);
                         ScaffoldMessenger.of(ctx).showSnackBar(
-                          const SnackBar(
-                            content: Text('Mensaje enviado al propietario'),
+                          SnackBar(
+                            content: Text('organizer.message_sent'.tr()),
                             backgroundColor: AppColors.success,
                           ),
                         );
@@ -613,7 +614,7 @@ class _OrganizerVehiclesTabState extends State<OrganizerVehiclesTab> {
                         Navigator.pop(ctx);
                         ScaffoldMessenger.of(ctx).showSnackBar(
                           SnackBar(
-                            content: Text('Error al contactar: $e'),
+                            content: Text('${'organizer.contact_error'.tr()}: $e'),
                             backgroundColor: AppColors.error,
                           ),
                         );
@@ -621,8 +622,8 @@ class _OrganizerVehiclesTabState extends State<OrganizerVehiclesTab> {
                     }
                   },
                   icon: const Icon(Icons.message, size: 18),
-                  label: const Text(
-                    'Contactar',
+                  label: Text(
+                    'organizer.contact_owner'.tr(),
                     style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                   ),
                   style: ElevatedButton.styleFrom(
@@ -756,8 +757,8 @@ class _GlowingInviteButtonState extends State<_GlowingInviteButton>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Invitar Chofer',
+                      Text(
+                        'organizer.invite_driver'.tr(),
                         style: TextStyle(
                           color: AppColors.textPrimary,
                           fontSize: 15,
@@ -766,7 +767,7 @@ class _GlowingInviteButtonState extends State<_GlowingInviteButton>
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Comparte el link de la app TORO Driver',
+                        'organizer.share_app_subtitle'.tr(),
                         style: TextStyle(
                           color: AppColors.textSecondary,
                           fontSize: 12,

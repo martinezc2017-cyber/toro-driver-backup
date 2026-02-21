@@ -1781,11 +1781,11 @@ class _HomeScreenState extends State<HomeScreen>
                     style: const TextStyle(color: Color(0xFFFF9500), fontSize: 9, fontWeight: FontWeight.w700)),
                 ),
               ],
-              const SizedBox(width: 12),
+              const SizedBox(width: 6),
               // Status Bar - FireGlow style
               Expanded(child: _FireGlowStatusBar(isOnline: isOnline)),
-              const SizedBox(width: 12),
-              // Mode Toggle: Driver vs Tourism
+              const SizedBox(width: 4),
+              // Mode Toggle: Driver vs Tourism (compact icons)
               GestureDetector(
                 onTap: () {
                   HapticService.lightImpact();
@@ -1794,105 +1794,58 @@ class _HomeScreenState extends State<HomeScreen>
                   });
                 },
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 4,
-                    vertical: 4,
-                  ),
+                  padding: const EdgeInsets.all(3),
                   decoration: BoxDecoration(
                     color: AppColors.surface.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(10),
                     border: Border.all(
                       color: _isTourismMode
-                          ? const Color(0xFFFF9500)
-                          : const Color(0xFF3B82F6),
+                          ? AppColors.warning
+                          : AppColors.primaryBright,
                       width: 1.5,
                     ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Driver Mode
                       Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
-                        ),
+                        padding: const EdgeInsets.all(5),
                         decoration: BoxDecoration(
                           gradient: !_isTourismMode
-                              ? const LinearGradient(
-                                  colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
+                              ? LinearGradient(
+                                  colors: [AppColors.primaryBright, AppColors.primary],
                                 )
                               : null,
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(7),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.local_taxi_rounded,
-                              color: !_isTourismMode
-                                  ? Colors.white
-                                  : AppColors.textTertiary,
-                              size: 16,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              'Driver',
-                              style: TextStyle(
-                                color: !_isTourismMode
-                                    ? Colors.white
-                                    : AppColors.textTertiary,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
+                        child: Icon(
+                          Icons.local_taxi_rounded,
+                          color: !_isTourismMode ? Colors.white : AppColors.textTertiary,
+                          size: 14,
                         ),
                       ),
-                      const SizedBox(width: 4),
-                      // Tourism Mode
+                      const SizedBox(width: 2),
                       Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
-                        ),
+                        padding: const EdgeInsets.all(5),
                         decoration: BoxDecoration(
                           gradient: _isTourismMode
-                              ? const LinearGradient(
-                                  colors: [Color(0xFFFF9500), Color(0xFFFF6B00)],
+                              ? LinearGradient(
+                                  colors: [AppColors.warning, AppColors.warningDark],
                                 )
                               : null,
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(7),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.directions_bus_rounded,
-                              color: _isTourismMode
-                                  ? Colors.white
-                                  : AppColors.textTertiary,
-                              size: 16,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              'Turismo',
-                              style: TextStyle(
-                                color: _isTourismMode
-                                    ? Colors.white
-                                    : AppColors.textTertiary,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
+                        child: Icon(
+                          Icons.directions_bus_rounded,
+                          color: _isTourismMode ? Colors.white : AppColors.textTertiary,
+                          size: 14,
                         ),
                       ),
                     ],
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 4),
               // Vehicle Requests
               _LuxuryIconButton(
                 icon: Icons.event_note,
@@ -1909,7 +1862,7 @@ class _HomeScreenState extends State<HomeScreen>
                 },
                 badgeCount: _pendingRequestsCount,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 4),
               // Notifications
               _LuxuryIconButton(
                 icon: Icons.notifications_none_rounded,
@@ -3515,7 +3468,7 @@ class _LuxuryToggle extends StatelessWidget {
     return AnimatedContainer(
       duration: AppTheme.durationNormal,
       curve: AppTheme.curveDefault,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
         color: isOnline
             ? AppColors.success.withValues(alpha: 0.15)
@@ -3533,20 +3486,20 @@ class _LuxuryToggle extends StatelessWidget {
         children: [
           AnimatedContainer(
             duration: AppTheme.durationFast,
-            width: 8,
-            height: 8,
+            width: 7,
+            height: 7,
             decoration: BoxDecoration(
               color: isOnline ? AppColors.success : AppColors.textTertiary,
               shape: BoxShape.circle,
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
           Text(
             isOnline ? 'status_online'.tr() : 'status_offline'.tr(),
             style: TextStyle(
               color: isOnline ? AppColors.success : AppColors.textSecondary,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
@@ -3585,10 +3538,10 @@ class _LuxuryIconButtonState extends State<_LuxuryIconButton> {
       onTapCancel: () => setState(() => _isPressed = false),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.all(10),
+        padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           color: _isPressed ? AppColors.cardHover : AppColors.card,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: AppColors.border.withValues(alpha: 0.2),
             width: 0.5,
@@ -3597,7 +3550,7 @@ class _LuxuryIconButtonState extends State<_LuxuryIconButton> {
         child: Stack(
           clipBehavior: Clip.none,
           children: [
-            Icon(widget.icon, color: AppColors.textSecondary, size: 22),
+            Icon(widget.icon, color: AppColors.textSecondary, size: 18),
             if (widget.badgeCount != null && widget.badgeCount! > 0)
               Positioned(
                 right: -4,
@@ -3789,7 +3742,7 @@ class _FireGlowStatusBarState extends State<_FireGlowStatusBar>
     if (!widget.isOnline) {
       // Offline state - sleeping icon
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
         decoration: BoxDecoration(
           color: AppColors.cardSecondary,
           borderRadius: BorderRadius.circular(20),
@@ -3799,22 +3752,24 @@ class _FireGlowStatusBarState extends State<_FireGlowStatusBar>
           ),
         ),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               Icons.bedtime_outlined,
               color: AppColors.textTertiary,
-              size: 16,
+              size: 14,
             ),
-            const SizedBox(width: 6),
-            Text(
-              'resting'.tr(),
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: AppColors.textTertiary,
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                'resting'.tr(),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+                style: TextStyle(
+                  color: AppColors.textTertiary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
           ],
@@ -3828,7 +3783,7 @@ class _FireGlowStatusBarState extends State<_FireGlowStatusBar>
       builder: (context, child) {
         final glowIntensity = _glowAnimation.value;
         return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
@@ -3875,7 +3830,7 @@ class _FireGlowStatusBarState extends State<_FireGlowStatusBar>
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 4),
               // Animated text with crossfade
               Flexible(
                 child: AnimatedSwitcher(
@@ -3894,9 +3849,9 @@ class _FireGlowStatusBarState extends State<_FireGlowStatusBar>
                         _warmWhite,
                         glowIntensity * 0.5,
                       ),
-                      fontSize: 13,
+                      fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      letterSpacing: 0.3,
+                      letterSpacing: 0.2,
                     ),
                   ),
                 ),

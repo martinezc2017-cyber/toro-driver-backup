@@ -9,7 +9,7 @@ class ToroSplashScreen extends StatefulWidget {
   const ToroSplashScreen({
     super.key,
     this.onComplete,
-    this.duration = const Duration(seconds: 3),
+    this.duration = const Duration(seconds: 5),
   });
 
   @override

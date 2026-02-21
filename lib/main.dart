@@ -31,6 +31,7 @@ import 'src/providers/driver_provider.dart';
 import 'src/providers/ride_provider.dart';
 import 'src/providers/location_provider.dart';
 import 'src/providers/earnings_provider.dart';
+import 'src/providers/cash_account_provider.dart';
 
 // Screens
 import 'src/screens/home_screen.dart';
@@ -218,6 +219,7 @@ class ToroDriverApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => RideProvider()),
         ChangeNotifierProvider(create: (_) => LocationProvider()),
         ChangeNotifierProvider(create: (_) => EarningsProvider()),
+        ChangeNotifierProvider(create: (_) => CashAccountProvider()),
       ],
       child: MaterialApp(
         navigatorKey: InAppBannerService.navigatorKey,

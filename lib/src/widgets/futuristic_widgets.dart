@@ -221,17 +221,17 @@ class GlassCard extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(borderRadius),
           border: Border.all(
-            color: borderColor ?? const Color(0xFF00FFFF).withValues(alpha: 0.35),
+            color: borderColor ?? AppColors.neonCyan.withValues(alpha: 0.35),
             width: 1.5,
           ),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF00FFFF).withValues(alpha: 0.15),
+              color: AppColors.neonCyan.withValues(alpha: 0.15),
               blurRadius: 12,
               spreadRadius: 0,
             ),
             BoxShadow(
-              color: const Color(0xFF00D4FF).withValues(alpha: 0.1),
+              color: AppColors.primaryCyan.withValues(alpha: 0.1),
               blurRadius: 20,
               spreadRadius: -4,
             ),
@@ -244,7 +244,7 @@ class GlassCard extends StatelessWidget {
             child: Container(
               padding: padding ?? const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: AppColors.card.withValues(alpha: 0.8),
+                color: AppColors.card.withValues(alpha: 0.95),
                 borderRadius: BorderRadius.circular(borderRadius),
               ),
               child: child,
@@ -1117,7 +1117,7 @@ class _NeonTextFieldState extends State<NeonTextField> {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// NEON GLOW BUTTON - Premium Neon Blue Navigation Button
+// RAINBOW NAV BUTTON - Pill style matching Rider (icon+label for active, icon only for inactive)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class FireGlowButton extends StatefulWidget {
@@ -1144,209 +1144,129 @@ class FireGlowButton extends StatefulWidget {
 
 class _FireGlowButtonState extends State<FireGlowButton>
     with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _glowAnimation;
-  bool _isPressed = false;
-
-  // Neon Blue colors for the glow effect (matching rider web theme)
-  static const Color _neonPrimary = Color(0xFF0066FF);
-  static const Color _neonBright = Color(0xFF60A5FA);
-  static const Color _neonLight = Color(0xFF00BFFF);
-
-  // Green colors for active ride glow
-  static const Color _activeGreen = Color(0xFF10B981);
-  static const Color _activeGreenBright = Color(0xFF34D399);
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
+    _pulseController = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
     );
-
-    _glowAnimation = Tween<double>(begin: 0.3, end: 0.7).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    _pulseAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
-
-    // Animate if selected OR has active glow (for active ride)
-    if (widget.isSelected || widget.hasActiveGlow) {
-      _controller.repeat(reverse: true);
+    if (widget.hasActiveGlow) {
+      _pulseController.repeat(reverse: true);
     }
   }
 
   @override
   void didUpdateWidget(FireGlowButton oldWidget) {
     super.didUpdateWidget(oldWidget);
-    final shouldAnimate = widget.isSelected || widget.hasActiveGlow;
-    final wasAnimating = oldWidget.isSelected || oldWidget.hasActiveGlow;
-
-    if (shouldAnimate && !wasAnimating) {
-      _controller.repeat(reverse: true);
-    } else if (!shouldAnimate && wasAnimating) {
-      _controller.stop();
-      _controller.value = 0;
+    if (widget.hasActiveGlow && !oldWidget.hasActiveGlow) {
+      _pulseController.repeat(reverse: true);
+    } else if (!widget.hasActiveGlow && oldWidget.hasActiveGlow) {
+      _pulseController.stop();
+      _pulseController.value = 0;
     }
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _pulseController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _isPressed = true),
-      onTapUp: (_) {
-        setState(() => _isPressed = false);
+    final activeColor = widget.hasActiveGlow
+        ? AppColors.success
+        : AppColors.primary;
+    final inactiveColor = AppColors.textTertiary;
+    final selectedBg = activeColor.withValues(alpha: 0.25);
+
+    final showGlow = widget.hasActiveGlow && !widget.isSelected;
+
+    Widget item = GestureDetector(
+      onTap: () {
         HapticService.selectionClick();
         widget.onTap();
       },
-      onTapCancel: () => setState(() => _isPressed = false),
       behavior: HitTestBehavior.opaque,
-      child: AnimatedBuilder(
-        animation: _glowAnimation,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: EdgeInsets.symmetric(
+          horizontal: widget.isSelected ? 10 : 8,
+          vertical: 8,
+        ),
+        decoration: BoxDecoration(
+          color: widget.isSelected ? selectedBg : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              widget.isSelected || widget.hasActiveGlow
+                  ? (widget.activeIcon ?? widget.icon)
+                  : widget.icon,
+              color: widget.isSelected
+                  ? activeColor
+                  : showGlow
+                      ? AppColors.success
+                      : inactiveColor,
+              size: 20,
+            ),
+            if (widget.isSelected) ...[
+              const SizedBox(width: 4),
+              Text(
+                widget.label,
+                style: TextStyle(
+                  color: activeColor,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+
+    if (showGlow) {
+      return AnimatedBuilder(
+        animation: _pulseAnimation,
         builder: (context, child) {
+          final v = _pulseAnimation.value;
           return Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Icon with neon glow border (green for active ride, blue for selected)
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: widget.hasActiveGlow
-                        ? _activeGreen.withValues(alpha: 0.15)
-                        : widget.isSelected
-                            ? _neonPrimary.withValues(alpha: 0.12)
-                            : _isPressed
-                                ? AppColors.cardHover
-                                : Colors.transparent,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: widget.hasActiveGlow
-                          ? _activeGreenBright.withValues(alpha: 0.5 + _glowAnimation.value * 0.5)
-                          : widget.isSelected
-                              ? _neonBright.withValues(alpha: 0.4 + _glowAnimation.value * 0.4)
-                              : Colors.transparent,
-                      width: widget.hasActiveGlow ? 2 : 1.5,
-                    ),
-                    boxShadow: widget.hasActiveGlow
-                        ? [
-                            // Green pulsing glow for active ride
-                            BoxShadow(
-                              color: _activeGreen.withValues(alpha: _glowAnimation.value * 0.7),
-                              blurRadius: 18,
-                              spreadRadius: 2,
-                            ),
-                            BoxShadow(
-                              color: _activeGreenBright.withValues(alpha: _glowAnimation.value * 0.5),
-                              blurRadius: 30,
-                              spreadRadius: 0,
-                            ),
-                          ]
-                        : widget.isSelected
-                            ? [
-                                // Inner neon glow
-                                BoxShadow(
-                                  color: _neonPrimary.withValues(alpha: _glowAnimation.value * 0.5),
-                                  blurRadius: 14,
-                                  spreadRadius: 1,
-                                ),
-                                // Outer cyan glow (stronger)
-                                BoxShadow(
-                                  color: _neonLight.withValues(alpha: _glowAnimation.value * 0.35),
-                                  blurRadius: 24,
-                                  spreadRadius: -1,
-                                ),
-                              ]
-                            : null,
-                  ),
-                  child: Icon(
-                    widget.isSelected || widget.hasActiveGlow
-                        ? (widget.activeIcon ?? widget.icon)
-                        : widget.icon,
-                    color: widget.hasActiveGlow
-                        ? _activeGreenBright
-                        : widget.isSelected
-                            ? _neonBright
-                            : AppColors.textTertiary,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                // Label
-                Text(
-                  widget.label,
-                  style: TextStyle(
-                    color: widget.hasActiveGlow
-                        ? _activeGreenBright
-                        : widget.isSelected
-                            ? _neonBright
-                            : AppColors.textTertiary,
-                    fontSize: 9,
-                    fontWeight: (widget.isSelected || widget.hasActiveGlow) ? FontWeight.w600 : FontWeight.w400,
-                    letterSpacing: 0.2,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                // Neon indicator dot (green for active ride, blue for selected)
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: (widget.isSelected || widget.hasActiveGlow) ? 6 : 0,
-                  height: 6,
-                  decoration: BoxDecoration(
-                    gradient: widget.hasActiveGlow
-                        ? LinearGradient(
-                            colors: [_activeGreen, _activeGreenBright],
-                            begin: Alignment.bottomCenter,
-                            end: Alignment.topCenter,
-                          )
-                        : widget.isSelected
-                            ? LinearGradient(
-                                colors: [_neonPrimary, _neonLight],
-                                begin: Alignment.bottomCenter,
-                                end: Alignment.topCenter,
-                              )
-                            : null,
-                    borderRadius: BorderRadius.circular(3),
-                    boxShadow: widget.hasActiveGlow
-                        ? [
-                            BoxShadow(
-                              color: _activeGreenBright.withValues(alpha: 0.8),
-                              blurRadius: 8,
-                              spreadRadius: 0,
-                            ),
-                          ]
-                        : widget.isSelected
-                            ? [
-                                BoxShadow(
-                                  color: _neonLight.withValues(alpha: 0.6),
-                                  blurRadius: 6,
-                                  spreadRadius: 0,
-                                ),
-                              ]
-                            : null,
-                  ),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.success.withValues(alpha: 0.4 * v),
+                  blurRadius: 12 * v,
+                  spreadRadius: 2 * v,
                 ),
               ],
             ),
+            child: item,
           );
         },
-      ),
-    );
+      );
+    }
+
+    return item;
   }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// NEON GLOW BOTTOM NAV BAR - Premium Navigation with Neon Blue Effect
+// RAINBOW GLOW BOTTOM NAV BAR - Animated rainbow border matching Rider
 // ═══════════════════════════════════════════════════════════════════════════════
 
-class FireGlowBottomNavBar extends StatelessWidget {
+class FireGlowBottomNavBar extends StatefulWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
   final List<FireGlowNavItem> items;
@@ -1359,51 +1279,113 @@ class FireGlowBottomNavBar extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: const Color(0xFF3B82F6).withValues(alpha: 0.3),
-          width: 1.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF3B82F6).withValues(alpha: 0.15),
-            blurRadius: 12,
-            spreadRadius: 0,
-          ),
-          BoxShadow(
-            color: const Color(0xFF2563EB).withValues(alpha: 0.1),
-            blurRadius: 20,
-            spreadRadius: -4,
-          ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: items.asMap().entries.map((entry) {
-              final index = entry.key;
-              final item = entry.value;
+  State<FireGlowBottomNavBar> createState() => _FireGlowBottomNavBarState();
+}
 
-              return FireGlowButton(
-                icon: item.icon,
-                activeIcon: item.activeIcon,
-                label: item.label,
-                isSelected: index == currentIndex,
-                hasActiveGlow: item.hasActiveGlow,
-                onTap: () => onTap(index),
-              );
-            }).toList(),
+class _FireGlowBottomNavBarState extends State<FireGlowBottomNavBar>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _rainbowController;
+
+  @override
+  void initState() {
+    super.initState();
+    _rainbowController = AnimationController(
+      duration: const Duration(seconds: 20),
+      vsync: this,
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _rainbowController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _rainbowController,
+      builder: (context, child) {
+        final value = _rainbowController.value;
+        final beginX = -3.0 + (value * 8.0);
+        final endX = -1.0 + (value * 8.0);
+        final bottomPadding = MediaQuery.of(context).padding.bottom;
+
+        return Container(
+          margin: EdgeInsets.fromLTRB(20, 0, 20, bottomPadding + 8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            gradient: LinearGradient(
+              begin: Alignment(beginX, -1),
+              end: Alignment(endX, 1),
+              colors: const [
+                Color(0xFFFF0000),
+                Color(0xFFFF7300),
+                Color(0xFFFFFF00),
+                Color(0xFF48FF00),
+                Color(0xFF00FFD5),
+                Color(0xFF002BFF),
+                Color(0xFFFF00C8),
+                Color(0xFFFF0000),
+              ],
+              tileMode: TileMode.repeated,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: HSLColor.fromAHSL(
+                  0.9,
+                  (value * 360) % 360,
+                  1.0,
+                  0.5,
+                ).toColor(),
+                blurRadius: 25,
+                spreadRadius: 2,
+              ),
+              BoxShadow(
+                color: HSLColor.fromAHSL(
+                  0.6,
+                  (value * 360) % 360,
+                  1.0,
+                  0.5,
+                ).toColor(),
+                blurRadius: 40,
+                spreadRadius: 5,
+              ),
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.4),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
           ),
-        ),
-      ),
+          child: Container(
+            margin: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: AppColors.card,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: widget.items.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final item = entry.value;
+
+                  return FireGlowButton(
+                    icon: item.icon,
+                    activeIcon: item.activeIcon,
+                    label: item.label,
+                    isSelected: index == widget.currentIndex,
+                    hasActiveGlow: item.hasActiveGlow,
+                    onTap: () => widget.onTap(index),
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

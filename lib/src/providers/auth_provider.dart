@@ -130,6 +130,8 @@ class AuthProvider with ChangeNotifier {
       if (event == AuthChangeEvent.signedIn) {
         if (_status != AuthStatus.authenticated || _driver?.id != session.user.id) {
           await _loadDriverProfile(caller: '_handleAuthStateChange($event)');
+          // Backfill GPS for existing users + mark driver_app_installed
+          _authService.backfillLocationIfMissing();
         }
       } else if (event == AuthChangeEvent.tokenRefreshed) {
         // Only reload on token refresh if NOT yet authenticated
@@ -332,7 +334,19 @@ class AuthProvider with ChangeNotifier {
       // Auth state listener will handle the rest
       return success;
     } catch (e) {
-      _error = 'Google sign in error: $e';
+      final msg = e.toString();
+      if (msg.contains('cancelled') || msg.contains('canceled')) {
+        _status = AuthStatus.unauthenticated;
+        notifyListeners();
+        return false;
+      }
+      if (msg.contains('ApiException: 10') || msg.contains('sign_in_failed') || msg.contains('DEVELOPER_ERROR')) {
+        _error = 'Esta version necesita actualizarse. Descarga la ultima version en toro-ride.com o escribenos a support@toro-ride.com';
+      } else if (msg.contains('network') || msg.contains('timeout') || msg.contains('SocketException')) {
+        _error = 'Sin conexion a internet. Verifica tu conexion e intenta de nuevo.';
+      } else {
+        _error = 'No se pudo iniciar sesion con Google. Intenta de nuevo o usa correo y contrasena. Si el problema continua, escribenos a support@toro-ride.com';
+      }
       _status = AuthStatus.unauthenticated;
       notifyListeners();
       return false;

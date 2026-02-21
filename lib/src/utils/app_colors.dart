@@ -9,57 +9,57 @@ class AppColors {
   // NEON COLOR PALETTE - Same as Rider Web
   // ═══════════════════════════════════════════════════════════════════════════
 
-  // Primary Neon Blue
-  static const Color primary = Color(0xFF0066FF);
-  static const Color primaryLight = Color(0xFF00BFFF);
+  // Primary Blue (matches Rider)
+  static const Color primary = Color(0xFF2563EB);
+  static const Color primaryLight = Color(0xFF60A5FA);
   static const Color primaryBright = Color(0xFF60A5FA);
   static const Color primaryPale = Color(0xFF93C5FD);
   static const Color primaryCyan = Color(0xFF00D4FF);
-  static const Color primaryDark = Color(0xFF0052CC);
+  static const Color primaryDark = Color(0xFF1D4ED8);
 
-  // Success - Neon Green
-  static const Color success = Color(0xFF10B981);
-  static const Color successLight = Color(0xFF34D399);
-  static const Color successDark = Color(0xFF059669);
+  // Success - Elegant Green (matches Rider)
+  static const Color success = Color(0xFF4CAF50);
+  static const Color successLight = Color(0xFF66BB6A);
+  static const Color successDark = Color(0xFF388E3C);
 
-  // Error/Danger - Neon Red
-  static const Color error = Color(0xFFEF4444);
-  static const Color errorLight = Color(0xFFF87171);
-  static const Color errorDark = Color(0xFFDC2626);
+  // Error/Danger - Elegant Red (matches Rider)
+  static const Color error = Color(0xFFE53935);
+  static const Color errorLight = Color(0xFFEF5350);
+  static const Color errorDark = Color(0xFFC62828);
 
-  // Warning - Neon Orange (for FireGlow compatibility)
-  static const Color warning = Color(0xFFFF9500);
-  static const Color warningLight = Color(0xFFFFB340);
-  static const Color warningDark = Color(0xFFFF6B00);
+  // Warning - Amber (matches Rider)
+  static const Color warning = Color(0xFFFBBF24);
+  static const Color warningLight = Color(0xFFFCD34D);
+  static const Color warningDark = Color(0xFFF59E0B);
 
-  // Info - Neon Blue lighter
-  static const Color info = Color(0xFF38BDF8);
-  static const Color infoLight = Color(0xFF7DD3FC);
-  static const Color infoDark = Color(0xFF0EA5E9);
+  // Info - Elegant Blue (matches Rider)
+  static const Color info = Color(0xFF42A5F5);
+  static const Color infoLight = Color(0xFF64B5F6);
+  static const Color infoDark = Color(0xFF1E88E5);
 
   // ═══════════════════════════════════════════════════════════════════════════
   // DARK THEME BASE COLORS
   // ═══════════════════════════════════════════════════════════════════════════
 
-  // Backgrounds
+  // Backgrounds (matches Rider)
   static const Color background = Color(0xFF0A0A0A);
-  static const Color surface = Color(0xFF0F0F0F);
-  static const Color card = Color(0xFF141414);
-  static const Color cardSecondary = Color(0xFF1A1A1A);
-  static const Color cardHover = Color(0xFF1F1F1F);
-  static const Color cardTertiary = Color(0xFF242424);
+  static const Color surface = Color(0xFF0D0D0D);
+  static const Color card = Color(0xFF161616);
+  static const Color cardSecondary = Color(0xFF1E1E1E);
+  static const Color cardHover = Color(0xFF222222);
+  static const Color cardTertiary = Color(0xFF2A2A2A);
 
-  // Borders
+  // Borders (matches Rider)
   static const Color border = Color(0xFF2A2A2A);
   static const Color borderSubtle = Color(0xFF1F1F1F);
-  static const Color borderFocus = Color(0xFF0066FF);
+  static const Color borderFocus = Color(0xFF2563EB);
   static const Color divider = Color(0xFF2A2A2A);
 
-  // Text Colors
-  static const Color textPrimary = Color(0xFFFFFFFF);
-  static const Color textSecondary = Color(0xFF9CA3AF);
-  static const Color textTertiary = Color(0xFF6B7280);
-  static const Color textDisabled = Color(0xFF4B5563);
+  // Text Colors (matches Rider)
+  static const Color textPrimary = Color(0xFFF5F5F5);
+  static const Color textSecondary = Color(0xFFB8B8B8);
+  static const Color textTertiary = Color(0xFF7A7A7A);
+  static const Color textDisabled = Color(0xFF5A5A5A);
 
   // ═══════════════════════════════════════════════════════════════════════════
   // SEMANTIC COLORS
@@ -89,26 +89,32 @@ class AppColors {
   static const Color purple = Color(0xFF8B5CF6);
   static const Color magenta = Color(0xFFEC4899);
 
+  // Neon Cyan (avatar glow, community card border)
+  static const Color neonCyan = Color(0xFF00FFFF);
+
+  // Social brands
+  static const Color facebook = Color(0xFF1877F2);
+
   // ═══════════════════════════════════════════════════════════════════════════
   // NEON GRADIENTS - Animated flowing effect
   // ═══════════════════════════════════════════════════════════════════════════
 
-  // Primary gradient for buttons
+  // Primary gradient for buttons (matches Rider)
   static const LinearGradient primaryGradient = LinearGradient(
     colors: [
-      Color(0xFF0066FF),
-      Color(0xFF00BFFF),
+      Color(0xFF2563EB),
+      Color(0xFF60A5FA),
       Color(0xFF60A5FA),
       Color(0xFF93C5FD),
-      Color(0xFF00D4FF),
-      Color(0xFF0066FF),
-      Color(0xFF00BFFF),
+      Color(0xFF3B82F6),
+      Color(0xFF2563EB),
+      Color(0xFF60A5FA),
     ],
   );
 
-  // Deep primary gradient
+  // Deep primary gradient (matches Rider)
   static const LinearGradient primaryGradientDeep = LinearGradient(
-    colors: [Color(0xFF0052CC), Color(0xFF0066FF), Color(0xFF00BFFF)],
+    colors: [Color(0xFF1D4ED8), Color(0xFF2563EB), Color(0xFF60A5FA)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
@@ -116,35 +122,35 @@ class AppColors {
   // Success gradient
   static const LinearGradient successGradient = LinearGradient(
     colors: [
-      Color(0xFF059669),
-      Color(0xFF10B981),
-      Color(0xFF34D399),
-      Color(0xFF6EE7B7),
-      Color(0xFF10B981),
-      Color(0xFF059669),
+      Color(0xFF388E3C),
+      Color(0xFF4CAF50),
+      Color(0xFF66BB6A),
+      Color(0xFFA5D6A7),
+      Color(0xFF4CAF50),
+      Color(0xFF388E3C),
     ],
   );
 
   // Danger gradient
   static const LinearGradient dangerGradient = LinearGradient(
     colors: [
-      Color(0xFFDC2626),
-      Color(0xFFEF4444),
-      Color(0xFFF87171),
-      Color(0xFFFCA5A5),
-      Color(0xFFEF4444),
-      Color(0xFFDC2626),
+      Color(0xFFC62828),
+      Color(0xFFE53935),
+      Color(0xFFEF5350),
+      Color(0xFFEF9A9A),
+      Color(0xFFE53935),
+      Color(0xFFC62828),
     ],
   );
 
   // Warning/Fire gradient (for FireGlow compatibility)
   static const LinearGradient warningGradient = LinearGradient(
     colors: [
-      Color(0xFFFF6B00),
-      Color(0xFFFF9500),
-      Color(0xFFFFB340),
-      Color(0xFFFF9500),
-      Color(0xFFFF6B00),
+      Color(0xFFF59E0B),
+      Color(0xFFFBBF24),
+      Color(0xFFFCD34D),
+      Color(0xFFFBBF24),
+      Color(0xFFF59E0B),
     ],
   );
 

@@ -547,12 +547,15 @@ class AuthService {
     final now = DateTime.now().toIso8601String();
     final fullName = '$firstName $lastName'.trim();
 
-    // Detect country from GPS ONLY - no locale fallback
-    String countryCode = 'US'; // Default to US
+    // Detect country from GPS - request permission if needed
+    String countryCode = 'MX'; // Default to Mexico
     double? signupLat;
     double? signupLng;
     try {
-      final permission = await Geolocator.checkPermission();
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
       if (permission == LocationPermission.always ||
           permission == LocationPermission.whileInUse) {
         final position = await Geolocator.getCurrentPosition(
@@ -568,7 +571,7 @@ class AuthService {
           countryCode = 'US';
         }
       }
-      // No GPS permission = default US
+      // No GPS permission = default MX
     } catch (_) {}
 
     await _client.from(SupabaseConfig.driversTable).insert({
@@ -599,6 +602,73 @@ class AuthService {
       if (signupLng != null) profileUpdate['signup_lng'] = signupLng;
       await _client.from('profiles').update(profileUpdate).eq('id', userId);
     } catch (_) {}
+  }
+
+  /// Backfill GPS location for existing users who have null signup_lat
+  Future<void> backfillLocationIfMissing() async {
+    try {
+      final userId = currentUserId;
+      if (userId == null) return;
+
+      // Check if user already has GPS data
+      final profile = await _client
+          .from('profiles')
+          .select('signup_lat')
+          .eq('id', userId)
+          .single();
+
+      if (profile['signup_lat'] != null) {
+        // Already has location, just update driver_app tracking
+        await _client.from('profiles').update({
+          'driver_app_installed': true,
+          'driver_app_last_open': DateTime.now().toIso8601String(),
+        }).eq('id', userId);
+        return;
+      }
+
+      // Request GPS and update
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.always ||
+          permission == LocationPermission.whileInUse) {
+        final position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.low,
+        ).timeout(const Duration(seconds: 5));
+
+        String countryCode = 'MX';
+        if (position.latitude >= 14 && position.latitude <= 33 &&
+            position.longitude >= -118 && position.longitude <= -86) {
+          countryCode = 'MX';
+        } else {
+          countryCode = 'US';
+        }
+
+        await _client.from('profiles').update({
+          'signup_lat': position.latitude,
+          'signup_lng': position.longitude,
+          'country_code': countryCode,
+          'driver_app_installed': true,
+          'driver_app_last_open': DateTime.now().toIso8601String(),
+        }).eq('id', userId);
+
+        // Also update drivers table country_code
+        await _client.from('drivers').update({
+          'country_code': countryCode,
+        }).eq('id', userId);
+
+        AppLogger.log('AUTH_SERVICE -> Backfilled GPS: ${position.latitude}, ${position.longitude} -> $countryCode');
+      } else {
+        // No GPS, at least mark driver app installed
+        await _client.from('profiles').update({
+          'driver_app_installed': true,
+          'driver_app_last_open': DateTime.now().toIso8601String(),
+        }).eq('id', userId);
+      }
+    } catch (e) {
+      AppLogger.log('AUTH_SERVICE -> Backfill GPS failed: $e');
+    }
   }
 
   // Get current driver profile

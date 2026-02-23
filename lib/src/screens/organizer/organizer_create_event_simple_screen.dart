@@ -106,6 +106,9 @@ class _OrganizerCreateEventSimpleScreenState
   bool _loadingVehicles = true;
   String? _organizerId;
 
+  // Vehicle wizard: null = not answered, true = has own vehicle, false = dispatcher/organizer
+  bool? _hasOwnVehicle;
+
   // Itinerary - Multiple stops system
   List<EventStop> _stops = [];
   bool _isRoundTrip = false;
@@ -122,6 +125,7 @@ class _OrganizerCreateEventSimpleScreenState
   static const String _savedDistanceKmKey = 'organizer_last_distance_km';
 
   static const String _savedMaxPassengersKey = 'organizer_last_max_passengers';
+  static const String _savedHasOwnVehicleKey = 'organizer_has_own_vehicle';
 
   // Description section
   static const String _savedDescriptionKey = 'organizer_last_description';
@@ -316,6 +320,11 @@ class _OrganizerCreateEventSimpleScreenState
         if (savedDescription != null && savedDescription.isNotEmpty) {
           _descriptionController.text = savedDescription;
         }
+
+        // Vehicle wizard preference
+        if (prefs.containsKey(_savedHasOwnVehicleKey)) {
+          _hasOwnVehicle = prefs.getBool(_savedHasOwnVehicleKey);
+        }
       });
 
       AppLogger.log('Template loaded: ${_stops.length} stops, passengers: ${_maxPassengersController.text}');
@@ -467,6 +476,10 @@ class _OrganizerCreateEventSimpleScreenState
           final ownVehicles = _vehicles.where((v) => v['owner_id'] == userId).toList();
           if (ownVehicles.isNotEmpty) {
             _selectedVehicle = ownVehicles.first;
+            // Auto-detect: driver has own vehicles → set wizard to true
+            if (_hasOwnVehicle == null) {
+              _hasOwnVehicle = true;
+            }
           } else {
             // 3. Try to load saved vehicle from SharedPreferences
             _loadSavedVehicle();
@@ -603,7 +616,11 @@ class _OrganizerCreateEventSimpleScreenState
         passengerVisibility = 'private';
       }
 
-      // Event published WITHOUT driver/vehicle - drivers will see it and bid
+      // Determine if driver is posting with own vehicle
+      final bool postingWithOwnVehicle = _hasOwnVehicle == true && _selectedVehicle != null;
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final currentDriverId = authProvider.driver?.id;
+
       final eventData = {
         'organizer_id': _organizerId,
         'event_name': _nameController.text.trim(),
@@ -617,8 +634,12 @@ class _OrganizerCreateEventSimpleScreenState
         'itinerary': itineraryJson,
         'passenger_visibility': passengerVisibility,
         'bid_visibility': _isBidPublic ? 'public' : 'private',
-        'status': 'draft',
-        'country_code': Provider.of<AuthProvider>(context, listen: false).driver?.countryCode ?? 'US',
+        // If posting with own vehicle: active + assigned; otherwise: draft waiting for bids
+        'status': postingWithOwnVehicle ? 'active' : 'draft',
+        if (postingWithOwnVehicle) 'vehicle_id': _selectedVehicle!['id'],
+        if (postingWithOwnVehicle && currentDriverId != null) 'driver_id': currentDriverId,
+        if (postingWithOwnVehicle) 'vehicle_request_status': 'accepted',
+        'country_code': authProvider.driver?.countryCode ?? 'US',
         'created_at': DateTime.now().toIso8601String(),
       };
 
@@ -635,101 +656,129 @@ class _OrganizerCreateEventSimpleScreenState
 
         final eventId = result['id'] as String?;
 
-        // Show success dialog - event is now visible to all drivers
-        final inviteDrivers = await showDialog<bool>(
-          context: context,
-          barrierDismissible: false,
-          builder: (ctx) => AlertDialog(
-            backgroundColor: AppColors.surface,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            title: const Row(
-              children: [
-                Icon(Icons.check_circle, color: AppColors.success, size: 24),
-                SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Esperando Puja',
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
+        // Show success dialog based on mode
+        if (postingWithOwnVehicle) {
+          // Own vehicle: event is active immediately
+          await showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (ctx) => AlertDialog(
+              backgroundColor: AppColors.surface,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: const Row(
+                children: [
+                  Icon(Icons.check_circle, color: AppColors.success, size: 24),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Evento Publicado',
+                      style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w700),
                     ),
                   ),
+                ],
+              ),
+              content: const Text(
+                'Tu evento está activo con tu vehículo. Los pasajeros ya pueden verlo y reservar.',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+              ),
+              actions: [
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    elevation: 0,
+                  ),
+                  child: const Text('Listo', style: TextStyle(fontWeight: FontWeight.w600)),
                 ),
               ],
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Tu evento ya es visible para todos los choferes. Ellos pueden enviarte pujas con su precio.',
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppColors.gold.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppColors.gold.withValues(alpha: 0.2)),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.person_add, color: AppColors.gold, size: 20),
-                      SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          'Tambien puedes invitar choferes directamente si no recibes pujas.',
-                          style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text(
-                  'Listo',
-                  style: TextStyle(color: AppColors.textTertiary),
-                ),
-              ),
-              ElevatedButton.icon(
-                onPressed: () => Navigator.pop(ctx, true),
-                icon: const Icon(Icons.person_add, size: 16),
-                label: const Text(
-                  'Invitar Choferes',
-                  style: TextStyle(fontWeight: FontWeight.w600),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.gold,
-                  foregroundColor: Colors.black,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  elevation: 0,
-                ),
-              ),
-            ],
-          ),
-        );
-
-        if (!mounted) return;
-
-        if (inviteDrivers == true && eventId != null) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (_) => OrganizerBiddingScreen(eventId: eventId),
             ),
           );
-        } else {
+
+          if (!mounted) return;
           Navigator.pop(context, result);
+        } else {
+          // Dispatcher mode: waiting for driver bids
+          final inviteDrivers = await showDialog<bool>(
+            context: context,
+            barrierDismissible: false,
+            builder: (ctx) => AlertDialog(
+              backgroundColor: AppColors.surface,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: const Row(
+                children: [
+                  Icon(Icons.check_circle, color: AppColors.success, size: 24),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Esperando Puja',
+                      style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Tu evento ya es visible para todos los choferes. Ellos pueden enviarte pujas con su precio.',
+                    style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.gold.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppColors.gold.withValues(alpha: 0.2)),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.person_add, color: AppColors.gold, size: 20),
+                        SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Tambien puedes invitar choferes directamente si no recibes pujas.',
+                            style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('Listo', style: TextStyle(color: AppColors.textTertiary)),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  icon: const Icon(Icons.person_add, size: 16),
+                  label: const Text('Invitar Choferes', style: TextStyle(fontWeight: FontWeight.w600)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.gold,
+                    foregroundColor: Colors.black,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    elevation: 0,
+                  ),
+                ),
+              ],
+            ),
+          );
+
+          if (!mounted) return;
+
+          if (inviteDrivers == true && eventId != null) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => OrganizerBiddingScreen(eventId: eventId)),
+            );
+          } else {
+            Navigator.pop(context, result);
+          }
         }
       }
     } catch (e) {
@@ -2609,6 +2658,18 @@ class _OrganizerCreateEventSimpleScreenState
   }
 
   Widget _buildCapacitySection() {
+    // Wizard: ask if driver has own vehicle or needs to find one
+    if (_hasOwnVehicle == null) {
+      return _buildVehicleWizardChoice();
+    }
+    if (_hasOwnVehicle == true) {
+      return _buildOwnVehicleCapacity();
+    }
+    return _buildDispatcherCapacity();
+  }
+
+  /// Wizard step: two clear choices
+  Widget _buildVehicleWizardChoice() {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -2619,7 +2680,460 @@ class _OrganizerCreateEventSimpleScreenState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Editable seat count - organizer just says how many seats they need
+          Text(
+            '¿Cómo quieres operar?',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Esto define cómo se publica tu evento',
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+          ),
+          const SizedBox(height: 16),
+
+          // Option 1: I have a vehicle
+          _buildWizardOption(
+            icon: Icons.directions_bus_filled,
+            title: 'Tengo vehículo',
+            subtitle: 'Publicaré con mi propio carro o autobús',
+            color: Colors.green,
+            onTap: () async {
+              HapticService.lightImpact();
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setBool(_savedHasOwnVehicleKey, true);
+              setState(() => _hasOwnVehicle = true);
+
+              // Auto-select own vehicle if available
+              final userId = Provider.of<AuthProvider>(context, listen: false).driver?.id;
+              if (userId != null) {
+                final ownVehicles = _vehicles.where((v) => v['owner_id'] == userId).toList();
+                if (ownVehicles.isNotEmpty && _selectedVehicle == null) {
+                  setState(() {
+                    _selectedVehicle = ownVehicles.first;
+                    final seats = ownVehicles.first['total_seats'] as int?;
+                    if (seats != null && _eventSeatsController.text.isEmpty) {
+                      _eventSeatsController.text = seats.toString();
+                    }
+                  });
+                }
+              }
+            },
+          ),
+          const SizedBox(height: 12),
+
+          // Option 2: I need a driver
+          _buildWizardOption(
+            icon: Icons.groups_rounded,
+            title: 'Necesito conductor',
+            subtitle: 'Soy organizador / dispatcher — busco chofer con vehículo',
+            color: AppColors.gold,
+            onTap: () async {
+              HapticService.lightImpact();
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setBool(_savedHasOwnVehicleKey, false);
+              setState(() => _hasOwnVehicle = false);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWizardOption({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color.withValues(alpha: 0.25)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: color, size: 26),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      subtitle,
+                      style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right, color: color, size: 22),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Driver has own vehicle — show selected vehicle + seats
+  Widget _buildOwnVehicleCapacity() {
+    final userId = Provider.of<AuthProvider>(context, listen: false).driver?.id;
+    final ownVehicles = _vehicles.where((v) => v['owner_id'] == userId).toList();
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Header with change link
+          Row(
+            children: [
+              Icon(Icons.directions_bus_filled, color: Colors.green, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Mi vehículo',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              GestureDetector(
+                onTap: () async {
+                  HapticService.lightImpact();
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.remove(_savedHasOwnVehicleKey);
+                  setState(() {
+                    _hasOwnVehicle = null;
+                    _selectedVehicle = null;
+                  });
+                },
+                child: Text(
+                  'Cambiar',
+                  style: TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          if (_loadingVehicles)
+            const Center(child: Padding(
+              padding: EdgeInsets.all(20),
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ))
+          else if (ownVehicles.isEmpty)
+            // No vehicles registered — prompt to add
+            _buildAddVehiclePrompt()
+          else ...[
+            // Show selected vehicle card
+            if (_selectedVehicle != null) _buildSelectedVehicleCard(),
+
+            // Show other vehicles if multiple
+            if (ownVehicles.length > 1) ...[
+              const SizedBox(height: 10),
+              GestureDetector(
+                onTap: () => _showOwnVehiclePicker(ownVehicles),
+                child: Text(
+                  'Ver mis ${ownVehicles.length} vehículos',
+                  style: TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w500),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
+
+            const SizedBox(height: 16),
+
+            // Seat count (editable, pre-filled from vehicle)
+            TextFormField(
+              controller: _eventSeatsController,
+              style: const TextStyle(color: AppColors.textPrimary),
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                labelText: 'Asientos disponibles',
+                labelStyle: TextStyle(color: AppColors.textSecondary),
+                prefixIcon: Icon(Icons.event_seat, color: AppColors.textSecondary),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppColors.border)),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppColors.border)),
+              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) return 'org_seats_required'.tr();
+                final seats = int.tryParse(value);
+                if (seats == null || seats <= 0) return 'org_seats_invalid'.tr();
+                return null;
+              },
+              onChanged: (_) => setState(() {}),
+            ),
+
+            const SizedBox(height: 12),
+
+            // Info: publishing with own vehicle
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.green.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.green.withValues(alpha: 0.2)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.green, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Publicarás este evento con tu vehículo',
+                      style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
+          const SizedBox(height: 12),
+          _buildFeeDisclaimer(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAddVehiclePrompt() {
+    return GestureDetector(
+      onTap: () {
+        HapticService.lightImpact();
+        Navigator.pushNamed(context, '/add-vehicle').then((_) {
+          // Reload vehicles when returning from add vehicle screen
+          final authProvider = Provider.of<AuthProvider>(context, listen: false);
+          final userId = authProvider.driver?.id;
+          if (userId != null) {
+            SupabaseConfig.client
+                .from('bus_vehicles')
+                .select('*')
+                .eq('is_active', true)
+                .eq('available_for_tourism', true)
+                .then((vehicles) {
+              if (mounted) {
+                setState(() {
+                  _vehicles = List<Map<String, dynamic>>.from(vehicles);
+                  final ownVehicles = _vehicles.where((v) => v['owner_id'] == userId).toList();
+                  if (ownVehicles.isNotEmpty) {
+                    _selectedVehicle = ownVehicles.first;
+                    final seats = ownVehicles.first['total_seats'] as int?;
+                    if (seats != null) {
+                      _eventSeatsController.text = seats.toString();
+                    }
+                  }
+                });
+              }
+            });
+          }
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.3), style: BorderStyle.solid),
+        ),
+        child: Column(
+          children: [
+            Icon(Icons.add_circle_outline, color: AppColors.primary, size: 40),
+            const SizedBox(height: 10),
+            Text(
+              'Agregar Vehículo',
+              style: TextStyle(
+                color: AppColors.primary,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Registra tu carro o autobús para poder publicar',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSelectedVehicleCard() {
+    if (_selectedVehicle == null) return const SizedBox.shrink();
+    final name = _selectedVehicle!['vehicle_name'] as String? ?? 'Sin nombre';
+    final seats = _selectedVehicle!['total_seats'] as int? ?? 0;
+    final plate = _selectedVehicle!['plate'] as String? ?? '';
+    final imageUrls = _selectedVehicle!['image_urls'] as List<dynamic>? ?? [];
+    final imageUrl = imageUrls.isNotEmpty ? imageUrls.first as String : null;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.green.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.green.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        children: [
+          // Vehicle image
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: imageUrl != null
+                ? Image.network(imageUrl, width: 56, height: 56, fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      width: 56, height: 56,
+                      color: AppColors.card,
+                      child: Icon(Icons.directions_bus, color: AppColors.textTertiary, size: 28),
+                    ),
+                  )
+                : Container(
+                    width: 56, height: 56,
+                    color: AppColors.card,
+                    child: Icon(Icons.directions_bus, color: AppColors.textTertiary, size: 28),
+                  ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(name, style: TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 3),
+                Text(
+                  '$seats asientos${plate.isNotEmpty ? ' · $plate' : ''}',
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          Icon(Icons.check_circle, color: Colors.green, size: 22),
+        ],
+      ),
+    );
+  }
+
+  void _showOwnVehiclePicker(List<Map<String, dynamic>> ownVehicles) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Mis Vehículos', style: TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 16),
+            ...ownVehicles.map((v) {
+              final isSelected = _selectedVehicle?['id'] == v['id'];
+              final vName = v['vehicle_name'] as String? ?? 'Sin nombre';
+              final vSeats = v['total_seats'] as int? ?? 0;
+              return ListTile(
+                leading: Icon(Icons.directions_bus, color: isSelected ? Colors.green : AppColors.textSecondary),
+                title: Text(vName, style: TextStyle(color: AppColors.textPrimary)),
+                subtitle: Text('$vSeats asientos', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                trailing: isSelected ? Icon(Icons.check_circle, color: Colors.green) : null,
+                onTap: () {
+                  setState(() {
+                    _selectedVehicle = v;
+                    final seats = v['total_seats'] as int?;
+                    if (seats != null) {
+                      _eventSeatsController.text = seats.toString();
+                    }
+                  });
+                  Navigator.pop(ctx);
+                },
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Dispatcher/organizer mode — original capacity section
+  Widget _buildDispatcherCapacity() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Header with change link
+          Row(
+            children: [
+              Icon(Icons.groups_rounded, color: AppColors.gold, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Buscar conductor',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              GestureDetector(
+                onTap: () async {
+                  HapticService.lightImpact();
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.remove(_savedHasOwnVehicleKey);
+                  setState(() {
+                    _hasOwnVehicle = null;
+                  });
+                },
+                child: Text(
+                  'Cambiar',
+                  style: TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // Editable seat count
           TextFormField(
             controller: _eventSeatsController,
             style: const TextStyle(color: AppColors.textPrimary),
@@ -2667,85 +3181,89 @@ class _OrganizerCreateEventSimpleScreenState
           ),
           const SizedBox(height: 12),
 
-          // TORO 18% commission + legal disclaimer (expandable)
-          GestureDetector(
-            onTap: () {
-              HapticService.lightImpact();
-              setState(() => _feeDisclaimerExpanded = !_feeDisclaimerExpanded);
-            },
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.info_outline, color: AppColors.primary, size: 18),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'org_fee_title'.tr(),
-                          style: TextStyle(
-                            color: AppColors.textPrimary,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      Icon(
-                        _feeDisclaimerExpanded
-                            ? Icons.keyboard_arrow_up
-                            : Icons.keyboard_arrow_down,
-                        color: AppColors.textTertiary,
-                        size: 20,
-                      ),
-                    ],
-                  ),
-                  if (_feeDisclaimerExpanded) ...[
-                    const SizedBox(height: 10),
-                    Divider(color: AppColors.border, height: 1),
-                    const SizedBox(height: 10),
-                    Text(
-                      'org_fee_detail'.tr(),
-                      style: TextStyle(color: AppColors.textSecondary, fontSize: 12, height: 1.4),
+          _buildFeeDisclaimer(),
+        ],
+      ),
+    );
+  }
+
+  /// TORO 18% commission disclaimer (shared between both modes)
+  Widget _buildFeeDisclaimer() {
+    return GestureDetector(
+      onTap: () {
+        HapticService.lightImpact();
+        setState(() => _feeDisclaimerExpanded = !_feeDisclaimerExpanded);
+      },
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.info_outline, color: AppColors.primary, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'org_fee_title'.tr(),
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
                     ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.orange.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.orange.withValues(alpha: 0.2)),
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Icon(Icons.gavel, color: Colors.orange, size: 16),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'org_fee_legal'.tr(),
-                              style: TextStyle(
-                                color: AppColors.textSecondary,
-                                fontSize: 11,
-                                height: 1.5,
-                              ),
-                            ),
-                          ),
-                        ],
+                  ),
+                ),
+                Icon(
+                  _feeDisclaimerExpanded
+                      ? Icons.keyboard_arrow_up
+                      : Icons.keyboard_arrow_down,
+                  color: AppColors.textTertiary,
+                  size: 20,
+                ),
+              ],
+            ),
+            if (_feeDisclaimerExpanded) ...[
+              const SizedBox(height: 10),
+              Divider(color: AppColors.border, height: 1),
+              const SizedBox(height: 10),
+              Text(
+                'org_fee_detail'.tr(),
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 12, height: 1.4),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.orange.withValues(alpha: 0.2)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.gavel, color: Colors.orange, size: 16),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'org_fee_legal'.tr(),
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 11,
+                          height: 1.5,
+                        ),
                       ),
                     ),
                   ],
-                ],
+                ),
               ),
-            ),
-          ),
-        ],
+            ],
+          ],
+        ),
       ),
     );
   }

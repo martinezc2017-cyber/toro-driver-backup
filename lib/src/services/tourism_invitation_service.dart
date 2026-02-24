@@ -872,7 +872,12 @@ class TourismInvitationService {
       int offBoarded = 0;
 
       for (final invitation in invitations) {
-        final status = invitation['status'] as String?;
+        var status = invitation['status'] as String?;
+        // If rider checked in but status wasn't synced, use current_check_in_status
+        final checkInSt = invitation['current_check_in_status'] as String?;
+        if (status == 'accepted' && (checkInSt == 'boarded' || checkInSt == 'arrived')) {
+          status = 'checked_in';
+        }
         switch (status) {
           case 'accepted':
             accepted++;

@@ -134,7 +134,6 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
 
       // Also load event data for extra fields
       _event ??= await _eventService.getEvent(widget.eventId);
-      _acceptingBoardings = _event?['accepting_boardings'] ?? true;
 
       if (mounted) {
         setState(() {
@@ -150,9 +149,9 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
           _isLoading = false;
 
           // Set trip start time for local timer
-          if (_tripStartTime == null && _event?['actual_start_time'] != null) {
+          if (_tripStartTime == null && _event?['started_at'] != null) {
             _tripStartTime =
-                DateTime.tryParse(_event!['actual_start_time'] as String);
+                DateTime.tryParse(_event!['started_at'] as String);
             _startElapsedTimer();
           }
         });
@@ -313,22 +312,27 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
 
       if (!mounted) return;
 
-      // 4. Create bus event
+      // 4. Create bus event (non-blocking — FK may fail if bus_routes is empty)
+      if (!mounted) return;
       final driverProvider =
           Provider.of<DriverProvider>(context, listen: false);
       final driverId = driverProvider.driver?.id;
       if (driverId != null && _currentPosition != null) {
-        await Supabase.instance.client.from('bus_events').insert({
-          'route_id': widget.eventId,
-          'driver_id': driverId,
-          'event_type': 'stop_arrival',
-          'stop_name': stopName,
-          'stop_index': nextStopIndex,
-          'lat': _currentPosition!.latitude,
-          'lng': _currentPosition!.longitude,
-          'passengers_onboard': _tripSummary['passengers_aboard'] ?? 0,
-          'created_at': DateTime.now().toUtc().toIso8601String(),
-        });
+        try {
+          await Supabase.instance.client.from('bus_events').insert({
+            'route_id': widget.eventId,
+            'driver_id': driverId,
+            'event_type': 'stop_arrival',
+            'stop_name': stopName,
+            'lat': _currentPosition!.latitude,
+            'lng': _currentPosition!.longitude,
+            'passengers_on_board': _tripSummary['passengers_aboard'] ?? 0,
+            'metadata': {'stop_index': nextStopIndex},
+            'created_at': DateTime.now().toUtc().toIso8601String(),
+          });
+        } catch (e) {
+          debugPrint('LIVE_TRIP -> bus_events insert error (non-fatal): $e');
+        }
       }
 
       // 5. Notify passengers exiting at next stop
@@ -565,10 +569,10 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
   /// Sends notifications to passengers whose exit is the next stop.
   Future<void> _notifyNextStopPassengers(int nextStopIndex) async {
     try {
+      // Notify ALL aboard passengers about the next stop
+      // (we don't track per-passenger exit stops)
       final nextStopPassengers = _passengers
-          .where((p) =>
-              (p['exit_stop_index'] as int?) == nextStopIndex &&
-              (p['category'] == 'aboard'))
+          .where((p) => p['category'] == 'aboard')
           .toList();
 
       if (nextStopPassengers.isEmpty) return;
@@ -1883,16 +1887,20 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
 
       // 2. Create bus_event 'completed' so rider gets realtime notification
       if (driverId != null) {
-        await Supabase.instance.client.from('bus_events').insert({
-          'route_id': widget.eventId,
-          'driver_id': driverId,
-          'event_type': 'completed',
-          'stop_name': 'Final',
-          'passengers_onboard': _tripSummary['passengers_aboard'] ?? 0,
-          'lat': _currentPosition?.latitude,
-          'lng': _currentPosition?.longitude,
-          'created_at': DateTime.now().toUtc().toIso8601String(),
-        });
+        try {
+          await Supabase.instance.client.from('bus_events').insert({
+            'route_id': widget.eventId,
+            'driver_id': driverId,
+            'event_type': 'completed',
+            'stop_name': 'Final',
+            'passengers_on_board': _tripSummary['passengers_aboard'] ?? 0,
+            'lat': _currentPosition?.latitude,
+            'lng': _currentPosition?.longitude,
+            'created_at': DateTime.now().toUtc().toIso8601String(),
+          });
+        } catch (e) {
+          debugPrint('LIVE_TRIP -> bus_events completed insert error: $e');
+        }
       }
 
       // 3. Notify all passengers

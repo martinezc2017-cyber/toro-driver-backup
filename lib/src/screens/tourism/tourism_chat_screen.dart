@@ -430,7 +430,7 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
 
   Widget _buildPinnedAnnouncement() {
     final announcement = _pinnedAnnouncement!;
-    final senderName = announcement.senderName ?? 'Organizador';
+    final senderName = announcement.senderName ?? 'Chofer';
     final timeStr = DateFormat('h:mm a').format(announcement.createdAt.toLocal());
 
     return Container(
@@ -847,7 +847,7 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '${message.senderName ?? "Organizador"} - $timeStr',
+                  '${message.senderName ?? "Chofer"} - $timeStr',
                   style: const TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 11,
@@ -1278,7 +1278,7 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
       case 'driver':
         return '[Chofer]';
       case 'organizer':
-        return '[Organizador]';
+        return '[Coordinador]';
       default:
         return '[Pasajero]';
     }

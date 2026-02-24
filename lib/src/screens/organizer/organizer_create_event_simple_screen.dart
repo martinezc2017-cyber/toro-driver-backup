@@ -135,7 +135,8 @@ class _OrganizerCreateEventSimpleScreenState
   double? _realDistanceKm;
   String? _distanceSource; // 'osrm', 'manual', or null
 
-  // Pricing removed - driver sets price via bidding
+  // Pricing - only when organizer has own vehicle (no bidding)
+  final _pricePerKmController = TextEditingController();
 
   // Organizer contact info (business card / credencial)
   final _contactEmailController = TextEditingController();
@@ -399,6 +400,7 @@ class _OrganizerCreateEventSimpleScreenState
     _contactPhoneController.dispose();
     _contactFacebookController.dispose();
     _eventSeatsController.dispose();
+    _pricePerKmController.dispose();
     super.dispose();
   }
 
@@ -606,18 +608,22 @@ class _OrganizerCreateEventSimpleScreenState
       // Convert stops to JSON for itinerary field
       final itineraryJson = _stops.map((stop) => stop.toJson()).toList();
 
-      // Auto-set visibility based on event type
+      // Determine if driver is posting with own vehicle
+      final bool postingWithOwnVehicle = _hasOwnVehicle == true && _selectedVehicle != null;
+
+      // Auto-set visibility based on event type & vehicle ownership
+      // If posting with own vehicle → public immediately (no bidding needed)
+      // Otherwise → private until bidding completes and driver is assigned
       String passengerVisibility;
-      if (_eventType == 'charter') {
+      if (postingWithOwnVehicle) {
+        passengerVisibility = 'public';
+      } else if (_eventType == 'charter') {
         passengerVisibility = 'public';
       } else if (_eventType == 'other') {
         passengerVisibility = _isOtherTypePublic ? 'public' : 'private';
       } else {
         passengerVisibility = 'private';
       }
-
-      // Determine if driver is posting with own vehicle
-      final bool postingWithOwnVehicle = _hasOwnVehicle == true && _selectedVehicle != null;
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final currentDriverId = authProvider.driver?.id;
 
@@ -629,7 +635,9 @@ class _OrganizerCreateEventSimpleScreenState
         'event_date': _eventDate.toIso8601String().split('T')[0],
         'start_time': '${_startTime.hour.toString().padLeft(2, '0')}:${_startTime.minute.toString().padLeft(2, '0')}:00',
         'max_passengers': eventSeats,
-        'price_per_km': 0,
+        'price_per_km': postingWithOwnVehicle
+            ? (double.tryParse(_pricePerKmController.text.trim()) ?? 0)
+            : 0,
         'total_distance_km': _realDistanceKm,
         'itinerary': itineraryJson,
         'passenger_visibility': passengerVisibility,
@@ -1017,127 +1025,142 @@ class _OrganizerCreateEventSimpleScreenState
               _buildCapacitySection(),
               const SizedBox(height: 32),
 
-              // Section 4: Bid Visibility (public/private)
-              _buildSectionHeader(
-                icon: Icons.gavel_rounded,
-                title: 'org_section_tipo_puja'.tr(),
-                helpKey: 'tipo_puja',
-                helpText: 'org_help_tipo_puja'.tr(),
-              ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: AppColors.card,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppColors.border),
+              // Section 4A: Finanzas - only when organizer has own vehicle
+              if (_hasOwnVehicle == true) ...[
+                _buildSectionHeader(
+                  icon: Icons.attach_money_rounded,
+                  title: 'Finanzas',
+                  helpKey: 'finanzas',
+                  helpText: 'Define el precio por kilometro que pagara cada pasajero. El precio del boleto se calcula automaticamente: precio/km × distancia total.',
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () => setState(() => _isBidPublic = true),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              decoration: BoxDecoration(
-                                color: _isBidPublic
-                                    ? AppColors.success.withValues(alpha: 0.15)
-                                    : Colors.transparent,
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
+                const SizedBox(height: 12),
+                _buildFinanzasSection(),
+                const SizedBox(height: 32),
+              ],
+
+              // Section 4B: Bid Visibility - only for dispatcher mode (needs drivers to bid)
+              if (_hasOwnVehicle != true) ...[
+                _buildSectionHeader(
+                  icon: Icons.gavel_rounded,
+                  title: 'org_section_tipo_puja'.tr(),
+                  helpKey: 'tipo_puja',
+                  helpText: 'org_help_tipo_puja'.tr(),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppColors.card,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => setState(() => _isBidPublic = true),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                decoration: BoxDecoration(
                                   color: _isBidPublic
-                                      ? AppColors.success
-                                      : AppColors.border,
-                                  width: _isBidPublic ? 1.5 : 1,
-                                ),
-                              ),
-                              child: Column(
-                                children: [
-                                  Icon(
-                                    Icons.public,
+                                      ? AppColors.success.withValues(alpha: 0.15)
+                                      : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
                                     color: _isBidPublic
                                         ? AppColors.success
-                                        : AppColors.textTertiary,
-                                    size: 24,
+                                        : AppColors.border,
+                                    width: _isBidPublic ? 1.5 : 1,
                                   ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'org_bid_public'.tr(),
-                                    style: TextStyle(
+                                ),
+                                child: Column(
+                                  children: [
+                                    Icon(
+                                      Icons.public,
                                       color: _isBidPublic
                                           ? AppColors.success
                                           : AppColors.textTertiary,
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 13,
+                                      size: 24,
                                     ),
-                                  ),
-                                ],
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'org_bid_public'.tr(),
+                                      style: TextStyle(
+                                        color: _isBidPublic
+                                            ? AppColors.success
+                                            : AppColors.textTertiary,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () => setState(() => _isBidPublic = false),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              decoration: BoxDecoration(
-                                color: !_isBidPublic
-                                    ? Colors.orange.withValues(alpha: 0.15)
-                                    : Colors.transparent,
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => setState(() => _isBidPublic = false),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                decoration: BoxDecoration(
                                   color: !_isBidPublic
-                                      ? Colors.orange
-                                      : AppColors.border,
-                                  width: !_isBidPublic ? 1.5 : 1,
-                                ),
-                              ),
-                              child: Column(
-                                children: [
-                                  Icon(
-                                    Icons.lock_outline,
+                                      ? Colors.orange.withValues(alpha: 0.15)
+                                      : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
                                     color: !_isBidPublic
                                         ? Colors.orange
-                                        : AppColors.textTertiary,
-                                    size: 24,
+                                        : AppColors.border,
+                                    width: !_isBidPublic ? 1.5 : 1,
                                   ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'org_bid_private'.tr(),
-                                    style: TextStyle(
+                                ),
+                                child: Column(
+                                  children: [
+                                    Icon(
+                                      Icons.lock_outline,
                                       color: !_isBidPublic
                                           ? Colors.orange
                                           : AppColors.textTertiary,
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 13,
+                                      size: 24,
                                     ),
-                                  ),
-                                ],
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'org_bid_private'.tr(),
+                                      style: TextStyle(
+                                        color: !_isBidPublic
+                                            ? Colors.orange
+                                            : AppColors.textTertiary,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _isBidPublic
-                          ? 'org_bid_public_desc'.tr()
-                          : 'org_bid_private_desc'.tr(),
-                      style: const TextStyle(
-                        color: AppColors.textTertiary,
-                        fontSize: 12,
+                        ],
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 8),
+                      Text(
+                        _isBidPublic
+                            ? 'org_bid_public_desc'.tr()
+                            : 'org_bid_private_desc'.tr(),
+                        style: const TextStyle(
+                          color: AppColors.textTertiary,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 32),
+                const SizedBox(height: 32),
+              ],
 
               // Create Button
               SizedBox(
@@ -2668,6 +2691,115 @@ class _OrganizerCreateEventSimpleScreenState
     return _buildDispatcherCapacity();
   }
 
+  /// Finanzas section - pricing when organizer has own vehicle
+  Widget _buildFinanzasSection() {
+    final distanceKm = _realDistanceKm ?? double.tryParse(_distanceKmController.text) ?? 0;
+    final pricePerKm = double.tryParse(_pricePerKmController.text) ?? 0;
+    final ticketPrice = pricePerKm * distanceKm;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Price per km input
+          Text(
+            'Precio por kilometro (MXN)',
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 8),
+          TextFormField(
+            controller: _pricePerKmController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            style: const TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w700),
+            decoration: InputDecoration(
+              hintText: '0.00',
+              hintStyle: TextStyle(color: AppColors.textDisabled),
+              prefixIcon: Icon(Icons.attach_money_rounded, color: AppColors.success, size: 20),
+              filled: true,
+              fillColor: AppColors.surface,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: AppColors.border),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: AppColors.border),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            ),
+            onChanged: (_) => setState(() {}),
+          ),
+
+          // Price preview
+          if (distanceKm > 0 && pricePerKm > 0) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.success.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+              ),
+              child: Column(
+                children: [
+                  _finanzasRow('Distancia total', '${distanceKm.toStringAsFixed(1)} km'),
+                  const SizedBox(height: 6),
+                  _finanzasRow('Precio/km', '\$${pricePerKm.toStringAsFixed(2)} MXN'),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Divider(color: AppColors.success.withValues(alpha: 0.3), height: 1),
+                  ),
+                  _finanzasRow(
+                    'Precio boleto',
+                    '\$${ticketPrice.toStringAsFixed(0)} MXN',
+                    bold: true,
+                  ),
+                ],
+              ),
+            ),
+          ] else if (distanceKm == 0) ...[
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Icon(Icons.info_outline, size: 14, color: AppColors.textTertiary),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Agrega las paradas del itinerario para calcular la distancia y ver el precio del boleto.',
+                    style: TextStyle(color: AppColors.textTertiary, fontSize: 11),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _finanzasRow(String label, String value, {bool bold = false}) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+        Text(
+          value,
+          style: TextStyle(
+            color: bold ? AppColors.success : AppColors.textPrimary,
+            fontSize: bold ? 16 : 13,
+            fontWeight: bold ? FontWeight.w800 : FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+
   /// Wizard step: two clear choices
   Widget _buildVehicleWizardChoice() {
     return Container(
@@ -2935,7 +3067,7 @@ class _OrganizerCreateEventSimpleScreenState
     return GestureDetector(
       onTap: () {
         HapticService.lightImpact();
-        Navigator.pushNamed(context, '/add-vehicle').then((_) {
+        Navigator.pushNamed(context, '/add-vehicle-tourism').then((_) {
           // Reload vehicles when returning from add vehicle screen
           final authProvider = Provider.of<AuthProvider>(context, listen: false);
           final userId = authProvider.driver?.id;

@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart' as intl;
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -32,6 +33,8 @@ import 'organizer_photos_screen.dart';
 import 'organizer_profile_screen.dart';
 import 'organizer_vehicle_selection_screen.dart';
 import 'organizer_bidding_screen.dart';
+
+String _fmtPrice(double v) => intl.NumberFormat('#,##0', 'es_MX').format(v.round());
 
 /// Main event management dashboard for organizers.
 ///
@@ -467,13 +470,18 @@ class _OrganizerEventDashboardScreenState
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder: (ctx) => Container(
         padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(ctx).size.height * 0.75,
+        ),
         decoration: const BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
-        child: Column(
+        child: SingleChildScrollView(
+          child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             // Handle bar
@@ -560,6 +568,7 @@ class _OrganizerEventDashboardScreenState
             ),
             SizedBox(height: MediaQuery.of(ctx).padding.bottom + 8),
           ],
+        ),
         ),
       ),
     );
@@ -1069,6 +1078,7 @@ Enviado desde TORO
     final status = _event?['status'] ?? 'draft';
     final visibility = _event?['passenger_visibility'] ?? 'private';
     final isPublic = visibility == 'public';
+    final isBlackRose = _event?['is_black_rose'] == true || eventName.toUpperCase().contains('BLACK ROSE');
 
     return SliverAppBar(
       backgroundColor: AppColors.surface,
@@ -1125,14 +1135,13 @@ Enviado desde TORO
       flexibleSpace: FlexibleSpaceBar(
         background: Container(
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                AppColors.surface,
-                AppColors.background,
-              ],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ),
+            gradient: isBlackRose
+                ? AppColors.blackRoseBgGradient
+                : const LinearGradient(
+                    colors: [AppColors.surface, AppColors.background],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
           ),
           child: SafeArea(
             child: Padding(
@@ -1149,20 +1158,25 @@ Enviado desde TORO
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Flexible(
-                            child: Text(
-                              eventName,
-                              style: const TextStyle(
-                                color: AppColors.textPrimary,
-                                fontSize: 22,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: -0.5,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                            child: isBlackRose
+                                ? ShaderMask(
+                                    shaderCallback: (bounds) => AppColors.blackRoseGradient.createShader(bounds),
+                                    child: Text(
+                                      eventName,
+                                      style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.5),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  )
+                                : Text(
+                                    eventName,
+                                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.5),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                           ),
                           const SizedBox(width: 6),
-                          const Icon(Icons.edit_rounded, color: AppColors.textTertiary, size: 16),
+                          Icon(Icons.edit_rounded, color: isBlackRose ? AppColors.blackRose.withValues(alpha: 0.5) : AppColors.textTertiary, size: 16),
                         ],
                       ),
                     ),
@@ -1170,6 +1184,23 @@ Enviado desde TORO
                   const SizedBox(height: 6),
                   Row(
                     children: [
+                      if (isBlackRose)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          margin: const EdgeInsets.only(right: 8),
+                          decoration: BoxDecoration(
+                            gradient: AppColors.blackRoseGradient,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.diamond, color: Colors.white, size: 12),
+                              SizedBox(width: 4),
+                              Text('BLACK ROSE', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1)),
+                            ],
+                          ),
+                        ),
                       _buildStatusBadge(status),
                       const Spacer(),
                       _buildTopActionBtn(Icons.map, 'Mapa', AppColors.success, _openLiveMap),
@@ -1795,7 +1826,7 @@ Enviado desde TORO
                       Icon(Icons.straighten, size: 12, color: AppColors.primary),
                       const SizedBox(width: 4),
                       Text(
-                        '${distanceKm.toStringAsFixed(0)} km',
+                        '${_fmtPrice(distanceKm)} km',
                         style: TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w600),
                       ),
                       const SizedBox(width: 8),
@@ -2186,7 +2217,7 @@ Enviado desde TORO
         _eventService.notifyEventPassengers(
           eventId: widget.eventId,
           title: 'Ruta actualizada',
-          body: 'El organizador modificó la ruta del viaje',
+          body: 'El chofer modificó la ruta del viaje',
           type: 'tourism_event_updated',
           extraData: {'change': 'itinerary'},
         );
@@ -3169,9 +3200,7 @@ Enviado desde TORO
     final accepted = (_stats['confirmed'] as num?)?.toInt() ?? (_stats['accepted'] as num?)?.toInt() ?? 0;
     final currentEarnings = receives * accepted;
     final totalBruto = ticketPrice * accepted;
-    final hasOrganizer = _event?['organizer_id'] != null;
-    final receiverLabel = hasOrganizer ? 'Organizador recibe' : 'Chofer recibe';
-
+    final receiverLabel = 'Tu recibes';
     return Container(
       decoration: BoxDecoration(
         color: AppColors.card,
@@ -3209,28 +3238,33 @@ Enviado desde TORO
             ),
             const SizedBox(height: 14),
 
-            // Agreed price (from bid negotiation)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.handshake, color: AppColors.primary, size: 18),
-                  const SizedBox(width: 10),
-                  Text(
-                    'tourism_agreed_price'.tr(),
-                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w500),
-                  ),
-                  const Spacer(),
-                  Text(
-                    '\$${pricePerKm.toStringAsFixed(2)}/km',
-                    style: const TextStyle(color: AppColors.primary, fontSize: 16, fontWeight: FontWeight.w800),
-                  ),
-                ],
+            // Agreed price (tappable to edit)
+            GestureDetector(
+              onTap: () => _showEditPriceDialog(pricePerKm),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.handshake, color: AppColors.primary, size: 18),
+                    const SizedBox(width: 10),
+                    Text(
+                      'tourism_agreed_price'.tr(),
+                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w500),
+                    ),
+                    const Spacer(),
+                    Text(
+                      '\$${pricePerKm.toStringAsFixed(2)}/km',
+                      style: const TextStyle(color: AppColors.primary, fontSize: 16, fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(width: 6),
+                    const Icon(Icons.edit, color: AppColors.primary, size: 14),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 14),
@@ -3246,22 +3280,22 @@ Enviado desde TORO
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildPricingRow('Distancia total', '${distanceKm.toStringAsFixed(0)} km'),
+                    _buildPricingRow('Distancia total', '${_fmtPrice(distanceKm)} km', icon: Icons.straighten),
                     const Divider(color: AppColors.border, height: 16),
-                    _buildPricingRow('Precio boleto', '\$${ticketPrice.toStringAsFixed(2)}', isBold: true),
+                    _buildPricingRow('Precio boleto', '\$${_fmtPrice(ticketPrice)}', isBold: true, icon: Icons.receipt_long),
                     const SizedBox(height: 6),
-                    _buildPricingRow('Servicio TORO (18%)', '\$${toroFee.toStringAsFixed(2)}', color: AppColors.textSecondary),
+                    _buildPricingRow('Servicio TORO (18%)', '-\$${_fmtPrice(toroFee)}', color: AppColors.textSecondary, icon: Icons.percent),
                     const SizedBox(height: 6),
-                    _buildPricingRow(receiverLabel, '\$${receives.toStringAsFixed(2)}', color: AppColors.success, isBold: true),
+                    _buildPricingRow(receiverLabel, '\$${_fmtPrice(receives)}', color: AppColors.success, isBold: true, icon: Icons.account_balance_wallet),
                     if (accepted > 0) ...[
                       const Divider(color: AppColors.border, height: 16),
-                      _buildPricingRow('Pasajeros confirmados', '$accepted/$maxPassengers'),
+                      _buildPricingRow('Pasajeros confirmados', '$accepted/$maxPassengers', icon: Icons.people),
                       const SizedBox(height: 6),
-                      _buildPricingRow('Total recaudado', '\$${totalBruto.toStringAsFixed(2)}'),
+                      _buildPricingRow('Total recaudado', '\$${_fmtPrice(totalBruto)}', icon: Icons.monetization_on),
                       const SizedBox(height: 6),
-                      _buildPricingRow('Servicio TORO', '\$${(toroFee * accepted).toStringAsFixed(2)}', color: AppColors.textSecondary),
+                      _buildPricingRow('Servicio TORO', '-\$${_fmtPrice(toroFee * accepted)}', color: AppColors.textSecondary, icon: Icons.percent),
                       const SizedBox(height: 6),
-                      _buildPricingRow(receiverLabel, '\$${currentEarnings.toStringAsFixed(2)}', color: AppColors.primary, isBold: true),
+                      _buildPricingRow(receiverLabel, '\$${_fmtPrice(currentEarnings)}', color: AppColors.primary, isBold: true, icon: Icons.account_balance_wallet),
                     ],
                   ],
                 ),
@@ -3518,9 +3552,7 @@ Enviado desde TORO
     final accepted = (_stats['confirmed'] as num?)?.toInt() ?? (_stats['accepted'] as num?)?.toInt() ?? 0;
     final currentEarnings = receives * accepted;
     final totalBruto = ticketPrice * accepted;
-    final hasOrganizer = _event?['organizer_id'] != null;
-    final receiverLabel = hasOrganizer ? 'Organizador recibe' : 'Chofer recibe';
-
+    final receiverLabel = 'Tu recibes';
     return Container(
       decoration: BoxDecoration(
         color: AppColors.card,
@@ -3568,7 +3600,7 @@ Enviado desde TORO
                         ),
                         const SizedBox(height: 3),
                         Text(
-                          'Total: \$${(ticketPrice * accepted).toStringAsFixed(2)} MXN',
+                          'Total: \$${_fmtPrice(ticketPrice * accepted)} MXN',
                           style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
                         ),
                       ],
@@ -3596,24 +3628,29 @@ Enviado desde TORO
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               child: Column(
                 children: [
-                  // Agreed price
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.handshake, color: AppColors.primary, size: 18),
-                        const SizedBox(width: 10),
-                        Text('tourism_agreed_price'.tr(),
-                          style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w500)),
-                        const Spacer(),
-                        Text('\$${pricePerKm.toStringAsFixed(2)}/km',
-                          style: const TextStyle(color: AppColors.primary, fontSize: 16, fontWeight: FontWeight.w800)),
-                      ],
+                  // Agreed price (tappable to edit)
+                  GestureDetector(
+                    onTap: () => _showEditPriceDialog(pricePerKm),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.handshake, color: AppColors.primary, size: 18),
+                          const SizedBox(width: 10),
+                          Text('tourism_agreed_price'.tr(),
+                            style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w500)),
+                          const Spacer(),
+                          Text('\$${pricePerKm.toStringAsFixed(2)}/km',
+                            style: const TextStyle(color: AppColors.primary, fontSize: 16, fontWeight: FontWeight.w800)),
+                          const SizedBox(width: 6),
+                          const Icon(Icons.edit, color: AppColors.primary, size: 14),
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(height: 14),
@@ -3628,22 +3665,22 @@ Enviado desde TORO
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildPricingRow('Distancia total', '${distanceKm.toStringAsFixed(0)} km'),
+                          _buildPricingRow('Distancia total', '${_fmtPrice(distanceKm)} km', icon: Icons.straighten),
                           const Divider(color: AppColors.border, height: 16),
-                          _buildPricingRow('Precio boleto', '\$${ticketPrice.toStringAsFixed(2)}', isBold: true),
+                          _buildPricingRow('Precio boleto', '\$${_fmtPrice(ticketPrice)}', isBold: true, icon: Icons.receipt_long),
                           const SizedBox(height: 6),
-                          _buildPricingRow('Servicio TORO (18%)', '\$${toroFee.toStringAsFixed(2)}', color: AppColors.textSecondary),
+                          _buildPricingRow('Servicio TORO (18%)', '-\$${_fmtPrice(toroFee)}', color: AppColors.textSecondary, icon: Icons.percent),
                           const SizedBox(height: 6),
-                          _buildPricingRow(receiverLabel, '\$${receives.toStringAsFixed(2)}', color: AppColors.success, isBold: true),
+                          _buildPricingRow(receiverLabel, '\$${_fmtPrice(receives)}', color: AppColors.success, isBold: true, icon: Icons.account_balance_wallet),
                           if (accepted > 0) ...[
                             const Divider(color: AppColors.border, height: 16),
-                            _buildPricingRow('Pasajeros confirmados', '$accepted/$maxPassengers'),
+                            _buildPricingRow('Pasajeros confirmados', '$accepted/$maxPassengers', icon: Icons.people),
                             const SizedBox(height: 6),
-                            _buildPricingRow('Total recaudado', '\$${totalBruto.toStringAsFixed(2)}'),
+                            _buildPricingRow('Total recaudado', '\$${_fmtPrice(totalBruto)}', icon: Icons.monetization_on),
                             const SizedBox(height: 6),
-                            _buildPricingRow('Servicio TORO', '\$${(toroFee * accepted).toStringAsFixed(2)}', color: AppColors.textSecondary),
+                            _buildPricingRow('Servicio TORO', '-\$${_fmtPrice(toroFee * accepted)}', color: AppColors.textSecondary, icon: Icons.percent),
                             const SizedBox(height: 6),
-                            _buildPricingRow(receiverLabel, '\$${currentEarnings.toStringAsFixed(2)}', color: AppColors.primary, isBold: true),
+                            _buildPricingRow(receiverLabel, '\$${_fmtPrice(currentEarnings)}', color: AppColors.primary, isBold: true, icon: Icons.account_balance_wallet),
                           ],
                         ],
                       ),
@@ -3677,19 +3714,124 @@ Enviado desde TORO
     );
   }
 
-  Widget _buildPricingRow(String label, String value, {bool isBold = false, Color? color}) {
+  Widget _buildPricingRow(String label, String value, {bool isBold = false, Color? color, IconData? icon}) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+        if (icon != null) ...[
+          Icon(icon, size: 18, color: AppColors.textSecondary),
+          const SizedBox(width: 10),
+        ],
+        Expanded(
+          child: Text(label, style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+        ),
         Text(
           value,
           style: TextStyle(
             color: color ?? AppColors.textPrimary,
-            fontSize: 13,
-            fontWeight: isBold ? FontWeight.w700 : FontWeight.w500,
+            fontSize: isBold ? 16 : 14,
+            fontWeight: isBold ? FontWeight.w700 : FontWeight.w600,
           ),
         ),
+      ],
+    );
+  }
+
+  Future<void> _showEditPriceDialog(double currentPrice) async {
+    final controller = TextEditingController(text: currentPrice.toStringAsFixed(2));
+    final distanceKm = (_event?['total_distance_km'] as num?)?.toDouble() ?? 0;
+
+    final result = await showDialog<double>(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            final newPrice = double.tryParse(controller.text) ?? 0;
+            final newTicket = newPrice * distanceKm;
+            final newFee = newTicket * 0.18;
+            final newReceives = newTicket - newFee;
+
+            return AlertDialog(
+              backgroundColor: AppColors.card,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: const Text('Cambiar precio/km', style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w700)),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: controller,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    autofocus: true,
+                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 20, fontWeight: FontWeight.w700),
+                    decoration: InputDecoration(
+                      prefixText: '\$ ',
+                      suffixText: '/km',
+                      prefixStyle: const TextStyle(color: AppColors.primary, fontSize: 20, fontWeight: FontWeight.w700),
+                      suffixStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                      filled: true,
+                      fillColor: AppColors.cardSecondary,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    ),
+                    onChanged: (_) => setDialogState(() {}),
+                  ),
+                  if (distanceKm > 0 && newPrice > 0) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.06),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Column(
+                        children: [
+                          _dialogRow('Distancia', '${_fmtPrice(distanceKm)} km'),
+                          const SizedBox(height: 6),
+                          _dialogRow('Precio boleto', '\$${_fmtPrice(newTicket)}', bold: true),
+                          const SizedBox(height: 6),
+                          _dialogRow('Servicio TORO (18%)', '-\$${_fmtPrice(newFee)}'),
+                          const SizedBox(height: 6),
+                          _dialogRow('Tu recibes', '\$${_fmtPrice(newReceives)}', bold: true, color: AppColors.success),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Cancelar', style: TextStyle(color: AppColors.textSecondary)),
+                ),
+                ElevatedButton(
+                  onPressed: newPrice > 0 ? () => Navigator.pop(ctx, newPrice) : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: const Text('Guardar', style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (result != null && result != currentPrice) {
+      _pricePerKmController.text = result.toStringAsFixed(2);
+      await _savePricePerKm();
+    }
+  }
+
+  Widget _dialogRow(String label, String value, {bool bold = false, Color? color}) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+        Text(value, style: TextStyle(
+          color: color ?? AppColors.textPrimary,
+          fontSize: bold ? 15 : 13,
+          fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
+        )),
       ],
     );
   }
@@ -4019,7 +4161,7 @@ Enviado desde TORO
                       const Icon(Icons.business, color: AppColors.primary, size: 14),
                       const SizedBox(width: 6),
                       const Text(
-                        'Organizador',
+                        'Chofer',
                         style: TextStyle(color: AppColors.textTertiary, fontSize: 11, fontWeight: FontWeight.w500),
                       ),
                       const Spacer(),
@@ -5853,7 +5995,7 @@ Enviado desde TORO
                   child: Text(name, style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
                 ),
                 if (group == 'exited' && totalPrice != null) ...[
-                  Text('\$${totalPrice.toStringAsFixed(0)}', style: const TextStyle(color: AppColors.success, fontSize: 12, fontWeight: FontWeight.w700)),
+                  Text('\$${_fmtPrice(totalPrice)}', style: const TextStyle(color: AppColors.success, fontSize: 12, fontWeight: FontWeight.w700)),
                   const SizedBox(width: 6),
                 ],
                 Text(statusText, style: TextStyle(color: dotColor, fontSize: 11, fontWeight: FontWeight.w600)),
@@ -6663,7 +6805,7 @@ Enviado desde TORO
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Total: \$${totalBasePrice.toStringAsFixed(2)} MXN',
+                          'Total: \$${_fmtPrice(totalBasePrice)} MXN',
                           style: const TextStyle(
                             color: AppColors.textSecondary,
                             fontSize: 15,
@@ -6710,7 +6852,7 @@ Enviado desde TORO
                     children: [
                       _buildFinancialRow(
                         'Total Bus',
-                        '\$${totalBasePrice.toStringAsFixed(2)} MXN',
+                        '\$${_fmtPrice(totalBasePrice)} MXN',
                         icon: Icons.directions_bus,
                         iconColor: AppColors.primary,
                         isBold: true,
@@ -6718,7 +6860,7 @@ Enviado desde TORO
                       const SizedBox(height: 14),
                       _buildFinancialRow(
                         'Distancia',
-                        '${distanceKm.toStringAsFixed(1)} km',
+                        '${_fmtPrice(distanceKm)} km',
                         icon: Icons.straighten,
                         iconColor: AppColors.textTertiary,
                       ),
@@ -6740,7 +6882,7 @@ Enviado desde TORO
                           children: [
                             _buildFinancialRow(
                               'Comision TORO (18%)',
-                              '-\$${toroFee.toStringAsFixed(2)}',
+                              '-\$${_fmtPrice(toroFee)}',
                               color: AppColors.error,
                             ),
                             // Only show organizer commission when there's no driver assigned
@@ -6749,7 +6891,7 @@ Enviado desde TORO
                               const SizedBox(height: 12),
                               _buildFinancialRow(
                                 'Tu Comision (3%)',
-                                '+\$${organizerCommission.toStringAsFixed(2)}',
+                                '+\$${_fmtPrice(organizerCommission)}',
                                 color: AppColors.success,
                                 isBold: true,
                               ),

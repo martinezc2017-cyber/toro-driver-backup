@@ -115,7 +115,7 @@ class _EventReviewsScreenState extends State<EventReviewsScreen> {
     buffer.writeln(
         'Calificacion general: ${_avgOverall.toStringAsFixed(1)}/5');
     buffer.writeln('Conductor: ${_avgDriver.toStringAsFixed(1)}/5');
-    buffer.writeln('Organizador: ${_avgOrganizer.toStringAsFixed(1)}/5');
+    buffer.writeln('Servicio: ${_avgOrganizer.toStringAsFixed(1)}/5');
     buffer.writeln('Vehiculo: ${_avgVehicle.toStringAsFixed(1)}/5');
     buffer.writeln('Total de resenas: $_totalReviews');
     buffer.writeln('Recomendarian: $_recommendPct%');
@@ -482,7 +482,7 @@ class _EventReviewsScreenState extends State<EventReviewsScreen> {
               Icons.person, 'Conductor', _avgDriver),
           const SizedBox(height: 10),
           _buildCategoryRow(
-              Icons.business, 'Organizador', _avgOrganizer),
+              Icons.business, 'Servicio', _avgOrganizer),
           const SizedBox(height: 10),
           _buildCategoryRow(
               Icons.directions_bus, 'Vehiculo', _avgVehicle),

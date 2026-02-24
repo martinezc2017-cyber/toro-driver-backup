@@ -111,7 +111,7 @@ class _OrganizerVehiclesTabState extends State<OrganizerVehiclesTab> {
                             onRefresh: _loadVehicles,
                             child: ListView.builder(
                               physics: const AlwaysScrollableScrollPhysics(),
-                              padding: const EdgeInsets.all(16),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                               itemCount: _vehicles.length,
                               itemBuilder: (context, index) =>
                                   _buildVehicleCard(_vehicles[index]),
@@ -125,7 +125,7 @@ class _OrganizerVehiclesTabState extends State<OrganizerVehiclesTab> {
 
   Widget _buildInviteBanner() {
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       child: _GlowingInviteButton(
         onTap: _shareDriverAppLink,
       ),
@@ -143,7 +143,7 @@ class _OrganizerVehiclesTabState extends State<OrganizerVehiclesTab> {
 
   Widget _buildFilterBar() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: const BoxDecoration(
         color: AppColors.surface,
         border: Border(
@@ -154,40 +154,40 @@ class _OrganizerVehiclesTabState extends State<OrganizerVehiclesTab> {
         children: [
           Expanded(
             child: Container(
-              height: 40,
+              height: 34,
               decoration: BoxDecoration(
                 color: AppColors.card,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: AppColors.border, width: 0.5),
               ),
               child: TextField(
                 controller: _stateFilterController,
                 style: const TextStyle(
-                    color: AppColors.textPrimary, fontSize: 14),
+                    color: AppColors.textPrimary, fontSize: 13),
                 decoration: InputDecoration(
                   hintText: 'organizer.filter_state_hint'.tr(),
                   hintStyle:
-                      TextStyle(color: AppColors.textTertiary, fontSize: 13),
-                  prefixIcon: Icon(Icons.filter_list,
-                      size: 18, color: AppColors.textTertiary),
+                      TextStyle(color: AppColors.textTertiary, fontSize: 12),
+                  prefixIcon: Icon(Icons.location_on_rounded,
+                      size: 16, color: AppColors.textTertiary),
                   border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(vertical: 10),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 8),
                 ),
                 onSubmitted: (_) => _applyFilter(),
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
           GestureDetector(
             onTap: _applyFilter,
             child: Container(
-              height: 40,
-              width: 40,
+              height: 34,
+              width: 34,
               decoration: BoxDecoration(
                 color: AppColors.primary,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(Icons.search, size: 18, color: Colors.white),
+              child: const Icon(Icons.search, size: 16, color: Colors.white),
             ),
           ),
         ],
@@ -260,16 +260,9 @@ class _OrganizerVehiclesTabState extends State<OrganizerVehiclesTab> {
   Widget _buildVehicleCard(Map<String, dynamic> vehicle) {
     final vehicleName = vehicle['vehicle_name'] ?? 'common.no_name'.tr();
     final vehicleType = vehicle['vehicle_type'] ?? 'autobus';
-    // CHOFER DE TORO (driver assigned to operate the bus)
     final driverName = vehicle['driver_name'] ?? 'common.no_driver'.tr();
-    final driverPhone = vehicle['driver_phone'] ?? '';
-    // OWNER (dueño del camión/compañía)
-    final ownerName = vehicle['owner_name'] ?? 'common.owner'.tr();
-    final ownerPhone = vehicle['owner_phone'] ?? '';
     final totalSeats = vehicle['total_seats'] ?? 0;
-    final vehicleId = vehicle['id']?.toString() ?? '';
 
-    // Get first photo from image_urls array
     final imageUrls = vehicle['image_urls'] as List<dynamic>?;
     final firstPhoto = (imageUrls != null && imageUrls.isNotEmpty)
         ? imageUrls[0].toString()
@@ -277,8 +270,6 @@ class _OrganizerVehiclesTabState extends State<OrganizerVehiclesTab> {
 
     final typeIcon =
         vehicleType == 'minibus' ? Icons.airport_shuttle : Icons.directions_bus;
-    final typeLabel =
-        vehicleType == 'minibus' ? 'organizer.vehicle_type_minibus'.tr() : 'organizer.vehicle_type_bus'.tr();
 
     return GestureDetector(
       onTap: () {
@@ -286,130 +277,89 @@ class _OrganizerVehiclesTabState extends State<OrganizerVehiclesTab> {
         _showVehicleDetail(vehicle);
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
+        margin: const EdgeInsets.only(bottom: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
           color: AppColors.card,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(color: AppColors.border, width: 0.5),
-          boxShadow: AppColors.shadowSubtle,
         ),
         child: Row(
           children: [
-            // Vehicle photo (bigger)
+            // Vehicle photo
             ClipRRect(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(8),
               child: firstPhoto != null
                   ? Image.network(
                       firstPhoto,
-                      width: 90,
-                      height: 90,
+                      width: 56,
+                      height: 56,
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          width: 90,
-                          height: 90,
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Icon(typeIcon, size: 36, color: AppColors.primary),
-                        );
-                      },
+                      errorBuilder: (_, __, ___) => Container(
+                        width: 56, height: 56,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(typeIcon, size: 24, color: AppColors.primary),
+                      ),
                     )
                   : Container(
-                      width: 90,
-                      height: 90,
+                      width: 56, height: 56,
                       decoration: BoxDecoration(
                         color: AppColors.primary.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Icon(typeIcon, size: 36, color: AppColors.primary),
+                      child: Icon(typeIcon, size: 24, color: AppColors.primary),
                     ),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 10),
             // Vehicle info
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     vehicleName,
                     style: const TextStyle(
                       color: AppColors.textPrimary,
-                      fontSize: 15,
+                      fontSize: 13,
                       fontWeight: FontWeight.w600,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 6),
-                  // Seats + Driver info - bigger and more prominent
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: AppColors.success.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Seats row
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.event_seat,
-                                size: 18, color: AppColors.success),
-                            const SizedBox(width: 6),
-                            Text(
-                              '$totalSeats',
-                              style: const TextStyle(
-                                color: AppColors.success,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              'organizer.seats'.tr(),
-                              style: TextStyle(
-                                color: AppColors.success.withValues(alpha: 0.8),
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
+                  const SizedBox(height: 3),
+                  Row(
+                    children: [
+                      Icon(Icons.event_seat, size: 13, color: AppColors.textSecondary),
+                      const SizedBox(width: 3),
+                      Text(
+                        '$totalSeats',
+                        style: const TextStyle(color: AppColors.textPrimary, fontSize: 12, fontWeight: FontWeight.w700),
+                      ),
+                      Text(
+                        ' ${'organizer.seats'.tr()}',
+                        style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                      ),
+                      Text(' · ', style: TextStyle(color: AppColors.textDisabled, fontSize: 11)),
+                      Icon(Icons.person_outline, size: 12, color: AppColors.textSecondary),
+                      const SizedBox(width: 2),
+                      Expanded(
+                        child: Text(
+                          driverName,
+                          style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 6),
-                        // Driver info row (CHOFER DE TORO)
-                        Row(
-                          children: [
-                            const Icon(Icons.person_outline,
-                                size: 14, color: AppColors.success),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                driverName,
-                                style: TextStyle(
-                                  color: AppColors.success.withValues(alpha: 0.9),
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right,
-                color: AppColors.textTertiary, size: 20),
+            Icon(Icons.chevron_right, color: AppColors.textTertiary, size: 18),
           ],
         ),
       ),
@@ -499,21 +449,20 @@ class _OrganizerVehiclesTabState extends State<OrganizerVehiclesTab> {
                 ),
               ),
               const SizedBox(height: 16),
-              // Seats - prominent display
+              // Seats + driver
               Container(
-                padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
                 decoration: BoxDecoration(
-                  color: AppColors.success.withValues(alpha: 0.15),
+                  color: AppColors.card,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.success.withValues(alpha: 0.3), width: 2),
+                  border: Border.all(color: AppColors.border, width: 1),
                 ),
                 child: Column(
                   children: [
-                    // Seats section
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.event_seat, size: 32, color: AppColors.success),
+                        Icon(Icons.event_seat, size: 28, color: AppColors.textSecondary),
                         const SizedBox(width: 12),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -521,16 +470,16 @@ class _OrganizerVehiclesTabState extends State<OrganizerVehiclesTab> {
                             Text(
                               '$totalSeats',
                               style: const TextStyle(
-                                color: AppColors.success,
-                                fontSize: 28,
+                                color: AppColors.textPrimary,
+                                fontSize: 24,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
                             Text(
                               'organizer.seats_available'.tr(),
                               style: TextStyle(
-                                color: AppColors.success.withValues(alpha: 0.8),
-                                fontSize: 14,
+                                color: AppColors.textSecondary,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -538,27 +487,23 @@ class _OrganizerVehiclesTabState extends State<OrganizerVehiclesTab> {
                         ),
                       ],
                     ),
-                    // Divider
                     Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
                       child: Container(
                         height: 1,
-                        color: AppColors.success.withValues(alpha: 0.2),
+                        color: AppColors.border,
                       ),
                     ),
-                    // Driver section
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.person_outline,
-                            size: 20,
-                            color: AppColors.success),
+                        Icon(Icons.person_outline, size: 18, color: AppColors.textSecondary),
                         const SizedBox(width: 8),
                         Text(
                           driverName,
                           style: TextStyle(
-                            color: AppColors.success,
-                            fontSize: 16,
+                            color: AppColors.textPrimary,
+                            fontSize: 15,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -715,7 +660,7 @@ class _GlowingInviteButtonState extends State<_GlowingInviteButton>
         return GestureDetector(
           onTap: widget.onTap,
           child: Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
@@ -725,68 +670,33 @@ class _GlowingInviteButtonState extends State<_GlowingInviteButton>
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: AppColors.success.withValues(alpha: _glowAnimation.value),
-                width: 1.5,
+                width: 1,
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.success.withValues(alpha: _glowAnimation.value * 0.4),
-                  blurRadius: 12,
-                  spreadRadius: 1,
-                ),
-              ],
             ),
             child: Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: AppColors.success.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.person_add,
-                    color: AppColors.success,
-                    size: 22,
-                  ),
-                ),
-                const SizedBox(width: 14),
+                Icon(Icons.person_add, color: AppColors.success, size: 18),
+                const SizedBox(width: 10),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'organizer.invite_driver'.tr(),
-                        style: TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'organizer.share_app_subtitle'.tr(),
-                        style: TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
+                  child: Text(
+                    'organizer.invite_driver'.tr(),
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
                     color: AppColors.success,
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(
-                    Icons.share,
-                    color: Colors.white,
-                    size: 18,
-                  ),
+                  child: const Icon(Icons.share, color: Colors.white, size: 14),
                 ),
               ],
             ),

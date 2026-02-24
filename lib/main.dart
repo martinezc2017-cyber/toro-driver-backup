@@ -114,6 +114,7 @@ void main() async {
     EasyLocalization(
       supportedLocales: const [Locale('en'), Locale('es'), Locale('es', 'MX')],
       path: 'assets/lang',
+      startLocale: const Locale('es'),
       fallbackLocale: const Locale('es'),
       saveLocale: true,
       useOnlyLangCode: false, // Allow country codes for es-MX
@@ -256,6 +257,7 @@ class ToroDriverApp extends StatelessWidget {
           '/messages': (context) => const MessagesScreen(),
           '/bank-account': (context) => const BankAccountScreen(),
           '/add-vehicle': (context) => const AddVehicleScreen(),
+          '/add-vehicle-tourism': (context) => const AddVehicleScreen(forTourism: true),
           '/driver-agreement': (context) => const DriverAgreementScreen(),
           // Driver credential
           '/driver-credential': (context) => const DriverCredentialScreen(),

@@ -34,9 +34,12 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
   List<Map<String, dynamic>> _openEvents = [];
   // Driver's own bids (all statuses)
   List<Map<String, dynamic>> _myBids = [];
+  // Trip wizard requests from riders
+  List<Map<String, dynamic>> _tripRequests = [];
   bool _isLoading = true;
   bool _isLoadingOpen = true;
   bool _isLoadingMyBids = true;
+  bool _isLoadingTrips = true;
   String? _error;
   RealtimeChannel? _realtimeChannel;
   RealtimeChannel? _bidStatusChannel;
@@ -53,22 +56,24 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _tabController.addListener(_onTabChanged);
     _loadMinPrice();
     _loadDriverVehicle();
     _loadRequests();
     _loadOpenEvents();
     _loadMyBids();
+    _loadTripRequests();
     _subscribeToRequests();
     _subscribeToBidStatusChanges();
   }
 
   void _onTabChanged() {
     if (!_tabController.indexIsChanging) return;
-    // Refresh data when switching to "Mis Pujas" tab (index 2)
     if (_tabController.index == 2) {
       _loadMyBids();
+    } else if (_tabController.index == 3) {
+      _loadTripRequests();
     }
   }
 
@@ -173,6 +178,26 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
       });
     } catch (e) {
       setState(() => _isLoadingMyBids = false);
+    }
+  }
+
+  Future<void> _loadTripRequests() async {
+    setState(() => _isLoadingTrips = true);
+    try {
+      final driverProvider = Provider.of<DriverProvider>(context, listen: false);
+      final driver = driverProvider.driver;
+      if (driver == null) {
+        setState(() => _isLoadingTrips = false);
+        return;
+      }
+
+      final trips = await _eventService.getOpenTripRequests(driver.id);
+      setState(() {
+        _tripRequests = trips;
+        _isLoadingTrips = false;
+      });
+    } catch (e) {
+      setState(() => _isLoadingTrips = false);
     }
   }
 
@@ -817,7 +842,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                         ),
                       ),
                       child: Text(
-                        'El organizador propone: \$${organizerPrice.toStringAsFixed(0)} MXN/km',
+                        'Precio propuesto: \$${organizerPrice.toStringAsFixed(0)} MXN/km',
                         style: const TextStyle(
                           color: AppColors.warning,
                           fontSize: 14,
@@ -1298,6 +1323,8 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                                 : _buildRequestsList(),
                     // Tab 3: My bids (all statuses)
                     _buildMyBidsTab(),
+                    // Tab 4: Trip wizard requests from riders
+                    _buildTripRequestsTab(),
                   ],
                 ),
               ),
@@ -1335,6 +1362,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
               HapticService.lightImpact();
               _loadRequests();
               _loadOpenEvents();
+              _loadTripRequests();
             },
             child: const Icon(Icons.refresh, color: AppColors.gold, size: 18),
           ),
@@ -1423,6 +1451,28 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
               ],
             ),
           ),
+          Tab(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Viajes'),
+                if (_tripRequests.isNotEmpty) ...[
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.cyan,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      '${_tripRequests.length}',
+                      style: const TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -1458,7 +1508,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
               controller: _filterController,
               style: const TextStyle(color: AppColors.textPrimary, fontSize: 12),
               decoration: InputDecoration(
-                hintText: 'Buscar destino, organizador...',
+                hintText: 'Buscar destino, chofer...',
                 hintStyle: const TextStyle(color: AppColors.textTertiary, fontSize: 12),
                 prefixIcon: const Icon(Icons.search, color: AppColors.textTertiary, size: 16),
                 prefixIconConstraints: const BoxConstraints(minWidth: 32),
@@ -1507,7 +1557,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
   Widget _buildOpenEventCard(Map<String, dynamic> event) {
     final title = event['event_name'] as String? ?? 'Evento';
     final organizer = event['organizers'] as Map<String, dynamic>?;
-    final organizerName = organizer?['company_name'] ?? 'Organizador';
+    final organizerName = organizer?['company_name'] ?? 'Chofer';
     final isVerified = organizer?['is_verified'] == true;
     final startDate = event['event_date'] as String?;
     final startTime = event['start_time'] as String?;
@@ -1849,7 +1899,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
               textAlign: TextAlign.center),
             const SizedBox(height: 8),
-            const Text('Cuando un organizador publique un evento, aparecera aqui para que puedas enviar tu puja.',
+            const Text('Cuando alguien publique un evento, aparecera aqui para que puedas enviar tu puja.',
               style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
               textAlign: TextAlign.center),
           ],
@@ -1879,7 +1929,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
               textAlign: TextAlign.center),
             const SizedBox(height: 8),
-            const Text('Cuando un organizador te invite directamente a un viaje, aparecera aqui.',
+            const Text('Cuando te inviten directamente a un viaje, aparecera aqui.',
               style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
               textAlign: TextAlign.center),
           ],
@@ -1939,7 +1989,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
     final organizerName = organizer?['company_name'] ??
         organizer?['contact_name'] ??
         organizer?['business_name'] ??
-        'Organizador';
+        'Chofer';
 
     final startDate = request['event_date'] as String? ??
         request['start_date'] as String?;
@@ -2159,7 +2209,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            'Contra-oferta del organizador',
+                            'Contra-oferta recibida',
                             style: TextStyle(
                               color: AppColors.warning,
                               fontSize: 12,
@@ -2216,7 +2266,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                     const SizedBox(width: 10),
                     const Expanded(
                       child: Text(
-                        'Esperando respuesta del organizador...',
+                        'Esperando respuesta...',
                         style: TextStyle(
                           color: AppColors.primaryCyan,
                           fontSize: 13,
@@ -2671,7 +2721,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
 
   Widget _buildMyBidCard(Map<String, dynamic> bid, String type) {
     final eventName = bid['event_name'] as String? ?? 'Evento';
-    final orgName = bid['organizer_name'] as String? ?? 'Organizador';
+    final orgName = bid['organizer_name'] as String? ?? 'Chofer';
     final orgLogo = bid['organizer_logo'] as String?;
     final price = (bid['proposed_price_per_km'] as num?)?.toDouble();
     final totalDist = (bid['total_distance_km'] as num?)?.toDouble() ?? 0;
@@ -2874,6 +2924,438 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
       ),
     );
   }
+
+  // ====== TRIP WIZARD TAB ======
+
+  Widget _buildTripRequestsTab() {
+    if (_isLoadingTrips) {
+      return const Center(child: CircularProgressIndicator(color: AppColors.gold));
+    }
+
+    if (_tripRequests.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.auto_fix_high, color: AppColors.textTertiary, size: 48),
+            const SizedBox(height: 12),
+            const Text('No hay viajes disponibles',
+                style: TextStyle(color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 6),
+            const Text('Los riders aún no han publicado viajes a la medida',
+                style: TextStyle(color: AppColors.textTertiary, fontSize: 13)),
+            const SizedBox(height: 16),
+            OutlinedButton.icon(
+              onPressed: _loadTripRequests,
+              icon: const Icon(Icons.refresh, size: 16),
+              label: const Text('Recargar'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.gold,
+                side: const BorderSide(color: AppColors.gold),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      color: AppColors.gold,
+      onRefresh: _loadTripRequests,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(12),
+        itemCount: _tripRequests.length,
+        itemBuilder: (ctx, i) => _buildTripRequestCard(_tripRequests[i]),
+      ),
+    );
+  }
+
+  Widget _buildTripRequestCard(Map<String, dynamic> trip) {
+    final tripType = trip['trip_type'] as String? ?? 'solo_ida';
+    final originName = trip['origin_name'] as String? ?? '';
+    final destinationName = trip['destination_name'] as String?;
+    final tripDate = trip['trip_date'] as String? ?? '';
+    final pickupTime = trip['pickup_time'] as String? ?? '';
+    final passengerCount = trip['passenger_count'] as int? ?? 1;
+    final vehiclePref = trip['vehicle_preference'] as String? ?? 'standard';
+    final priceMin = (trip['estimated_price_min'] as num?)?.toDouble();
+    final priceMax = (trip['estimated_price_max'] as num?)?.toDouble();
+    final notes = trip['notes'] as String?;
+    final rider = trip['rider'] as Map<String, dynamic>?;
+    final riderName = rider?['full_name'] as String? ?? 'Pasajero';
+
+    final typeLabels = {
+      'solo_ida': 'Solo ida',
+      'ida_y_vuelta': 'Ida y vuelta',
+      'chofer_completo': 'Chofer completo',
+      'multi_paradas': 'Multi-paradas',
+      'flexible': 'Flexible',
+    };
+
+    final vehicleLabels = {
+      'economy': 'Económico',
+      'standard': 'Estándar',
+      'suv': 'SUV',
+      'van': 'Van',
+      'bus': 'Autobús',
+      'pickup': 'Pickup',
+    };
+
+    final typeColors = {
+      'solo_ida': Colors.blue,
+      'ida_y_vuelta': Colors.teal,
+      'chofer_completo': Colors.purple,
+      'multi_paradas': Colors.orange,
+      'flexible': Colors.cyan,
+    };
+
+    final typeColor = typeColors[tripType] ?? Colors.blue;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border, width: 0.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: typeColor.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(typeLabels[tripType] ?? tripType,
+                    style: TextStyle(color: typeColor, fontSize: 11, fontWeight: FontWeight.w600)),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppColors.gold.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(vehicleLabels[vehiclePref] ?? vehiclePref,
+                    style: const TextStyle(color: AppColors.gold, fontSize: 10, fontWeight: FontWeight.w600)),
+              ),
+              const Spacer(),
+              Text(riderName, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Icon(Icons.my_location, color: typeColor, size: 14),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  '$originName${destinationName != null ? ' → $destinationName' : ''}',
+                  style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w500),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 2,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              const Icon(Icons.calendar_today, color: AppColors.textTertiary, size: 12),
+              const SizedBox(width: 6),
+              Text('$tripDate · $pickupTime',
+                  style: const TextStyle(color: AppColors.textTertiary, fontSize: 12)),
+              const SizedBox(width: 12),
+              const Icon(Icons.people, color: AppColors.textTertiary, size: 12),
+              const SizedBox(width: 4),
+              Text('$passengerCount', style: const TextStyle(color: AppColors.textTertiary, fontSize: 12)),
+            ],
+          ),
+          if (priceMin != null && priceMax != null) ...[
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                const Icon(Icons.attach_money, color: AppColors.gold, size: 14),
+                const SizedBox(width: 4),
+                Text('Estimado: \$${priceMin.toInt()} - \$${priceMax.toInt()} MXN',
+                    style: const TextStyle(color: AppColors.gold, fontSize: 12, fontWeight: FontWeight.w600)),
+              ],
+            ),
+          ],
+          if (notes != null && notes.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text('"$notes"',
+                style: const TextStyle(color: AppColors.textTertiary, fontSize: 12, fontStyle: FontStyle.italic),
+                maxLines: 2, overflow: TextOverflow.ellipsis),
+          ],
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => _showTripOfferDialog(trip),
+              icon: const Icon(Icons.local_offer, size: 16),
+              label: const Text('Enviar Oferta'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.gold,
+                foregroundColor: Colors.black,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                elevation: 0,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showTripOfferDialog(Map<String, dynamic> trip) async {
+    final tripId = trip['id'] as String?;
+    if (tripId == null) return;
+
+    final originName = trip['origin_name'] as String? ?? '';
+    final destinationName = trip['destination_name'] as String?;
+    final priceMin = (trip['estimated_price_min'] as num?)?.toDouble();
+    final priceMax = (trip['estimated_price_max'] as num?)?.toDouble();
+    final passengerCount = trip['passenger_count'] as int? ?? 1;
+
+    final priceController = TextEditingController(
+      text: priceMin != null ? priceMin.toInt().toString() : '',
+    );
+    final messageController = TextEditingController();
+    double? proposedPrice = priceMin;
+
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetCtx) => StatefulBuilder(
+        builder: (ctx, setModalState) {
+          final price = proposedPrice ?? 0;
+          final toroFee = price * 0.20;
+          final driverEarnings = price - toroFee;
+
+          return Container(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(sheetCtx).viewInsets.bottom,
+            ),
+            decoration: const BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      margin: const EdgeInsets.only(top: 12),
+                      width: 40, height: 4,
+                      decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.cyan.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.local_offer, color: Colors.cyan, size: 22),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Text('Enviar Oferta',
+                            style: TextStyle(color: AppColors.textPrimary, fontSize: 20, fontWeight: FontWeight.w700)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Text(
+                      '$originName${destinationName != null ? ' → $destinationName' : ''}',
+                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                    ),
+                  ),
+                  if (priceMin != null && priceMax != null)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
+                      child: Text(
+                        'Rango estimado: \$${priceMin.toInt()} - \$${priceMax.toInt()} MXN',
+                        style: const TextStyle(color: AppColors.textTertiary, fontSize: 12),
+                      ),
+                    ),
+                  const SizedBox(height: 20),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: TextField(
+                      controller: priceController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: false),
+                      style: const TextStyle(color: AppColors.textPrimary, fontSize: 24, fontWeight: FontWeight.w700),
+                      textAlign: TextAlign.center,
+                      decoration: InputDecoration(
+                        hintText: priceMin?.toInt().toString() ?? '0',
+                        hintStyle: TextStyle(color: AppColors.textTertiary.withValues(alpha: 0.5), fontSize: 24, fontWeight: FontWeight.w700),
+                        prefixIcon: const Padding(
+                          padding: EdgeInsets.only(left: 16),
+                          child: Text('\$', style: TextStyle(color: AppColors.gold, fontSize: 24, fontWeight: FontWeight.w700)),
+                        ),
+                        prefixIconConstraints: const BoxConstraints(minWidth: 40),
+                        suffixText: 'MXN total',
+                        suffixStyle: const TextStyle(color: AppColors.textTertiary, fontSize: 14),
+                        filled: true, fillColor: AppColors.card,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppColors.border)),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppColors.border)),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppColors.gold, width: 1.5)),
+                      ),
+                      onChanged: (val) {
+                        setModalState(() { proposedPrice = double.tryParse(val); });
+                      },
+                    ),
+                  ),
+                  if (price > 0) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 20),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppColors.card,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: AppColors.success.withValues(alpha: 0.2)),
+                      ),
+                      child: Column(
+                        children: [
+                          _buildEstimateRow('Pasajeros', '$passengerCount persona(s)'),
+                          _buildEstimateRow('Tu precio total', '\$${price.toInt()} MXN', valueBold: true),
+                          const Divider(color: AppColors.border, height: 16),
+                          _buildEstimateRow('Comisión TORO (20%)', '-\$${toroFee.toInt()} MXN', valueColor: AppColors.error),
+                          const Divider(color: AppColors.border, height: 16),
+                          _buildEstimateRow('Tu ganancia', '\$${driverEarnings.toInt()} MXN',
+                              labelStyle: const TextStyle(color: AppColors.success, fontSize: 15, fontWeight: FontWeight.w700),
+                              valueColor: AppColors.success, valueBold: true),
+                        ],
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: TextField(
+                      controller: messageController,
+                      maxLines: 2,
+                      style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
+                      decoration: InputDecoration(
+                        hintText: 'Mensaje al pasajero (opcional)',
+                        hintStyle: const TextStyle(color: AppColors.textTertiary, fontSize: 13),
+                        filled: true, fillColor: AppColors.card,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.border)),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.border)),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.gold, width: 1.5)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.pop(sheetCtx, false),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.textSecondary,
+                              side: const BorderSide(color: AppColors.border),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            ),
+                            child: const Text('Cancelar'),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          flex: 2,
+                          child: ElevatedButton.icon(
+                            onPressed: (proposedPrice != null && proposedPrice! > 0)
+                                ? () => Navigator.pop(sheetCtx, true)
+                                : null,
+                            icon: const Icon(Icons.send, size: 18),
+                            label: const Text('Enviar Oferta'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.gold,
+                              foregroundColor: Colors.black,
+                              disabledBackgroundColor: AppColors.border,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                              elevation: 0,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: MediaQuery.of(sheetCtx).padding.bottom + 8),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+
+    if (confirmed != true || proposedPrice == null || proposedPrice! <= 0) return;
+
+    HapticService.success();
+
+    try {
+      final driverProvider = Provider.of<DriverProvider>(context, listen: false);
+      final driver = driverProvider.driver;
+      if (driver == null) return;
+
+      final ok = await _eventService.submitTripOffer(
+        tripRequestId: tripId,
+        driverId: driver.id,
+        proposedPrice: proposedPrice!,
+        message: messageController.text.trim().isEmpty ? null : messageController.text.trim(),
+      );
+
+      if (!ok) throw Exception('Error al enviar oferta');
+
+      setState(() {
+        _tripRequests.removeWhere((r) => r['id'] == tripId);
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Oferta enviada: \$${proposedPrice!.toInt()} MXN'),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
 }
 
 /// Bottom sheet showing full event details with itinerary timeline.
@@ -2926,7 +3408,7 @@ class _EventDetailsSheet extends StatelessWidget {
     final organizerName = organizer?['company_name'] ??
         organizer?['contact_name'] ??
         organizer?['business_name'] ??
-        'Organizador';
+        'Chofer';
     final organizerPhone = organizer?['phone'] as String?;
 
     final startDate = request['event_date'] as String? ??
@@ -3063,7 +3545,7 @@ class _EventDetailsSheet extends StatelessWidget {
                   ],
 
                   // Organizer
-                  _buildSectionTitle('Organizador'),
+                  _buildSectionTitle('Chofer'),
                   const SizedBox(height: 12),
                   _buildInfoCard([
                     _buildInfoRow(Icons.business, 'Empresa', organizerName),
@@ -3074,7 +3556,7 @@ class _EventDetailsSheet extends StatelessWidget {
                   // Organizer notes
                   if (organizerNotes != null && organizerNotes.isNotEmpty) ...[
                     const SizedBox(height: 20),
-                    _buildSectionTitle('Mensaje del Organizador'),
+                    _buildSectionTitle('Mensaje del Chofer'),
                     const SizedBox(height: 12),
                     Container(
                       width: double.infinity,
@@ -3440,4 +3922,5 @@ class _EventDetailsSheet extends StatelessWidget {
       ),
     );
   }
+
 }

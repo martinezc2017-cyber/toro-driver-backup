@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io' show ContentType, HttpRequest, HttpServer, InternetAddress, Platform;
 import 'dart:ui' show PlatformDispatcher;
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:geolocator/geolocator.dart';
+import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:app_links/app_links.dart';
@@ -27,7 +29,7 @@ class AuthService {
   // Auth state stream
   Stream<AuthState> get authStateChanges => _client.auth.onAuthStateChange;
 
-  // Sign up with email and password
+  // Sign up with email and password — uses edge function for pre-confirmed signup
   Future<AuthResponse> signUp({
     required String email,
     required String password,
@@ -36,31 +38,68 @@ class AuthService {
     required String phone,
     String role = 'driver',
   }) async {
-    final response = await _client.auth.signUp(
-      email: email,
-      password: password,
-      emailRedirectTo: _getEmailRedirectUrl(),
-      data: {
-        'first_name': firstName,
-        'last_name': lastName,
+    // Call edge function which creates user as pre-confirmed (bypasses SMTP)
+    // and returns a valid session immediately.
+    final edgeUrl = '${SupabaseConfig.supabaseUrl}/functions/v1/driver-signup';
+    final resp = await http.post(
+      Uri.parse(edgeUrl),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ${SupabaseConfig.supabaseAnonKey}',
+        'apikey': SupabaseConfig.supabaseAnonKey,
+      },
+      body: jsonEncode({
+        'email': email,
+        'password': password,
+        'firstName': firstName,
+        'lastName': lastName,
         'phone': phone,
         'role': role,
-      },
+      }),
     );
 
-    if (response.user != null) {
-      // Create driver profile
-      await _createDriverProfile(
-        userId: response.user!.id,
-        email: email,
-        firstName: firstName,
-        lastName: lastName,
-        phone: phone,
-        role: role,
-      );
+    final body = jsonDecode(resp.body) as Map<String, dynamic>;
+
+    if (resp.statusCode == 409) {
+      // Account already exists
+      throw AuthException(body['message'] as String? ?? 'Account already exists');
     }
 
-    return response;
+    if (resp.statusCode != 200 || body.containsKey('error') && body['session'] == null) {
+      throw AuthException(body['error'] as String? ?? 'Signup failed');
+    }
+
+    // If we got a session back, set it in the client
+    if (body['session'] != null) {
+      final sessionMap = body['session'] as Map<String, dynamic>;
+      final accessToken = sessionMap['access_token'] as String;
+      final refreshToken = sessionMap['refresh_token'] as String;
+      await _client.auth.setSession(refreshToken);
+      debugPrint('AUTH -> Edge signup success, session set');
+    }
+
+    // Enrich driver profile with GPS country code
+    final user = _client.auth.currentUser;
+    if (user != null) {
+      try {
+        await _createDriverProfile(
+          userId: user.id,
+          email: email,
+          firstName: firstName,
+          lastName: lastName,
+          phone: phone,
+          role: role,
+        );
+      } catch (e) {
+        debugPrint('AUTH -> _createDriverProfile enrich (non-fatal): $e');
+      }
+    }
+
+    // Return proper AuthResponse
+    return AuthResponse(
+      user: _client.auth.currentUser,
+      session: _client.auth.currentSession,
+    );
   }
 
   // Sign in with email and password
@@ -503,6 +542,51 @@ class AuthService {
     await _client.auth.signOut(scope: SignOutScope.global);
   }
 
+  /// Ensures a driver profile exists for the given auth user.
+  /// Used when a user signs in via Google/OAuth and has no driver row yet.
+  Future<void> ensureDriverProfile(User user) async {
+    final existing = await _client
+        .from(SupabaseConfig.driversTable)
+        .select('id')
+        .eq('id', user.id)
+        .maybeSingle();
+    if (existing != null) return; // Already exists
+
+    final meta = user.userMetadata ?? {};
+    final firstName = meta['first_name'] as String? ??
+        meta['full_name']?.toString().split(' ').first ?? '';
+    final lastName = meta['last_name'] as String? ??
+        (meta['full_name']?.toString().split(' ').skip(1).join(' ') ?? '');
+    final fullName = '$firstName $lastName'.trim();
+    final phone = meta['phone'] as String? ?? '';
+    final now = DateTime.now().toIso8601String();
+
+    await _client.from(SupabaseConfig.driversTable).upsert({
+      'id': user.id,
+      'user_id': user.id,
+      'email': user.email ?? '',
+      'name': fullName.isNotEmpty ? fullName : (user.email?.split('@').first ?? 'Driver'),
+      'first_name': firstName.isNotEmpty ? firstName : null,
+      'last_name': lastName.isNotEmpty ? lastName : null,
+      'phone': phone,
+      'country_code': 'MX',
+      'rating': 0.0,
+      'total_rides': 0,
+      'total_earnings': 0.0,
+      'is_online': false,
+      'is_verified': false,
+      'is_active': true,
+      'status': 'pending',
+      'role': 'driver',
+      'created_at': now,
+      'updated_at': now,
+    });
+    debugPrint('AUTH -> ensureDriverProfile created for ${user.email}');
+
+    // Sync to waitlist so admin panel shows all app signups
+    await _ensureWaitlistEntry(user.email ?? '', source: 'app_google');
+  }
+
   // Reset password
   Future<void> resetPassword(String email) async {
     await _client.auth.resetPasswordForEmail(
@@ -574,11 +658,15 @@ class AuthService {
       // No GPS permission = default MX
     } catch (_) {}
 
-    await _client.from(SupabaseConfig.driversTable).insert({
+    // Upsert: DB trigger may have already created the row on auth.users INSERT.
+    // This updates with GPS-detected country_code and full details.
+    await _client.from(SupabaseConfig.driversTable).upsert({
       'id': userId,
       'user_id': userId,
       'email': email,
       'name': fullName,
+      'first_name': firstName,
+      'last_name': lastName,
       'phone': phone,
       'country_code': countryCode,
       'rating': 0.0,
@@ -602,6 +690,36 @@ class AuthService {
       if (signupLng != null) profileUpdate['signup_lng'] = signupLng;
       await _client.from('profiles').update(profileUpdate).eq('id', userId);
     } catch (_) {}
+
+    // Sync to waitlist so admin panel shows all app signups
+    await _ensureWaitlistEntry(email, source: 'app_signup');
+  }
+
+  /// Ensures user appears in waitlist table for admin visibility
+  Future<void> _ensureWaitlistEntry(String email, {String source = 'app'}) async {
+    if (email.isEmpty) return;
+    try {
+      // Check if already in waitlist
+      final existing = await _client
+          .from('waitlist')
+          .select('id')
+          .eq('email', email)
+          .maybeSingle();
+      if (existing != null) return; // Already there
+
+      await _client.from('waitlist').insert({
+        'email': email,
+        'type': 'driver',
+        'country': 'MX',
+        'city': '',
+        'source': source,
+        'status': 'registered',
+        'created_at': DateTime.now().toIso8601String(),
+      });
+      debugPrint('AUTH -> waitlist entry created for $email (source: $source)');
+    } catch (e) {
+      debugPrint('AUTH -> waitlist sync (non-fatal): $e');
+    }
   }
 
   /// Backfill GPS location for existing users who have null signup_lat

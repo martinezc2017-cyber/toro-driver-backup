@@ -32,7 +32,7 @@ class _VehicleScreenState extends State<VehicleScreen> {
       final response = await Supabase.instance.client
           .from('vehicles')
           .select()
-          .eq('driver_id', user.id)
+          .eq('user_id', user.id)
           .maybeSingle();
 
       if (response != null) {

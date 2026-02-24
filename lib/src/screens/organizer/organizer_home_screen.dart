@@ -225,89 +225,35 @@ class _OrganizerHomeScreenState extends State<OrganizerHomeScreen> {
       backgroundColor: AppColors.surface,
       elevation: 0,
       automaticallyImplyLeading: false,
-      toolbarHeight: 44,
+      toolbarHeight: 36,
       title: GestureDetector(
         onTap: () {
           HapticService.lightImpact();
           widget.onSwitchToDriverMode?.call();
         },
         child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 4,
-            vertical: 4,
-          ),
+          padding: const EdgeInsets.all(3),
           decoration: BoxDecoration(
             color: AppColors.surface.withValues(alpha: 0.5),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: const Color(0xFFFF9500),
-              width: 1.5,
-            ),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFFFF9500), width: 1.5),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Driver Mode
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.local_taxi_rounded,
-                      color: AppColors.textTertiary,
-                      size: 16,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Driver',
-                      style: TextStyle(
-                        color: AppColors.textTertiary,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
+                padding: const EdgeInsets.all(5),
+                decoration: BoxDecoration(borderRadius: BorderRadius.circular(7)),
+                child: Icon(Icons.local_taxi_rounded, color: AppColors.textTertiary, size: 14),
               ),
-              const SizedBox(width: 4),
-              // Tourism Mode (active)
+              const SizedBox(width: 2),
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 6,
-                ),
+                padding: const EdgeInsets.all(5),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFFF9500), Color(0xFFFF6B00)],
-                  ),
-                  borderRadius: BorderRadius.circular(8),
+                  gradient: const LinearGradient(colors: [Color(0xFFFF9500), Color(0xFFFF6B00)]),
+                  borderRadius: BorderRadius.circular(7),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Icon(
-                      Icons.directions_bus_rounded,
-                      color: Colors.white,
-                      size: 16,
-                    ),
-                    SizedBox(width: 4),
-                    Text(
-                      'Turismo',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
+                child: const Icon(Icons.directions_bus_rounded, color: Colors.white, size: 14),
               ),
             ],
           ),

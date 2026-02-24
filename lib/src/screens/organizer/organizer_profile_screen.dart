@@ -320,7 +320,7 @@ class _OrganizerProfileScreenState extends State<OrganizerProfileScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          'Perfil de Organizador',
+          'Mi Perfil',
           style: TextStyle(
             color: AppColors.textPrimary,
             fontWeight: FontWeight.w700,
@@ -361,7 +361,7 @@ class _OrganizerProfileScreenState extends State<OrganizerProfileScreen> {
                       Icon(Icons.business, size: 64, color: AppColors.textTertiary),
                       const SizedBox(height: 16),
                       const Text(
-                        'No tienes perfil de organizador',
+                        'No tienes perfil registrado',
                         style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
                       ),
                     ],

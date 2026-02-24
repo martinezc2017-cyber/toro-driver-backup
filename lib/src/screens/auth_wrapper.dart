@@ -20,6 +20,9 @@ import 'login_screen.dart';
 import 'pending_approval_screen.dart';
 import 'terms_acceptance_screen.dart';
 import 'driver_onboarding_screen.dart';
+import 'permissions_gate_screen.dart';
+import '../services/version_check_service.dart';
+import '../widgets/version_check_dialog.dart';
 
 class AuthWrapper extends StatefulWidget {
   const AuthWrapper({super.key});
@@ -43,6 +46,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
     _checkLocalTermsAcceptance();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeProviders();
+      _checkAppVersion();
       // Try to sync any pending consent records
       ConsentService.instance.initialize().then((_) {
         ConsentService.instance.syncPendingConsents();
@@ -101,6 +105,15 @@ class _AuthWrapperState extends State<AuthWrapper> {
     if (authProvider.isAuthenticated && authProvider.driverId != null) {
       _initDriverProviders(authProvider.driverId!);
     }
+  }
+
+  Future<void> _checkAppVersion() async {
+    try {
+      final result = await VersionCheckService().checkVersion(appName: 'toro_driver');
+      if (!result.isUpToDate && mounted) {
+        await VersionCheckDialog.show(context, result);
+      }
+    } catch (_) {}
   }
 
   void _initDriverProviders(String driverId) {
@@ -166,18 +179,22 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
         if (driver.vehicleMode == 'tourism' && driver.activeTourismEventId != null) {
           // Wrap in try-catch builder to prevent crash loop if event is invalid/limbo
-          return _SafeTourismWrapper(eventId: driver.activeTourismEventId!);
+          return PermissionsGateScreen(
+            child: _SafeTourismWrapper(eventId: driver.activeTourismEventId!),
+          );
         }
 
         // Organizers go directly to OrganizerHomeScreen — skip driver HomeScreen
         if (driver.role == 'organizer') {
-          return Scaffold(
-            backgroundColor: AppColors.background,
-            body: OrganizerHomeScreen(onSwitchToDriverMode: null),
+          return PermissionsGateScreen(
+            child: Scaffold(
+              backgroundColor: AppColors.background,
+              body: OrganizerHomeScreen(onSwitchToDriverMode: null),
+            ),
           );
         }
 
-        return const HomeScreen();
+        return const PermissionsGateScreen(child: HomeScreen());
       },
     );
   }

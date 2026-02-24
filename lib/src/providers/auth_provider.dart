@@ -187,6 +187,21 @@ class AuthProvider with ChangeNotifier {
         _driver = await _authService.getCurrentDriverProfile()
             .timeout(const Duration(seconds: 8), onTimeout: () => null);
       }
+
+      // If still null but authenticated (e.g. Google Sign-In new user), create profile
+      if (_driver == null && _authService.isAuthenticated) {
+        final user = _authService.currentUser;
+        if (user != null) {
+          AppLogger.log('[AUTH] No driver profile found, auto-creating for ${user.email}');
+          try {
+            await _authService.ensureDriverProfile(user);
+            _driver = await _authService.getCurrentDriverProfile()
+                .timeout(const Duration(seconds: 8), onTimeout: () => null);
+          } catch (e) {
+            AppLogger.log('[AUTH] Auto-create driver profile failed: $e');
+          }
+        }
+      }
       AppLogger.log('[AUTH] driver loaded: ${_driver?.id}, role: ${_driver?.role}');
 
       _status = _authService.isAuthenticated ? AuthStatus.authenticated : AuthStatus.unauthenticated;

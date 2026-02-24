@@ -117,9 +117,9 @@ class TripFareService {
       final now = DateTime.now().toUtc().toIso8601String();
       await _client.from('tourism_invitations').update({
         'status': 'off_boarded',
-        'exit_stop_index': exitStopIndex,
+        'current_check_in_status': 'off_boarded',
         'total_price': fare,
-        'payment_method': paymentMethod,
+        'payment_status': paymentMethod == 'efectivo' ? 'cash' : 'pending',
         'exited_at': now,
         'updated_at': now,
       }).eq('id', invitationId);
@@ -144,7 +144,7 @@ class TripFareService {
       final now = DateTime.now().toUtc().toIso8601String();
       await _client.from('tourism_invitations').update({
         'status': 'boarded',
-        'boarding_stop_index': boardingStopIndex,
+        'current_check_in_status': 'boarded',
         'boarded_at': now,
         'updated_at': now,
       }).eq('id', invitationId);
@@ -175,7 +175,7 @@ class TripFareService {
       final event = await _client
           .from('tourism_events')
           .select('price_per_km, total_distance_km, max_passengers, status, '
-              'current_stop_index, actual_start_time, title, event_name')
+              'current_stop_index, started_at, event_name')
           .eq('id', eventId)
           .maybeSingle();
 
@@ -229,12 +229,11 @@ class TripFareService {
           .select('''
             id, event_id, user_id, status,
             invited_name, invited_phone, invited_email,
-            boarding_stop_index, exit_stop_index,
-            pickup_address, dropoff_address,
-            km_traveled, total_price, payment_method, payment_status,
+            km_traveled, total_price, price_per_km, payment_status,
             boarded_at, exited_at, accepted_at,
             last_check_in_at, current_check_in_status,
-            seat_number, boarding_stop, dropoff_stop,
+            seat_number,
+            boarding_lat, boarding_lng, exit_lat, exit_lng,
             gps_tracking_enabled, last_known_lat, last_known_lng, last_gps_update
           ''')
           .eq('event_id', eventId)
@@ -258,9 +257,16 @@ class TripFareService {
 
       for (final p in passengers) {
         final status = p['status'] as String? ?? 'accepted';
-        final boardingIdx = (p['boarding_stop_index'] as int?) ?? 0;
-        final exitIdx = p['exit_stop_index'] as int?;
+        final checkInStatus = p['current_check_in_status'] as String?;
+        // No boarding_stop_index column — default to 0 (first stop)
+        final boardingIdx = 0;
+        // No exit_stop_index column — default to last stop
+        final exitIdx = itinerary.isNotEmpty ? (itinerary.length - 1) : null;
         final recordedFare = (p['total_price'] as num?)?.toDouble();
+        // Use current_check_in_status to determine actual status
+        final effectiveStatus = (checkInStatus == 'boarded') ? 'boarded'
+            : (checkInStatus == 'off_boarded') ? 'off_boarded'
+            : status;
 
         // Calculate estimated fare
         double estimatedFare = 0.0;
@@ -298,7 +304,7 @@ class TripFareService {
           }
         }
 
-        switch (status) {
+        switch (effectiveStatus) {
           case 'boarded':
           case 'checked_in':
             aboard++;
@@ -318,14 +324,16 @@ class TripFareService {
 
         enrichedPassengers.add({
           ...p,
+          'boarding_stop_index': boardingIdx,
+          'exit_stop_index': exitIdx,
           'estimated_fare': estimatedFare,
           'final_fare': recordedFare,
           'boarding_stop_name': boardingStopName ?? 'Parada ${boardingIdx + 1}',
           'exit_stop_name':
               exitStopName ?? (exitIdx != null ? 'Parada ${exitIdx + 1}' : null),
-          'category': status == 'boarded' || status == 'checked_in'
+          'category': effectiveStatus == 'boarded' || effectiveStatus == 'checked_in'
               ? 'aboard'
-              : status == 'off_boarded'
+              : effectiveStatus == 'off_boarded'
                   ? 'exited'
                   : 'waiting',
         });
@@ -354,8 +362,8 @@ class TripFareService {
 
       // 6. Calculate elapsed time
       String elapsedFormatted = '00:00';
-      if (event['actual_start_time'] != null) {
-        final start = DateTime.tryParse(event['actual_start_time'] as String);
+      if (event['started_at'] != null) {
+        final start = DateTime.tryParse(event['started_at'] as String);
         if (start != null) {
           final diff = DateTime.now().toUtc().difference(start);
           final hours = diff.inHours;
@@ -366,7 +374,7 @@ class TripFareService {
       }
 
       return {
-        'event_title': event['title'] ?? 'Evento',
+        'event_title': event['event_name'] ?? 'Evento',
         'event_status': event['status'] ?? 'unknown',
         'price_per_km': pricePerKm,
         'max_passengers': maxPassengers,
@@ -406,13 +414,14 @@ class TripFareService {
     required int stopIndex,
   }) async {
     try {
+      // No exit_stop_index column — return all boarded passengers at this event
+      // The caller will handle filtering by stop
       final response = await _client
           .from('tourism_invitations')
-          .select('id, invited_name, invited_phone, boarding_stop_index, '
-              'exit_stop_index, total_price, payment_method, status, '
-              'seat_number, boarding_stop, dropoff_stop, gps_tracking_enabled')
+          .select('id, invited_name, invited_phone, '
+              'total_price, payment_status, status, '
+              'seat_number, current_check_in_status, gps_tracking_enabled')
           .eq('event_id', eventId)
-          .eq('exit_stop_index', stopIndex)
           .inFilter('status', ['boarded', 'checked_in']);
 
       return List<Map<String, dynamic>>.from(response);
@@ -437,7 +446,7 @@ class TripFareService {
       final invitationId = p['id'] as String?;
       if (invitationId == null) continue;
 
-      final boardingIdx = (p['boarding_stop_index'] as int?) ?? 0;
+      final boardingIdx = 0;
       final fare = calculatePassengerFare(
         itinerary: itinerary,
         boardingStopIndex: boardingIdx,
@@ -450,7 +459,6 @@ class TripFareService {
           invitationId: invitationId,
           exitStopIndex: exitStopIndex,
           fare: fare,
-          paymentMethod: (p['payment_method'] as String?) ?? 'efectivo',
         );
         exitedCount++;
       } catch (e) {
@@ -464,19 +472,18 @@ class TripFareService {
   /// Toggles boarding acceptance for the event.
   ///
   /// Sets a flag on the event to prevent new passengers from boarding.
+  /// Toggles boarding acceptance — local state only.
+  ///
+  /// The `accepting_boardings` column does not exist in the DB, so this
+  /// is a no-op for persistence. The toggle is kept in local widget state.
   Future<void> toggleBoardingAcceptance({
     required String eventId,
     required bool acceptingBoardings,
   }) async {
-    try {
-      await _client.from('tourism_events').update({
-        'accepting_boardings': acceptingBoardings,
-        'updated_at': DateTime.now().toUtc().toIso8601String(),
-      }).eq('id', eventId);
-    } catch (e) {
-      debugPrint('FARE_SVC -> Error toggling boarding: $e');
-      rethrow;
-    }
+    // No DB column exists for this — handled as local driver state
+    debugPrint(
+        'FARE_SVC -> Boarding ${acceptingBoardings ? "enabled" : "disabled"} '
+        '(local only)');
   }
 
   // ---------------------------------------------------------------------------

@@ -4,7 +4,9 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../providers/driver_provider.dart';
 import '../services/document_ocr_service.dart';
 import '../utils/app_colors.dart';
 import '../utils/haptic_service.dart';
@@ -12,7 +14,11 @@ import '../utils/haptic_service.dart';
 /// Required fields: Make, Model, Year, Color, Plate, Type
 /// Optional: VIN
 class AddVehicleScreen extends StatefulWidget {
-  const AddVehicleScreen({super.key});
+  /// When true, inserts into bus_vehicles (for tourism/organizer events).
+  /// When false (default), inserts into vehicles (for personal rides).
+  final bool forTourism;
+
+  const AddVehicleScreen({super.key, this.forTourism = false});
 
   @override
   State<AddVehicleScreen> createState() => _AddVehicleScreenState();
@@ -44,6 +50,11 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
 
   String _selectedType = 'sedan';
   bool _isLoading = false;
+  bool _isBlackRose = false;
+  List<Map<String, dynamic>> _qualifyingVehicles = [];
+
+  // Country detection: determines which fields to show
+  String _countryCode = 'US'; // default, will be overridden from driver profile
 
   final List<Map<String, dynamic>> _vehicleTypes = [
     {'value': 'sedan', 'label': 'Sedan', 'icon': Icons.directions_car},
@@ -55,14 +66,68 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   @override
   void initState() {
     super.initState();
-    _makeController.addListener(() => setState(() {}));
-    _modelController.addListener(() => setState(() {}));
-    _yearController.addListener(() => setState(() {}));
+    _makeController.addListener(() { setState(() {}); _checkBlackRose(); });
+    _modelController.addListener(() { setState(() {}); _checkBlackRose(); });
+    _yearController.addListener(() { setState(() {}); _checkBlackRose(); });
     _colorController.addListener(() => setState(() {}));
     _plateController.addListener(() => setState(() {}));
     _vinController.addListener(() => setState(() {}));
     _insuranceCompanyController.addListener(() => setState(() {}));
     _insurancePolicyController.addListener(() => setState(() {}));
+    _loadQualifyingVehicles();
+    _loadDriverCountry();
+  }
+
+  Future<void> _loadDriverCountry() async {
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) return;
+      final driver = await Supabase.instance.client
+          .from('drivers')
+          .select('country_code')
+          .eq('id', user.id)
+          .maybeSingle();
+      if (driver != null && mounted) {
+        setState(() {
+          _countryCode = (driver['country_code'] as String?) ?? 'US';
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _loadQualifyingVehicles() async {
+    try {
+      final data = await Supabase.instance.client
+          .from('black_rose_qualifying_vehicles')
+          .select('make, model, min_year')
+          .eq('is_active', true);
+      if (mounted) {
+        setState(() => _qualifyingVehicles = List<Map<String, dynamic>>.from(data));
+      }
+    } catch (_) {}
+  }
+
+  void _checkBlackRose() {
+    if (_qualifyingVehicles.isEmpty) return;
+    final make = _makeController.text.trim().toLowerCase();
+    final model = _modelController.text.trim().toLowerCase();
+    final yearStr = _yearController.text.trim();
+    final year = int.tryParse(yearStr) ?? 0;
+
+    bool qualifies = false;
+    for (final v in _qualifyingVehicles) {
+      final qMake = (v['make'] as String? ?? '').toLowerCase();
+      final qModel = (v['model'] as String? ?? '').toLowerCase();
+      final qMinYear = (v['min_year'] as int?) ?? 2020;
+      if (make == qMake && model.contains(qModel) && year >= qMinYear) {
+        qualifies = true;
+        break;
+      }
+    }
+    if (qualifies != _isBlackRose && mounted) {
+      setState(() => _isBlackRose = qualifies);
+      if (qualifies) HapticService.success();
+    }
   }
 
   @override
@@ -319,33 +384,36 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   Future<void> _submitVehicle() async {
     if (!_formKey.currentState!.validate()) return;
 
-    // Validate insurance expiry date
-    if (_insuranceExpiry == null) {
-      HapticService.error();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Selecciona la fecha de vencimiento del seguro'),
-          backgroundColor: AppColors.error,
-        ),
-      );
-      return;
-    }
-
-    // Validate insurance card photos
-    if (_insuranceCardFront == null) {
-      HapticService.error();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text(
-            'Sube la foto del frente de tu tarjeta de seguro',
+    // US-only insurance validations
+    if (_countryCode == 'US') {
+      // Validate insurance expiry date
+      if (_insuranceExpiry == null) {
+        HapticService.error();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Selecciona la fecha de vencimiento del seguro'),
+            backgroundColor: AppColors.error,
           ),
-          backgroundColor: AppColors.error,
-        ),
-      );
-      return;
+        );
+        return;
+      }
+
+      // Validate insurance card photos
+      if (_insuranceCardFront == null) {
+        HapticService.error();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'Sube la foto del frente de tu tarjeta de seguro',
+            ),
+            backgroundColor: AppColors.error,
+          ),
+        );
+        return;
+      }
     }
 
-    if (_insuranceCardBack == null) {
+    if (_countryCode == 'US' && _insuranceCardBack == null) {
       HapticService.error();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -358,8 +426,8 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
       return;
     }
 
-    // Validate endorsement if they claim to have one
-    if (_hasRideshareEndorsement && _endorsementDoc == null) {
+    // Validate endorsement if they claim to have one (US only)
+    if (_countryCode == 'US' && _hasRideshareEndorsement && _endorsementDoc == null) {
       HapticService.error();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -402,42 +470,103 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
 
       final now = DateTime.now().toIso8601String();
 
-      await Supabase.instance.client.from('vehicles').insert({
-        'driver_id': user.id,
-        'make': _makeController.text.trim(),
-        'model': _modelController.text.trim(),
-        'year': int.parse(_yearController.text.trim()),
-        'color': _colorController.text.trim(),
-        'plate': _plateController.text.trim().toUpperCase(),
-        'vin': _vinController.text.trim().isEmpty
-            ? null
-            : _vinController.text.trim().toUpperCase(),
-        'type': _selectedType,
-        'status': 'pendingVerification',
-        'is_verified': false,
-        'mileage': 0,
-        'total_rides': 0,
-        'rating': 5.0,
-        // Insurance fields
-        'insurance_company': _insuranceCompanyController.text.trim().isEmpty
-            ? null
-            : _insuranceCompanyController.text.trim(),
-        'insurance_policy_number':
-            _insurancePolicyController.text.trim().isEmpty
-            ? null
-            : _insurancePolicyController.text.trim(),
-        'insurance_expiry': _insuranceExpiry?.toIso8601String().split('T')[0],
-        'has_rideshare_endorsement': _hasRideshareEndorsement,
-        'insurance_verified': false,
-        // Document URLs
-        'insurance_card_front_url': frontUrl,
-        'insurance_card_back_url': backUrl,
-        'endorsement_document_url': endorsementUrl,
-        'created_at': now,
-        'updated_at': now,
-      });
+      if (widget.forTourism) {
+        // Insert into bus_vehicles for tourism/organizer events
+        final make = _makeController.text.trim();
+        final model = _modelController.text.trim();
+        final year = _yearController.text.trim();
+        await Supabase.instance.client.from('bus_vehicles').insert({
+          'owner_id': user.id,
+          'vehicle_name': '$make $model $year',
+          'vehicle_type': _selectedType,
+          'make': make,
+          'model': model,
+          'year': int.parse(year),
+          'color': _colorController.text.trim(),
+          'plate': _plateController.text.trim().toUpperCase(),
+          'total_seats': _selectedType == 'van' ? 14 : _selectedType == 'suv' ? 7 : 4,
+          'is_active': true,
+          'country_code': _countryCode,
+          'available_for_tourism': true,
+          'is_exclusive': false,
+          'is_black_rose': _isBlackRose,
+          'available_days': ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'],
+          'available_hours_start': '06:00:00',
+          'available_hours_end': '22:00:00',
+          'owner_name': user.userMetadata?['full_name'] ?? '',
+          'insurance_company': _insuranceCompanyController.text.trim().isEmpty
+              ? null
+              : _insuranceCompanyController.text.trim(),
+          'insurance_policy_number':
+              _insurancePolicyController.text.trim().isEmpty
+              ? null
+              : _insurancePolicyController.text.trim(),
+          'insurance_expiry': _insuranceExpiry?.toIso8601String().split('T')[0],
+        });
+      } else {
+        // Upsert into vehicles for personal rides (handles duplicate plate)
+        await Supabase.instance.client.from('vehicles').upsert({
+          'driver_id': user.id,
+          'user_id': user.id,
+          'make': _makeController.text.trim(),
+          'model': _modelController.text.trim(),
+          'year': int.parse(_yearController.text.trim()),
+          'color': _colorController.text.trim(),
+          'plate': _plateController.text.trim().toUpperCase(),
+          'plate_number': _plateController.text.trim().toUpperCase(),
+          'vin': _vinController.text.trim().isEmpty
+              ? null
+              : _vinController.text.trim().toUpperCase(),
+          'vehicle_type': _selectedType,
+          'is_black_rose': _isBlackRose,
+          'status': 'pendingVerification',
+          'is_verified': false,
+          'mileage': 0,
+          'total_rides': 0,
+          'rating': 5.0,
+          // Insurance fields
+          'insurance_company': _insuranceCompanyController.text.trim().isEmpty
+              ? null
+              : _insuranceCompanyController.text.trim(),
+          'insurance_policy_number':
+              _insurancePolicyController.text.trim().isEmpty
+              ? null
+              : _insurancePolicyController.text.trim(),
+          'insurance_expiry': _insuranceExpiry?.toIso8601String().split('T')[0],
+          'has_rideshare_endorsement': _hasRideshareEndorsement,
+          'insurance_verified': false,
+          // Document URLs
+          'insurance_card_front_url': frontUrl,
+          'insurance_card_back_url': backUrl,
+          'endorsement_document_url': endorsementUrl,
+          'created_at': now,
+          'updated_at': now,
+        });
+      }
+
+      // Sync vehicle info to drivers table so home screen detects it
+      // Map app vehicle types to drivers table constraint values
+      final driverVehicleType = switch (_selectedType) {
+        'suv' => 'comfort',
+        'van' || 'truck' => 'xl',
+        _ => 'standard',
+      };
+      await Supabase.instance.client.from('drivers').update({
+        'vehicle_type': driverVehicleType,
+        'vehicle_make': _makeController.text.trim(),
+        'vehicle_model': _modelController.text.trim(),
+        'vehicle_year': int.parse(_yearController.text.trim()),
+        'vehicle_plate': _plateController.text.trim().toUpperCase(),
+        'vehicle_color': _colorController.text.trim(),
+      }).eq('id', user.id);
 
       if (mounted) {
+        // Refresh driver provider so home screen updates immediately
+        try {
+          final driverProvider = Provider.of<DriverProvider>(context, listen: false);
+          await driverProvider.initialize(user.id);
+        } catch (_) {}
+
         HapticService.success();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -483,9 +612,11 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                     children: [
                       _buildVehicleTypeSelector(),
                       const SizedBox(height: 24),
+                      _buildBlackRoseBadge(),
                       _buildFormSection(),
                       const SizedBox(height: 24),
-                      _buildInsuranceSection(),
+                      if (_countryCode == 'US') _buildInsuranceSection()
+                      else _buildInsuranceSectionMX(),
                       const SizedBox(height: 32),
                       _buildSubmitButton(),
                       const SizedBox(height: 80),
@@ -662,6 +793,54 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
         ],
       ),
     ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.1, end: 0);
+  }
+
+  Widget _buildBlackRoseBadge() {
+    if (!_isBlackRose) return const SizedBox.shrink();
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.blackRoseBg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.blackRose.withValues(alpha: 0.6), width: 1.5),
+        boxShadow: [
+          BoxShadow(color: AppColors.blackRose.withValues(alpha: 0.2), blurRadius: 12, spreadRadius: 1),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              gradient: AppColors.blackRoseGradient,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.diamond, color: Colors.white, size: 24),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ShaderMask(
+                  shaderCallback: (bounds) => AppColors.blackRoseGradient.createShader(bounds),
+                  child: const Text(
+                    'BLACK ROSE · PREMIUM',
+                    style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w900, letterSpacing: 1.5),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Tu vehiculo califica para el tier premium',
+                  style: TextStyle(color: AppColors.blackRose.withValues(alpha: 0.7), fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(duration: 500.ms).scale(begin: const Offset(0.9, 0.9));
   }
 
   Widget _buildFormSection() {
@@ -1202,6 +1381,109 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
               isWide: true,
             ),
           ],
+        ],
+      ),
+    ).animate().fadeIn(delay: 250.ms).slideY(begin: 0.1, end: 0);
+  }
+
+  /// Simplified insurance section for Mexico
+  Widget _buildInsuranceSectionMX() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: const Color(0xFF22C55E).withValues(alpha: 0.3),
+          width: 1.5,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF22C55E).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.shield_rounded,
+                  color: Color(0xFF22C55E),
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Seguro del Vehículo',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    Text(
+                      'Opcional — puedes agregarlo después',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Insurance Company (optional for MX)
+          _buildTextField(
+            controller: _insuranceCompanyController,
+            label: 'Aseguradora',
+            hint: 'GNP, Qualitas, AXA, HDI...',
+            icon: Icons.business_rounded,
+            fieldName: 'insuranceCompany',
+          ),
+          const SizedBox(height: 16),
+
+          // Policy Number (optional for MX)
+          _buildTextField(
+            controller: _insurancePolicyController,
+            label: 'Número de Póliza',
+            hint: 'Ej: POL-123456789',
+            icon: Icons.confirmation_number_rounded,
+            textCapitalization: TextCapitalization.characters,
+            fieldName: 'insurancePolicy',
+          ),
+
+          const SizedBox(height: 12),
+
+          // Gentle note for MX users
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF22C55E).withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.check_circle_outline, color: const Color(0xFF22C55E), size: 18),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Puedes agregar los datos del seguro después desde tu perfil.',
+                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     ).animate().fadeIn(delay: 250.ms).slideY(begin: 0.1, end: 0);

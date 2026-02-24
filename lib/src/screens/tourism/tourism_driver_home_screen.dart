@@ -5,10 +5,12 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
@@ -75,6 +77,9 @@ class _TourismDriverHomeScreenState extends State<TourismDriverHomeScreen>
   final TourismMessagingService _chatMessagingService = TourismMessagingService();
   int _chatUnreadCount = 0;
 
+  // Realtime subscription for event updates
+  RealtimeChannel? _eventChannel;
+
   // Animation for live indicator
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
@@ -83,9 +88,10 @@ class _TourismDriverHomeScreenState extends State<TourismDriverHomeScreen>
   void initState() {
     super.initState();
     _initPulseAnimation();
-    _loadEventData();
+    _loadEventData(showLoader: true);
     _startGpsTracking();
     _subscribeToChatUnread();
+    _subscribeToEventUpdates();
   }
 
   void _initPulseAnimation() {
@@ -123,8 +129,27 @@ class _TourismDriverHomeScreenState extends State<TourismDriverHomeScreen>
     });
   }
 
+  void _subscribeToEventUpdates() {
+    _eventChannel = Supabase.instance.client.channel('event_${widget.eventId}');
+    _eventChannel!.onPostgresChanges(
+      event: PostgresChangeEvent.update,
+      schema: 'public',
+      table: 'tourism_events',
+      filter: PostgresChangeFilter(
+        type: PostgresChangeFilterType.eq,
+        column: 'id',
+        value: widget.eventId,
+      ),
+      callback: (payload) {
+        debugPrint('REALTIME -> tourism_events updated, reloading...');
+        _loadEventData();
+      },
+    ).subscribe();
+  }
+
   @override
   void dispose() {
+    _eventChannel?.unsubscribe();
     _pulseController.dispose();
     _positionSubscription?.cancel();
     _locationUpdateTimer?.cancel();
@@ -133,8 +158,10 @@ class _TourismDriverHomeScreenState extends State<TourismDriverHomeScreen>
     super.dispose();
   }
 
-  Future<void> _loadEventData() async {
-    setState(() => _isLoading = true);
+  Future<void> _loadEventData({bool showLoader = false}) async {
+    if (showLoader && mounted) {
+      setState(() => _isLoading = true);
+    }
 
     try {
       // Load event details
@@ -142,8 +169,21 @@ class _TourismDriverHomeScreenState extends State<TourismDriverHomeScreen>
       if (event != null) {
         _event = event;
 
-        // Extract itinerary: prefer normalized table, fallback to JSONB
-        final itineraryData = event['tourism_event_itinerary'] ?? event['itinerary'];
+        // Extract itinerary: read JSONB directly (source of truth for driver edits)
+        // The normalized table may be out of sync due to RLS restrictions
+        final jsonbRaw = await Supabase.instance.client
+            .from('tourism_events')
+            .select('itinerary')
+            .eq('id', widget.eventId)
+            .single();
+        final jsonbItinerary = jsonbRaw['itinerary'] as List?;
+        final normalizedItinerary = event['tourism_event_itinerary'] as List?;
+
+        // Use whichever source has more data (JSONB is updated by driver, normalized may lag)
+        final itineraryData = (jsonbItinerary != null && normalizedItinerary != null && jsonbItinerary.length >= normalizedItinerary.length)
+            ? jsonbItinerary
+            : (normalizedItinerary ?? jsonbItinerary ?? event['itinerary']);
+
         if (itineraryData != null && itineraryData is List && itineraryData.isNotEmpty) {
           _itinerary = List<Map<String, dynamic>>.from(
             itineraryData.map((e) => Map<String, dynamic>.from(e as Map)),
@@ -527,10 +567,10 @@ class _TourismDriverHomeScreenState extends State<TourismDriverHomeScreen>
         'driver_id': driverId,
         'event_type': eventType,
         'stop_name': stopName,
-        'stop_index': _currentStopIndex,
         'lat': _currentPosition!.latitude,
         'lng': _currentPosition!.longitude,
-        'passengers_onboard': _stats['checked_in'] ?? 0,
+        'passengers_on_board': _stats['checked_in'] ?? 0,
+        'metadata': {'stop_index': _currentStopIndex},
         'created_at': DateTime.now().toUtc().toIso8601String(),
       });
 
@@ -707,11 +747,17 @@ class _TourismDriverHomeScreenState extends State<TourismDriverHomeScreen>
                 child: Column(
                   children: [
                     _buildHeader(),
-                    _buildEventInfo(),
-                    _buildKPIs(),
-                    Expanded(child: _buildMapSection()),
-                    _buildCurrentStop(),
-                    _buildControlButton(),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: Column(
+                          children: [
+                            _buildEventInfo(),
+                            _buildCurrentStop(),
+                            _buildControlButton(),
+                          ],
+                        ),
+                      ),
+                    ),
                     _buildBottomNav(),
                   ],
                 ),
@@ -751,57 +797,87 @@ class _TourismDriverHomeScreenState extends State<TourismDriverHomeScreen>
               ),
             ),
           ),
-          // Live indicator
-          AnimatedBuilder(
-            animation: _pulseAnimation,
-            builder: (context, child) {
-              return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: _isGpsActive
-                      ? AppColors.error.withOpacity(_pulseAnimation.value * 0.3)
-                      : AppColors.textTertiary.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: _isGpsActive
-                        ? AppColors.error.withOpacity(_pulseAnimation.value)
-                        : AppColors.textTertiary.withOpacity(0.5),
-                    width: 1.5,
+          // GPS indicator with toggle
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedBuilder(
+                animation: _pulseAnimation,
+                builder: (context, child) {
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: _isGpsActive
+                          ? AppColors.error.withOpacity(_pulseAnimation.value * 0.3)
+                          : AppColors.textTertiary.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: _isGpsActive
+                            ? AppColors.error.withOpacity(_pulseAnimation.value)
+                            : AppColors.textTertiary.withOpacity(0.5),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: _isGpsActive ? AppColors.error : AppColors.textTertiary,
+                            boxShadow: _isGpsActive
+                                ? [
+                                    BoxShadow(
+                                      color: AppColors.error.withOpacity(0.5),
+                                      blurRadius: 4,
+                                      spreadRadius: 1,
+                                    ),
+                                  ]
+                                : null,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          _isGpsActive ? 'GPS En Vivo' : 'GPS Apagado',
+                          style: TextStyle(
+                            color: _isGpsActive ? AppColors.error : AppColors.textTertiary,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(width: 4),
+              GestureDetector(
+                onTap: () {
+                  HapticService.lightImpact();
+                  if (_isGpsActive) {
+                    _positionSubscription?.cancel();
+                    _locationUpdateTimer?.cancel();
+                    setState(() => _isGpsActive = false);
+                  } else {
+                    _startGpsTracking();
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: (_isGpsActive ? AppColors.error : AppColors.success).withOpacity(0.15),
+                  ),
+                  child: Icon(
+                    _isGpsActive ? Icons.gps_off : Icons.gps_fixed,
+                    size: 16,
+                    color: _isGpsActive ? AppColors.error : AppColors.success,
                   ),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: _isGpsActive ? AppColors.error : AppColors.textTertiary,
-                        boxShadow: _isGpsActive
-                            ? [
-                                BoxShadow(
-                                  color: AppColors.error.withOpacity(0.5),
-                                  blurRadius: 4,
-                                  spreadRadius: 1,
-                                ),
-                              ]
-                            : null,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      _isGpsActive ? 'tourism_live'.tr() : 'tourism_gps_inactive'.tr(),
-                      style: TextStyle(
-                        color: _isGpsActive ? AppColors.error : AppColors.textTertiary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
+              ),
+            ],
           ),
         ],
       ),
@@ -986,54 +1062,39 @@ class _TourismDriverHomeScreenState extends State<TourismDriverHomeScreen>
     return months[month - 1];
   }
 
-  Widget _buildKPIs() {
-    final total = _stats['accepted'] as int? ?? 0;
+  Widget _buildCompactKPIs() {
+    final accepted = _stats['accepted'] as int? ?? 0;
     final boarded = _stats['checked_in'] as int? ?? 0;
-    final remaining = total - boarded;
+    final total = accepted + boarded;
+    final missing = accepted;
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12),
-      child: Row(
-        children: [
-          Expanded(child: _buildKPICard('tourism_total'.tr(), total, AppColors.primary)),
-          const SizedBox(width: 8),
-          Expanded(child: _buildKPICard('tourism_aboard'.tr(), boarded, AppColors.success)),
-          const SizedBox(width: 8),
-          Expanded(child: _buildKPICard('tourism_missing'.tr(), remaining, AppColors.warning)),
-        ],
-      ),
+    return Row(
+      children: [
+        _buildCompactKPI(Icons.people, '$total', 'Total', AppColors.textSecondary),
+        const SizedBox(width: 12),
+        _buildCompactKPI(Icons.how_to_reg, '$boarded', 'Aboard', AppColors.success),
+        const SizedBox(width: 12),
+        _buildCompactKPI(Icons.person_off, '$missing', 'Missing', missing > 0 ? AppColors.warning : AppColors.success),
+      ],
     );
   }
 
-  Widget _buildKPICard(String label, int value, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Column(
-        children: [
-          Text(
-            '$value',
-            style: TextStyle(
-              color: color,
-              fontSize: 28,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
+  Widget _buildCompactKPI(IconData icon, String value, String label, Color color) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: color),
+        const SizedBox(width: 4),
+        Text(
+          value,
+          style: TextStyle(color: color, fontSize: 14, fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(width: 2),
+        Text(
+          label,
+          style: TextStyle(color: color.withOpacity(0.7), fontSize: 11),
+        ),
+      ],
     );
   }
 
@@ -1247,9 +1308,22 @@ class _TourismDriverHomeScreenState extends State<TourismDriverHomeScreen>
     double? selectedLat = (stop['lat'] as num?)?.toDouble();
     double? selectedLng = (stop['lng'] as num?)?.toDouble();
     List<Map<String, dynamic>> suggestions = [];
+    List<Map<String, dynamic>> savedLocations = [];
     Timer? debounce;
     bool isSaving = false;
     TimeOfDay? selectedTime;
+
+    // Load saved frequent locations
+    SharedPreferences.getInstance().then((prefs) {
+      final saved = prefs.getString('driver_saved_locations');
+      if (saved != null && saved.isNotEmpty) {
+        try {
+          savedLocations = List<Map<String, dynamic>>.from(
+            (json.decode(saved) as List).map((e) => Map<String, dynamic>.from(e)),
+          );
+        } catch (_) {}
+      }
+    });
 
     final scheduledStr = stop['scheduled_time'] as String?;
     if (scheduledStr != null) {
@@ -1327,60 +1401,96 @@ class _TourismDriverHomeScreenState extends State<TourismDriverHomeScreen>
                       ),
                     ),
                     const SizedBox(height: 16),
-                    // Address search with Mapbox
-                    Text('tourism_real_address'.tr(), style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
+                    // Address search
+                    const Text('Dirección', style: TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 6),
-                    TextField(
-                      controller: addressController,
-                      style: const TextStyle(color: AppColors.textPrimary, fontSize: 15),
-                      decoration: InputDecoration(
-                        hintText: 'tourism_search_address'.tr(),
-                        hintStyle: TextStyle(color: AppColors.textTertiary),
-                        filled: true, fillColor: AppColors.surface,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.border)),
-                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.border)),
-                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                        prefixIcon: const Icon(Icons.search, color: AppColors.primary, size: 18),
-                        suffixIcon: selectedLat != null ? const Icon(Icons.check_circle, color: AppColors.success, size: 18) : null,
-                      ),
-                      onChanged: (query) {
-                        debounce?.cancel();
-                        debounce = Timer(const Duration(milliseconds: 400), () async {
-                          if (query.trim().length < 3) {
-                            setModalState(() => suggestions = []);
-                            return;
-                          }
-                          try {
-                            // Nominatim (OpenStreetMap) - better at understanding state/city context
-                            final url = Uri.parse(
-                              'https://nominatim.openstreetmap.org/search'
-                              '?q=${Uri.encodeComponent(query)}'
-                              '&format=jsonv2'
-                              '&countrycodes=mx,us'
-                              '&limit=5'
-                              '&addressdetails=1'
-                              '&accept-language=es',
-                            );
-                            final response = await http.get(url, headers: {'User-Agent': 'TORORide/1.0'});
-                            if (response.statusCode == 200) {
-                              final results = json.decode(response.body) as List;
-                              setModalState(() {
-                                suggestions = results.map((r) {
-                                  final name = (r['name'] as String?) ?? '';
-                                  final displayName = r['display_name'] as String;
-                                  return {
-                                    'place_name': displayName,
-                                    'text': name.isNotEmpty ? name : displayName.split(',').first.trim(),
-                                    'lat': double.parse(r['lat'].toString()),
-                                    'lng': double.parse(r['lon'].toString()),
-                                  };
-                                }).toList();
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: addressController,
+                            style: const TextStyle(color: AppColors.textPrimary, fontSize: 15),
+                            decoration: InputDecoration(
+                              hintText: 'Buscar dirección o negocio...',
+                              hintStyle: TextStyle(color: AppColors.textTertiary),
+                              filled: true, fillColor: AppColors.surface,
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.border)),
+                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.border)),
+                              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                              prefixIcon: const Icon(Icons.search, color: AppColors.primary, size: 18),
+                              suffixIcon: selectedLat != null ? const Icon(Icons.check_circle, color: AppColors.success, size: 18) : null,
+                            ),
+                            onChanged: (query) {
+                              debounce?.cancel();
+                              debounce = Timer(const Duration(milliseconds: 400), () async {
+                                if (query.trim().length < 3) {
+                                  setModalState(() => suggestions = []);
+                                  return;
+                                }
+                                try {
+                                  final url = Uri.parse(
+                                    'https://nominatim.openstreetmap.org/search'
+                                    '?q=${Uri.encodeComponent(query)}'
+                                    '&format=jsonv2'
+                                    '&countrycodes=mx,us'
+                                    '&limit=5'
+                                    '&addressdetails=1'
+                                    '&accept-language=es',
+                                  );
+                                  final response = await http.get(url, headers: {'User-Agent': 'TORORide/1.0'});
+                                  if (response.statusCode == 200) {
+                                    final results = json.decode(response.body) as List;
+                                    setModalState(() {
+                                      suggestions = results.map((r) {
+                                        final name = (r['name'] as String?) ?? '';
+                                        final displayName = r['display_name'] as String;
+                                        return {
+                                          'place_name': displayName,
+                                          'text': name.isNotEmpty ? name : displayName.split(',').first.trim(),
+                                          'lat': double.parse(r['lat'].toString()),
+                                          'lng': double.parse(r['lon'].toString()),
+                                        };
+                                      }).toList();
+                                    });
+                                  }
+                                } catch (_) {}
                               });
-                            }
-                          } catch (_) {}
-                        });
-                      },
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        // Map pin button
+                        SizedBox(
+                          height: 48,
+                          child: ElevatedButton(
+                            onPressed: () async {
+                              final result = await showDialog<Map<String, dynamic>>(
+                                context: context,
+                                builder: (ctx) => _HomeMapPicker(
+                                  initialLocation: selectedLat != null && selectedLng != null
+                                      ? LatLng(selectedLat!, selectedLng!)
+                                      : null,
+                                ),
+                              );
+                              if (result != null) {
+                                setModalState(() {
+                                  selectedLat = result['coords']['lat'] as double;
+                                  selectedLng = result['coords']['lng'] as double;
+                                  addressController.text = result['address'] as String? ?? '';
+                                  suggestions = [];
+                                });
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                            child: const Icon(Icons.pin_drop, color: Colors.white, size: 20),
+                          ),
+                        ),
+                      ],
                     ),
                     // Suggestions list
                     if (suggestions.isNotEmpty)
@@ -1420,6 +1530,74 @@ class _TourismDriverHomeScreenState extends State<TourismDriverHomeScreen>
                             );
                           },
                         ),
+                      ),
+                    // Saved / Frequent locations
+                    if (savedLocations.isNotEmpty && suggestions.isEmpty)
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              const Icon(Icons.history, color: AppColors.textTertiary, size: 14),
+                              const SizedBox(width: 6),
+                              const Text('Lugares frecuentes', style: TextStyle(color: AppColors.textTertiary, fontSize: 11, fontWeight: FontWeight.w600)),
+                              const Spacer(),
+                              GestureDetector(
+                                onTap: () async {
+                                  final prefs = await SharedPreferences.getInstance();
+                                  await prefs.remove('driver_saved_locations');
+                                  setModalState(() => savedLocations = []);
+                                  HapticService.lightImpact();
+                                },
+                                child: const Text('Borrar', style: TextStyle(color: AppColors.textTertiary, fontSize: 11)),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          SizedBox(
+                            height: 36,
+                            child: ListView.separated(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: savedLocations.length,
+                              separatorBuilder: (_, __) => const SizedBox(width: 8),
+                              itemBuilder: (context, index) {
+                                final loc = savedLocations[index];
+                                return GestureDetector(
+                                  onTap: () {
+                                    setModalState(() {
+                                      nameController.text = loc['name'] as String? ?? '';
+                                      addressController.text = loc['address'] as String? ?? '';
+                                      selectedLat = (loc['lat'] as num?)?.toDouble();
+                                      selectedLng = (loc['lng'] as num?)?.toDouble();
+                                      suggestions = [];
+                                    });
+                                    HapticService.lightImpact();
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.surface,
+                                      borderRadius: BorderRadius.circular(18),
+                                      border: Border.all(color: AppColors.border),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Icons.place, color: AppColors.primary, size: 14),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          loc['name'] as String? ?? (loc['address'] as String? ?? '').split(',').first,
+                                          style: const TextStyle(color: AppColors.textPrimary, fontSize: 12, fontWeight: FontWeight.w500),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
                       ),
                     const SizedBox(height: 16),
                     // Time + Duration row
@@ -1510,46 +1688,76 @@ class _TourismDriverHomeScreenState extends State<TourismDriverHomeScreen>
                               updatedStop['scheduled_time'] = dt.toIso8601String();
                             }
 
-                            // Update in database
+                            // Update local state
                             final newItinerary = List<Map<String, dynamic>>.from(_itinerary);
                             newItinerary[stopIndex] = updatedStop;
 
+                            // Save to JSONB on tourism_events (source of truth, RLS allows driver)
                             await Supabase.instance.client
-                                .from('tourism_event_itinerary')
+                                .from('tourism_events')
                                 .update({
-                                  'name': updatedStop['name'],
-                                  'address': updatedStop['address'],
-                                  'lat': updatedStop['lat'],
-                                  'lng': updatedStop['lng'],
-                                  'duration_minutes': updatedStop['duration_minutes'],
-                                  'scheduled_time': updatedStop['scheduled_time'],
+                                  'itinerary': newItinerary,
+                                  'updated_at': DateTime.now().toUtc().toIso8601String(),
                                 })
-                                .eq('id', updatedStop['id']);
+                                .eq('id', widget.eventId);
 
-                            setState(() {
-                              _itinerary[stopIndex] = updatedStop;
-                            });
-
-                            // Sync JSONB column on tourism_events for organizer dashboard
+                            // Also try normalized table (may fail due to RLS, that's ok)
                             try {
                               await Supabase.instance.client
-                                  .from('tourism_events')
-                                  .update({'itinerary': newItinerary})
-                                  .eq('id', widget.eventId);
+                                  .from('tourism_event_itinerary')
+                                  .update({
+                                    'name': updatedStop['name'],
+                                    'address': updatedStop['address'],
+                                    'lat': updatedStop['lat'],
+                                    'lng': updatedStop['lng'],
+                                    'duration_minutes': updatedStop['duration_minutes'],
+                                    'scheduled_time': updatedStop['scheduled_time'],
+                                  })
+                                  .eq('id', updatedStop['id']);
                             } catch (_) {}
+
+                            setState(() {
+                              _itinerary = newItinerary;
+                            });
 
                             // If coordinates changed, recalculate total distance + pricing
                             if (selectedLat != null && selectedLng != null) {
                               await _recalculateDistanceAndPricing(newItinerary);
                             }
 
+                            // Save to frequent locations
+                            if (selectedLat != null && selectedLng != null && addressController.text.trim().isNotEmpty) {
+                              try {
+                                final prefs = await SharedPreferences.getInstance();
+                                final existing = prefs.getString('driver_saved_locations');
+                                final List<Map<String, dynamic>> locations = existing != null && existing.isNotEmpty
+                                    ? List<Map<String, dynamic>>.from(
+                                        (json.decode(existing) as List).map((e) => Map<String, dynamic>.from(e)))
+                                    : [];
+                                // Remove duplicate by address
+                                locations.removeWhere((l) => l['address'] == addressController.text.trim());
+                                // Add at front
+                                locations.insert(0, {
+                                  'name': nameController.text.trim(),
+                                  'address': addressController.text.trim(),
+                                  'lat': selectedLat,
+                                  'lng': selectedLng,
+                                });
+                                // Keep max 10
+                                if (locations.length > 10) locations.removeLast();
+                                await prefs.setString('driver_saved_locations', json.encode(locations));
+                              } catch (_) {}
+                            }
+
                             if (mounted) Navigator.pop(context);
                             HapticService.success();
+                            _loadEventData();
                           } catch (e) {
                             setModalState(() => isSaving = false);
+                            debugPrint('ERROR editing stop: $e');
                             if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('tourism_error_generic'.tr(namedArgs: {'error': '$e'})), backgroundColor: AppColors.error),
+                                SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
                               );
                             }
                           }
@@ -1573,6 +1781,363 @@ class _TourismDriverHomeScreenState extends State<TourismDriverHomeScreen>
           },
         );
       },
+    );
+  }
+
+  void _addNewStop() {
+    HapticService.lightImpact();
+    final nameController = TextEditingController();
+    final addressController = TextEditingController();
+    double? selectedLat;
+    double? selectedLng;
+    List<Map<String, dynamic>> suggestions = [];
+    Timer? debounce;
+    bool isSaving = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.card,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+                left: 20, right: 20, top: 16,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40, height: 4,
+                        decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Container(
+                          width: 28, height: 28,
+                          decoration: const BoxDecoration(color: AppColors.success, shape: BoxShape.circle),
+                          child: const Icon(Icons.add_location_alt, color: Colors.white, size: 14),
+                        ),
+                        const SizedBox(width: 10),
+                        const Text('Nueva parada',
+                          style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w700)),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    const Text('Nombre', style: TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: nameController,
+                      style: const TextStyle(color: AppColors.textPrimary, fontSize: 15),
+                      decoration: InputDecoration(
+                        hintText: 'Ej: Compostela Centro',
+                        hintStyle: TextStyle(color: AppColors.textTertiary),
+                        filled: true, fillColor: AppColors.surface,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.border)),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.border)),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        prefixIcon: const Icon(Icons.label_outline, color: AppColors.primary, size: 18),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text('Dirección', style: TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: addressController,
+                            style: const TextStyle(color: AppColors.textPrimary, fontSize: 15),
+                            decoration: InputDecoration(
+                              hintText: 'Buscar dirección...',
+                              hintStyle: TextStyle(color: AppColors.textTertiary),
+                              filled: true, fillColor: AppColors.surface,
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.border)),
+                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.border)),
+                              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                              prefixIcon: const Icon(Icons.search, color: AppColors.primary, size: 18),
+                              suffixIcon: selectedLat != null ? const Icon(Icons.check_circle, color: AppColors.success, size: 18) : null,
+                            ),
+                            onChanged: (query) {
+                              debounce?.cancel();
+                              debounce = Timer(const Duration(milliseconds: 400), () async {
+                                if (query.trim().length < 3) {
+                                  setModalState(() => suggestions = []);
+                                  return;
+                                }
+                                try {
+                                  final url = Uri.parse(
+                                    'https://nominatim.openstreetmap.org/search'
+                                    '?q=${Uri.encodeComponent(query)}'
+                                    '&format=jsonv2'
+                                    '&countrycodes=mx,us'
+                                    '&limit=5'
+                                    '&addressdetails=1'
+                                    '&accept-language=es',
+                                  );
+                                  final response = await http.get(url, headers: {'User-Agent': 'TORORide/1.0'});
+                                  if (response.statusCode == 200) {
+                                    final results = json.decode(response.body) as List;
+                                    setModalState(() {
+                                      suggestions = results.map((r) {
+                                        final name = (r['name'] as String?) ?? '';
+                                        final displayName = r['display_name'] as String;
+                                        return {
+                                          'place_name': displayName,
+                                          'text': name.isNotEmpty ? name : displayName.split(',').first.trim(),
+                                          'lat': double.parse(r['lat'].toString()),
+                                          'lng': double.parse(r['lon'].toString()),
+                                        };
+                                      }).toList();
+                                    });
+                                  }
+                                } catch (_) {}
+                              });
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        SizedBox(
+                          height: 48,
+                          child: ElevatedButton(
+                            onPressed: () async {
+                              final result = await showDialog<Map<String, dynamic>>(
+                                context: context,
+                                builder: (ctx) => _HomeMapPicker(
+                                  initialLocation: selectedLat != null && selectedLng != null
+                                      ? LatLng(selectedLat!, selectedLng!)
+                                      : null,
+                                ),
+                              );
+                              if (result != null) {
+                                setModalState(() {
+                                  selectedLat = result['coords']['lat'] as double;
+                                  selectedLng = result['coords']['lng'] as double;
+                                  addressController.text = result['address'] as String? ?? '';
+                                  suggestions = [];
+                                });
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                            child: const Icon(Icons.pin_drop, color: Colors.white, size: 20),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (suggestions.isNotEmpty)
+                      Container(
+                        margin: const EdgeInsets.only(top: 4),
+                        constraints: const BoxConstraints(maxHeight: 200),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: ListView.separated(
+                          shrinkWrap: true,
+                          padding: EdgeInsets.zero,
+                          itemCount: suggestions.length,
+                          separatorBuilder: (_, __) => Divider(height: 1, color: AppColors.border.withValues(alpha: 0.3)),
+                          itemBuilder: (context, index) {
+                            final s = suggestions[index];
+                            return ListTile(
+                              dense: true,
+                              leading: const Icon(Icons.location_on, color: AppColors.primary, size: 18),
+                              title: Text(s['text'] as String,
+                                style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600)),
+                              subtitle: Text(s['place_name'] as String,
+                                style: TextStyle(color: AppColors.textTertiary, fontSize: 11),
+                                maxLines: 2, overflow: TextOverflow.ellipsis),
+                              onTap: () {
+                                setModalState(() {
+                                  addressController.text = s['place_name'] as String;
+                                  selectedLat = s['lat'] as double;
+                                  selectedLng = s['lng'] as double;
+                                  if (nameController.text.isEmpty) nameController.text = s['text'] as String;
+                                  suggestions = [];
+                                });
+                                HapticService.lightImpact();
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton.icon(
+                        onPressed: (isSaving || nameController.text.trim().isEmpty || selectedLat == null) ? null : () async {
+                          setModalState(() => isSaving = true);
+                          try {
+                            final newOrder = _itinerary.length;
+                            final newStop = {
+                              'name': nameController.text.trim(),
+                              'address': addressController.text.trim(),
+                              'lat': selectedLat,
+                              'lng': selectedLng,
+                              'stop_order': newOrder,
+                              'duration_minutes': 0,
+                              'event_id': widget.eventId,
+                            };
+
+                            // Update JSONB on tourism_events (source of truth, RLS allows driver)
+                            final newItinerary = List<Map<String, dynamic>>.from(_itinerary);
+                            newItinerary.add(newStop);
+
+                            await Supabase.instance.client
+                                .from('tourism_events')
+                                .update({
+                                  'itinerary': newItinerary,
+                                  'updated_at': DateTime.now().toUtc().toIso8601String(),
+                                })
+                                .eq('id', widget.eventId);
+
+                            // Also try normalized table (may fail due to RLS)
+                            try {
+                              await Supabase.instance.client
+                                  .from('tourism_event_itinerary')
+                                  .insert(newStop);
+                            } catch (_) {}
+
+                            setState(() {
+                              _itinerary = newItinerary;
+                            });
+
+                            if (mounted) Navigator.pop(context);
+                            HapticService.success();
+                            // Reload to sync with DB
+                            _loadEventData();
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Parada "${nameController.text.trim()}" agregada'),
+                                  backgroundColor: AppColors.success,
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            setModalState(() => isSaving = false);
+                            debugPrint('ERROR adding stop: $e');
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
+                              );
+                            }
+                          }
+                        },
+                        icon: isSaving
+                            ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                            : const Icon(Icons.add, size: 18),
+                        label: Text(isSaving ? 'Guardando...' : 'Agregar parada'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.success,
+                          foregroundColor: Colors.white,
+                          disabledBackgroundColor: AppColors.success.withOpacity(0.3),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _confirmDeleteStop(int stopIndex) {
+    if (stopIndex < 0 || stopIndex >= _itinerary.length) return;
+    final stop = _itinerary[stopIndex];
+    final stopName = stop['name'] as String? ?? 'Parada ${stopIndex + 1}';
+
+    HapticService.lightImpact();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.card,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Eliminar parada', style: TextStyle(color: AppColors.textPrimary)),
+        content: Text(
+          '¿Eliminar "$stopName"? Esta acción se compartirá con todos los dispositivos conectados.',
+          style: const TextStyle(color: AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar', style: TextStyle(color: AppColors.textTertiary)),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              try {
+                // Update JSONB on tourism_events (source of truth)
+                final newItinerary = List<Map<String, dynamic>>.from(_itinerary);
+                newItinerary.removeAt(stopIndex);
+                // Re-order stops
+                for (int i = 0; i < newItinerary.length; i++) {
+                  newItinerary[i]['stop_order'] = i;
+                }
+
+                await Supabase.instance.client
+                    .from('tourism_events')
+                    .update({
+                      'itinerary': newItinerary,
+                      'updated_at': DateTime.now().toUtc().toIso8601String(),
+                    })
+                    .eq('id', widget.eventId);
+
+                // Also try normalized table (may fail due to RLS)
+                try {
+                  final stopId = stop['id'];
+                  if (stopId != null) {
+                    await Supabase.instance.client
+                        .from('tourism_event_itinerary')
+                        .delete()
+                        .eq('id', stopId);
+                  }
+                } catch (_) {}
+
+                setState(() {
+                  _itinerary = newItinerary;
+                  if (_currentStopIndex >= _itinerary.length) {
+                    _currentStopIndex = _itinerary.length - 1;
+                  }
+                });
+                HapticService.success();
+                _loadEventData();
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
+                  );
+                }
+              }
+            },
+            child: const Text('Eliminar', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1721,6 +2286,8 @@ class _TourismDriverHomeScreenState extends State<TourismDriverHomeScreen>
               ),
             ],
           ),
+          // Compact KPIs row
+          _buildCompactKPIs(),
           const SizedBox(height: 8),
           // Stop name
           Row(
@@ -1861,6 +2428,19 @@ class _TourismDriverHomeScreenState extends State<TourismDriverHomeScreen>
                     ],
                   ),
                 ),
+                // Edit next stop button
+                GestureDetector(
+                  onTap: () => _showEditStopDialog(_currentStopIndex + 1),
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    margin: const EdgeInsets.only(right: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.edit, color: AppColors.primary, size: 16),
+                  ),
+                ),
                 // Navigate to next stop button
                 if (nextStopLat != null && nextStopLng != null)
                   GestureDetector(
@@ -1872,6 +2452,53 @@ class _TourismDriverHomeScreenState extends State<TourismDriverHomeScreen>
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: const Icon(Icons.navigation, color: AppColors.info, size: 16),
+                    ),
+                  ),
+              ],
+            ),
+            // Add/Remove stops
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                GestureDetector(
+                  onTap: _addNewStop,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.success.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: AppColors.success.withOpacity(0.3)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.add_location_alt, color: AppColors.success, size: 14),
+                        SizedBox(width: 4),
+                        Text('Agregar parada', style: TextStyle(color: AppColors.success, fontSize: 11, fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                if (_itinerary.length > 2)
+                  GestureDetector(
+                    onTap: () => _confirmDeleteStop(_currentStopIndex + 1 < _itinerary.length ? _currentStopIndex + 1 : _currentStopIndex),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.error.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: AppColors.error.withOpacity(0.3)),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.remove_circle_outline, color: AppColors.error, size: 14),
+                          SizedBox(width: 4),
+                          Text('Quitar parada', style: TextStyle(color: AppColors.error, fontSize: 11, fontWeight: FontWeight.w600)),
+                        ],
+                      ),
                     ),
                   ),
               ],
@@ -2130,6 +2757,301 @@ class _TourismDriverHomeScreenState extends State<TourismDriverHomeScreen>
                 fontSize: 12,
                 fontWeight:
                     badgeCount > 0 ? FontWeight.w600 : FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── MAP PICKER for Home Screen Edit Stop ──────────────────
+
+class _HomeMapPicker extends StatefulWidget {
+  final LatLng? initialLocation;
+
+  const _HomeMapPicker({this.initialLocation});
+
+  @override
+  State<_HomeMapPicker> createState() => _HomeMapPickerState();
+}
+
+class _HomeMapPickerState extends State<_HomeMapPicker> {
+  late MapController _mapController;
+  late LatLng _currentCenter;
+  late TextEditingController _searchController;
+  String _addressText = 'Mueve el mapa para seleccionar';
+  bool _isLoadingAddress = false;
+  bool _isLoadingGPS = false;
+  bool _isDragging = false;
+  List<Map<String, dynamic>> _suggestions = [];
+  bool _showSuggestions = false;
+  Timer? _debounceTimer;
+
+  static const _defaultCenter = LatLng(33.4484, -112.0740);
+
+  @override
+  void initState() {
+    super.initState();
+    _mapController = MapController();
+    _searchController = TextEditingController();
+    _currentCenter = widget.initialLocation ?? _defaultCenter;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (widget.initialLocation != null) {
+        _reverseGeocode(_currentCenter);
+      } else {
+        _goToCurrentLocation();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _debounceTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _fetchSuggestions(String query) async {
+    if (query.trim().isEmpty) {
+      setState(() { _suggestions = []; _showSuggestions = false; });
+      return;
+    }
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () async {
+      try {
+        final url = Uri.parse(
+          'https://nominatim.openstreetmap.org/search'
+          '?q=${Uri.encodeComponent(query)}'
+          '&format=jsonv2&countrycodes=mx,us&limit=5&addressdetails=1&accept-language=es',
+        );
+        final response = await http.get(url, headers: {'User-Agent': 'TORORide/1.0'});
+        if (response.statusCode == 200) {
+          final results = json.decode(response.body) as List;
+          if (mounted) {
+            setState(() {
+              _suggestions = results.map((r) {
+                final name = (r['name'] as String?) ?? '';
+                final displayName = r['display_name'] as String;
+                return {
+                  'place_name': displayName,
+                  'text': name.isNotEmpty ? name : displayName.split(',').first.trim(),
+                  'lat': double.parse(r['lat'].toString()),
+                  'lng': double.parse(r['lon'].toString()),
+                };
+              }).toList();
+              _showSuggestions = _suggestions.isNotEmpty;
+            });
+          }
+        }
+      } catch (_) {}
+    });
+  }
+
+  Future<void> _reverseGeocode(LatLng location) async {
+    setState(() => _isLoadingAddress = true);
+    try {
+      final placemarks = await placemarkFromCoordinates(location.latitude, location.longitude);
+      if (placemarks.isNotEmpty) {
+        final place = placemarks.first;
+        List<String> parts = [];
+        if (place.name != null && place.name!.isNotEmpty && place.name != place.street && !RegExp(r'^\d+$').hasMatch(place.name!)) {
+          parts.add(place.name!);
+        }
+        if (place.street != null && place.street!.isNotEmpty) parts.add(place.street!);
+        if (place.locality != null && place.locality!.isNotEmpty) parts.add(place.locality!);
+        if (place.administrativeArea != null && place.administrativeArea!.isNotEmpty) parts.add(place.administrativeArea!);
+
+        if (mounted) {
+          setState(() {
+            _addressText = parts.isNotEmpty ? parts.join(', ') : '${location.latitude.toStringAsFixed(5)}, ${location.longitude.toStringAsFixed(5)}';
+            _isLoadingAddress = false;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _addressText = '${location.latitude.toStringAsFixed(5)}, ${location.longitude.toStringAsFixed(5)}';
+          _isLoadingAddress = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _goToCurrentLocation() async {
+    setState(() => _isLoadingGPS = true);
+    try {
+      bool enabled = await Geolocator.isLocationServiceEnabled();
+      if (!enabled) { setState(() => _isLoadingGPS = false); return; }
+      LocationPermission perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied) {
+        perm = await Geolocator.requestPermission();
+        if (perm == LocationPermission.denied) { setState(() => _isLoadingGPS = false); return; }
+      }
+      final pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high, timeLimit: const Duration(seconds: 15));
+      final loc = LatLng(pos.latitude, pos.longitude);
+      if (!mounted) return;
+      _mapController.move(loc, 16);
+      setState(() { _currentCenter = loc; _isLoadingGPS = false; });
+      _reverseGeocode(loc);
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingGPS = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog.fullscreen(
+      child: Scaffold(
+        backgroundColor: const Color(0xFF1E1E1E),
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF2A2A2A),
+          elevation: 0,
+          leading: IconButton(icon: const Icon(Icons.close, color: Colors.white), onPressed: () => Navigator.pop(context)),
+          title: const Text('Seleccionar Ubicación', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+          centerTitle: true,
+        ),
+        body: Stack(
+          children: [
+            FlutterMap(
+              mapController: _mapController,
+              options: MapOptions(
+                initialCenter: _currentCenter,
+                initialZoom: 15,
+                onPositionChanged: (position, hasGesture) {
+                  if (hasGesture && !_isDragging) setState(() => _isDragging = true);
+                  if (!hasGesture && _isDragging) {
+                    setState(() { _isDragging = false; _currentCenter = _mapController.camera.center; });
+                    _reverseGeocode(_mapController.camera.center);
+                  }
+                },
+              ),
+              children: [
+                TileLayer(urlTemplate: 'https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png', userAgentPackageName: 'com.toro.driver'),
+              ],
+            ),
+            // Search bar
+            Positioned(
+              top: 16, left: 16, right: 80,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    decoration: BoxDecoration(color: const Color(0xFF2A2A2A), borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 4))]),
+                    child: TextField(
+                      controller: _searchController,
+                      style: const TextStyle(fontSize: 14, color: Colors.white),
+                      decoration: const InputDecoration(hintText: 'Buscar dirección o negocio...', hintStyle: TextStyle(color: Color(0xFF888888)), prefixIcon: Icon(Icons.search, color: Color(0xFFAAAAAA), size: 20), border: InputBorder.none, contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14)),
+                      onChanged: _fetchSuggestions,
+                    ),
+                  ),
+                  if (_showSuggestions && _suggestions.isNotEmpty)
+                    Container(
+                      margin: const EdgeInsets.only(top: 8),
+                      decoration: BoxDecoration(color: const Color(0xFF2A2A2A), borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 12)]),
+                      constraints: const BoxConstraints(maxHeight: 250),
+                      child: ListView.separated(
+                        shrinkWrap: true, padding: const EdgeInsets.symmetric(vertical: 8),
+                        itemCount: _suggestions.length,
+                        separatorBuilder: (_, __) => Divider(height: 1, color: Colors.white.withOpacity(0.1), indent: 16, endIndent: 16),
+                        itemBuilder: (context, index) {
+                          final s = _suggestions[index];
+                          return InkWell(
+                            onTap: () {
+                              final loc = LatLng(s['lat'] as double, s['lng'] as double);
+                              _mapController.move(loc, 16);
+                              setState(() { _currentCenter = loc; _showSuggestions = false; _searchController.text = s['text'] as String; });
+                              _reverseGeocode(loc);
+                              FocusScope.of(context).unfocus();
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              child: Row(children: [
+                                const Icon(Icons.location_on, color: Colors.orange, size: 20),
+                                const SizedBox(width: 12),
+                                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                  Text(s['text'] as String, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500)),
+                                  const SizedBox(height: 2),
+                                  Text(s['place_name'] as String, style: const TextStyle(color: Color(0xFF888888), fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                ])),
+                              ]),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            // Center pin
+            Center(
+              child: Transform.translate(
+                offset: const Offset(0, -20),
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(color: Colors.red, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.red.withOpacity(0.4), blurRadius: 12, offset: const Offset(0, 4))]),
+                    child: const Icon(Icons.location_on, color: Colors.white, size: 28),
+                  ),
+                  Container(width: 12, height: 4, decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(2))),
+                ]),
+              ),
+            ),
+            // GPS button
+            Positioned(
+              top: 16, right: 16,
+              child: GestureDetector(
+                onTap: _isLoadingGPS ? null : _goToCurrentLocation,
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(color: const Color(0xFF2A2A2A), shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 8)]),
+                  child: _isLoadingGPS
+                      ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.orange))
+                      : const Icon(Icons.my_location, color: Colors.orange, size: 24),
+                ),
+              ),
+            ),
+            // Bottom panel
+            Positioned(
+              left: 0, right: 0, bottom: 0,
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(color: const Color(0xFF2A2A2A), borderRadius: const BorderRadius.vertical(top: Radius.circular(24)), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, -5))]),
+                child: SafeArea(
+                  top: false,
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(color: const Color(0xFF1E1E1E), borderRadius: BorderRadius.circular(16)),
+                      child: Row(children: [
+                        Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: Colors.red.withOpacity(0.25), borderRadius: BorderRadius.circular(10)), child: const Icon(Icons.location_on, color: Colors.red, size: 22)),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: _isLoadingAddress
+                              ? const Row(children: [SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.orange)), SizedBox(width: 10), Text('Obteniendo dirección...', style: TextStyle(color: Color(0xFF999999), fontSize: 14))])
+                              : Text(_addressText, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.white), maxLines: 2, overflow: TextOverflow.ellipsis),
+                        ),
+                      ]),
+                    ),
+                    const SizedBox(height: 16),
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.pop(context, {
+                          'coords': {'lat': _currentCenter.latitude, 'lng': _currentCenter.longitude},
+                          'address': _addressText,
+                        });
+                      },
+                      child: Container(
+                        width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 16),
+                        decoration: BoxDecoration(gradient: const LinearGradient(colors: [Colors.orange, Color(0xFFFF8C00)]), borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.orange.withOpacity(0.4), blurRadius: 12, offset: const Offset(0, 4))]),
+                        child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.check_circle, color: Colors.white, size: 22), SizedBox(width: 10), Text('Confirmar Ubicación', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16))]),
+                      ),
+                    ),
+                  ]),
+                ),
               ),
             ),
           ],

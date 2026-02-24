@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/auth_provider.dart';
@@ -61,6 +62,7 @@ class _LoginScreenState extends State<LoginScreen>
   static const _prefKeyEmail = 'login_remembered_email';
   static const _prefKeyEmailHistory = 'login_email_history';
   final List<String> _emailHistory = [];
+  String _appVersion = '';
 
   @override
   void initState() {
@@ -71,9 +73,19 @@ class _LoginScreenState extends State<LoginScreen>
     _lastNameController.addListener(() => setState(() {}));
     _phoneController.addListener(() => setState(() {}));
     AppLogger.log('OPEN -> LoginScreen');
+    _loadAppVersion();
     _loadRememberedEmail();
     _checkBiometric();
     _initAnimations();
+  }
+
+  Future<void> _loadAppVersion() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      if (mounted) setState(() => _appVersion = 'v${info.version}');
+    } catch (_) {
+      if (mounted) setState(() => _appVersion = '');
+    }
   }
 
   Future<void> _loadRememberedEmail() async {
@@ -894,17 +906,7 @@ class _LoginScreenState extends State<LoginScreen>
               onPressed: _showEmailHistoryDropdown,
               tooltip: 'Email history',
             )
-          : IconButton(
-              icon: Icon(Icons.paste_rounded, color: AppColors.textSecondary, size: 18),
-              onPressed: () async {
-                final data = await Clipboard.getData(Clipboard.kTextPlain);
-                if (data?.text != null) {
-                  controller.text = data!.text!;
-                  HapticService.selectionClick();
-                }
-              },
-              tooltip: 'Paste',
-            ),
+          : null,
         filled: true,
         fillColor: AppColors.surface,
         isDense: true,
@@ -946,29 +948,13 @@ class _LoginScreenState extends State<LoginScreen>
         labelText: 'Password',
         labelStyle: TextStyle(color: AppColors.textSecondary, fontSize: 13),
         prefixIcon: Icon(Icons.lock_outline_rounded, color: AppColors.primary, size: 18),
-        suffixIcon: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              icon: Icon(Icons.paste_rounded, color: AppColors.textSecondary, size: 18),
-              onPressed: () async {
-                final data = await Clipboard.getData(Clipboard.kTextPlain);
-                if (data?.text != null) {
-                  _passwordController.text = data!.text!;
-                  HapticService.selectionClick();
-                }
-              },
-              tooltip: 'Paste',
-            ),
-            IconButton(
-              icon: Icon(
-                _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                color: AppColors.textSecondary,
-                size: 18,
-              ),
-              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-            ),
-          ],
+        suffixIcon: IconButton(
+          icon: Icon(
+            _obscurePassword ? Icons.visibility_off : Icons.visibility,
+            color: AppColors.textSecondary,
+            size: 18,
+          ),
+          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
         ),
         filled: true,
         fillColor: AppColors.surface,
@@ -1152,7 +1138,7 @@ class _LoginScreenState extends State<LoginScreen>
 
   Widget _buildVersion() {
     return Text(
-      'v1.0.0',
+      _appVersion,
       style: TextStyle(
         fontSize: 12,
         color: AppColors.textSecondary.withValues(alpha: 0.5),

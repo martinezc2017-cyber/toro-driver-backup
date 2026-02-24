@@ -610,7 +610,7 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
                         Icon(Icons.emoji_events, size: 10, color: AppColors.success),
                         const SizedBox(width: 3),
                         Expanded(
-                          child: Text('Puja ganada — ${event['organizers']?['company_name'] ?? 'Organizador'}',
+                          child: Text('Puja ganada — ${event['organizers']?['company_name'] ?? 'Chofer'}',
                             style: TextStyle(fontSize: 10, color: AppColors.success, fontWeight: FontWeight.w600),
                             maxLines: 1, overflow: TextOverflow.ellipsis),
                         ),

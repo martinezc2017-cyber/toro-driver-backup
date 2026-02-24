@@ -155,7 +155,7 @@ class NotificationService {
       priority: Priority.max,
       showWhen: true,
       icon: '@drawable/ic_notification',
-      color: const Color(0xFF2196F3),
+      color: const Color(0xFF0D0D1A),
       visibility: NotificationVisibility.public,
       playSound: true,
       enableVibration: true,

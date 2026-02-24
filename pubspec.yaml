@@ -1,7 +1,7 @@
 name: toro_driver
 description: "Toro Driver - Rideshare Driver App"
 publish_to: 'none'
-version: 1.2.6+4016
+version: 1.2.11+4021
 
 environment:
   sdk: ^3.10.4
@@ -127,6 +127,7 @@ flutter:
   assets:
     - assets/lang/en.json
     - assets/lang/es.json
+    - assets/lang/es-MX.json
     - assets/images/
     - assets/animations/
 

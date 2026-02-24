@@ -552,7 +552,7 @@ class _DriverBidScreenState extends State<DriverBidScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'El organizador propone \$${organizerPrice?.toStringAsFixed(2) ?? '?'} MXN/km',
+              'Precio propuesto: \$${organizerPrice?.toStringAsFixed(2) ?? '?'} MXN/km',
               style: const TextStyle(
                   color: AppColors.textSecondary, fontSize: 14),
             ),
@@ -726,7 +726,7 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                           ),
                         ),
                         child: Text(
-                          'El organizador propone: \$${organizerPrice.toStringAsFixed(0)} MXN/km',
+                          'Precio propuesto: \$${organizerPrice.toStringAsFixed(0)} MXN/km',
                           style: const TextStyle(
                             color: AppColors.warning,
                             fontSize: 14,
@@ -1027,7 +1027,7 @@ class _DriverBidScreenState extends State<DriverBidScreen>
       return 'GANADOR';
     }
     if (organizerStatus == 'counter_offered') {
-      return 'Contra-oferta del organizador';
+      return 'Contra-oferta recibida';
     }
     if (driverStatus == 'counter_offered') {
       return 'Esperando respuesta';
@@ -1042,7 +1042,7 @@ class _DriverBidScreenState extends State<DriverBidScreen>
       return 'Rechazada por ti';
     }
     if (organizerStatus == 'rejected') {
-      return 'Rechazada por organizador';
+      return 'Rechazada';
     }
     return driverStatus;
   }
@@ -1246,7 +1246,7 @@ class _DriverBidScreenState extends State<DriverBidScreen>
               const SizedBox(height: 8),
               Text(
                 isActionRequired
-                    ? 'Cuando un organizador te solicite, aparecera aqui'
+                    ? 'Cuando te soliciten, aparecera aqui'
                     : 'Tus pujas enviadas y ganadas aparecen aqui',
                 style: const TextStyle(
                     color: AppColors.textTertiary, fontSize: 12),
@@ -1281,7 +1281,7 @@ class _DriverBidScreenState extends State<DriverBidScreen>
     bool isHistory = false,
   }) {
     final eventName = bid['event_name'] ?? 'Evento';
-    final organizerName = bid['organizer_name'] ?? 'Organizador';
+    final organizerName = bid['organizer_name'] ?? 'Chofer';
     final organizerVerified = bid['organizer_verified'] == true;
     final eventDate = bid['event_date'] as String?;
     final startTime = bid['start_time'] as String?;
@@ -1661,7 +1661,7 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           const Text(
-                            'Organizador propone',
+                            'Contra-oferta',
                             style: TextStyle(
                               color: AppColors.warning,
                               fontSize: 10,
@@ -1911,7 +1911,7 @@ class _DriverBidScreenState extends State<DriverBidScreen>
 
   /// Organizer credential compact card shown in bid
   Widget _buildOrganizerCredential(Map<String, dynamic> bid) {
-    final name = bid['organizer_name'] as String? ?? 'Organizador';
+    final name = bid['organizer_name'] as String? ?? 'Chofer';
     final phone = bid['organizer_contact_phone'] as String? ?? bid['organizer_phone'] as String?;
     final email = bid['organizer_email'] as String?;
     final facebook = bid['organizer_facebook'] as String?;
@@ -2146,7 +2146,7 @@ Evento: $eventName
 ${dateStr.isNotEmpty ? 'Fecha: $dateStr' : ''}${timeStr.isNotEmpty ? ' | Hora: $timeStr' : ''}
 ${routeStr.isNotEmpty ? 'Ruta: $routeStr' : ''}
 ${distanceKm != null ? 'Distancia: ${distanceKm.toStringAsFixed(0)} km' : ''}${passengers != null ? ' | Pasajeros: $passengers' : ''}
-${organizerName.isNotEmpty ? 'Organizador: $organizerName' : ''}${organizerPhone.isNotEmpty ? ' | Tel: $organizerPhone' : ''}
+${organizerName.isNotEmpty ? 'Contacto: $organizerName' : ''}${organizerPhone.isNotEmpty ? ' | Tel: $organizerPhone' : ''}
 Descarga TORO Driver para pujar.''';
 
     HapticService.lightImpact();

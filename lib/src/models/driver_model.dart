@@ -410,9 +410,8 @@ class DriverModel {
       'admin_approved_at': adminApprovedAt?.toIso8601String(),
       'onboarding_stage': onboardingStage,
       'can_receive_rides': canReceiveRides,
-      // Trial mode
-      'trial_mode_accepted': trialModeAccepted,
-      'trial_accepted_at': trialAcceptedAt,
+      // Trial mode — columns don't exist in DB, omitted from serialization
+      // 'trial_mode_accepted' and 'trial_accepted_at' handled via legal_consents table
       // Tourism mode
       'vehicle_mode': vehicleMode,
       'active_tourism_event_id': activeTourismEventId,

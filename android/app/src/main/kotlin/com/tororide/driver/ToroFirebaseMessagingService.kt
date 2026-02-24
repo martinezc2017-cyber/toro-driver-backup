@@ -80,7 +80,7 @@ class ToroFirebaseMessagingService : FirebaseMessagingService() {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
-            .setColor(0xFF2196F3.toInt())
+            .setColor(android.graphics.Color.parseColor("#0D0D1A"))
             .setVibrate(longArrayOf(0, 300, 200, 300))
             .build()
 

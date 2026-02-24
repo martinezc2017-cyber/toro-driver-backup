@@ -117,23 +117,50 @@ class VersionCheckService {
     }
 
     try {
-      final response = await _client.rpc('check_app_version', params: {
-        'p_app_name': appName,
-        'p_version': _appVersion,
-        'p_build_number': _buildNumber,
-        'p_platform': _currentPlatform,
-      });
+      // Read from app_versions table (simple, no RPC needed)
+      final row = await _client
+          .from('app_versions')
+          .select()
+          .eq('id', appName)
+          .maybeSingle();
 
-      final result = VersionCheckResult.fromJson(response as Map<String, dynamic>);
+      if (row == null) {
+        return VersionCheckResult(allowed: true, updateRequired: 'none');
+      }
+
+      final latestBuild = row['latest_build'] as int? ?? 0;
+      final minBuild = row['min_build'] as int? ?? 0;
+      final currentBuild = _buildNumber ?? 0;
+
+      String updateRequired = 'none';
+      bool allowed = true;
+
+      if (currentBuild < minBuild) {
+        // Below minimum - force update
+        updateRequired = 'hard';
+        allowed = false;
+      } else if (currentBuild < latestBuild) {
+        // Behind latest - soft update
+        updateRequired = 'soft';
+      }
+
+      final result = VersionCheckResult(
+        allowed: allowed,
+        updateRequired: updateRequired,
+        messageEn: row['message_en'] as String?,
+        messageEs: row['message_es'] as String?,
+        storeUrl: row['store_url'] as String?,
+      );
+
       _cachedResult = result;
       _lastCheck = DateTime.now();
 
       debugPrint(
-          '📱 VersionCheck: allowed=${result.allowed}, update=${result.updateRequired}');
+          'VersionCheck: build=$currentBuild latest=$latestBuild min=$minBuild -> $updateRequired');
 
       return result;
     } catch (e) {
-      debugPrint('⚠️ VersionCheck error: $e');
+      debugPrint('VersionCheck error: $e');
       // Fail open - allow app to continue if check fails
       return VersionCheckResult(
         allowed: true,

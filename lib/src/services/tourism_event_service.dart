@@ -2495,4 +2495,140 @@ class TourismEventService {
 
     return channel;
   }
+
+  // ===========================================================================
+  // TRIP WIZARD (Rider custom trip requests)
+  // ===========================================================================
+
+  /// Get open trip requests visible to drivers.
+  Future<List<Map<String, dynamic>>> getOpenTripRequests(String driverId) async {
+    try {
+      // Get driver's country_code
+      final driver = await _client
+          .from('drivers')
+          .select('country_code')
+          .eq('id', driverId)
+          .maybeSingle();
+      final countryCode = driver?['country_code'] ?? 'MX';
+
+      final result = await _client
+          .from('trip_requests')
+          .select('*, rider:profiles!rider_id(full_name, avatar_url)')
+          .eq('status', 'open')
+          .eq('country_code', countryCode)
+          .order('created_at', ascending: false)
+          .limit(50);
+
+      // Filter out requests this driver already bid on
+      final myOffers = await _client
+          .from('trip_offers')
+          .select('trip_request_id')
+          .eq('driver_id', driverId);
+      final bidRequestIds = (myOffers as List)
+          .map((o) => o['trip_request_id'] as String)
+          .toSet();
+
+      return (result as List)
+          .where((r) => !bidRequestIds.contains(r['id']))
+          .map((r) => Map<String, dynamic>.from(r))
+          .toList();
+    } catch (e) {
+      debugPrint('[TRIP_WIZARD] Error loading open trip requests: $e');
+      return [];
+    }
+  }
+
+  /// Submit a trip offer from a driver.
+  Future<bool> submitTripOffer({
+    required String tripRequestId,
+    required String driverId,
+    required double proposedPrice,
+    String? message,
+  }) async {
+    try {
+      // Get driver info for snapshot
+      final driver = await _client
+          .from('drivers')
+          .select('name, vehicle_type, vehicle_make, vehicle_model, vehicle_plate, rating, total_rides, profile_image_url')
+          .eq('id', driverId)
+          .single();
+
+      final vehicleDesc = [
+        driver['vehicle_make'],
+        driver['vehicle_model'],
+      ].where((s) => s != null && s.toString().isNotEmpty).join(' ');
+
+      await _client.from('trip_offers').insert({
+        'trip_request_id': tripRequestId,
+        'driver_id': driverId,
+        'proposed_price': proposedPrice,
+        'status': 'pending',
+        'driver_name': driver['name'],
+        'driver_vehicle_type': driver['vehicle_type'],
+        'driver_vehicle_desc': vehicleDesc.isNotEmpty ? vehicleDesc : null,
+        'driver_plate': driver['vehicle_plate'],
+        'driver_rating': (driver['rating'] as num?)?.toDouble(),
+        'driver_total_trips': driver['total_rides'] ?? 0,
+        'driver_photo_url': driver['profile_image_url'],
+        'driver_message': message,
+        'platform_fee_percent': 20.00,
+      });
+
+      // Notify rider via edge function
+      try {
+        await _client.functions.invoke('trip-notify', body: {
+          'event_type': 'new_offer',
+          'trip_request_id': tripRequestId,
+        });
+      } catch (_) {}
+
+      return true;
+    } catch (e) {
+      debugPrint('[TRIP_WIZARD] Error submitting trip offer: $e');
+      return false;
+    }
+  }
+
+  /// Get driver's own trip offers.
+  Future<List<Map<String, dynamic>>> getDriverTripOffers(String driverId) async {
+    try {
+      final result = await _client
+          .from('trip_offers')
+          .select('*, trip_request:trip_requests!trip_request_id(origin_name, destination_name, trip_date, pickup_time, trip_type, status, passenger_count)')
+          .eq('driver_id', driverId)
+          .order('created_at', ascending: false)
+          .limit(50);
+
+      return (result as List)
+          .map((r) => Map<String, dynamic>.from(r))
+          .toList();
+    } catch (e) {
+      debugPrint('[TRIP_WIZARD] Error loading driver trip offers: $e');
+      return [];
+    }
+  }
+
+  /// Subscribe to realtime trip offer updates for a driver.
+  RealtimeChannel subscribeToTripOffers({
+    required String driverId,
+    required VoidCallback onUpdate,
+  }) {
+    final channel = _client.channel('trip_offers_driver_$driverId');
+
+    channel.onPostgresChanges(
+      event: PostgresChangeEvent.all,
+      schema: 'public',
+      table: 'trip_offers',
+      filter: PostgresChangeFilter(
+        type: PostgresChangeFilterType.eq,
+        column: 'driver_id',
+        value: driverId,
+      ),
+      callback: (payload) {
+        onUpdate();
+      },
+    ).subscribe();
+
+    return channel;
+  }
 }

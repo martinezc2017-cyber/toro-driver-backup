@@ -353,7 +353,8 @@ class OrganizerService {
           .from('bus_vehicles')
           .select(
               '*, drivers!bus_vehicles_owner_id_fkey(id, user_id, name, phone, current_lat, current_lng)')
-          .eq('is_active', true);
+          .eq('is_active', true)
+          .eq('available_for_tourism', true);
 
       if (state != null) {
         query = query.eq('state', state);

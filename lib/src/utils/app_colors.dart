@@ -92,6 +92,12 @@ class AppColors {
   // Neon Cyan (avatar glow, community card border)
   static const Color neonCyan = Color(0xFF00FFFF);
 
+  // BLACK ROSE Premium tier
+  static const Color blackRose = Color(0xFFD4A574);       // Rose gold principal
+  static const Color blackRoseDark = Color(0xFF8B6914);   // Acento oscuro
+  static const Color blackRoseLight = Color(0xFFF5D5A0);  // Texto claro
+  static const Color blackRoseBg = Color(0xFF1A1018);     // Fondo card
+
   // Social brands
   static const Color facebook = Color(0xFF1877F2);
 
@@ -222,6 +228,18 @@ class AppColors {
     colors: [Color(0xFFFFD700), Color(0xFFFFA500), Color(0xFFFFD700)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
+  );
+
+  // BLACK ROSE gradient
+  static const LinearGradient blackRoseGradient = LinearGradient(
+    colors: [Color(0xFF8B6914), Color(0xFFD4A574), Color(0xFF8B6914)],
+  );
+
+  // BLACK ROSE background gradient (header)
+  static const LinearGradient blackRoseBgGradient = LinearGradient(
+    colors: [Color(0xFF1A1018), Color(0xFF0D0A0E)],
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
   );
 
   // Shimmer gradient

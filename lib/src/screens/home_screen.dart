@@ -1502,11 +1502,8 @@ class _HomeScreenState extends State<HomeScreen>
     final docHash = sha256.convert(utf8.encode(disclaimerText)).toString();
     final now = DateTime.now().toIso8601String();
 
-    // Save flat flag on drivers table
-    await SupabaseConfig.client.from('drivers').update({
-      'trial_mode_accepted': true,
-      'trial_accepted_at': now,
-    }).eq('id', driver.id);
+    // trial_mode_accepted column doesn't exist in drivers table
+    // Trial consent is tracked in legal_consents table below
 
     // Save detailed audit in legal_consents with EVERYTHING
     await SupabaseConfig.client.from('legal_consents').insert({
@@ -6361,7 +6358,7 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
           busData['image_urls'] = photoUrls;
           busData['is_active'] = true;
           busData['country_code'] = 'MX';
-          busData['available_for_tourism'] = true;
+          busData['available_for_tourism'] = false;
           // Contract signing info
           busData['owner_signed_at'] = DateTime.now().toIso8601String();
           busData['owner_sign_lat'] = signPos?.latitude;
@@ -8739,6 +8736,11 @@ class _MyVehiclesSheetState extends State<_MyVehiclesSheet> {
                       ),
                     ],
                   ),
+                  // Privacy toggle (bus vehicles only)
+                  if (!isRental) ...[
+                    const SizedBox(height: 6),
+                    _buildPrivacyToggle(vehicle),
+                  ],
                 ],
               ),
             ),
@@ -8777,6 +8779,85 @@ class _MyVehiclesSheetState extends State<_MyVehiclesSheet> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildPrivacyToggle(Map<String, dynamic> vehicle) {
+    final isPublic = vehicle['available_for_tourism'] == true;
+    final vehicleId = vehicle['id']?.toString() ?? '';
+
+    return Row(
+      children: [
+        Icon(
+          isPublic ? Icons.public : Icons.lock_outlined,
+          size: 13,
+          color: isPublic ? AppColors.warning : AppColors.textTertiary,
+        ),
+        const SizedBox(width: 4),
+        Text(
+          isPublic ? 'Publico' : 'Privado',
+          style: TextStyle(
+            color: isPublic ? AppColors.warning : AppColors.textTertiary,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(width: 4),
+        GestureDetector(
+          onTap: () {
+            showDialog(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                backgroundColor: AppColors.card,
+                title: Row(
+                  children: [
+                    Icon(Icons.info_outline, color: AppColors.primary, size: 20),
+                    const SizedBox(width: 8),
+                    const Text('Visibilidad', style: TextStyle(fontSize: 16)),
+                  ],
+                ),
+                content: const Text(
+                  'Publico: Organizadores de eventos pueden ver tu vehiculo e invitarte a eventos de turismo.\n\n'
+                  'Privado: Solo tu puedes ver este vehiculo. Nadie mas lo vera en la lista de vehiculos disponibles.',
+                  style: TextStyle(fontSize: 13),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('Entendido'),
+                  ),
+                ],
+              ),
+            );
+          },
+          child: Icon(Icons.help_outline, size: 14, color: AppColors.textTertiary),
+        ),
+        const Spacer(),
+        SizedBox(
+          height: 24,
+          child: Switch(
+            value: isPublic,
+            onChanged: (val) async {
+              HapticService.lightImpact();
+              try {
+                await SupabaseConfig.client
+                    .from('bus_vehicles')
+                    .update({'available_for_tourism': val})
+                    .eq('id', vehicleId);
+                _loadVehicles();
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
+                  );
+                }
+              }
+            },
+            activeColor: AppColors.warning,
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+        ),
+      ],
     );
   }
 }

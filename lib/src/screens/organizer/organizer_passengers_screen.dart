@@ -7,6 +7,7 @@ import '../../providers/auth_provider.dart';
 import '../../services/tourism_invitation_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/haptic_service.dart';
+import 'organizer_invite_screen.dart';
 
 /// Passenger List Screen for event organizers.
 ///
@@ -371,6 +372,19 @@ class _OrganizerPassengersScreenState extends State<OrganizerPassengersScreen> {
       ),
       centerTitle: true,
       actions: [
+        IconButton(
+          icon: const Icon(Icons.person_add, color: AppColors.primary),
+          tooltip: 'Invitar pasajeros',
+          onPressed: () {
+            HapticService.lightImpact();
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => OrganizerInviteScreen(eventId: widget.eventId),
+              ),
+            ).then((_) => _loadData());
+          },
+        ),
         IconButton(
           icon: const Icon(Icons.refresh, color: AppColors.textSecondary),
           onPressed: () {
@@ -745,7 +759,12 @@ class _OrganizerPassengersScreenState extends State<OrganizerPassengersScreen> {
         passenger['invited_email'] as String?;
     final phone = passenger['invitee_phone'] ??
         passenger['invited_phone'] as String?;
-    final status = passenger['status'] as String? ?? 'pending';
+    // Use current_check_in_status if passenger already checked in but status wasn't synced
+    var status = passenger['status'] as String? ?? 'pending';
+    final checkInStatus = passenger['current_check_in_status'] as String?;
+    if (status == 'accepted' && (checkInStatus == 'boarded' || checkInStatus == 'arrived')) {
+      status = 'checked_in';
+    }
     final lastCheckInAt = passenger['last_check_in_at'] as String?;
     final seatNumber = passenger['seat_number'] as String?;
     final emergencyContact = passenger['emergency_contact'] as String?;
@@ -1099,7 +1118,11 @@ class _OrganizerPassengersScreenState extends State<OrganizerPassengersScreen> {
         passenger['invited_email'] as String?;
     final phone = passenger['invitee_phone'] ??
         passenger['invited_phone'] as String?;
-    final status = passenger['status'] as String? ?? 'pending';
+    var status = passenger['status'] as String? ?? 'pending';
+    final checkInStatus2 = passenger['current_check_in_status'] as String?;
+    if (status == 'accepted' && (checkInStatus2 == 'boarded' || checkInStatus2 == 'arrived')) {
+      status = 'checked_in';
+    }
     final createdAt = passenger['created_at'] as String?;
     final acceptedAt = passenger['accepted_at'] as String?;
     final lastCheckInAt = passenger['last_check_in_at'] as String?;

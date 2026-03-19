@@ -57,6 +57,12 @@
 		<string>TORO Driver needs your location in the background to track rides and provide navigation.</string>
 		<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 		<string>TORO Driver needs your location to provide turn-by-turn navigation and track your ride progress.</string>
+		<key>NSCameraUsageDescription</key>
+		<string>TORO Driver needs camera access to scan documents, take vehicle photos, and verify identity.</string>
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>TORO Driver needs photo library access to upload vehicle and document photos.</string>
+		<key>NSMicrophoneUsageDescription</key>
+		<string>TORO Driver needs microphone access for in-app calls with riders.</string>
 		<!-- Deep Links for OAuth callback -->
 		<key>CFBundleURLTypes</key>
 		<array>

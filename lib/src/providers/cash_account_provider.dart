@@ -116,7 +116,7 @@ class CashAccountProvider with ChangeNotifier {
     String? referenceNumber,
     String? proofUrl,
     String? statementId,
-    String countryCode = 'MX',
+    String countryCode = 'US',
   }) async {
     if (_driverId == null) return false;
 

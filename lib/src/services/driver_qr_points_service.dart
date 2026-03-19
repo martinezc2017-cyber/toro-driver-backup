@@ -8,13 +8,11 @@ import '../core/logging/app_logger.dart';
 /// DRIVER QR POINTS SERVICE - COMMISSION REDUCTION MODEL (v2)
 /// ============================================================================
 /// QR tiers REDUCE platform commission, NOT add bonus %.
-///   Tier 0 (0 QRs):    Toro 20%, Driver 64%
-///   Tier 1 (1-6 QRs):  Toro 19%, Driver 65%
-///   Tier 2 (7-12 QRs): Toro 18%, Driver 66%
-///   Tier 3 (13-18 QRs):Toro 17%, Driver 67%
-///   Tier 4 (19-24 QRs):Toro 16%, Driver 68%
-///   Tier 5 (25-30 QRs):Toro 15%, Driver 69%
-///   IVA (16%) stays fixed.
+/// Base percentages loaded from pricing_config per state:
+///   US/AZ: Platform 20.4%, Driver 57%
+///   MX/CDMX: Platform 25%, Driver 75%
+/// Each tier reduces platform by 1% and increases driver by 1%.
+///   Insurance (17%) + Tax (5.6%) stay fixed.
 /// ============================================================================
 
 /// Driver QR Points Level data
@@ -150,7 +148,10 @@ class DriverQRPointsService extends ChangeNotifier {
 
   // Tier config (loaded from pricing_config)
   int _qrMaxLevel = 30;
-  static const double _basePlatformPercent = 20.0;
+  // Platform % loaded from pricing_config per state (US/AZ=20.4%, MX/CDMX=25%)
+  double _basePlatformPercent = 20.4;
+  // Driver base % loaded from pricing_config per state (US/AZ=57%, MX/CDMX=75%)
+  double _baseDriverPercent = 57.0;
   int _qrTier1Max = 6;
   double _qrTier1Reduction = 1.0; // 20% → 19%
   int _qrTier2Max = 12;
@@ -207,14 +208,14 @@ class DriverQRPointsService extends ChangeNotifier {
   }
 
   /// Get effective platform commission % after QR reduction
-  /// Tier 0: 20% | Tier 5: 15%
+  /// Platform base comes from pricing_config (US/AZ=20.4%, MX/CDMX=25%)
   double get effectivePlatformPercent =>
       _basePlatformPercent - currentCommissionReduction;
 
   /// Get effective driver % after QR reduction
-  /// Tier 0: 64% | Tier 5: 69% (base 64% + 5% from reduced commission)
+  /// Driver base comes from pricing_config (US/AZ=57%, MX/CDMX=75%)
   double get effectiveDriverPercent =>
-      64.0 + currentCommissionReduction;
+      _baseDriverPercent + currentCommissionReduction;
 
   /// Get QRs needed for next tier (0 if already max)
   int get qrsForNextTier {
@@ -267,30 +268,35 @@ class DriverQRPointsService extends ChangeNotifier {
           .eq('id', _driverId!)
           .maybeSingle();
 
-      final countryCode = driverData?['country_code'] ?? 'MX';
+      final countryCode = driverData?['country_code'] ?? 'US';
       final stateCode = driverData?['state_code'];
       _stateCode = stateCode ?? '';
 
       if (stateCode != null) {
         final config = await _client
             .from('pricing_config')
-            .select('qr_max_level, qr_tier_1_max, qr_tier_1_bonus, qr_tier_2_max, qr_tier_2_bonus, qr_tier_3_max, qr_tier_3_bonus, qr_tier_4_max, qr_tier_4_bonus, qr_tier_5_bonus')
+            .select('qr_max_level, qr_point_value, platform_commission, driver_commission')
             .eq('state_code', stateCode)
             .eq('country_code', countryCode)
-            .eq('booking_type', 'ride')
+            .eq('is_active', true)
             .maybeSingle();
 
         if (config != null) {
           _qrMaxLevel = (config['qr_max_level'] as num?)?.toInt() ?? 30;
-          _qrTier1Max = (config['qr_tier_1_max'] as num?)?.toInt() ?? 6;
-          _qrTier1Reduction = (config['qr_tier_1_bonus'] as num?)?.toDouble() ?? 1.0;
-          _qrTier2Max = (config['qr_tier_2_max'] as num?)?.toInt() ?? 12;
-          _qrTier2Reduction = (config['qr_tier_2_bonus'] as num?)?.toDouble() ?? 2.0;
-          _qrTier3Max = (config['qr_tier_3_max'] as num?)?.toInt() ?? 18;
-          _qrTier3Reduction = (config['qr_tier_3_bonus'] as num?)?.toDouble() ?? 3.0;
-          _qrTier4Max = (config['qr_tier_4_max'] as num?)?.toInt() ?? 24;
-          _qrTier4Reduction = (config['qr_tier_4_bonus'] as num?)?.toDouble() ?? 4.0;
-          _qrTier5Reduction = (config['qr_tier_5_bonus'] as num?)?.toDouble() ?? 5.0;
+          // Load actual platform/driver percentages from pricing_config
+          _basePlatformPercent = (config['platform_commission'] as num?)?.toDouble() ?? 20.4;
+          _baseDriverPercent = (config['driver_commission'] as num?)?.toDouble() ?? 57.0;
+          // QR tier breakpoints and reductions use hardcoded defaults
+          // since pricing_config doesn't have per-tier columns
+          _qrTier1Max = 6;
+          _qrTier1Reduction = 1.0;
+          _qrTier2Max = 12;
+          _qrTier2Reduction = 2.0;
+          _qrTier3Max = 18;
+          _qrTier3Reduction = 3.0;
+          _qrTier4Max = 24;
+          _qrTier4Reduction = 4.0;
+          _qrTier5Reduction = 5.0;
         }
       }
 

@@ -168,7 +168,7 @@ class CashAccountService {
     String? referenceNumber,
     String? proofUrl,
     String? statementId,
-    String countryCode = 'MX',
+    String countryCode = 'US',
   }) async {
     try {
       final response = await _client.from('driver_deposits').insert({

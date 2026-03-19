@@ -9,6 +9,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:app_links/app_links.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../config/supabase_config.dart';
 import '../models/driver_model.dart';
 import '../core/logging/app_logger.dart';
@@ -61,8 +62,41 @@ class AuthService {
     final body = jsonDecode(resp.body) as Map<String, dynamic>;
 
     if (resp.statusCode == 409) {
-      // Account already exists
-      throw AuthException(body['message'] as String? ?? 'Account already exists');
+      // Account already exists (e.g. rider/organizer registered with same email).
+      // Try auto sign-in so the user doesn't have to switch modes manually.
+      try {
+        final signInResp = await _client.auth.signInWithPassword(
+          email: email,
+          password: password,
+        );
+        if (signInResp.session != null) {
+          debugPrint('AUTH -> 409 cross-app auto sign-in success');
+          final user = _client.auth.currentUser;
+          if (user != null) {
+            try {
+              await _createDriverProfile(
+                userId: user.id,
+                email: email,
+                firstName: firstName,
+                lastName: lastName,
+                phone: phone,
+                role: role,
+              );
+            } catch (e) {
+              debugPrint('AUTH -> _createDriverProfile cross-app (non-fatal): $e');
+            }
+          }
+          return AuthResponse(
+            user: signInResp.user,
+            session: signInResp.session,
+          );
+        }
+      } on AuthException {
+        // Password doesn't match the existing account
+        throw AuthException(
+          'Ya tienes una cuenta TORO. Inicia sesion con tu contraseña anterior o usa "Olvidé mi contraseña".',
+        );
+      }
     }
 
     if (resp.statusCode != 200 || body.containsKey('error') && body['session'] == null) {
@@ -569,7 +603,7 @@ class AuthService {
       'first_name': firstName.isNotEmpty ? firstName : null,
       'last_name': lastName.isNotEmpty ? lastName : null,
       'phone': phone,
-      'country_code': 'MX',
+      'country_code': 'US',
       'rating': 0.0,
       'total_rides': 0,
       'total_earnings': 0.0,
@@ -632,7 +666,7 @@ class AuthService {
     final fullName = '$firstName $lastName'.trim();
 
     // Detect country from GPS - request permission if needed
-    String countryCode = 'MX'; // Default to Mexico
+    String countryCode = 'US'; // Default to US (safer for pricing)
     double? signupLat;
     double? signupLng;
     try {
@@ -655,7 +689,7 @@ class AuthService {
           countryCode = 'US';
         }
       }
-      // No GPS permission = default MX
+      // No GPS permission = default US
     } catch (_) {}
 
     // Upsert: DB trigger may have already created the row on auth.users INSERT.
@@ -722,11 +756,23 @@ class AuthService {
     }
   }
 
+  /// Get current app version string
+  static Future<String> _getAppVersion() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      return info.version;
+    } catch (_) {
+      return 'unknown';
+    }
+  }
+
   /// Backfill GPS location for existing users who have null signup_lat
   Future<void> backfillLocationIfMissing() async {
     try {
       final userId = currentUserId;
       if (userId == null) return;
+
+      final appVersion = await _getAppVersion();
 
       // Check if user already has GPS data
       final profile = await _client
@@ -736,10 +782,15 @@ class AuthService {
           .single();
 
       if (profile['signup_lat'] != null) {
-        // Already has location, just update driver_app tracking
+        // Already has location, just update driver_app tracking + version
         await _client.from('profiles').update({
           'driver_app_installed': true,
           'driver_app_last_open': DateTime.now().toIso8601String(),
+          'driver_app_version': appVersion,
+        }).eq('id', userId);
+        // Also update drivers.app_version
+        await _client.from('drivers').update({
+          'app_version': appVersion,
         }).eq('id', userId);
         return;
       }
@@ -755,7 +806,7 @@ class AuthService {
           desiredAccuracy: LocationAccuracy.low,
         ).timeout(const Duration(seconds: 5));
 
-        String countryCode = 'MX';
+        String countryCode = 'US';
         if (position.latitude >= 14 && position.latitude <= 33 &&
             position.longitude >= -118 && position.longitude <= -86) {
           countryCode = 'MX';
@@ -769,19 +820,25 @@ class AuthService {
           'country_code': countryCode,
           'driver_app_installed': true,
           'driver_app_last_open': DateTime.now().toIso8601String(),
+          'driver_app_version': appVersion,
         }).eq('id', userId);
 
-        // Also update drivers table country_code
+        // Also update drivers table country_code + version
         await _client.from('drivers').update({
           'country_code': countryCode,
+          'app_version': appVersion,
         }).eq('id', userId);
 
-        AppLogger.log('AUTH_SERVICE -> Backfilled GPS: ${position.latitude}, ${position.longitude} -> $countryCode');
+        AppLogger.log('AUTH_SERVICE -> Backfilled GPS: ${position.latitude}, ${position.longitude} -> $countryCode (v$appVersion)');
       } else {
-        // No GPS, at least mark driver app installed
+        // No GPS, at least mark driver app installed + version
         await _client.from('profiles').update({
           'driver_app_installed': true,
           'driver_app_last_open': DateTime.now().toIso8601String(),
+          'driver_app_version': appVersion,
+        }).eq('id', userId);
+        await _client.from('drivers').update({
+          'app_version': appVersion,
         }).eq('id', userId);
       }
     } catch (e) {

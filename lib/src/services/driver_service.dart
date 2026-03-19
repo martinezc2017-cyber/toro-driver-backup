@@ -380,7 +380,7 @@ class DriverService {
   Future<List<Map<String, dynamic>>> getDriverRanking({int limit = 100}) async {
     final response = await _client
         .from(SupabaseConfig.driversTable)
-        .select('id, first_name, last_name, rating, total_rides, total_earnings, profile_image_url')
+        .select('id, name, rating, total_rides, total_earnings, profile_image_url')
         .eq('is_active', true)
         .order('total_earnings', ascending: false)
         .limit(limit);
@@ -517,7 +517,6 @@ class DriverService {
           'tax_city': city,
           'tax_state': state,
           'tax_zip': zipCode,
-          'country_code': 'MX',
           'state_code': state.toUpperCase(),
           'w9_signed': certificationSigned,
           'w9_signed_at': DateTime.now().toIso8601String(),
@@ -581,9 +580,9 @@ class DriverService {
           .from('driver_earnings')
           .select('*')
           .eq('driver_id', driverId)
-          .gte('earned_at', weekStart.toIso8601String())
-          .lt('earned_at', weekEnd.add(const Duration(days: 1)).toIso8601String())
-          .order('earned_at', ascending: false);
+          .gte('created_at', weekStart.toIso8601String())
+          .lt('created_at', weekEnd.add(const Duration(days: 1)).toIso8601String())
+          .order('created_at', ascending: false);
 
       final data = List<Map<String, dynamic>>.from(earnings as List);
 
@@ -597,23 +596,34 @@ class DriverService {
       final Map<String, Map<String, dynamic>> dailyMap = {};
 
       for (var e in data) {
+        // driver_earnings table actual columns:
+        // id, driver_id, ride_id, delivery_id, booking_id, carpool_id, type, earning_type, status,
+        // amount, base_fare, distance_earnings, time_earnings, surge_amount, surge_multiplier,
+        // tip_amount, bonus_amount, flat_fees, airport_fee, congestion_fee, tolls,
+        // gross_fare, net_fare, platform_fee, platform_fee_amount, platform_fee_percent,
+        // insurance_fee_amount, insurance_fee_percent, tax_fee_amount, tax_fee_percent,
+        // tnc_tax, iva_retention, isr_retention, tax_breakdown, long_trip_bonus,
+        // distance_miles, duration_minutes, per_mile_rate, per_minute_rate,
+        // qr_level, qr_tier, state_code, date, created_at, completed_at,
+        // payment_intent_id, transaction_id, description, metadata
+        final meta = e['metadata'] as Map<String, dynamic>? ?? {};
         baseFares += (e['base_fare'] as num?)?.toDouble() ?? 0;
         distanceEarnings += (e['distance_earnings'] as num?)?.toDouble() ?? 0;
         timeEarnings += (e['time_earnings'] as num?)?.toDouble() ?? 0;
         surgeEarnings += (e['surge_amount'] as num?)?.toDouble() ?? 0;
         grossFares += (e['gross_fare'] as num?)?.toDouble() ?? 0;
-        platformFee += (e['platform_fee_amount'] as num?)?.toDouble() ?? 0;
+        platformFee += (e['platform_fee'] as num?)?.toDouble() ?? (e['platform_fee_amount'] as num?)?.toDouble() ?? 0;
         netFares += (e['net_fare'] as num?)?.toDouble() ?? 0;
         tips += (e['tip_amount'] as num?)?.toDouble() ?? 0;
-        questBonuses += (e['quest_bonus'] as num?)?.toDouble() ?? 0;
-        streakBonuses += (e['streak_bonus'] as num?)?.toDouble() ?? 0;
-        referralBonuses += (e['referral_bonus'] as num?)?.toDouble() ?? 0;
-        totalEarnings += (e['total_earnings'] as num?)?.toDouble() ?? 0;
+        questBonuses += (meta['quest_bonus'] as num?)?.toDouble() ?? 0;
+        streakBonuses += (meta['streak_bonus'] as num?)?.toDouble() ?? 0;
+        referralBonuses += (meta['referral_bonus'] as num?)?.toDouble() ?? 0;
+        totalEarnings += (e['amount'] as num?)?.toDouble() ?? (e['net_fare'] as num?)?.toDouble() ?? 0;
         totalMiles += (e['distance_miles'] as num?)?.toDouble() ?? 0;
         totalTrips++;
 
-        // Group by day
-        final earnedAt = DateTime.tryParse(e['earned_at'] ?? '');
+        // Group by day (use 'date' column, fallback to 'created_at')
+        final earnedAt = DateTime.tryParse(e['date'] ?? e['created_at'] ?? '');
         if (earnedAt != null) {
           final dayKey = earnedAt.toIso8601String().split('T')[0];
           final dayName = _getDayName(earnedAt.weekday);
@@ -628,7 +638,7 @@ class DriverService {
           }
           dailyMap[dayKey]!['trips'] = (dailyMap[dayKey]!['trips'] as int) + 1;
           dailyMap[dayKey]!['earnings'] = (dailyMap[dayKey]!['earnings'] as double) +
-              ((e['total_earnings'] as num?)?.toDouble() ?? 0);
+              ((e['amount'] as num?)?.toDouble() ?? (e['net_fare'] as num?)?.toDouble() ?? 0);
         }
       }
 
@@ -708,7 +718,7 @@ class DriverService {
       }
 
       final response = await query
-          .order('earned_at', ascending: false)
+          .order('created_at', ascending: false)
           .limit(limit);
 
       return List<Map<String, dynamic>>.from(response as List);

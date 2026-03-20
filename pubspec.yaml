@@ -1,7 +1,7 @@
 name: toro_driver
 description: "Toro Driver - Rideshare Driver App"
 publish_to: 'none'
-version: 1.2.11+4021
+version: 1.2.23+4034
 
 environment:
   sdk: ^3.10.4
@@ -37,7 +37,7 @@ dependencies:
   http: ^1.1.0
 
   # Payments
-  flutter_stripe: ^10.1.1
+  flutter_stripe: ^12.3.0
 
   # Push Notifications
   firebase_core: ^3.8.1
@@ -65,11 +65,10 @@ dependencies:
   image_picker: ^1.0.7
 
   # OCR - Text Recognition (ML Kit - offline, free)
-  google_mlkit_text_recognition: ^0.13.0
+  google_mlkit_text_recognition: ^0.15.0
 
   # App Info & Updates
   package_info_plus: ^8.0.0
-  open_filex: ^4.4.0
 
   # Utilities
   intl: ^0.20.2

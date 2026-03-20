@@ -1,0 +1,38 @@
+workflows:
+  ios-release:
+    name: iOS Release
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.tororide.driver
+      vars:
+        BUNDLE_ID: com.tororide.driver
+        APP_STORE_CONNECT_ISSUER_ID: 2748cbf7-8aa5-4718-ba4a-f6ec3d510573
+        APP_STORE_CONNECT_KEY_IDENTIFIER: 4W2485KNM2
+      flutter: stable
+      xcode: latest
+    scripts:
+      - name: Set up code signing settings on Xcode project
+        script: |
+          xcode-project use-profiles
+      - name: Flutter clean and get dependencies
+        script: |
+          flutter clean
+          flutter pub get
+      - name: Install CocoaPods dependencies
+        script: |
+          cd ios && pod install
+      - name: Build iOS IPA
+        script: |
+          flutter build ipa --release --export-options-plist=/Users/builder/export_options.plist
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+      - flutter_drive.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: false
+        submit_to_app_store: false

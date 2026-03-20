@@ -315,7 +315,9 @@ enum LegalDocumentType {
   locationConsent('location_consent', 'Location Consent', 'Consentimiento de Ubicacion'),
   arbitrationAgreement('arbitration_agreement', 'Arbitration Agreement', 'Acuerdo de Arbitraje'),
   driverAgreement('driver_agreement', 'Driver Agreement', 'Acuerdo del Conductor'),
-  backgroundCheck('background_check', 'Background Check Consent', 'Consentimiento de Verificacion');
+  backgroundCheck('background_check', 'Background Check Consent', 'Consentimiento de Verificacion'),
+  safetyPolicy('safety_policy', 'Safety Policy', 'Politica de Seguridad'),
+  mexicoAddendum('mexico_addendum', 'Mexico Operations Addendum', 'Adenda de Operaciones en Mexico');
 
   final String key;
   final String displayNameEn;

@@ -513,16 +513,18 @@ class RideService {
       'platform_fee': platformAmount,
       'tax_amount': taxAmount,
       'payment_status': 'paid',  // ALWAYS mark as paid when completing
-      // === COMPLETE FINANCIAL AUDIT FIELDS ===
-      'insurance_amount': insuranceAmount,
-      'base_driver_earnings': basedriverEarnings,
-      'effective_platform_percent': platformFeePercent,
-      'variable_platform_active': statePricing.variablePlatformEnabled,
-      'actual_distance_miles': distanceMiles,
-      'actual_duration_minutes': durationMinutes,
-      'driver_percent_applied': driverCommissionPercent,
-      'insurance_percent_applied': insurancePercent,
-      'tax_percent_applied': taxPercent,
+      'insurance_fee': insuranceAmount,
+      'distance_miles': distanceMiles,
+      // Store financial audit percentages in tax_breakdown JSONB column
+      'tax_breakdown': {
+        'base_driver_earnings': basedriverEarnings,
+        'effective_platform_percent': platformFeePercent,
+        'variable_platform_active': statePricing.variablePlatformEnabled,
+        'actual_duration_minutes': durationMinutes,
+        'driver_percent_applied': driverCommissionPercent,
+        'insurance_percent_applied': insurancePercent,
+        'tax_percent_applied': taxPercent,
+      },
     };
 
     // For cash payments, also set cash confirmation fields
@@ -1133,19 +1135,19 @@ class RideService {
     // Create a cash_payment transaction record
     try {
       await _client.from('transactions').insert({
-        'booking_id': rideId,
+        'delivery_id': rideId,
         'driver_id': driverId,
         'user_id': ride.passengerId,
         'type': 'cash_payment',
         'amount': fare,
         'driver_amount': driverEarnings,
-        'platform_amount': platformAmount,
+        'platform_fee_amount': platformAmount,
         'status': 'success',
         'payment_method': 'cash',
         'state_code': resolvedStateCode,
         'description': 'Cash payment confirmed by driver',
         'created_at': now.toIso8601String(),
-        'processed_at': now.toIso8601String(),
+        'completed_at': now.toIso8601String(),
       });
     } catch (e) {
       // Transaction creation is non-critical, don't fail the whole operation

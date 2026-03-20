@@ -15,7 +15,7 @@ import '../../utils/haptic_service.dart';
 
 /// PANTALLA DE HISTORIAL DE EVENTOS - ORGANIZER
 /// Muestra todos los eventos completados con tracking completo
-/// Privacidad: Solo datos necesarios, información sensible encriptada para TORO admin
+/// Conectado a arquitectura fiscal MX (IVA, CFDI)
 class OrganizerEventsHistoryTab extends StatefulWidget {
   const OrganizerEventsHistoryTab({super.key});
 
@@ -26,13 +26,19 @@ class OrganizerEventsHistoryTab extends StatefulWidget {
 class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
   bool _isLoading = true;
   String? _error;
-  List<Map<String, dynamic>> _events = [];
-  String _filterStatus = 'all'; // all, completed, in_progress, cancelled
+  List<Map<String, dynamic>> _allEvents = [];
+  List<Map<String, dynamic>> _filteredEvents = [];
+  String _filterStatus = 'all';
 
   @override
   void initState() {
     super.initState();
     _loadEvents();
+  }
+
+  List<Map<String, dynamic>> _applyFilter(List<Map<String, dynamic>> events) {
+    if (_filterStatus == 'all') return events;
+    return events.where((e) => e['status'] == _filterStatus).toList();
   }
 
   Future<void> _loadEvents() async {
@@ -48,12 +54,11 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
       if (userId == null) {
         setState(() {
           _isLoading = false;
-          _error = 'No se pudo obtener el perfil';
+          _error = 'event_history.error_profile'.tr();
         });
         return;
       }
 
-      // Obtener perfil de organizador (tabla correcta: organizers)
       final profile = await SupabaseConfig.client
           .from('organizers')
           .select('id')
@@ -62,7 +67,6 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
 
       final organizerId = profile?['id'] ?? userId;
 
-      // Consulta simple - solo datos de tourism_events
       final response = await SupabaseConfig.client
           .from('tourism_events')
           .select('*')
@@ -71,7 +75,8 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
 
       if (mounted) {
         setState(() {
-          _events = List<Map<String, dynamic>>.from(response);
+          _allEvents = List<Map<String, dynamic>>.from(response);
+          _filteredEvents = _applyFilter(_allEvents);
           _isLoading = false;
         });
       }
@@ -79,35 +84,59 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _error = 'Error al cargar eventos: $e';
+          _error = '${'event_history.error_loading'.tr()}: $e';
         });
       }
     }
   }
 
+  // Calculate financial breakdown for an event
+  Map<String, double> _calcFinancials(Map<String, dynamic> event) {
+    final pricePerKm = (event['price_per_km'] as num?)?.toDouble() ?? 0;
+    final distance = (event['total_distance_km'] as num?)?.toDouble() ?? 0;
+    final commissionRate = (event['toro_commission_rate'] as num?)?.toDouble() ?? 0.18;
+    final isMX = (event['country_code'] as String?) == 'MX';
+
+    final driverPayment = pricePerKm * distance;
+    final commission = driverPayment * commissionRate;
+    final iva = isMX ? commission * 0.16 : 0.0;
+    final total = driverPayment + commission + iva;
+
+    return {
+      'driverPayment': driverPayment,
+      'commissionRate': commissionRate,
+      'commission': commission,
+      'iva': iva,
+      'total': total,
+      'distance': distance,
+    };
+  }
+
+  String _formatCurrency(double amount, String? currency) {
+    final cur = currency ?? 'MXN';
+    return '\$${amount.toStringAsFixed(2)} $cur';
+  }
+
   Future<void> _downloadEventReport(Map<String, dynamic> event) async {
     HapticService.mediumImpact();
-    
+
     try {
-      // Generar reporte completo
       final report = _generateReport(event);
-      
-      // Guardar temporalmente
+
       final directory = await getTemporaryDirectory();
       final fileName = 'TORO_Evento_${event['event_name']}_${DateFormat('yyyyMMdd').format(DateTime.parse(event['event_date']))}.txt';
       final file = File('${directory.path}/$fileName');
       await file.writeAsString(report);
-      
-      // Compartir
+
       await Share.shareXFiles(
         [XFile(file.path)],
-        subject: 'Reporte Evento TORO - ${event['event_name']}',
+        subject: '${'event_history.report_title'.tr()} - ${event['event_name']}',
       );
-      
+
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al generar reporte: $e')),
+          SnackBar(content: Text('Error: $e')),
         );
       }
     }
@@ -116,79 +145,73 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
   String _generateReport(Map<String, dynamic> event) {
     final buffer = StringBuffer();
     final dateFormat = DateFormat('dd/MM/yyyy HH:mm');
-    
+    final fin = _calcFinancials(event);
+    final currency = event['currency'] as String? ?? 'MXN';
+    final isMX = (event['country_code'] as String?) == 'MX';
+    final commissionPct = ((fin['commissionRate']! * 100)).toStringAsFixed(0);
+
     buffer.writeln('=' * 60);
-    buffer.writeln('REPORTE DE EVENTO - TORO RIDESHARE');
+    buffer.writeln('event_history.report_title'.tr());
     buffer.writeln('=' * 60);
     buffer.writeln();
-    
-    // Información del Evento
-    buffer.writeln('INFORMACIÓN DEL EVENTO');
+
+    buffer.writeln('event_history.report_event_info'.tr());
     buffer.writeln('-' * 40);
-    buffer.writeln('Nombre: ${event['event_name']}');
-    buffer.writeln('Fecha: ${event['event_date']}');
-    buffer.writeln('Hora inicio: ${event['start_time']}');
-    buffer.writeln('Estado: ${event['status']}');
-    buffer.writeln('Distancia: ${event['total_distance_km']} km');
+    buffer.writeln('${'event_history.date'.tr()}: ${event['event_date']}');
+    buffer.writeln('${'event_history.time'.tr()}: ${event['start_time']}');
+    buffer.writeln('${'event_history.status'.tr()}: ${event['status']}');
+    buffer.writeln('${'event_history.distance'.tr()}: ${event['total_distance_km']} km');
     buffer.writeln();
-    
-    // Información del Vehículo
+
     if (event['vehicle_id'] != null) {
-      buffer.writeln('INFORMACIÓN DEL VEHÍCULO');
+      buffer.writeln('event_history.report_vehicle_info'.tr());
       buffer.writeln('-' * 40);
-      buffer.writeln('Vehículo ID: ${event['vehicle_id']}');
-      buffer.writeln('(Detalles completos en panel de administración)');
+      buffer.writeln('ID: ${event['vehicle_id']}');
       buffer.writeln();
     }
-    
-    // Información Financiera
-    buffer.writeln('INFORMACIÓN FINANCIERA');
+
+    buffer.writeln('event_history.report_financial'.tr());
     buffer.writeln('-' * 40);
-    final pricePerKm = (event['price_per_km'] as num?)?.toDouble() ?? 0;
-    final distance = (event['total_distance_km'] as num?)?.toDouble() ?? 0;
-    final totalDriver = pricePerKm * distance;
-    final toroCommission = totalDriver * 0.18;
-    final totalOrganizer = totalDriver + toroCommission;
-    
-    buffer.writeln('Precio por km: \$${pricePerKm.toStringAsFixed(2)}');
-    buffer.writeln('Distancia total: ${distance.toStringAsFixed(1)} km');
-    buffer.writeln('Pago al chofer: \$${totalDriver.toStringAsFixed(2)}');
-    buffer.writeln('Comisión TORO (18%): \$${toroCommission.toStringAsFixed(2)}');
-    buffer.writeln('TOTAL GASTADO: \$${totalOrganizer.toStringAsFixed(2)}');
+    buffer.writeln('${'event_history.driver_payment'.tr()} ${_formatCurrency(fin['driverPayment']!, currency)}');
+    buffer.writeln('${'event_history.toro_commission'.tr(namedArgs: {'rate': commissionPct})} ${_formatCurrency(fin['commission']!, currency)}');
+    if (isMX) {
+      buffer.writeln('${'event_history.iva_tax'.tr()} ${_formatCurrency(fin['iva']!, currency)}');
+    }
+    buffer.writeln('${'event_history.total'.tr()} ${_formatCurrency(fin['total']!, currency)}');
     buffer.writeln();
-    
-    // Itinerario
-    buffer.writeln('ITINERARIO');
+
+    buffer.writeln('event_history.report_itinerary'.tr());
     buffer.writeln('-' * 40);
     final itinerary = event['itinerary'] as List<dynamic>? ?? [];
     for (int i = 0; i < itinerary.length; i++) {
       final stop = itinerary[i] as Map<String, dynamic>;
       buffer.writeln('${i + 1}. ${stop['name']}');
-      buffer.writeln('   Dirección: ${stop['address'] ?? 'N/A'}');
-      buffer.writeln('   Hora estimada: ${stop['estimated_time'] ?? 'N/A'}');
+      if (stop['address'] != null) buffer.writeln('   ${stop['address']}');
+      if (stop['estimated_time'] != null) buffer.writeln('   ${stop['estimated_time']}');
       buffer.writeln();
     }
-    
-    // Pasajeros
-    buffer.writeln('PASAJEROS');
+
+    buffer.writeln('event_history.report_passengers'.tr());
     buffer.writeln('-' * 40);
-    buffer.writeln('Capacidad máxima: ${event['max_passengers'] ?? 'N/A'} pasajeros');
+    buffer.writeln('${'event_history.max_capacity'.tr()}: ${event['max_passengers'] ?? 'N/A'}');
     buffer.writeln();
-    buffer.writeln('(Detalles de pasajeros disponibles en panel de administración)');
-    buffer.writeln();
-    
-    // Tracking
-    buffer.writeln('TRACKING GPS');
-    buffer.writeln('-' * 40);
-    buffer.writeln('Información disponible en panel de administración TORO');
-    
-    buffer.writeln();
+
     buffer.writeln('=' * 60);
-    buffer.writeln('Generado: ${dateFormat.format(DateTime.now())}');
-    buffer.writeln('TORO RIDESHARE - Reporte Confidencial');
+    buffer.writeln('${'event_history.report_generated'.tr()}: ${dateFormat.format(DateTime.now())}');
+    buffer.writeln('event_history.report_confidential'.tr());
     buffer.writeln('=' * 60);
-    
+
     return buffer.toString();
+  }
+
+  void _showCfdiInfo() {
+    HapticService.lightImpact();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('event_history.cfdi_coming_soon'.tr()),
+        duration: const Duration(seconds: 4),
+      ),
+    );
   }
 
   @override
@@ -199,7 +222,7 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
         backgroundColor: AppColors.surface,
         elevation: 0,
         title: Text(
-          'Historial de Eventos',
+          'event_history.title'.tr(),
           style: TextStyle(
             color: AppColors.textPrimary,
             fontWeight: FontWeight.w700,
@@ -234,7 +257,7 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
           ElevatedButton(
             onPressed: _loadEvents,
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-            child: Text('Reintentar'),
+            child: Text('event_history.retry'.tr()),
           ),
         ],
       ),
@@ -244,18 +267,19 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
   Widget _buildContent() {
     return Column(
       children: [
-        // Filtros
         _buildFilters(),
-        
-        // Lista de eventos
         Expanded(
-          child: _events.isEmpty
+          child: _filteredEvents.isEmpty
               ? _buildEmptyState()
               : ListView.builder(
                   padding: EdgeInsets.all(16),
-                  itemCount: _events.length,
+                  itemCount: _filteredEvents.length + 1, // +1 for summary
                   itemBuilder: (context, index) {
-                    return _buildEventCard(_events[index]);
+                    if (index < _filteredEvents.length) {
+                      return _buildEventCard(_filteredEvents[index], index);
+                    }
+                    // Last item = fiscal summary
+                    return _buildFiscalSummary();
                   },
                 ),
         ),
@@ -270,13 +294,13 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
         scrollDirection: Axis.horizontal,
         child: Row(
           children: [
-            _buildFilterChip('Todos', 'all'),
+            _buildFilterChip('event_history.filter_all'.tr(), 'all'),
             SizedBox(width: 8),
-            _buildFilterChip('Completados', 'completed'),
+            _buildFilterChip('event_history.filter_completed'.tr(), 'completed'),
             SizedBox(width: 8),
-            _buildFilterChip('En Progreso', 'in_progress'),
+            _buildFilterChip('event_history.filter_in_progress'.tr(), 'in_progress'),
             SizedBox(width: 8),
-            _buildFilterChip('Cancelados', 'cancelled'),
+            _buildFilterChip('event_history.filter_cancelled'.tr(), 'cancelled'),
           ],
         ),
       ),
@@ -287,8 +311,10 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
     final isSelected = _filterStatus == value;
     return GestureDetector(
       onTap: () {
-        setState(() => _filterStatus = value);
-        _loadEvents();
+        setState(() {
+          _filterStatus = value;
+          _filteredEvents = _applyFilter(_allEvents);
+        });
       },
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -318,7 +344,9 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
           Icon(Icons.event_busy, size: 64, color: AppColors.textTertiary),
           SizedBox(height: 16),
           Text(
-            'No hay eventos',
+            _filterStatus == 'all'
+                ? 'event_history.no_events'.tr()
+                : 'event_history.no_filter_results'.tr(),
             style: TextStyle(
               color: AppColors.textSecondary,
               fontSize: 16,
@@ -329,28 +357,24 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
     );
   }
 
-  Widget _buildEventCard(Map<String, dynamic> event) {
-    // Datos básicos del evento
+  Widget _buildEventCard(Map<String, dynamic> event, int index) {
     final itinerary = event['itinerary'] as List<dynamic>? ?? [];
-    
-    // Calcular totales (datos del evento)
-    final pricePerKm = (event['price_per_km'] as num?)?.toDouble() ?? 0;
-    final distance = (event['total_distance_km'] as num?)?.toDouble() ?? 0;
-    final totalDriver = pricePerKm * distance;
-    final toroCommission = totalDriver * 0.18;
-    final totalOrganizer = totalDriver + toroCommission;
-    
+    final fin = _calcFinancials(event);
+    final currency = event['currency'] as String? ?? 'MXN';
+    final isMX = (event['country_code'] as String?) == 'MX';
+    final commissionPct = ((fin['commissionRate']! * 100)).toStringAsFixed(0);
+
     final status = event['status'] as String?;
     final isCompleted = status == 'completed';
-    
+
     return Card(
       margin: EdgeInsets.only(bottom: 16),
       color: AppColors.card,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: isCompleted 
-              ? AppColors.success.withOpacity(0.3) 
+          color: isCompleted
+              ? AppColors.success.withOpacity(0.3)
               : AppColors.border,
         ),
       ),
@@ -362,7 +386,7 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header
+              // Header: name + date + status
               Row(
                 children: [
                   Expanded(
@@ -370,7 +394,7 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          event['event_name'] ?? 'Evento sin nombre',
+                          event['event_name'] ?? 'event_history.unnamed_event'.tr(),
                           style: TextStyle(
                             color: AppColors.textPrimary,
                             fontSize: 16,
@@ -391,10 +415,10 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
                   _buildStatusBadge(status),
                 ],
               ),
-              
+
               Divider(height: 24, color: AppColors.border),
-              
-              // Info básica del vehículo (si existe vehicle_id)
+
+              // Vehicle info
               if (event['vehicle_id'] != null) ...[
                 Row(
                   children: [
@@ -406,7 +430,7 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
                     SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'Vehículo asignado',
+                        'event_history.vehicle_assigned'.tr(),
                         style: TextStyle(
                           color: AppColors.textPrimary,
                           fontWeight: FontWeight.w600,
@@ -417,33 +441,59 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
                 ),
                 SizedBox(height: 16),
               ],
-              
-              // Stats
+
+              // Stats row
               Row(
                 children: [
                   _buildStat(
                     Icons.people,
                     '${event['max_passengers'] ?? '?'}',
-                    'Capacidad',
+                    'event_history.capacity'.tr(),
                   ),
                   SizedBox(width: 24),
                   _buildStat(
                     Icons.route,
-                    '${distance.toStringAsFixed(1)} km',
-                    'Distancia',
+                    '${fin['distance']!.toStringAsFixed(1)} km',
+                    'event_history.distance'.tr(),
                   ),
                   SizedBox(width: 24),
                   _buildStat(
                     Icons.flag,
                     '${itinerary.length}',
-                    'Paradas',
+                    'event_history.stops'.tr(),
                   ),
                 ],
               ),
-              
-              SizedBox(height: 16),
-              
-              // Financial
+
+              SizedBox(height: 12),
+
+              // Actions row (download + CFDI)
+              Row(
+                children: [
+                  if (isMX)
+                    TextButton.icon(
+                      onPressed: _showCfdiInfo,
+                      icon: Icon(Icons.receipt_long, size: 16),
+                      label: Text('event_history.request_cfdi'.tr(), style: TextStyle(fontSize: 12)),
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppColors.textSecondary,
+                        padding: EdgeInsets.symmetric(horizontal: 8),
+                      ),
+                    ),
+                  Spacer(),
+                  TextButton.icon(
+                    onPressed: () => _downloadEventReport(event),
+                    icon: Icon(Icons.download, size: 16),
+                    label: Text('event_history.download_report'.tr(), style: TextStyle(fontSize: 12)),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      padding: EdgeInsets.symmetric(horizontal: 8),
+                    ),
+                  ),
+                ],
+              ),
+
+              // Financial breakdown - AT THE BOTTOM
               Container(
                 padding: EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -452,73 +502,35 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
                 ),
                 child: Column(
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Pago al chofer:',
-                          style: TextStyle(color: AppColors.textSecondary),
-                        ),
-                        Text(
-                          '\$${totalDriver.toStringAsFixed(2)}',
-                          style: TextStyle(color: AppColors.textPrimary),
-                        ),
-                      ],
+                    _buildFinancialRow(
+                      'event_history.driver_payment'.tr(),
+                      _formatCurrency(fin['driverPayment']!, currency),
+                      color: AppColors.textPrimary,
                     ),
                     SizedBox(height: 4),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Comisión TORO (18%):',
-                          style: TextStyle(color: AppColors.textSecondary),
-                        ),
-                        Text(
-                          '\$${toroCommission.toStringAsFixed(2)}',
-                          style: TextStyle(color: AppColors.primary),
-                        ),
-                      ],
+                    _buildFinancialRow(
+                      'event_history.toro_commission'.tr(namedArgs: {'rate': commissionPct}),
+                      _formatCurrency(fin['commission']!, currency),
+                      color: AppColors.primary,
                     ),
+                    if (isMX) ...[
+                      SizedBox(height: 4),
+                      _buildFinancialRow(
+                        'event_history.iva_tax'.tr(),
+                        _formatCurrency(fin['iva']!, currency),
+                        color: AppColors.textSecondary,
+                      ),
+                    ],
                     Divider(height: 16, color: AppColors.border),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'TOTAL:',
-                          style: TextStyle(
-                            color: AppColors.textPrimary,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          '\$${totalOrganizer.toStringAsFixed(2)}',
-                          style: TextStyle(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ],
+                    _buildFinancialRow(
+                      'event_history.total'.tr(),
+                      _formatCurrency(fin['total']!, currency),
+                      color: AppColors.primary,
+                      isBold: true,
+                      fontSize: 16,
                     ),
                   ],
                 ),
-              ),
-              
-              SizedBox(height: 12),
-              
-              // Download button
-              Row(
-                children: [
-                  Spacer(),
-                  TextButton.icon(
-                    onPressed: () => _downloadEventReport(event),
-                    icon: Icon(Icons.download, size: 18),
-                    label: Text('Descargar Reporte'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: AppColors.primary,
-                    ),
-                  ),
-                ],
               ),
             ],
           ),
@@ -527,28 +539,164 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
     );
   }
 
+  Widget _buildFinancialRow(String label, String value, {
+    Color? color,
+    bool isBold = false,
+    double fontSize = 14,
+  }) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: isBold ? AppColors.textPrimary : AppColors.textSecondary,
+            fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+            fontSize: fontSize - 1,
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            color: color ?? AppColors.textPrimary,
+            fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+            fontSize: fontSize,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Running totals summary card at the bottom
+  Widget _buildFiscalSummary() {
+    double totalSpent = 0;
+    double totalIva = 0;
+    double totalDistance = 0;
+    int eventCount = 0;
+    String currency = 'MXN';
+
+    for (final event in _filteredEvents) {
+      final fin = _calcFinancials(event);
+      totalSpent += fin['total']!;
+      totalIva += fin['iva']!;
+      totalDistance += fin['distance']!;
+      eventCount++;
+      currency = event['currency'] as String? ?? currency;
+    }
+
+    return Container(
+      margin: EdgeInsets.only(bottom: 32, top: 8),
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.account_balance, color: AppColors.primary, size: 20),
+              SizedBox(width: 8),
+              Text(
+                'event_history.summary_title'.tr(),
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _buildSummaryItem(
+                  'event_history.summary_events'.tr(),
+                  '$eventCount',
+                  Icons.event,
+                ),
+              ),
+              Expanded(
+                child: _buildSummaryItem(
+                  'event_history.summary_total_distance'.tr(),
+                  '${totalDistance.toStringAsFixed(1)} km',
+                  Icons.route,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 12),
+          Divider(color: AppColors.border),
+          SizedBox(height: 12),
+          _buildFinancialRow(
+            'event_history.summary_total_spent'.tr(),
+            _formatCurrency(totalSpent, currency),
+            color: AppColors.primary,
+            isBold: true,
+            fontSize: 16,
+          ),
+          if (totalIva > 0) ...[
+            SizedBox(height: 4),
+            _buildFinancialRow(
+              'event_history.summary_total_iva'.tr(),
+              _formatCurrency(totalIva, currency),
+              color: AppColors.textSecondary,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSummaryItem(String label, String value, IconData icon) {
+    return Column(
+      children: [
+        Icon(icon, color: AppColors.primary, size: 24),
+        SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
+        ),
+        Text(
+          label,
+          style: TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 12,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildStatusBadge(String? status) {
     Color color;
     String label;
-    
+
     switch (status) {
       case 'completed':
         color = AppColors.success;
-        label = 'Completado';
+        label = 'event_history.status_completed'.tr();
         break;
       case 'in_progress':
         color = AppColors.primary;
-        label = 'En Progreso';
+        label = 'event_history.status_in_progress'.tr();
         break;
       case 'cancelled':
         color = AppColors.error;
-        label = 'Cancelado';
+        label = 'event_history.status_cancelled'.tr();
         break;
       default:
         color = AppColors.textTertiary;
-        label = 'Pendiente';
+        label = 'event_history.status_pending'.tr();
     }
-    
+
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
@@ -596,7 +744,6 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
   }
 
   void _showEventDetails(Map<String, dynamic> event) {
-    // Navegar a pantalla de detalles completa
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -606,7 +753,7 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
   }
 }
 
-/// Sheet de detalles del evento
+/// Pantalla de detalles del evento
 class _EventDetailsScreen extends StatelessWidget {
   final Map<String, dynamic> event;
 
@@ -614,77 +761,58 @@ class _EventDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final driver = event['driver'] as Map<String, dynamic>?;
     final vehicle = event['vehicle'] as Map<String, dynamic>?;
-    final passengers = event['passengers'] as List<dynamic>? ?? [];
     final itinerary = event['itinerary'] as List<dynamic>? ?? [];
-    final tracking = event['tracking'] as List<dynamic>? ?? [];
-    
-    return Container(
-      padding: EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Handle
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.border,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          SizedBox(height: 20),
-          
-          // Title
-          Text(
-            event['event_name'] ?? 'Evento',
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          SizedBox(height: 20),
-          
-          // Sections
-          _buildSection('Información General', [
-            _buildInfoRow('Fecha', event['event_date'] ?? 'N/A'),
-            _buildInfoRow('Hora', event['start_time'] ?? 'N/A'),
-            _buildInfoRow('Estado', event['status'] ?? 'N/A'),
-            _buildInfoRow('Distancia', '${event['total_distance_km']} km'),
-          ]),
-          
-          if (vehicle != null)
-            _buildSection('Información del Vehículo', [
-              _buildInfoRow('Vehículo', vehicle['vehicle_name'] ?? 'N/A'),
-              _buildInfoRow('Marca/Modelo', '${vehicle['make'] ?? ''} ${vehicle['model'] ?? ''} ${vehicle['year'] ?? ''}'),
-              _buildInfoRow('Asientos', '${vehicle['total_seats'] ?? 'N/A'}'),
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.surface,
+        elevation: 0,
+        title: Text(
+          event['event_name'] ?? 'event_history.unnamed_event'.tr(),
+          style: TextStyle(color: AppColors.textPrimary),
+        ),
+        iconTheme: IconThemeData(color: AppColors.textPrimary),
+      ),
+      body: SingleChildScrollView(
+        padding: EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSection('event_history.general_info'.tr(), [
+              _buildInfoRow('event_history.date'.tr(), event['event_date'] ?? 'N/A'),
+              _buildInfoRow('event_history.time'.tr(), event['start_time'] ?? 'N/A'),
+              _buildInfoRow('event_history.status'.tr(), event['status'] ?? 'N/A'),
+              _buildInfoRow('event_history.distance'.tr(), '${event['total_distance_km'] ?? 0} km'),
             ]),
-          
-          _buildSection('Itinerario', 
-            itinerary.map((stop) {
-              final s = stop as Map<String, dynamic>;
-              return _buildInfoRow('•', '${s['name']}${s['estimated_time'] != null ? ' - ${s['estimated_time']}' : ''}');
-            }).toList(),
-          ),
-          
-          _buildSection('Pasajeros',
-            [
-              _buildInfoRow('Capacidad máxima', '${event['max_passengers'] ?? 'N/A'} pasajeros'),
-              _buildInfoRow('Nota', 'Detalles de pasajeros en panel de admin'),
-            ],
-          ),
-          
-          // Tracking (TORO Admin only)
-          _buildSection('Tracking GPS', [
-            _buildInfoRow('Estado', 'Disponible para TORO Admin'),
-          ]),
-          
-          SizedBox(height: 20),
-        ],
+
+            if (vehicle != null)
+              _buildSection('event_history.vehicle_info'.tr(), [
+                _buildInfoRow('event_history.vehicle'.tr(), vehicle['vehicle_name'] ?? 'N/A'),
+                _buildInfoRow('event_history.brand_model'.tr(), '${vehicle['make'] ?? ''} ${vehicle['model'] ?? ''} ${vehicle['year'] ?? ''}'),
+                _buildInfoRow('event_history.seats'.tr(), '${vehicle['total_seats'] ?? 'N/A'}'),
+              ]),
+
+            _buildSection('event_history.itinerary'.tr(),
+              itinerary.map((stop) {
+                final s = stop as Map<String, dynamic>;
+                return _buildInfoRow('•', '${s['name']}${s['estimated_time'] != null ? ' - ${s['estimated_time']}' : ''}');
+              }).toList(),
+            ),
+
+            _buildSection('event_history.passengers'.tr(), [
+              _buildInfoRow('event_history.max_capacity'.tr(), '${event['max_passengers'] ?? 'N/A'}'),
+              _buildInfoRow('', 'event_history.passengers_note'.tr()),
+            ]),
+
+            _buildSection('event_history.gps_tracking'.tr(), [
+              _buildInfoRow('', 'event_history.available_admin'.tr()),
+            ]),
+
+            SizedBox(height: 20),
+          ],
+        ),
       ),
     );
   }

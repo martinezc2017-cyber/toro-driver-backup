@@ -461,6 +461,7 @@ class _LoginScreenState extends State<LoginScreen>
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      resizeToAvoidBottomInset: false,
       body: Stack(
         children: [
           // Animated city background with skyline and highway
@@ -623,14 +624,14 @@ class _LoginScreenState extends State<LoginScreen>
               borderRadius: BorderRadius.circular(28),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF00D9FF).withValues(alpha: 0.35),
-                  blurRadius: 30,
-                  spreadRadius: 2,
+                  color: const Color(0xFF00D9FF).withValues(alpha: 0.25),
+                  blurRadius: 12,
+                  spreadRadius: 0,
                 ),
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.4),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
                 ),
               ],
             ),

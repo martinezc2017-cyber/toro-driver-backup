@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:open_filex/open_filex.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
@@ -118,9 +118,10 @@ class UpdateService {
       _downloadProgress = 1;
 
       // Open APK for installation
-      final result = await OpenFilex.open(filePath);
+      final uri = Uri.file(filePath);
+      final launched = await launchUrl(uri);
 
-      return result.type == ResultType.done;
+      return launched;
     } catch (e) {
       _isDownloading = false;
       return false;

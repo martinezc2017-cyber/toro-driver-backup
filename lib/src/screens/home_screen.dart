@@ -74,7 +74,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen>
-    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   int _selectedNavIndex = 0;
 
   // Mode toggle: Driver (normal rides) vs Tourism (events/rentals)
@@ -116,9 +116,22 @@ class _HomeScreenState extends State<HomeScreen>
   // Maximum width for web to look like mobile
   static const double _maxWebWidth = 480;
 
+  // Floating particles
+  late AnimationController _particleController;
+  static final _rng = math.Random(42);
+  static final _particleData = List.generate(20, (_) => [
+    _rng.nextDouble(), _rng.nextDouble(), // x, y fractions
+    _rng.nextDouble() * 2.0 + 1.0, // size
+    _rng.nextDouble(), // phase
+  ]);
+
   @override
   void initState() {
     super.initState();
+    _particleController = AnimationController(
+      duration: const Duration(seconds: 8),
+      vsync: this,
+    )..repeat();
     // Register lifecycle observer for background optimization
     WidgetsBinding.instance.addObserver(this);
     // Listen for forced disconnect events
@@ -863,6 +876,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   @override
   void dispose() {
+    _particleController.dispose();
     // Remove lifecycle observer
     WidgetsBinding.instance.removeObserver(this);
     // Cleanup vehicle requests subscription
@@ -900,8 +914,21 @@ class _HomeScreenState extends State<HomeScreen>
           ),
           child: Scaffold(
             backgroundColor: AppColors.background,
-            body: _buildBody(),
-            bottomNavigationBar: (_selectedNavIndex == 1 || _isTourismMode || _isOrganizer) ? null : _buildBottomNav(),
+            body: Stack(
+              children: [
+                _buildBody(),
+                // Floating galaxy particles
+                ..._buildFloatingParticles(),
+                // Floating navbar overlay
+                if (!(_selectedNavIndex == 1 || _isTourismMode || _isOrganizer))
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: _buildBottomNav(),
+                  ),
+              ],
+            ),
           ),
         );
       },
@@ -926,6 +953,41 @@ class _HomeScreenState extends State<HomeScreen>
     } catch (_) {
       return false;
     }
+  }
+
+  List<Widget> _buildFloatingParticles() {
+    return List.generate(20, (i) {
+      final xFrac = _particleData[i][0];
+      final yFrac = _particleData[i][1];
+      final size = _particleData[i][2];
+      final phase = _particleData[i][3];
+
+      return Positioned(
+        left: xFrac * 380,
+        top: yFrac * 850,
+        child: AnimatedBuilder(
+          animation: _particleController,
+          builder: (context, child) {
+            final dx = math.sin((_particleController.value + phase) * 2 * math.pi) * 8;
+            final dy = math.cos((_particleController.value + phase * 1.3) * 2 * math.pi) * 10;
+            final opacity = 0.18 + (math.sin(
+              (_particleController.value + phase * 0.7) * 2 * math.pi,
+            ) * 0.14);
+            return Transform.translate(
+              offset: Offset(dx, dy),
+              child: Container(
+                width: size,
+                height: size,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: opacity),
+                ),
+              ),
+            );
+          },
+        ),
+      );
+    });
   }
 
   Widget _buildBody() {
@@ -2839,7 +2901,9 @@ class _HomeScreenState extends State<HomeScreen>
         final todayEarnings = earningsProvider.todayEarnings;
         final weeklyEarnings = earningsProvider.weeklyEarnings;
         final todayRides = rideProvider.todayRidesCount;
-        final stats = context.read<DriverProvider>().stats;
+        final driverProv = context.read<DriverProvider>();
+        final stats = driverProv.stats;
+        final isMX = driverProv.driver?.countryCode == 'MX';
         final onlineTime = stats?['active_time_today'] ?? '0h 0m';
 
         return Container(
@@ -2871,7 +2935,7 @@ class _HomeScreenState extends State<HomeScreen>
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   Text(
-                    '$todayRides 🚗 · $onlineTime',
+                    isMX ? '$todayRides 🚗' : '$todayRides 🚗 · $onlineTime',
                     style: TextStyle(
                       color: AppColors.textTertiary,
                       fontSize: 11,
@@ -3018,6 +3082,7 @@ class _HomeScreenState extends State<HomeScreen>
       builder: (context, rideProvider, driverProvider, child) {
         final todayRides = rideProvider.todayRidesCount;
         final stats = driverProvider.stats;
+        final isMX = driverProvider.driver?.countryCode == 'MX';
         final onlineTime = stats?['active_time_today'] ?? '0h 0m';
         final distanceToday = stats?['distance_today_km'] ?? 0.0;
 
@@ -3051,16 +3116,18 @@ class _HomeScreenState extends State<HomeScreen>
                 '$todayRides',
                 'rides_label'.tr(),
               ),
-              Container(
-                width: 1,
-                height: 30,
-                color: AppColors.border.withValues(alpha: 0.3),
-              ),
-              _buildStatItem(
-                Icons.schedule_outlined,
-                onlineTime,
-                'duration_label'.tr(),
-              ),
+              if (!isMX) ...[
+                Container(
+                  width: 1,
+                  height: 30,
+                  color: AppColors.border.withValues(alpha: 0.3),
+                ),
+                _buildStatItem(
+                  Icons.schedule_outlined,
+                  onlineTime,
+                  'duration_label'.tr(),
+                ),
+              ],
               Container(
                 width: 1,
                 height: 30,
@@ -3068,7 +3135,9 @@ class _HomeScreenState extends State<HomeScreen>
               ),
               _buildStatItem(
                 Icons.route_outlined,
-                '${(distanceToday * 0.621371).toStringAsFixed(1)} mi',
+                isMX
+                    ? '${distanceToday.toStringAsFixed(1)} km'
+                    : '${(distanceToday * 0.621371).toStringAsFixed(1)} mi',
                 'distance_label'.tr(),
               ),
             ],
@@ -3425,7 +3494,7 @@ class _HomeScreenState extends State<HomeScreen>
             FireGlowNavItem(
               icon: Icons.map_outlined,
               activeIcon: Icons.navigation_rounded, // Navigation icon when active
-              label: hasActiveRide ? 'Viaje' : 'Mapa',
+              label: hasActiveRide ? 'nav_trip'.tr() : 'nav_map'.tr(),
               hasActiveGlow: hasActiveRide, // Green glow when there's an active ride
             ),
             FireGlowNavItem(
@@ -3893,6 +3962,9 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
   // FireGlow colors
   static const Color _fireColor = Color(0xFFFF9500);
 
+  // Card accent color
+  Color get _cardAccentColor => _fireColor;
+
   @override
   void initState() {
     super.initState();
@@ -4243,7 +4315,7 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
               color: AppColors.card,
               borderRadius: BorderRadius.circular(10),
               border: Border.all(
-                color: _fireColor.withValues(alpha: 0.3 * pulse),
+                color: _cardAccentColor.withValues(alpha: 0.3 * pulse),
               ),
             ),
             child: Column(
@@ -4259,7 +4331,7 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: _fireColor.withValues(alpha: 0.15),
+                        color: _cardAccentColor.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Row(
@@ -4273,7 +4345,7 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                           Text(
                             _getRideTypeLabel(),
                             style: TextStyle(
-                              color: _fireColor,
+                              color: _cardAccentColor,
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
                             ),
@@ -4335,7 +4407,7 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                     // Client avatar + name
                     CircleAvatar(
                       radius: 16,
-                      backgroundColor: _fireColor.withValues(alpha: 0.2),
+                      backgroundColor: _cardAccentColor.withValues(alpha: 0.2),
                       backgroundImage: widget.ride.passengerImageUrl != null
                           ? NetworkImage(widget.ride.passengerImageUrl!)
                           : null,
@@ -4345,7 +4417,7 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                                   ? widget.ride.passengerName[0].toUpperCase()
                                   : 'C',
                               style: TextStyle(
-                                color: _fireColor,
+                                color: _cardAccentColor,
                                 fontWeight: FontWeight.w700,
                                 fontSize: 14,
                               ),
@@ -4402,7 +4474,7 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                           width: 10,
                           height: 10,
                           decoration: BoxDecoration(
-                            color: _fireColor,
+                            color: _cardAccentColor,
                             shape: BoxShape.circle,
                           ),
                         ),
@@ -4664,6 +4736,70 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                           ),
                         ),
                       ],
+                    ],
+                  ),
+                ],
+                // Rider notes
+                if (widget.ride.riderNotes != null && widget.ride.riderNotes!.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: AppColors.cardSecondary,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: AppColors.warning.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.note_alt_rounded,
+                          color: AppColors.warning,
+                          size: 16,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            widget.ride.riderNotes!,
+                            style: const TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 12,
+                              height: 1.3,
+                            ),
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                // Organization badge
+                if (widget.ride.organizationName != null) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.business_rounded,
+                        color: AppColors.primary,
+                        size: 14,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          widget.ride.organizationName!,
+                          style: const TextStyle(
+                            color: AppColors.primaryLight,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                     ],
                   ),
                 ],

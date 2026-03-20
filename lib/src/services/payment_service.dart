@@ -762,7 +762,7 @@ class PaymentService {
     try {
       final response = await _client
           .from('driver_rankings')
-          .select('*, drivers!inner(first_name, last_name, profile_image_url)')
+          .select('*, drivers!inner(name, profile_image_url)')
           .order(sortBy, ascending: false)
           .limit(limit);
 
@@ -786,7 +786,7 @@ class PaymentService {
     try {
       final response = await _client
           .from('driver_rankings')
-          .select('*, drivers!inner(first_name, last_name, profile_image_url)')
+          .select('*, drivers!inner(name, profile_image_url)')
           .eq('driver_state', state)
           .order(sortBy, ascending: false)
           .limit(limit);
@@ -807,7 +807,7 @@ class PaymentService {
     try {
       final response = await _client
           .from('driver_rankings')
-          .select('*, drivers!inner(first_name, last_name, profile_image_url)')
+          .select('*, drivers!inner(name, profile_image_url)')
           .eq('driver_id', driverId)
           .maybeSingle();
 
@@ -896,9 +896,7 @@ class DriverRanking {
   factory DriverRanking.fromJson(Map<String, dynamic> json, {Map<String, dynamic>? driver}) {
     return DriverRanking(
       driverId: json['driver_id'] as String,
-      driverName: driver?['first_name'] != null
-          ? '${driver!['first_name']} ${driver['last_name'] ?? ''}'.trim()
-          : null,
+      driverName: driver?['name'] as String?,
       avatarUrl: driver?['profile_image_url'] as String?,
       totalTrips: json['total_trips'] as int? ?? 0,
       totalEarnings: (json['total_earnings'] as num?)?.toDouble() ?? 0,

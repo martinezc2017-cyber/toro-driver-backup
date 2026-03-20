@@ -514,8 +514,8 @@ class _ProfileScreenState extends State<ProfileScreen>
     final groupUrl = isMexico
         ? 'https://www.facebook.com/groups/891201387249906'
         : 'https://www.facebook.com/groups/788083457055317';
-    final groupLabel = isMexico ? 'community_facebook_mx'.tr() : 'community_facebook'.tr();
-    final groupSubtitle = isMexico ? 'TORO Comunidad México' : 'TORO Community USA';
+    final groupLabel = 'community_share_experience'.tr();
+    final groupSubtitle = 'community_facebook_group'.tr();
 
     return AnimatedBuilder(
       animation: _sparkleController,
@@ -976,9 +976,9 @@ class _ProfileMenuButtonState extends State<_ProfileMenuButton> {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.neonCyan.withValues(alpha: _isPressed ? 0.6 : 0.25),
-                  blurRadius: _isPressed ? 12 : 6,
-                  spreadRadius: _isPressed ? 1 : -3,
+                  color: AppColors.neonCyan.withValues(alpha: _isPressed ? 0.4 : 0.1),
+                  blurRadius: _isPressed ? 6 : 2,
+                  spreadRadius: _isPressed ? 0 : -4,
                 ),
               ],
             ),

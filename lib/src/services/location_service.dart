@@ -283,7 +283,7 @@ class LocationService {
       await _client.from(SupabaseConfig.packageDeliveriesTable).update({
         'driver_lat': position.latitude,
         'driver_lng': position.longitude,
-        'driver_heading': position.heading,
+        'driver_bearing': position.heading,
         'driver_speed': position.speed,
         'driver_location_updated_at': DateTime.now().toIso8601String(),
       }).eq('id', rideId);

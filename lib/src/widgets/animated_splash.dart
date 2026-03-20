@@ -342,18 +342,13 @@ class _AnimatedSplashState extends State<AnimatedSplash>
                                   shadows: [
                                     Shadow(
                                       color: _neonCyan.withValues(
-                                          alpha: 0.9 * glow),
-                                      blurRadius: 24,
+                                          alpha: 0.7 * glow),
+                                      blurRadius: 10,
                                     ),
                                     Shadow(
                                       color: _neonBlue.withValues(
-                                          alpha: 0.6 * glow),
-                                      blurRadius: 48,
-                                    ),
-                                    Shadow(
-                                      color: _neonCyan.withValues(
-                                          alpha: 0.3 * glow),
-                                      blurRadius: 80,
+                                          alpha: 0.4 * glow),
+                                      blurRadius: 20,
                                     ),
                                   ],
                                 ),
@@ -379,8 +374,8 @@ class _AnimatedSplashState extends State<AnimatedSplash>
                                     shadows: [
                                       Shadow(
                                         color: _neonCyan.withValues(
-                                            alpha: 0.4 * glow),
-                                        blurRadius: 16,
+                                            alpha: 0.3 * glow),
+                                        blurRadius: 8,
                                       ),
                                     ],
                                   ),

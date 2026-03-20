@@ -59,12 +59,12 @@ class _DriverBidScreenState extends State<DriverBidScreen>
     try {
       final response = await Supabase.instance.client
           .from('pricing_rules_mx')
-          .select('min_price_per_km')
+          .select('per_km')
           .limit(1)
           .maybeSingle();
-      if (response != null && response['min_price_per_km'] != null) {
+      if (response != null && response['per_km'] != null) {
         setState(() {
-          _minPricePerKm = (response['min_price_per_km'] as num).toDouble();
+          _minPricePerKm = (response['per_km'] as num).toDouble();
         });
       }
     } catch (_) {}

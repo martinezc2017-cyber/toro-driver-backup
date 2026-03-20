@@ -6,6 +6,8 @@ import '../providers/earnings_provider.dart';
 import '../providers/driver_provider.dart';
 import '../providers/cash_account_provider.dart';
 import '../utils/app_colors.dart';
+import '../services/driver_qr_points_service.dart';
+import 'qr_points_screen.dart';
 
 class EarningsScreen extends StatefulWidget {
   const EarningsScreen({super.key});
@@ -92,6 +94,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
           final summary = provider.summary;
           if (summary == null) return const Center(child: Text('No data'));
 
+          final countryCode = context.read<DriverProvider>().driver?.countryCode ?? 'US';
           final total = summary.weekEarnings;
           final tips = summary.weekTips;
           final netFare = total - tips - summary.weekQRBoost - summary.weekPeakHoursBonus -
@@ -173,11 +176,17 @@ class _EarningsScreenState extends State<EarningsScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _stat('Online Hours', _fmtTime(summary.weekOnlineMinutes)),
+                    if (countryCode != 'MX') _stat('Online Hours', _fmtTime(summary.weekOnlineMinutes)),
                     _stat('Total Trips', '${summary.weekRides}'),
                   ],
                 ),
                 const SizedBox(height: 32),
+
+                // ═══════════════════════════════════════════════════════════
+                // QR TIER BANNER
+                // ═══════════════════════════════════════════════════════════
+                _buildQRTierBanner(context),
+                const SizedBox(height: 24),
 
                 // ═══════════════════════════════════════════════════════════
                 // CASH CONTROL — Balance de Efectivo
@@ -195,6 +204,91 @@ class _EarningsScreenState extends State<EarningsScreen> {
   // ═══════════════════════════════════════════════════════════════════════════
   // CASH CONTROL SECTION
   // ═══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildQRTierBanner(BuildContext context) {
+    final driver = context.read<DriverProvider>().driver;
+    if (driver == null) return const SizedBox.shrink();
+
+    final qrService = DriverQRPointsService();
+    final tier = qrService.currentTier;
+    final driverPercent = qrService.effectiveDriverPercent;
+    final toroPercent = qrService.effectivePlatformPercent;
+
+    const tierColors = [
+      Color(0xFF9E9E9E), // Tier 0 - grey
+      Color(0xFF795548), // Tier 1 - bronze
+      Color(0xFF9E9E9E), // Tier 2 - silver
+      Color(0xFFFFB300), // Tier 3 - gold
+      Color(0xFF1E88E5), // Tier 4 - diamond blue
+      Color(0xFF00FF66), // Tier 5 - neon green
+    ];
+    final color = tierColors[tier.clamp(0, 5)];
+
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const QRPointsScreen()),
+      ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          gradient: LinearGradient(
+            colors: [
+              color.withValues(alpha: 0.15),
+              Colors.black.withValues(alpha: 0.3),
+            ],
+          ),
+          border: Border.all(color: color.withValues(alpha: 0.4), width: 1.2),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: color.withValues(alpha: 0.2),
+                border: Border.all(color: color, width: 1.5),
+              ),
+              child: Center(
+                child: Text(
+                  '$tier',
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'QR Tier $tier — Tú llevas ${driverPercent.toStringAsFixed(0)}%',
+                    style: TextStyle(
+                      color: color,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'TORO cobra ${toroPercent.toStringAsFixed(0)}% · Sube de tier para ganar más',
+                    style: const TextStyle(color: Colors.white60, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white38, size: 14),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _buildCashControlSection() {
     return Consumer<CashAccountProvider>(

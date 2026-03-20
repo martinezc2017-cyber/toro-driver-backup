@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
 import '../core/logging/app_logger.dart';
+import 'audit_service.dart';
 
 /// Service for tourism event operations.
 ///
@@ -446,6 +447,132 @@ class TourismEventService {
 
       return response;
     } catch (e) {
+      return {};
+    }
+  }
+
+  /// Re-publishes an event to broadcast mode.
+  ///
+  /// Clears driver/vehicle, resets to draft + public visibility,
+  /// and logs the action to audit trail. Used when:
+  /// - Organizer wants to find a new driver
+  /// - Driver left the event
+  /// - Event was stuck in limbo (driver assigned but no vehicle)
+  Future<Map<String, dynamic>> republishEvent(
+    String eventId, {
+    String? reason,
+  }) async {
+    try {
+      // Get current state for audit trail
+      final current = await _client
+          .from('tourism_events')
+          .select('driver_id, vehicle_id, status, event_name')
+          .eq('id', eventId)
+          .single();
+
+      final previousDriverId = current['driver_id'] as String?;
+      final previousVehicleId = current['vehicle_id'] as String?;
+      final previousStatus = current['status'] as String?;
+
+      // Reset to draft + public broadcast
+      final response = await _client
+          .from('tourism_events')
+          .update({
+            'vehicle_id': null,
+            'driver_id': null,
+            'status': 'draft',
+            'vehicle_request_status': null,
+            'vehicle_requested_at': null,
+            'vehicle_responded_at': null,
+            'vehicle_rejection_reason': null,
+            'bid_visibility': 'public',
+            'updated_at': DateTime.now().toUtc().toIso8601String(),
+          })
+          .eq('id', eventId)
+          .select()
+          .single();
+
+      // Audit log
+      AuditService.instance.logEventRepublished(
+        eventId: eventId,
+        action: reason ?? 'organizer_republish',
+        previousDriverId: previousDriverId,
+        previousVehicleId: previousVehicleId,
+        previousStatus: previousStatus,
+      );
+
+      AuditService.instance.logEventStatusChange(
+        eventId: eventId,
+        fromStatus: previousStatus ?? 'unknown',
+        toStatus: 'draft',
+        reason: 'Republished to broadcast: ${reason ?? "organizer action"}',
+      );
+
+      return response;
+    } catch (e) {
+      debugPrint('republishEvent error: $e');
+      return {};
+    }
+  }
+
+  /// Called when a driver voluntarily leaves an active event.
+  ///
+  /// Clears driver_id/vehicle_id, resets to draft + public broadcast,
+  /// and logs the abandonment to the audit trail so it appears in event history.
+  /// The DB trigger (trg_event_auto_recovery) also fires, but this method
+  /// ensures the audit log is written with the correct reason.
+  Future<Map<String, dynamic>> leaveEvent(
+    String eventId,
+    String driverId, {
+    String? reason,
+  }) async {
+    try {
+      // Get current state for audit trail
+      final current = await _client
+          .from('tourism_events')
+          .select('driver_id, vehicle_id, status, event_name')
+          .eq('id', eventId)
+          .single();
+
+      final previousVehicleId = current['vehicle_id'] as String?;
+      final previousStatus = current['status'] as String?;
+      final eventName = current['event_name'] as String? ?? eventId;
+
+      // Clear driver + vehicle → DB trigger auto-resets to draft/public
+      final response = await _client
+          .from('tourism_events')
+          .update({
+            'driver_id': null,
+            'vehicle_id': null,
+            'vehicle_request_status': null,
+            'vehicle_requested_at': null,
+            'vehicle_responded_at': null,
+            'vehicle_rejection_reason': null,
+            'updated_at': DateTime.now().toUtc().toIso8601String(),
+          })
+          .eq('id', eventId)
+          .select()
+          .single();
+
+      // Audit: driver left
+      AuditService.instance.logEventDriverLeft(
+        eventId: eventId,
+        driverId: driverId,
+        reason: reason ?? 'driver_voluntary_leave',
+      );
+
+      // Audit: status change back to draft
+      AuditService.instance.logEventStatusChange(
+        eventId: eventId,
+        fromStatus: previousStatus ?? 'active',
+        toStatus: 'draft',
+        reason: 'Driver left event "$eventName" — returned to broadcast',
+      );
+
+      debugPrint('leaveEvent: driver $driverId left event $eventId → back to broadcast');
+      return response;
+    } catch (e) {
+      debugPrint('leaveEvent error: $e');
       return {};
     }
   }

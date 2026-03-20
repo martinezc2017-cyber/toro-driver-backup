@@ -180,13 +180,12 @@ class ChatService {
           ride:ride_id (
             id,
             pickup_address,
-            dropoff_address
+            destination_address
           ),
           passenger:passenger_id (
             id,
-            first_name,
-            last_name,
-            profile_image_url
+            full_name,
+            avatar_url
           )
         ''')
         .eq('driver_id', driverId)

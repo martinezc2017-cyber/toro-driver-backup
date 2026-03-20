@@ -158,6 +158,10 @@ class RideModel {
   final bool isPaid;
   final String? notes;
   final bool isUrgent;
+
+  // === RIDE EXPERIENCE: Rider Notes ===
+  final String? riderNotes;              // Free text notes from rider to driver
+  final String? organizationName;        // Org name if booked by organization
   final DateTime createdAt;
   final DateTime? acceptedAt;
   final DateTime? arrivedAt;
@@ -258,6 +262,9 @@ class RideModel {
     this.proposingDriverId,
     this.negotiationExpiresAt,
     this.driverQrTier = 0,
+    // Ride experience
+    this.riderNotes,
+    this.organizationName,
   });
 
   double get totalEarnings => driverEarnings + tip;
@@ -413,6 +420,9 @@ class RideModel {
           : null,
       vehicleType: json['vehicle_type'] as String? ?? 'standard',
       stripePaymentIntentId: json['stripe_payment_intent_id'] as String?,
+      // Ride experience
+      riderNotes: json['rider_notes'] as String?,
+      organizationName: json['organization_name'] as String?,
       // Negotiation
       driverProposedPrice: (json['driver_proposed_price'] as num?)?.toDouble(),
       negotiationStatus: json['negotiation_status'] as String?,
@@ -473,6 +483,9 @@ class RideModel {
       'waypoints': waypoints,
       'vehicle_type': vehicleType,
       'stripe_payment_intent_id': stripePaymentIntentId,
+      // Ride experience
+      'rider_notes': riderNotes,
+      'organization_name': organizationName,
       // Negotiation
       'driver_proposed_price': driverProposedPrice,
       'negotiation_status': negotiationStatus,
@@ -530,6 +543,9 @@ class RideModel {
     List<Map<String, dynamic>>? waypoints,
     String? vehicleType,
     String? stripePaymentIntentId,
+    // Ride experience
+    String? riderNotes,
+    String? organizationName,
     // Negotiation
     double? driverProposedPrice,
     String? negotiationStatus,
@@ -585,6 +601,9 @@ class RideModel {
       waypoints: waypoints ?? this.waypoints,
       vehicleType: vehicleType ?? this.vehicleType,
       stripePaymentIntentId: stripePaymentIntentId ?? this.stripePaymentIntentId,
+      // Ride experience
+      riderNotes: riderNotes ?? this.riderNotes,
+      organizationName: organizationName ?? this.organizationName,
       // Negotiation
       driverProposedPrice: driverProposedPrice ?? this.driverProposedPrice,
       negotiationStatus: negotiationStatus ?? this.negotiationStatus,

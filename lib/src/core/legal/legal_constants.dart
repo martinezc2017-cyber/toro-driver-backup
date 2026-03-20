@@ -35,7 +35,7 @@ class LegalConstants {
   static const String recordingVersion = '1.0';
 
   /// Mexico addendum version
-  static const String mexicoAddendumVersion = '1.0';
+  static const String mexicoAddendumVersion = '2.0';
 
   /// Organizer Platform Agreement version
   static const String organizerAgreementVersion = '1.0';
@@ -44,7 +44,7 @@ class LegalConstants {
   static const String trialDisclaimerVersion = '1.0';
 
   /// Combined legal bundle version (for quick checking)
-  static const String legalBundleVersion = '2026.02.09.1';
+  static const String legalBundleVersion = '2026.03.01.1';
 
   // ============================================================================
   // LEGAL ENTITY INFORMATION

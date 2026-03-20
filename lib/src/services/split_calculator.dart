@@ -7,10 +7,11 @@
 ///
 /// NEW QR MODEL (v2):
 ///   QR tiers REDUCE platform commission, NOT add bonus %.
-///   Tier 0: base (20%) | Tier 1: 19% | Tier 2: 18% | Tier 3: 17% |
-///   Tier 4: 16% | Tier 5: 15%
-///   Driver gets the difference (64% → up to 69%).
-///   Tax (IVA 16%) stays fixed.
+///   Base percentages come from pricing_config per state:
+///     US/AZ: Platform 20.4%, Driver 57%, Insurance 17%, Tax 5.6%
+///     MX/CDMX: Platform 25%, Driver 75%, Insurance 17%, Tax 5.6%
+///   Each tier reduces platform by 1%, driver gains the difference.
+///   Insurance + Tax stay fixed.
 ///
 /// MUST be kept in sync with:
 /// - toro/lib/core/services/split_calculator.dart (rider app)
@@ -58,7 +59,7 @@ class SplitConfig {
   });
 
   /// Get effective platform % after QR tier commission reduction
-  /// Tier 0: base (20%) | Tier 5: base - 5% (15%)
+  /// Tier 0: base from pricing_config | Tier 5: base - 5%
   double getEffectivePlatformPercent({int driverQRLevel = 0}) {
     final reduction = getQRCommissionReduction(driverQRLevel);
     // Minimum 15% platform fee (safety floor)
@@ -101,10 +102,10 @@ class SplitConfig {
   factory SplitConfig.fromJson(Map<String, dynamic> json) {
     return SplitConfig(
       platformFeePercent:
-          (json['platform_fee_percent'] as num?)?.toDouble() ?? 0,
-      driverPercent: (json['driver_percentage'] as num?)?.toDouble() ?? 0,
-      insurancePercent: (json['insurance_percentage'] as num?)?.toDouble() ?? 0,
-      taxPercent: (json['tax_percentage'] as num?)?.toDouble() ?? 0,
+          ((json['platform_fee_percent'] ?? json['platform_commission']) as num?)?.toDouble() ?? 0,
+      driverPercent: (json['driver_commission'] as num?)?.toDouble() ?? 0,
+      insurancePercent: (json['insurance_percent'] as num?)?.toDouble() ?? 0,
+      taxPercent: (json['tax_percent'] as num?)?.toDouble() ?? 0,
       qrMaxLevel: (json['qr_max_level'] as num?)?.toInt() ?? 30,
       qrTier1Max: (json['qr_tier_1_max'] as num?)?.toInt() ?? 6,
       qrTier1CommissionReduction: (json['qr_tier_1_bonus'] as num?)?.toDouble() ?? 1.0,
@@ -120,9 +121,9 @@ class SplitConfig {
 
   Map<String, dynamic> toJson() => {
     'platform_fee_percent': platformFeePercent,
-    'driver_percentage': driverPercent,
-    'insurance_percentage': insurancePercent,
-    'tax_percentage': taxPercent,
+    'driver_commission': driverPercent,
+    'insurance_percent': insurancePercent,
+    'tax_percent': taxPercent,
     'qr_max_level': qrMaxLevel,
     'qr_tier_1_max': qrTier1Max,
     'qr_tier_1_bonus': qrTier1CommissionReduction,

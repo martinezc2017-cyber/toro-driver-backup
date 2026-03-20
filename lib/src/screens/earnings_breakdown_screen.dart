@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../providers/riverpod_providers.dart';
+import '../models/driver_model.dart';
 import '../services/statement_export_service.dart';
 import '../services/cash_account_service.dart';
 import '../utils/app_theme.dart';
@@ -35,6 +36,9 @@ class _EarningsBreakdownScreenState extends ConsumerState<EarningsBreakdownScree
   Map<String, dynamic>? _cashAccount;
   Map<String, dynamic> _cashSummary = {};
 
+  // Country code for conditional display
+  String _countryCode = 'US';
+
   // Current period
   late DateTime _weekStart;
   late DateTime _weekEnd;
@@ -58,24 +62,20 @@ class _EarningsBreakdownScreenState extends ConsumerState<EarningsBreakdownScree
     try {
       final driverService = ref.read(driverServiceProvider);
 
-      // Load breakdown data
-      final breakdown = await driverService.getEarningsBreakdown(
-        widget.driverId,
-        _weekStart,
-        _weekEnd,
-      );
-
-      // Load recent transactions
-      final transactions = await driverService.getRecentEarnings(
-        widget.driverId,
-        limit: 50,
-      );
-
-      // Load cash control data in parallel
-      final cashResults = await Future.wait([
+      // Load breakdown data, driver info, and cash control data in parallel
+      final results = await Future.wait([
+        driverService.getEarningsBreakdown(widget.driverId, _weekStart, _weekEnd),
+        driverService.getRecentEarnings(widget.driverId, limit: 50),
+        driverService.getDriver(widget.driverId),
         _cashService.getCashAccount(widget.driverId),
         _cashService.getLedgerSummary(widget.driverId),
       ]);
+
+      final breakdown = results[0] as Map<String, dynamic>?;
+      final transactions = results[1] as List<Map<String, dynamic>>;
+      final driver = results[2];
+      final cashAccount = results[3];
+      final cashSummary = results[4];
 
       setState(() {
         _breakdown = breakdown ?? {};
@@ -84,8 +84,9 @@ class _EarningsBreakdownScreenState extends ConsumerState<EarningsBreakdownScree
           _breakdown['daily_breakdown'] ?? [],
         );
         _transactions = transactions;
-        _cashAccount = cashResults[0];
-        _cashSummary = cashResults[1] ?? {};
+        _countryCode = (driver as DriverModel?)?.countryCode ?? 'US';
+        _cashAccount = cashAccount as Map<String, dynamic>?;
+        _cashSummary = (cashSummary as Map<String, dynamic>?) ?? {};
         _isLoading = false;
       });
     } catch (e) {
@@ -395,7 +396,8 @@ class _EarningsBreakdownScreenState extends ConsumerState<EarningsBreakdownScree
             '📊 TU ACTIVIDAD',
             [
               _buildStatRow('Viajes Completados', '${_summary['total_trips'] ?? 0}', Icons.directions_car),
-              _buildStatRow('Horas Online', '${(_summary['total_hours'] ?? 0).toStringAsFixed(1)} hrs', Icons.access_time),
+              if (_countryCode != 'MX')
+                _buildStatRow('Horas Online', '${(_summary['total_hours'] ?? 0).toStringAsFixed(1)} hrs', Icons.access_time),
               _buildStatRow('Millas Recorridas', '${(_summary['total_miles'] ?? 0).toStringAsFixed(1)} mi', Icons.straighten),
             ],
           ),
@@ -584,9 +586,9 @@ class _EarningsBreakdownScreenState extends ConsumerState<EarningsBreakdownScree
 
   Widget _buildTransactionItem(Map<String, dynamic> tx) {
     final type = tx['type'] ?? 'ride';
-    final earnings = (tx['total_earnings'] as num?)?.toDouble() ?? 0;
+    final earnings = (tx['amount'] as num?)?.toDouble() ?? (tx['net_fare'] as num?)?.toDouble() ?? 0;
     final tip = (tx['tip_amount'] as num?)?.toDouble() ?? 0;
-    final earnedAt = DateTime.tryParse(tx['earned_at'] ?? '');
+    final earnedAt = DateTime.tryParse(tx['date'] ?? tx['created_at'] ?? '');
 
     IconData icon;
     Color color;

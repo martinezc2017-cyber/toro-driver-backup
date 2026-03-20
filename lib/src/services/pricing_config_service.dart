@@ -119,12 +119,12 @@ class PricingConfig {
   factory PricingConfig.fromJson(Map<String, dynamic> json) {
     return PricingConfig(
       bookingType: json['booking_type'] ?? 'ride',
-      baseFare: _parseDouble(json['base_fare'] ?? json['ride_base_fare']),
-      perKmRate: _parseDouble(json['per_km_rate'] ?? json['ride_per_mile']),
-      perMinuteRate: _parseDouble(json['per_minute_rate'] ?? json['ride_per_minute']),
-      minimumFare: _parseDouble(json['minimum_fare'] ?? json['ride_minimum_fare']),
-      platformFeePercent: _parseDouble(json['platform_fee_percent'] ?? 20.0),
-      cancellationFee: _parseDouble(json['cancellation_fee'] ?? json['ride_cancellation_fee']),
+      baseFare: _parseDouble(json['ride_base_fare']),
+      perKmRate: _parseDouble(json['ride_per_km']),
+      perMinuteRate: _parseDouble(json['ride_per_minute']),
+      minimumFare: _parseDouble(json['ride_minimum_fare']),
+      platformFeePercent: _parseDouble(json['platform_commission']),
+      cancellationFee: _parseDouble(json['ride_cancellation_fee']),
       isActive: json['is_active'] ?? true,
     );
   }

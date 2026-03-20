@@ -26,7 +26,7 @@ class _RidesScreenState extends State<RidesScreen>
   int _selectedFilterIndex = 0;
 
   // Driver commission percent from pricing_config (dynamic)
-  double _driverPercent = 49.0; // Default until loaded from BD
+  double _driverPercent = 57.0; // Fallback US/AZ default until loaded from pricing_config
 
   @override
   void initState() {

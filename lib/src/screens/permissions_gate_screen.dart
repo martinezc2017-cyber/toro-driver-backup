@@ -71,9 +71,11 @@ class _PermissionsGateScreenState extends State<PermissionsGateScreen>
 
     // Check notification permission
     final msgSettings = await FirebaseMessaging.instance.getNotificationSettings();
+    // notDetermined = user hasn't been asked yet (emulator/FCM issue) — treat as ok
     final notifGranted =
         msgSettings.authorizationStatus == AuthorizationStatus.authorized ||
-            msgSettings.authorizationStatus == AuthorizationStatus.provisional;
+            msgSettings.authorizationStatus == AuthorizationStatus.provisional ||
+            msgSettings.authorizationStatus == AuthorizationStatus.notDetermined;
 
     if (mounted) {
       setState(() {
@@ -81,7 +83,7 @@ class _PermissionsGateScreenState extends State<PermissionsGateScreen>
         _locationGranted = locGranted;
         _locationDeniedForever = locDeniedForever;
         _notificationGranted = notifGranted;
-        _allGranted = locGranted && notifGranted && gpsEnabled;
+        _allGranted = locGranted && gpsEnabled; // notifications optional
         _checking = false;
       });
     }

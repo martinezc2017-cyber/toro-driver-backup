@@ -517,7 +517,7 @@ class NotificationService {
     required String dueDate,
   }) async {
     await _showLocalNotification(
-      title: 'Estado de Cuenta Semanal',
+      title: 'Liquidacion de Servicios',
       body: 'Debes \$${amountDue.toStringAsFixed(2)}\nFecha límite: $dueDate',
       payload: jsonEncode({'type': 'weekly_statement', 'id': statementId}),
       channelId: earningsChannel,

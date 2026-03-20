@@ -38,6 +38,9 @@ class ConsentService {
   bool hasAcceptedCurrentTerms() {
     final termsConsent = _getLatestConsent(LegalDocumentType.termsAndConditions.key);
     final privacyConsent = _getLatestConsent(LegalDocumentType.privacyPolicy.key);
+    final icaConsent = _getLatestConsent(LegalDocumentType.driverAgreement.key);
+    final safetyConsent = _getLatestConsent(LegalDocumentType.safetyPolicy.key);
+    final mexicoConsent = _getLatestConsent(LegalDocumentType.mexicoAddendum.key);
 
     if (termsConsent == null || privacyConsent == null) {
       return false;
@@ -45,8 +48,11 @@ class ConsentService {
 
     final termsOk = termsConsent.documentVersion == LegalConstants.termsVersion;
     final privacyOk = privacyConsent.documentVersion == LegalConstants.privacyVersion;
+    final icaOk = icaConsent != null && icaConsent.documentVersion == LegalConstants.icaVersion;
+    final safetyOk = safetyConsent != null && safetyConsent.documentVersion == LegalConstants.safetyVersion;
+    final mexicoOk = mexicoConsent != null && mexicoConsent.documentVersion == LegalConstants.mexicoAddendumVersion;
 
-    return termsOk && privacyOk;
+    return termsOk && privacyOk && icaOk && safetyOk && mexicoOk;
   }
 
   /// Check if driver has accepted terms in the given language
@@ -100,6 +106,8 @@ class ConsentService {
       (LegalDocumentType.privacyPolicy, LegalConstants.privacyVersion),
       (LegalDocumentType.driverAgreement, LegalConstants.icaVersion),
       (LegalDocumentType.liabilityWaiver, LegalConstants.waiverVersion),
+      (LegalDocumentType.safetyPolicy, LegalConstants.safetyVersion),
+      (LegalDocumentType.mexicoAddendum, LegalConstants.mexicoAddendumVersion),
     ];
 
     final records = <ConsentRecord>[];
@@ -327,6 +335,10 @@ class ConsentService {
         return LegalConstants.icaVersion;
       case LegalDocumentType.liabilityWaiver:
         return LegalConstants.waiverVersion;
+      case LegalDocumentType.safetyPolicy:
+        return LegalConstants.safetyVersion;
+      case LegalDocumentType.mexicoAddendum:
+        return LegalConstants.mexicoAddendumVersion;
       default:
         return '1.0';
     }

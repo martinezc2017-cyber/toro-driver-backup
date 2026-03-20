@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -230,6 +231,9 @@ class _MessagesScreenState extends State<MessagesScreen> {
               // Quick responses
               _buildQuickResponses(),
 
+              // Safety banner
+              _buildSafetyBanner(),
+
               // Messages list
               Expanded(
                 child: _isLoading
@@ -325,8 +329,8 @@ class _MessagesScreenState extends State<MessagesScreen> {
             ),
             child: Center(
               child: Text(
-                ride.passengerName.isNotEmpty
-                    ? ride.passengerName[0].toUpperCase()
+                ride.passengerName.split(' ').first.isNotEmpty
+                    ? ride.passengerName.split(' ').first[0].toUpperCase()
                     : '?',
                 style: const TextStyle(
                   color: Colors.white,
@@ -342,7 +346,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  ride.passengerName,
+                  ride.passengerName.split(' ').first,
                   style: const TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 16,
@@ -389,6 +393,40 @@ class _MessagesScreenState extends State<MessagesScreen> {
           onPressed: () => _showReportDialog(ride),
         ),
       ],
+    );
+  }
+
+  bool _bannerDismissed = false;
+
+  Widget _buildSafetyBanner() {
+    if (_bannerDismissed) return const SizedBox.shrink();
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF3CD),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFFFD93D).withValues(alpha: 0.5)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.lock_outline, color: Color(0xFF856404), size: 18),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'chat.safety_banner'.tr(),
+              style: const TextStyle(
+                color: Color(0xFF856404),
+                fontSize: 12,
+              ),
+            ),
+          ),
+          GestureDetector(
+            onTap: () => setState(() => _bannerDismissed = true),
+            child: const Icon(Icons.close, color: Color(0xFF856404), size: 16),
+          ),
+        ],
+      ),
     );
   }
 
@@ -459,7 +497,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Send a message to ${ride.passengerName}',
+            'Send a message to ${ride.passengerName.split(' ').first}',
             style: TextStyle(
               fontSize: 14,
               color: AppColors.textSecondary,
@@ -683,7 +721,7 @@ class _MessageBubble extends StatelessWidget {
               ),
               child: Center(
                 child: Text(
-                  passengerName.isNotEmpty ? passengerName[0].toUpperCase() : '?',
+                  passengerName.split(' ').first.isNotEmpty ? passengerName.split(' ').first[0].toUpperCase() : '?',
                   style: const TextStyle(
                     color: Color(0xFFFF9500),
                     fontWeight: FontWeight.bold,

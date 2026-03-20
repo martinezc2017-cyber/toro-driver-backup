@@ -416,9 +416,9 @@ class NeonCard extends StatelessWidget {
           ),
           boxShadow: [
             BoxShadow(
-              color: color.withValues(alpha: glowIntensity),
-              blurRadius: 20,
-              spreadRadius: 0,
+              color: color.withValues(alpha: glowIntensity * 0.5),
+              blurRadius: 8,
+              spreadRadius: -2,
             ),
           ],
         ),

@@ -1,8 +1,7 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
-import 'package:share_plus/share_plus.dart';
 
 import '../../services/tourism_messaging_service.dart';
 import '../../services/tourism_event_service.dart';
@@ -42,7 +41,6 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
   final TourismInvitationService _invitationService = TourismInvitationService();
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final ImagePicker _imagePicker = ImagePicker();
 
   List<TourismMessage> _messages = [];
   TourismMessage? _pinnedAnnouncement;
@@ -57,7 +55,6 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
 
   bool _isLoading = true;
   bool _isSending = false;
-  bool _isUploadingImage = false;
   bool _userHasScrolledUp = false;
 
   @override
@@ -195,70 +192,6 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
     }
   }
 
-  Future<void> _pickAndSendImage() async {
-    HapticService.lightImpact();
-
-    final XFile? image = await _imagePicker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 1920,
-      maxHeight: 1920,
-      imageQuality: 85,
-    );
-
-    if (image == null) return;
-
-    setState(() => _isUploadingImage = true);
-
-    try {
-      final bytes = await image.readAsBytes();
-      final fileName =
-          '${DateTime.now().millisecondsSinceEpoch}_${image.name}';
-
-      final imageUrl = await _messagingService.uploadImage(
-        imageBytes: bytes,
-        fileName: fileName,
-        eventId: widget.eventId,
-      );
-
-      if (imageUrl != null) {
-        await _messagingService.sendImageMessage(
-          eventId: widget.eventId,
-          senderId: widget.userId,
-          senderType: widget.userRole,
-          senderName: widget.userName,
-          imageUrl: imageUrl,
-          senderAvatarUrl: widget.userAvatarUrl,
-        );
-        HapticService.success();
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('Error al subir imagen'),
-              backgroundColor: AppColors.error,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      debugPrint('Error sending image: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Error al enviar imagen'),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    }
-
-    if (mounted) {
-      setState(() => _isUploadingImage = false);
-    }
-  }
-
   Future<void> _sendCallToBus() async {
     HapticService.heavyImpact();
 
@@ -327,17 +260,6 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
     }
   }
 
-  void _openImage(String imageUrl) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => _FullScreenImageViewer(
-          imageUrl: imageUrl,
-        ),
-      ),
-    );
-  }
-
   bool get _canSendSpecialMessages =>
       widget.userRole == 'driver' || widget.userRole == 'organizer';
 
@@ -358,6 +280,7 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
           child: Column(
             children: [
               _buildHeader(),
+              _buildSafetyBanner(),
               if (_pinnedAnnouncement != null) _buildPinnedAnnouncement(),
               Expanded(
                 child: _isLoading
@@ -424,6 +347,167 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  bool _bannerDismissed = false;
+
+  Widget _buildSafetyBanner() {
+    if (_bannerDismissed) return const SizedBox.shrink();
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF3CD),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFFFD93D).withOpacity(0.5)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.lock_outline, color: Color(0xFF856404), size: 18),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'chat.safety_banner'.tr(),
+              style: const TextStyle(
+                color: Color(0xFF856404),
+                fontSize: 12,
+              ),
+            ),
+          ),
+          GestureDetector(
+            onTap: () => setState(() => _bannerDismissed = true),
+            child: const Icon(Icons.close, color: Color(0xFF856404), size: 16),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showReportMessageDialog(TourismMessage message) {
+    HapticService.mediumImpact();
+    final reasons = [
+      'chat.report_inappropriate'.tr(),
+      'chat.report_harassment'.tr(),
+      'chat.report_spam'.tr(),
+      'chat.report_personal_info'.tr(),
+      'chat.report_other'.tr(),
+    ];
+    String? selectedReason;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.card,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.border,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'chat.report_message'.tr(),
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: reasons.map((r) {
+                  final selected = selectedReason == r;
+                  return GestureDetector(
+                    onTap: () => setSheetState(() => selectedReason = r),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: selected ? Colors.red.withOpacity(0.15) : AppColors.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: selected ? Colors.red : AppColors.border.withOpacity(0.3),
+                          width: selected ? 2 : 1,
+                        ),
+                      ),
+                      child: Text(
+                        r,
+                        style: TextStyle(
+                          color: selected ? Colors.red : AppColors.textPrimary,
+                          fontSize: 14,
+                          fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 20),
+              GestureDetector(
+                onTap: selectedReason == null
+                    ? null
+                    : () async {
+                        Navigator.pop(ctx);
+                        final ok = await _messagingService.reportMessage(
+                          messageId: message.id,
+                          reporterId: widget.userId,
+                          reason: selectedReason!,
+                          chatType: 'tourism_messages',
+                          reportedUserId: message.senderId,
+                          eventId: widget.eventId,
+                          messageText: message.message,
+                          reporterRole: widget.userRole,
+                        );
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(ok
+                                  ? 'chat.report_submitted'.tr()
+                                  : 'chat.report_error'.tr()),
+                              backgroundColor: ok ? Colors.green : AppColors.error,
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        }
+                      },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  decoration: BoxDecoration(
+                    color: selectedReason == null ? AppColors.surface : Colors.red,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Center(
+                    child: Text(
+                      'chat.report_submit'.tr(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -560,7 +644,9 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
     }
 
     // Regular message bubble
-    return Padding(
+    return GestureDetector(
+      onLongPress: isMe ? null : () => _showReportMessageDialog(message),
+      child: Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         mainAxisAlignment:
@@ -610,7 +696,7 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            message.senderName ?? 'Usuario',
+                            (message.senderName ?? 'Usuario').split(' ').first,
                             style: TextStyle(
                               color: _getColorForRole(message.senderType),
                               fontSize: 12,
@@ -621,11 +707,7 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
                       ),
                     ),
                   // Message content
-                  if (message.messageType == TourismMessageType.image &&
-                      message.imageUrl != null)
-                    _buildImageContent(message.imageUrl!, isMe)
-                  else
-                    Padding(
+                  Padding(
                       padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
                       child: Text(
                         message.message ?? '',
@@ -671,6 +753,7 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
           ],
         ],
       ),
+    ),
     );
   }
 
@@ -701,54 +784,6 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
         border: Border.all(color: color.withOpacity(0.3)),
       ),
       child: Icon(icon, color: color, size: 14),
-    );
-  }
-
-  Widget _buildImageContent(String imageUrl, bool isMe) {
-    return GestureDetector(
-      onTap: () => _openImage(imageUrl),
-      child: Container(
-        margin: const EdgeInsets.fromLTRB(4, 4, 4, 4),
-        constraints: const BoxConstraints(
-          maxHeight: 200,
-          maxWidth: 250,
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Image.network(
-            imageUrl,
-            fit: BoxFit.cover,
-            loadingBuilder: (context, child, loadingProgress) {
-              if (loadingProgress == null) return child;
-              return Container(
-                height: 150,
-                width: 200,
-                color: AppColors.card,
-                child: const Center(
-                  child: CircularProgressIndicator(
-                    color: AppColors.primary,
-                    strokeWidth: 2,
-                  ),
-                ),
-              );
-            },
-            errorBuilder: (context, error, stackTrace) {
-              return Container(
-                height: 100,
-                width: 150,
-                color: AppColors.card,
-                child: const Center(
-                  child: Icon(
-                    Icons.broken_image,
-                    color: AppColors.textTertiary,
-                    size: 32,
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ),
     );
   }
 
@@ -945,33 +980,6 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              // Photo button
-              GestureDetector(
-                onTap: _isUploadingImage ? null : _pickAndSendImage,
-                child: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: AppColors.card,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: _isUploadingImage
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            color: AppColors.primary,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : const Icon(
-                          Icons.camera_alt,
-                          color: AppColors.textSecondary,
-                          size: 20,
-                        ),
-                ),
-              ),
-              const SizedBox(width: 8),
               // Text field
               Expanded(
                 child: TextField(
@@ -1281,69 +1289,6 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
         return '[Coordinador]';
       default:
         return '[Pasajero]';
-    }
-  }
-}
-
-/// Full screen image viewer with zoom and share capabilities.
-class _FullScreenImageViewer extends StatelessWidget {
-  final String imageUrl;
-
-  const _FullScreenImageViewer({required this.imageUrl});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        iconTheme: const IconThemeData(color: Colors.white),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.share),
-            onPressed: () => _shareImage(context),
-          ),
-        ],
-      ),
-      body: Center(
-        child: InteractiveViewer(
-          minScale: 0.5,
-          maxScale: 4.0,
-          child: Image.network(
-            imageUrl,
-            fit: BoxFit.contain,
-            loadingBuilder: (context, child, loadingProgress) {
-              if (loadingProgress == null) return child;
-              return const Center(
-                child: CircularProgressIndicator(color: AppColors.primary),
-              );
-            },
-            errorBuilder: (context, error, stackTrace) => const Center(
-              child: Icon(
-                Icons.broken_image,
-                color: AppColors.textTertiary,
-                size: 64,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _shareImage(BuildContext context) async {
-    try {
-      await Share.share(imageUrl, subject: 'Foto del evento');
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Error al compartir'),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
     }
   }
 }

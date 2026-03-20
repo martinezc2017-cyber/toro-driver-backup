@@ -161,6 +161,47 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
     }
   }
 
+  Future<void> _confirmLeaveEvent(String eventId) async {
+    final driverId = Provider.of<DriverProvider>(context, listen: false).driver?.id;
+    if (driverId == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.card,
+        title: const Text('¿Salir del evento?', style: TextStyle(color: AppColors.textPrimary)),
+        content: const Text(
+          'El evento regresará a broadcast y otros drivers podrán pujar.\n\nEsta acción no se puede deshacer.',
+          style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar', style: TextStyle(color: AppColors.textSecondary)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white),
+            child: const Text('Salir del evento'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    await _eventService.leaveEvent(eventId, driverId, reason: 'driver_voluntary_leave');
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Saliste del evento. Ya está disponible para otros drivers.'),
+        backgroundColor: Colors.orange,
+      ),
+    );
+    _loadMyBids();
+  }
+
   Future<void> _loadMyBids() async {
     setState(() => _isLoadingMyBids = true);
     try {
@@ -205,12 +246,12 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
     try {
       final response = await Supabase.instance.client
           .from('pricing_rules_mx')
-          .select('min_price_per_km')
+          .select('per_km')
           .limit(1)
           .maybeSingle();
-      if (response != null && response['min_price_per_km'] != null) {
+      if (response != null && response['per_km'] != null) {
         setState(() {
-          _minPricePerKm = (response['min_price_per_km'] as num).toDouble();
+          _minPricePerKm = (response['per_km'] as num).toDouble();
         });
       }
     } catch (_) {}
@@ -2892,31 +2933,50 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                 ),
               ),
             ],
-            // Won bid: action button
+            // Won bid: action buttons
             if (type == 'won' && eventId != null) ...[
               const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                height: 40,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    HapticService.mediumImpact();
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => TourismDriverHomeScreen(eventId: eventId),
+              Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 40,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          HapticService.mediumImpact();
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => TourismDriverHomeScreen(eventId: eventId),
+                            ),
+                          ).then((_) => _loadMyBids());
+                        },
+                        icon: const Icon(Icons.emoji_events, size: 16),
+                        label: const Text('Ver Evento', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.success,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          elevation: 0,
+                        ),
                       ),
-                    ).then((_) => _loadMyBids());
-                  },
-                  icon: const Icon(Icons.emoji_events, size: 16),
-                  label: const Text('Ver Evento', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.success,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    elevation: 0,
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    height: 40,
+                    child: OutlinedButton.icon(
+                      onPressed: () => _confirmLeaveEvent(eventId),
+                      icon: const Icon(Icons.exit_to_app, size: 16),
+                      label: const Text('Salir', style: TextStyle(fontSize: 13)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.error,
+                        side: const BorderSide(color: AppColors.error, width: 1),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ],

@@ -6,10 +6,14 @@
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     <uses-permission android:name="android.permission.INTERNET" />
 
-    <!-- Camera and Gallery permissions for image_picker -->
+    <!-- Camera for document photos (license, vehicle) -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+
+    <!-- Block media permissions auto-added by image_picker (not needed, we use camera only) -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" tools:node="remove" />
 
     <!-- Biometric authentication (Face ID / Fingerprint) -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />

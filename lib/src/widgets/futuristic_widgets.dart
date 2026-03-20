@@ -1183,9 +1183,11 @@ class _FireGlowButtonState extends State<FireGlowButton>
   Widget build(BuildContext context) {
     final activeColor = widget.hasActiveGlow
         ? AppColors.success
-        : AppColors.primary;
-    final inactiveColor = AppColors.textTertiary;
-    final selectedBg = activeColor.withValues(alpha: 0.25);
+        : Colors.white;
+    final inactiveColor = const Color(0xFFB0B0B0);
+    final selectedBg = (widget.hasActiveGlow
+        ? AppColors.success
+        : const Color(0xFF2563EB)).withValues(alpha: 0.30);
 
     final showGlow = widget.hasActiveGlow && !widget.isSelected;
 
@@ -1333,35 +1335,25 @@ class _FireGlowBottomNavBarState extends State<FireGlowBottomNavBar>
             boxShadow: [
               BoxShadow(
                 color: HSLColor.fromAHSL(
-                  0.9,
+                  0.5,
                   (value * 360) % 360,
                   1.0,
                   0.5,
                 ).toColor(),
-                blurRadius: 25,
-                spreadRadius: 2,
+                blurRadius: 8,
+                spreadRadius: 0,
               ),
               BoxShadow(
-                color: HSLColor.fromAHSL(
-                  0.6,
-                  (value * 360) % 360,
-                  1.0,
-                  0.5,
-                ).toColor(),
-                blurRadius: 40,
-                spreadRadius: 5,
-              ),
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.4),
-                blurRadius: 20,
-                offset: const Offset(0, 8),
+                color: Colors.black.withValues(alpha: 0.3),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
           child: Container(
             margin: const EdgeInsets.all(4),
             decoration: BoxDecoration(
-              color: AppColors.card,
+              color: Colors.black,
               borderRadius: BorderRadius.circular(20),
             ),
             child: Padding(

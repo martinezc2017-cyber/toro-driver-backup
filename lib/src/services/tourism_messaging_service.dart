@@ -24,8 +24,8 @@ class TourismMessage {
   final String? senderAvatarUrl;
   final String? message;
   final TourismMessageType messageType;
-  final String? imageUrl;
-  final String? thumbnailUrl;
+  final String? imageUrl;      // Legacy: read-only from DB (photo uploads disabled)
+  final String? thumbnailUrl;  // Legacy: read-only from DB (photo uploads disabled)
   final double? lat;
   final double? lng;
   final String? locationName;
@@ -274,10 +274,7 @@ class TourismMessagingService {
     }
   }
 
-  /// Send an image message to the event chat.
-  ///
-  /// [imageUrl] - the URL of the uploaded image
-  /// [thumbnailUrl] - optional thumbnail URL
+  /// Send an image message (used by organizer photo gallery only).
   Future<bool> sendImageMessage({
     required String eventId,
     required String senderId,
@@ -303,12 +300,31 @@ class TourismMessagingService {
         'read_by': [],
         'created_at': DateTime.now().toUtc().toIso8601String(),
       });
-
       debugPrint('TOURISM_CHAT -> Image message sent');
       return true;
     } catch (e) {
       debugPrint('TOURISM_CHAT -> Error sending image message: $e');
       return false;
+    }
+  }
+
+  /// Upload an image to storage (used by organizer photo gallery only).
+  Future<String?> uploadImage({
+    required List<int> imageBytes,
+    required String fileName,
+    required String eventId,
+  }) async {
+    try {
+      final path = 'tourism/$eventId/$fileName';
+      await _client.storage
+          .from('chat-images')
+          .uploadBinary(path, Uint8List.fromList(imageBytes));
+      final publicUrl = _client.storage.from('chat-images').getPublicUrl(path);
+      debugPrint('TOURISM_CHAT -> Image uploaded: $publicUrl');
+      return publicUrl;
+    } catch (e) {
+      debugPrint('TOURISM_CHAT -> Error uploading image: $e');
+      return null;
     }
   }
 
@@ -547,34 +563,52 @@ class TourismMessagingService {
   }
 
   // ===========================================================================
-  // IMAGE UPLOAD
+  // REPORT MESSAGE
   // ===========================================================================
 
-  /// Upload an image to storage and return the public URL.
+  /// Report a message for inappropriate content.
   ///
-  /// [imageBytes] - the image data
-  /// [fileName] - the file name (with extension)
-  /// [eventId] - the event ID (used for folder organization)
-  Future<String?> uploadImage({
-    required List<int> imageBytes,
-    required String fileName,
-    required String eventId,
+  /// Stores the report in the `chat_reports` table for admin review.
+  /// Includes full context: who, what, where, when, which trip/event.
+  Future<bool> reportMessage({
+    required String messageId,
+    required String reporterId,
+    required String reason,
+    String? details,
+    String chatType = 'tourism_messages',
+    String? reportedUserId,
+    String? eventId,
+    String? rideId,
+    String? messageText,
+    String reporterRole = 'driver',
+    double? incidentLat,
+    double? incidentLng,
+    String? incidentLocation,
   }) async {
     try {
-      final path = 'tourism/$eventId/$fileName';
+      await _client.from('chat_reports').insert({
+        'message_id': messageId,
+        'reporter_id': reporterId,
+        'reason': reason,
+        'details': details,
+        'status': 'pending',
+        'created_at': DateTime.now().toUtc().toIso8601String(),
+        'chat_type': chatType,
+        if (reportedUserId != null) 'reported_user_id': reportedUserId,
+        if (eventId != null) 'event_id': eventId,
+        if (rideId != null) 'ride_id': rideId,
+        if (messageText != null) 'message_text': messageText,
+        'reporter_role': reporterRole,
+        if (incidentLat != null) 'incident_lat': incidentLat,
+        if (incidentLng != null) 'incident_lng': incidentLng,
+        if (incidentLocation != null) 'incident_location': incidentLocation,
+      });
 
-      await _client.storage
-          .from('chat-images')
-          .uploadBinary(path, Uint8List.fromList(imageBytes));
-
-      final publicUrl =
-          _client.storage.from('chat-images').getPublicUrl(path);
-
-      debugPrint('TOURISM_CHAT -> Image uploaded: $publicUrl');
-      return publicUrl;
+      debugPrint('TOURISM_CHAT -> Message reported: $messageId (chat: $chatType)');
+      return true;
     } catch (e) {
-      debugPrint('TOURISM_CHAT -> Error uploading image: $e');
-      return null;
+      debugPrint('TOURISM_CHAT -> Error reporting message: $e');
+      return false;
     }
   }
 

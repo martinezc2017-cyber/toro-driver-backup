@@ -497,7 +497,7 @@ You retain complete control over:
 - When you choose to be available on the platform
 - Whether to accept or decline any service request
 - The manner in which you provide services
-- Your work schedule and hours
+- When you choose to make yourself available on the platform
 - Use of other platforms or services
 
 C. NO EXCLUSIVITY:
@@ -541,8 +541,9 @@ A. FARE CALCULATION:
 Fares are calculated by the platform based on distance, time, and service type.
 The platform retains a service fee.
 
-B. PAYMENT SCHEDULE:
-Payments are processed weekly via direct deposit.
+B. SETTLEMENT OF SERVICE FEES:
+Accumulated service fees are settled periodically via direct deposit. This
+settlement is an administrative convenience, not a payroll cycle.
 
 C. TAXES:
 You are responsible for all applicable taxes. You will receive a 1099 form
@@ -604,7 +605,7 @@ A. SEXUAL MISCONDUCT:
 
 B. SUBSTANCE IMPAIRMENT:
 - No driving under the influence of alcohol or drugs
-- No use of impairing substances while on active duty
+- No use of impairing substances while providing services through the platform
 - No open containers of alcohol in the vehicle
 
 C. VIOLENCE AND HARASSMENT:
@@ -637,7 +638,7 @@ DUI/DWI, drug offenses, and any act of violence.
 3. VEHICLE SAFETY REQUIREMENTS
 --------------------------------------------------------------------------------
 
-Before each shift, ensure:
+Before each trip, ensure:
 - All lights functioning
 - Tires properly inflated
 - Brakes functioning
@@ -865,66 +866,332 @@ END OF LIABILITY WAIVER v${LegalConstants.waiverVersion}
   static String get _mexicoAddendumEn => '''
 ================================================================================
 ${LegalConstants.companyName} - MEXICO OPERATIONS ADDENDUM
-Version ${LegalConstants.mexicoAddendumVersion} | Effective Date: February 2026
+Version ${LegalConstants.mexicoAddendumVersion} | Effective Date: March 2026
 ================================================================================
 
-This addendum applies to Drivers operating in Mexico and supplements the
-main Terms and Conditions.
+This addendum applies to Service Providers operating in Mexico and supplements
+the main Terms and Conditions, Independent Contractor Agreement, Safety Policy,
+and Liability Waiver. In case of conflict between this Addendum and the main
+documents, this Addendum prevails for operations within Mexico.
+
+BY ACCEPTING THIS ADDENDUM, YOU ACKNOWLEDGE AND AGREE TO ALL TERMS HEREIN.
 
 --------------------------------------------------------------------------------
-1. APPLICABLE LAW
+1. APPLICABLE LAW AND LEGAL FRAMEWORK
 --------------------------------------------------------------------------------
 
-Operations in Mexico are subject to:
-- Ley Federal del Trabajo (LFT) - Federal Labor Law
-- Ley del Servicio de Administracion Tributaria (SAT)
+Operations in Mexico are governed by:
+- Constitucion Politica de los Estados Unidos Mexicanos (Arts. 5, 123)
+- Codigo Civil Federal (Libro Cuarto: obligations and contracts)
+- Codigo de Comercio (commercial intermediation)
+- Ley Federal del Trabajo (LFT) - for reference and regulatory awareness
+- Ley del Impuesto Sobre la Renta (LISR) - income tax law
+- Ley del Impuesto al Valor Agregado (LIVA) - value added tax
 - Ley Federal de Proteccion al Consumidor (PROFECO)
-- Applicable state and municipal regulations
+- Ley Federal de Proteccion de Datos Personales en Posesion de los
+  Particulares (LFPDPPP)
+- Applicable state and municipal transit and transportation regulations
+
+TORO DRIVER LLC operates as a TECHNOLOGY MARKETPLACE PLATFORM that connects
+independent service providers with event organizers and passengers. TORO
+DRIVER does NOT provide transportation services directly. TORO DRIVER does
+NOT assign trips, routes, schedules, or fares to service providers.
 
 --------------------------------------------------------------------------------
-2. INDEPENDENT CONTRACTOR STATUS (MEXICO)
+2. NATURE OF THE RELATIONSHIP: COMMERCIAL, NOT EMPLOYMENT
 --------------------------------------------------------------------------------
 
-In accordance with Mexican law:
-- You are an independent service provider, NOT an employee
-- This relationship does not create subordination (subordinacion)
-- You control your schedule, routes, and methods
-- You are responsible for your own fiscal obligations (SAT)
-- You must issue CFDI invoices as required
+A. LEGAL BASIS:
+This relationship is governed by COMMERCIAL LAW (Codigo de Comercio and
+Codigo Civil Federal), NOT by the Ley Federal del Trabajo. The relationship
+between you and TORO DRIVER is that of an independent service provider
+accessing a technology marketplace, analogous to a vendor using a marketplace
+platform to offer services to third parties.
+
+B. NO EMPLOYMENT RELATIONSHIP (NO RELACION LABORAL):
+Under Articles 8, 20, and 21 of the Ley Federal del Trabajo, an employment
+relationship requires the existence of SUBORDINATION (subordinacion laboral).
+The relationship between you and TORO DRIVER does NOT constitute an
+employment relationship because:
+
+  1. NO SUBORDINATION EXISTS: TORO DRIVER does not exercise "mando y
+     supervision" (command and supervision) over you. You are not subject
+     to the direction, control, or disciplinary authority of TORO DRIVER
+     in the performance of your services.
+
+  2. NO FIXED SCHEDULE: You choose when to connect to the platform and when
+     to disconnect. There is no minimum or maximum number of hours, days,
+     or services required. You have no obligation to be available at any
+     specific time.
+
+  3. NO EXCLUSIVE DEDICATION: You may use other platforms, applications, or
+     services simultaneously. You may provide transportation services
+     independently or through any competitor at any time.
+
+  4. NO SUPERVISION OF METHODS: TORO DRIVER does not dictate routes,
+     driving methods, vehicle appearance (beyond safety), or the manner
+     in which you interact with passengers beyond basic safety requirements.
+
+  5. NO MANDATORY UNIFORM OR BRANDING: You are not required to wear any
+     uniform, insignia, or identification of TORO DRIVER. You are not
+     required to display TORO DRIVER branding on your vehicle.
+
+  6. NO TOOLS OR EQUIPMENT PROVIDED: You provide your own vehicle, mobile
+     device, fuel, and all tools necessary for your activity. TORO DRIVER
+     does not provide any equipment, workspace, or materials.
+
+  7. NO HIRING PROCESS: Access to the platform requires identity verification
+     and safety compliance for the protection of third parties, NOT as an
+     employment screening or hiring process.
+
+  8. FREEDOM TO DECLINE: You may decline any service request or event
+     opportunity without penalty, consequence, or reduction in future
+     opportunities. Declining requests does NOT affect your access to the
+     platform.
+
+  9. NO PERSONAL SERVICE REQUIREMENT: You may, subject to applicable law
+     and insurance requirements, delegate or subcontract the performance of
+     services using your account, provided the substitute meets all safety
+     and legal requirements.
+
+  10. MARKETPLACE MODEL: TORO DRIVER connects Organizers (who create events
+      and set prices) with Service Providers (who bid on events). The
+      Organizer selects the Service Provider. TORO DRIVER does NOT assign
+      trips algorithmically.
+
+C. CONSTITUTIONAL BASIS:
+Under Article 5 of the Mexican Constitution, every person has the right to
+engage in the lawful profession, industry, trade, or work of their choice.
+Your decision to use the TORO DRIVER platform is an exercise of this
+constitutional right to engage in independent commercial activity.
 
 --------------------------------------------------------------------------------
-3. FISCAL OBLIGATIONS
+3. COMPENSATION: NOT SALARY (NO ES SALARIO)
 --------------------------------------------------------------------------------
 
-Mexican Drivers must:
-- Register with SAT with appropriate tax regime
-- Issue CFDI invoices for services rendered
-- Comply with ISR and IVA obligations
-- Maintain RFC documentation
-- File tax declarations as required
+A. NATURE OF PAYMENTS:
+Compensation received through the platform constitutes COMMERCIAL SERVICE FEES
+(honorarios por servicios profesionales independientes) for services rendered,
+NOT "salario" as defined in Article 82 of the LFT. Payments are:
+
+  - Variable, based on services actually completed
+  - Not guaranteed, fixed, periodic, or predetermined
+  - Not a minimum wage (salario minimo) under any interpretation
+  - Not subject to payroll withholding (retencion de nomina)
+  - Calculated per service rendered, NOT per hour, day, or week
+  - Subject to the marketplace commission retained by the platform
+
+B. NO GUARANTEED MINIMUM INCOME:
+TORO DRIVER does NOT guarantee any minimum level of income, number of service
+opportunities, or frequency of requests. Your income depends entirely on your
+own decisions regarding when, where, and how often to provide services.
+
+C. SETTLEMENT OF SERVICE FEES:
+Periodic settlement of accumulated service fees (liquidacion de servicios
+prestados) is an administrative convenience, NOT a payroll cycle. This
+settlement does NOT constitute a "nomina" or "pago de salario."
+
+D. NO EMPLOYMENT BENEFITS (NO PRESTACIONES LABORALES):
+Because there is NO employment relationship, you are NOT entitled to and
+TORO DRIVER is NOT obligated to provide any of the following:
+
+  - Aguinaldo (annual bonus, Art. 87 LFT)
+  - Vacaciones (paid vacation, Art. 76 LFT)
+  - Prima vacacional (vacation bonus, Art. 80 LFT)
+  - Participacion de los Trabajadores en las Utilidades / PTU
+    (profit sharing, Art. 117 LFT)
+  - Prima de antiguedad (seniority premium, Art. 162 LFT)
+  - Dias de descanso obligatorio (mandatory rest days, Art. 74 LFT)
+  - Indemnizacion por despido (severance, Arts. 48-50 LFT)
+  - Any other benefit or payment derived from an employment relationship
 
 --------------------------------------------------------------------------------
-4. SAFETY AND SECURITY (MEXICO)
+4. NO IMSS, INFONAVIT, OR AFORE OBLIGATIONS
 --------------------------------------------------------------------------------
 
-Additional safety requirements for Mexico:
-- Comply with local transit regulations
-- Maintain required vehicle documentation (tarjeta de circulacion)
-- Report incidents to appropriate local authorities
-- Cooperate with state/federal investigations
-- Maintain IMSS or private insurance coverage
+A. NO EMPLOYER REGISTRATION:
+Because there is NO employment relationship and NO subordination, TORO DRIVER
+does NOT register you with:
+  - IMSS (Instituto Mexicano del Seguro Social)
+  - INFONAVIT (Instituto del Fondo Nacional de la Vivienda para los
+    Trabajadores)
+  - SAR/AFORE (Sistema de Ahorro para el Retiro)
+
+B. YOUR OWN SOCIAL SECURITY:
+You are solely responsible for your own social security coverage. Options
+available to independent workers in Mexico include:
+  - Voluntary IMSS enrollment (Regimen Voluntario / Modalidad 40 /
+    Continuacion Voluntaria al Regimen Obligatorio)
+  - Private health insurance (seguro de gastos medicos mayores)
+  - Private disability and life insurance
+  - Voluntary retirement savings (AFORE voluntario)
+
+C. ACKNOWLEDGMENT:
+You acknowledge that TORO DRIVER has no obligation to enroll you in any
+social security program and that you are responsible for securing your own
+health, disability, retirement, and life insurance coverage.
 
 --------------------------------------------------------------------------------
-5. RECORDING AND CONSENT (MEXICO)
+5. FISCAL AND TAX OBLIGATIONS
+--------------------------------------------------------------------------------
+
+A. TAX REGISTRATION:
+You must be registered with the Servicio de Administracion Tributaria (SAT)
+with the appropriate fiscal regime. Recommended regimes include:
+  - RESICO (Regimen Simplificado de Confianza) for individuals earning
+    under \$3,500,000 MXN/year
+  - Regimen de Actividades Empresariales y Profesionales
+  - Regimen de Plataformas Digitales (under Article 113-A LISR)
+
+B. RFC REQUIREMENT:
+You must maintain a valid RFC (Registro Federal de Contribuyentes) and
+provide it to TORO DRIVER when requested.
+
+C. CFDI INVOICING:
+You must issue CFDI (Comprobante Fiscal Digital por Internet) invoices for
+all services rendered through the platform as required by SAT.
+
+D. TAX COMPLIANCE:
+You are solely responsible for:
+  - ISR (Impuesto Sobre la Renta) declarations and payments
+  - IVA (Impuesto al Valor Agregado) declarations and payments
+  - Monthly and annual tax declarations to SAT
+  - Maintaining accounting records as required by law
+
+E. PLATFORM TAX WITHHOLDING:
+If applicable under Article 113-A of the LISR, TORO DRIVER may withhold
+ISR (currently 2.1% for passenger transport) and IVA (currently 8%)
+from service fees. These withholdings are remitted to SAT on your behalf
+and may constitute definitive payment if your annual income is below the
+applicable threshold (\$300,000 MXN).
+
+F. INDEPENDENT FISCAL OBLIGATION:
+Your tax obligations are YOUR responsibility as an independent commercial
+actor. TORO DRIVER's role is limited to withholding and remitting taxes
+as required by law. TORO DRIVER does NOT prepare your tax declarations,
+does NOT provide tax advice, and does NOT act as your fiscal representative.
+
+--------------------------------------------------------------------------------
+6. ACCOUNT DEACTIVATION: NOT TERMINATION OF EMPLOYMENT
+--------------------------------------------------------------------------------
+
+A. NATURE OF DEACTIVATION:
+Deactivation or suspension of your platform account is the REVOCATION OF
+ACCESS TO A TECHNOLOGY PLATFORM, NOT a "despido" (dismissal) under the LFT.
+Because there is no employment relationship, the following do NOT apply:
+
+  - Indemnizacion constitucional (3 months salary, Art. 48 LFT)
+  - 20 days salary per year of service (Art. 50 LFT)
+  - Prima de antiguedad (seniority premium, Art. 162 LFT)
+  - Salarios caidos (back pay, Art. 48 LFT)
+  - Finiquito or liquidacion of any kind
+  - Reinstatement rights (Art. 48 LFT)
+
+B. GROUNDS FOR DEACTIVATION:
+TORO DRIVER may deactivate or suspend your account for:
+  - Safety violations that endanger passengers or the public
+  - Fraudulent activity or misrepresentation
+  - Criminal conduct during or related to platform use
+  - Material breach of this Agreement or the platform Terms
+  - Failure to maintain required documentation (license, insurance, RFC)
+  - Verified complaints of serious misconduct
+
+C. DEACTIVATION PROCESS:
+  - For safety-critical situations: immediate temporary suspension pending
+    review
+  - For non-safety matters: written notice specifying the grounds, with
+    opportunity to respond within 5 business days
+  - Human review: all non-automated deactivation decisions are reviewed by
+    a designated platform representative
+  - Appeal: you may submit a written appeal within 10 business days of
+    receiving deactivation notice to ${LegalConstants.companyEmail}
+
+D. VOLUNTARY DEPARTURE:
+You may cease using the platform at any time without notice, penalty, or
+obligation. Your departure does not create any right to compensation,
+severance, or payment beyond fees already earned for completed services.
+
+E. NO EFFECT ON FUTURE OPPORTUNITIES:
+Declining service requests, being unavailable, or periods of inactivity do
+NOT constitute grounds for deactivation. You will NEVER be deactivated for
+exercising your right to decline work or choose your own availability.
+
+--------------------------------------------------------------------------------
+7. ASSUMPTION OF RISK AND INSURANCE
+--------------------------------------------------------------------------------
+
+A. NO "RIESGO DE TRABAJO":
+Because there is NO employment relationship, injuries, accidents, or health
+conditions arising during or in connection with your use of the platform are
+NOT "riesgos de trabajo" as defined in Title Nine (Arts. 473-515) of the LFT.
+TORO DRIVER has NO obligation to provide workplace injury compensation,
+occupational disease coverage, or death benefits under the LFT.
+
+B. ASSUMPTION OF RISK:
+You acknowledge and accept that providing transportation services involves
+inherent risks including but not limited to: traffic accidents, vehicle
+damage, personal injury, robbery, assault, and health emergencies. You
+voluntarily assume these risks.
+
+C. MANDATORY INSURANCE:
+Before providing services through the platform in Mexico, you MUST maintain
+at your own expense:
+  - Civil liability insurance (seguro de responsabilidad civil) covering
+    third-party injuries and property damage
+  - Personal accident insurance (seguro contra accidentes personales)
+  - Valid vehicle insurance as required by applicable state law
+  - Any additional coverage required by local transportation regulations
+
+D. PROOF OF INSURANCE:
+TORO DRIVER may request proof of valid insurance at any time. Failure to
+maintain required insurance coverage is grounds for account deactivation.
+
+E. INDEMNIFICATION:
+You agree to indemnify and hold harmless TORO DRIVER LLC from any claims,
+damages, losses, or expenses arising from accidents, injuries, or incidents
+occurring during your use of the platform, to the fullest extent permitted
+by applicable law.
+
+--------------------------------------------------------------------------------
+8. PRIVACY AND DATA PROTECTION (MEXICO)
+--------------------------------------------------------------------------------
+
+In addition to the main Privacy Policy, the following applies in Mexico:
+
+A. LFPDPPP COMPLIANCE:
+The processing of your personal data is governed by the Ley Federal de
+Proteccion de Datos Personales en Posesion de los Particulares (LFPDPPP)
+and its Regulations.
+
+B. PURPOSE OF DATA COLLECTION:
+Personal data is collected for: identity verification, safety compliance,
+service facilitation, payment processing, legal compliance, and dispute
+resolution. Your data is NOT used for employee performance evaluation,
+productivity monitoring, or workplace surveillance.
+
+C. GPS AND LOCATION DATA:
+Location data is collected during active trips ONLY for: passenger safety,
+route verification in case of disputes, and regulatory compliance. Location
+data is NOT used for supervising your work, assigning trips, or evaluating
+your performance.
+
+D. ARCO RIGHTS:
+You have the right to Access, Rectify, Cancel, and Oppose the processing
+of your personal data (derechos ARCO). Requests should be directed to
+${LegalConstants.privacyEmail}.
+
+--------------------------------------------------------------------------------
+9. RECORDING AND CONSENT (MEXICO)
 --------------------------------------------------------------------------------
 
 Audio/video recording during trips in Mexico:
-- Subject to applicable federal and state privacy laws
+- Subject to applicable federal and state privacy laws, including LFPDPPP
 - Riders are notified of recording capability
-- Recordings used only for safety and legal purposes
+- Recordings used only for safety, legal purposes, and dispute resolution
+- Recordings are NOT used for worker supervision or performance evaluation
 
 --------------------------------------------------------------------------------
-6. INCIDENT REPORTING (MEXICO)
+10. INCIDENT REPORTING (MEXICO)
 --------------------------------------------------------------------------------
 
 In Mexico, you must also:
@@ -932,6 +1199,65 @@ In Mexico, you must also:
 - Cooperate with Ministerio Publico if required
 - Preserve evidence as required by Mexican law
 - Report incidents involving firearms or violence to authorities
+- Dial 911 for emergencies
+
+--------------------------------------------------------------------------------
+11. DISPUTE RESOLUTION (MEXICO)
+--------------------------------------------------------------------------------
+
+A. COMMERCIAL NATURE:
+Disputes arising from this Agreement are of a COMMERCIAL nature and shall
+be resolved through commercial legal channels, NOT labor courts (Juntas de
+Conciliacion y Arbitraje / Tribunales Laborales).
+
+B. CONCILIATION:
+Before initiating any legal proceeding, both parties agree to attempt good
+faith conciliation. You may contact ${LegalConstants.supportEmail} to
+initiate a dispute resolution process.
+
+C. JURISDICTION:
+For disputes arising from operations in Mexico, the competent courts are
+the commercial courts (juzgados civiles/mercantiles) of Mexico City,
+expressly waiving any other jurisdiction that may correspond by reason
+of domicile, present or future.
+
+D. WAIVER OF LABOR JURISDICTION:
+You expressly acknowledge that the relationship governed by this Agreement
+is commercial in nature and agree that labor courts do not have jurisdiction
+over disputes arising from this Agreement.
+
+--------------------------------------------------------------------------------
+12. SAFETY AND SECURITY (MEXICO)
+--------------------------------------------------------------------------------
+
+Additional safety requirements for Mexico:
+- Comply with local transit regulations and state transportation laws
+- Maintain required vehicle documentation (tarjeta de circulacion,
+  verificacion vehicular, tenencia if applicable)
+- Report incidents to appropriate local authorities
+- Cooperate with state/federal investigations when legally required
+- Maintain valid insurance coverage as specified in Section 7
+
+--------------------------------------------------------------------------------
+13. SEVERABILITY AND ACKNOWLEDGMENT
+--------------------------------------------------------------------------------
+
+A. SEVERABILITY:
+If any provision of this Addendum is found invalid or unenforceable under
+Mexican law, the remaining provisions shall continue in full force.
+
+B. COMPLETE ACKNOWLEDGMENT:
+By accepting this Addendum, you acknowledge that:
+  - You have read and understood ALL sections of this document
+  - You understand that your relationship with TORO DRIVER is COMMERCIAL,
+    not an employment relationship
+  - You understand that NO subordination exists
+  - You are NOT entitled to employment benefits (prestaciones laborales)
+  - TORO DRIVER will NOT register you with IMSS, INFONAVIT, or AFORE
+  - You are responsible for your own taxes, insurance, and social security
+  - Deactivation of your account is NOT "despido injustificado"
+  - You voluntarily accept the risks inherent in providing services
+  - You may consult with an independent legal advisor before accepting
 
 ================================================================================
 END OF MEXICO ADDENDUM v${LegalConstants.mexicoAddendumVersion}
@@ -1299,7 +1625,7 @@ Usted mantiene control completo sobre:
 - Cuando elige estar disponible en la plataforma
 - Si acepta o rechaza cualquier solicitud de servicio
 - La manera en que proporciona servicios
-- Su horario de trabajo
+- Cuando elige conectarse a la plataforma
 - Uso de otras plataformas o servicios
 
 C. SIN EXCLUSIVIDAD:
@@ -1344,8 +1670,10 @@ A. CALCULO DE TARIFAS:
 Las tarifas son calculadas por la plataforma basadas en distancia, tiempo y
 tipo de servicio. La plataforma retiene una comision de servicio.
 
-B. CALENDARIO DE PAGOS:
-Los pagos se procesan semanalmente mediante deposito directo.
+B. LIQUIDACION DE HONORARIOS:
+Los honorarios por servicios acumulados se liquidan periodicamente mediante
+deposito directo. Esta liquidacion es una conveniencia administrativa, no un
+ciclo de nomina.
 
 C. IMPUESTOS:
 Usted es responsable de todos los impuestos aplicables. Recibira un formulario
@@ -1407,7 +1735,7 @@ A. CONDUCTA SEXUAL INAPROPIADA:
 
 B. CONDUCIR BAJO EFECTOS DE SUSTANCIAS:
 - No conducir bajo la influencia de alcohol o drogas
-- No usar sustancias que deterioren la capacidad durante servicio activo
+- No usar sustancias que deterioren la capacidad mientras presta servicios a traves de la plataforma
 - No tener recipientes abiertos de alcohol en el vehiculo
 
 C. VIOLENCIA Y ACOSO:
@@ -1440,7 +1768,7 @@ DUI/DWI, delitos de drogas y cualquier acto de violencia.
 3. REQUISITOS DE SEGURIDAD DEL VEHICULO
 --------------------------------------------------------------------------------
 
-Antes de cada turno, asegurese de:
+Antes de cada servicio, asegurese de:
 - Todas las luces funcionando
 - Llantas correctamente infladas
 - Frenos funcionando
@@ -1667,66 +1995,347 @@ FIN DE LA EXONERACION DE RESPONSABILIDAD v${LegalConstants.waiverVersion}
   static String get _mexicoAddendumEs => '''
 ================================================================================
 ${LegalConstants.companyName} - ADENDA DE OPERACIONES EN MEXICO
-Version ${LegalConstants.mexicoAddendumVersion} | Fecha Efectiva: Febrero 2026
+Version ${LegalConstants.mexicoAddendumVersion} | Fecha Efectiva: Marzo 2026
 ================================================================================
 
-Esta adenda aplica a Conductores que operan en Mexico y complementa los
-Terminos y Condiciones principales.
+Esta adenda aplica a Prestadores de Servicios que operan en Mexico y
+complementa los Terminos y Condiciones principales, el Acuerdo de
+Contratista Independiente, la Politica de Seguridad y la Exoneracion de
+Responsabilidad. En caso de conflicto entre esta Adenda y los documentos
+principales, esta Adenda prevalece para operaciones dentro de Mexico.
+
+AL ACEPTAR ESTA ADENDA, USTED RECONOCE Y ACEPTA TODOS LOS TERMINOS AQUI
+CONTENIDOS.
 
 --------------------------------------------------------------------------------
-1. LEY APLICABLE
+1. MARCO LEGAL APLICABLE
 --------------------------------------------------------------------------------
 
-Las operaciones en Mexico estan sujetas a:
-- Ley Federal del Trabajo (LFT)
-- Ley del Servicio de Administracion Tributaria (SAT)
+Las operaciones en Mexico se rigen por:
+- Constitucion Politica de los Estados Unidos Mexicanos (Arts. 5, 123)
+- Codigo Civil Federal (Libro Cuarto: obligaciones y contratos)
+- Codigo de Comercio (intermediacion comercial)
+- Ley Federal del Trabajo (LFT) - como referencia y conocimiento regulatorio
+- Ley del Impuesto Sobre la Renta (LISR) - impuesto sobre la renta
+- Ley del Impuesto al Valor Agregado (LIVA) - impuesto al valor agregado
 - Ley Federal de Proteccion al Consumidor (PROFECO)
-- Regulaciones estatales y municipales aplicables
+- Ley Federal de Proteccion de Datos Personales en Posesion de los
+  Particulares (LFPDPPP)
+- Regulaciones estatales y municipales de transito y transporte aplicables
+
+TORO DRIVER LLC opera como una PLATAFORMA TECNOLOGICA DE MERCADO que
+conecta prestadores de servicios independientes con organizadores de eventos
+y pasajeros. TORO DRIVER NO proporciona servicios de transporte directamente.
+TORO DRIVER NO asigna viajes, rutas, horarios ni tarifas a los prestadores
+de servicios.
 
 --------------------------------------------------------------------------------
-2. ESTATUS DE CONTRATISTA INDEPENDIENTE (MEXICO)
+2. NATURALEZA DE LA RELACION: COMERCIAL, NO LABORAL
 --------------------------------------------------------------------------------
 
-De acuerdo con la ley mexicana:
-- Usted es un prestador de servicios independiente, NO un empleado
-- Esta relacion no crea subordinacion
-- Usted controla su horario, rutas y metodos
-- Es responsable de sus obligaciones fiscales (SAT)
-- Debe emitir facturas CFDI segun se requiera
+A. BASE LEGAL:
+Esta relacion se rige por el DERECHO MERCANTIL (Codigo de Comercio y
+Codigo Civil Federal), NO por la Ley Federal del Trabajo. La relacion
+entre usted y TORO DRIVER es la de un prestador de servicios independiente
+que accede a una plataforma tecnologica de mercado, analoga a un proveedor
+que utiliza una plataforma para ofrecer servicios a terceros.
+
+B. NO EXISTE RELACION LABORAL:
+Conforme a los Articulos 8, 20 y 21 de la Ley Federal del Trabajo, una
+relacion laboral requiere la existencia de SUBORDINACION (subordinacion
+laboral). La relacion entre usted y TORO DRIVER NO constituye una relacion
+laboral porque:
+
+  1. NO EXISTE SUBORDINACION: TORO DRIVER no ejerce "mando y supervision"
+     sobre usted. Usted no esta sujeto a la direccion, control o autoridad
+     disciplinaria de TORO DRIVER en la prestacion de sus servicios.
+
+  2. NO HAY HORARIO FIJO: Usted decide cuando conectarse a la plataforma
+     y cuando desconectarse. No hay un numero minimo ni maximo de horas,
+     dias o servicios requeridos. No tiene obligacion de estar disponible
+     en ningun momento especifico.
+
+  3. NO HAY DEDICACION EXCLUSIVA: Puede utilizar otras plataformas,
+     aplicaciones o servicios simultaneamente. Puede prestar servicios de
+     transporte de forma independiente o a traves de cualquier competidor
+     en cualquier momento.
+
+  4. NO HAY SUPERVISION DE METODOS: TORO DRIVER no dicta rutas, metodos
+     de conduccion, apariencia del vehiculo (mas alla de la seguridad),
+     ni la manera en que interactua con pasajeros mas alla de requisitos
+     basicos de seguridad.
+
+  5. NO HAY UNIFORME NI MARCA OBLIGATORIA: No se le requiere usar ningun
+     uniforme, insignia o identificacion de TORO DRIVER. No se le requiere
+     mostrar la marca TORO DRIVER en su vehiculo.
+
+  6. NO SE PROPORCIONAN HERRAMIENTAS NI EQUIPO: Usted proporciona su propio
+     vehiculo, dispositivo movil, combustible y todas las herramientas
+     necesarias para su actividad. TORO DRIVER no proporciona ningun equipo,
+     espacio de trabajo ni materiales.
+
+  7. NO HAY PROCESO DE CONTRATACION: El acceso a la plataforma requiere
+     verificacion de identidad y cumplimiento de seguridad para la proteccion
+     de terceros, NO como un proceso de seleccion o contratacion laboral.
+
+  8. LIBERTAD DE RECHAZAR: Puede rechazar cualquier solicitud de servicio u
+     oportunidad de evento sin penalizacion, consecuencia o reduccion de
+     oportunidades futuras. Rechazar solicitudes NO afecta su acceso a la
+     plataforma.
+
+  9. NO SE REQUIERE SERVICIO PERSONAL: Puede, sujeto a la legislacion
+     aplicable y requisitos de seguro, delegar o subcontratar la prestacion
+     de servicios usando su cuenta, siempre que el sustituto cumpla con
+     todos los requisitos de seguridad y legales.
+
+  10. MODELO DE MERCADO: TORO DRIVER conecta Organizadores (que crean eventos
+      y fijan precios) con Prestadores de Servicios (que ofertan en eventos).
+      El Organizador selecciona al Prestador de Servicios. TORO DRIVER NO
+      asigna viajes algoritmicamente.
+
+C. BASE CONSTITUCIONAL:
+Conforme al Articulo 5 de la Constitucion Mexicana, toda persona tiene
+derecho a dedicarse a la profesion, industria, comercio o trabajo licito
+que le acomode. Su decision de utilizar la plataforma TORO DRIVER es un
+ejercicio de este derecho constitucional a realizar actividad comercial
+independiente.
 
 --------------------------------------------------------------------------------
-3. OBLIGACIONES FISCALES
+3. COMPENSACION: NO ES SALARIO
 --------------------------------------------------------------------------------
 
-Los Conductores en Mexico deben:
-- Registrarse ante el SAT con el regimen fiscal apropiado
-- Emitir facturas CFDI por servicios prestados
-- Cumplir con obligaciones de ISR e IVA
-- Mantener documentacion de RFC
-- Presentar declaraciones fiscales segun se requiera
+A. NATURALEZA DE LOS PAGOS:
+La compensacion recibida a traves de la plataforma constituye HONORARIOS
+POR SERVICIOS PROFESIONALES INDEPENDIENTES por servicios prestados, NO
+"salario" conforme al Articulo 82 de la LFT. Los pagos son:
+
+  - Variables, basados en servicios efectivamente completados
+  - No garantizados, no fijos, no periodicos, no predeterminados
+  - No constituyen salario minimo bajo ninguna interpretacion
+  - No sujetos a retencion de nomina
+  - Calculados por servicio prestado, NO por hora, dia o semana
+  - Sujetos a la comision de mercado retenida por la plataforma
+
+B. NO HAY INGRESO MINIMO GARANTIZADO:
+TORO DRIVER NO garantiza ningun nivel minimo de ingresos, numero de
+oportunidades de servicio ni frecuencia de solicitudes. Sus ingresos dependen
+enteramente de sus propias decisiones sobre cuando, donde y con que frecuencia
+prestar servicios.
+
+C. LIQUIDACION DE HONORARIOS:
+La liquidacion periodica de honorarios por servicios acumulados (liquidacion
+de servicios prestados) es una conveniencia administrativa, NO un ciclo de
+nomina. Esta liquidacion NO constituye una "nomina" ni un "pago de salario."
+
+D. NO HAY PRESTACIONES LABORALES:
+Dado que NO existe relacion laboral, usted NO tiene derecho a y TORO DRIVER
+NO esta obligado a proporcionar ninguno de los siguientes conceptos:
+
+  - Aguinaldo (Art. 87 LFT)
+  - Vacaciones (Art. 76 LFT)
+  - Prima vacacional (Art. 80 LFT)
+  - Participacion de los Trabajadores en las Utilidades / PTU (Art. 117 LFT)
+  - Prima de antiguedad (Art. 162 LFT)
+  - Dias de descanso obligatorio (Art. 74 LFT)
+  - Indemnizacion por despido (Arts. 48-50 LFT)
+  - Cualquier otra prestacion o pago derivado de una relacion laboral
 
 --------------------------------------------------------------------------------
-4. SEGURIDAD (MEXICO)
+4. NO HAY OBLIGACIONES DE IMSS, INFONAVIT NI AFORE
 --------------------------------------------------------------------------------
 
-Requisitos adicionales de seguridad para Mexico:
-- Cumplir con regulaciones locales de transito
-- Mantener documentacion vehicular requerida (tarjeta de circulacion)
-- Reportar incidentes a las autoridades locales correspondientes
-- Cooperar con investigaciones estatales/federales
-- Mantener cobertura de IMSS o seguro privado
+A. NO HAY REGISTRO PATRONAL:
+Dado que NO existe relacion laboral y NO existe subordinacion, TORO DRIVER
+NO lo registra ante:
+  - IMSS (Instituto Mexicano del Seguro Social)
+  - INFONAVIT (Instituto del Fondo Nacional de la Vivienda para los
+    Trabajadores)
+  - SAR/AFORE (Sistema de Ahorro para el Retiro)
+
+B. SU PROPIA SEGURIDAD SOCIAL:
+Usted es el unico responsable de su propia cobertura de seguridad social.
+Las opciones disponibles para trabajadores independientes en Mexico incluyen:
+  - Inscripcion voluntaria al IMSS (Regimen Voluntario / Modalidad 40 /
+    Continuacion Voluntaria al Regimen Obligatorio)
+  - Seguro privado de gastos medicos mayores
+  - Seguro privado de invalidez y vida
+  - Ahorro voluntario para el retiro (AFORE voluntario)
+
+C. RECONOCIMIENTO:
+Usted reconoce que TORO DRIVER no tiene obligacion de inscribirlo en ningun
+programa de seguridad social y que usted es responsable de asegurar su propia
+cobertura de salud, invalidez, retiro y seguro de vida.
 
 --------------------------------------------------------------------------------
-5. GRABACION Y CONSENTIMIENTO (MEXICO)
+5. OBLIGACIONES FISCALES Y TRIBUTARIAS
+--------------------------------------------------------------------------------
+
+A. REGISTRO FISCAL:
+Debe estar registrado ante el Servicio de Administracion Tributaria (SAT)
+con el regimen fiscal apropiado. Los regimenes recomendados incluyen:
+  - RESICO (Regimen Simplificado de Confianza) para personas con ingresos
+    menores a \$3,500,000 MXN/ano
+  - Regimen de Actividades Empresariales y Profesionales
+  - Regimen de Plataformas Digitales (conforme al Articulo 113-A LISR)
+
+B. REQUISITO DE RFC:
+Debe mantener un RFC (Registro Federal de Contribuyentes) valido y
+proporcionarlo a TORO DRIVER cuando se solicite.
+
+C. FACTURACION CFDI:
+Debe emitir CFDI (Comprobante Fiscal Digital por Internet) por todos los
+servicios prestados a traves de la plataforma segun lo requiera el SAT.
+
+D. CUMPLIMIENTO FISCAL:
+Usted es el unico responsable de:
+  - Declaraciones y pagos de ISR (Impuesto Sobre la Renta)
+  - Declaraciones y pagos de IVA (Impuesto al Valor Agregado)
+  - Declaraciones mensuales y anuales ante el SAT
+  - Mantener registros contables conforme a la ley
+
+E. RETENCION DE IMPUESTOS POR LA PLATAFORMA:
+Si es aplicable conforme al Articulo 113-A de la LISR, TORO DRIVER podra
+retener ISR (actualmente 2.1% para transporte de pasajeros) e IVA
+(actualmente 8%) de los honorarios por servicios. Estas retenciones se
+enteran al SAT en su nombre y pueden constituir pago definitivo si sus
+ingresos anuales son menores al umbral aplicable (\$300,000 MXN).
+
+F. OBLIGACION FISCAL INDEPENDIENTE:
+Sus obligaciones fiscales son SU responsabilidad como actor comercial
+independiente. El papel de TORO DRIVER se limita a retener y enterar
+impuestos conforme a la ley. TORO DRIVER NO prepara sus declaraciones
+fiscales, NO proporciona asesoria fiscal y NO actua como su representante
+fiscal.
+
+--------------------------------------------------------------------------------
+6. DESACTIVACION DE CUENTA: NO ES DESPIDO
+--------------------------------------------------------------------------------
+
+A. NATURALEZA DE LA DESACTIVACION:
+La desactivacion o suspension de su cuenta en la plataforma es la REVOCACION
+DEL ACCESO A UNA PLATAFORMA TECNOLOGICA, NO un "despido" conforme a la LFT.
+Dado que no existe relacion laboral, lo siguiente NO aplica:
+
+  - Indemnizacion constitucional (3 meses de salario, Art. 48 LFT)
+  - 20 dias de salario por ano de servicio (Art. 50 LFT)
+  - Prima de antiguedad (Art. 162 LFT)
+  - Salarios caidos (Art. 48 LFT)
+  - Finiquito o liquidacion de ningun tipo
+  - Derecho de reinstalacion (Art. 48 LFT)
+
+B. CAUSAS DE DESACTIVACION:
+TORO DRIVER puede desactivar o suspender su cuenta por:
+  - Violaciones de seguridad que pongan en peligro a pasajeros o al publico
+  - Actividad fraudulenta o declaraciones falsas
+  - Conducta criminal durante o relacionada con el uso de la plataforma
+  - Incumplimiento material de este Acuerdo o los Terminos de la plataforma
+  - No mantener documentacion requerida (licencia, seguro, RFC)
+  - Quejas verificadas de conducta grave
+
+C. PROCESO DE DESACTIVACION:
+  - Para situaciones criticas de seguridad: suspension temporal inmediata
+    pendiente de revision
+  - Para asuntos no relacionados con seguridad: notificacion escrita
+    especificando los motivos, con oportunidad de responder dentro de 5
+    dias habiles
+  - Revision humana: todas las decisiones de desactivacion no automatizadas
+    son revisadas por un representante designado de la plataforma
+  - Apelacion: puede presentar una apelacion escrita dentro de 10 dias
+    habiles de recibir la notificacion de desactivacion a
+    ${LegalConstants.companyEmail}
+
+D. RETIRO VOLUNTARIO:
+Puede dejar de usar la plataforma en cualquier momento sin aviso, penalizacion
+ni obligacion. Su retiro no genera ningun derecho a compensacion, liquidacion
+o pago mas alla de los honorarios ya devengados por servicios completados.
+
+E. SIN EFECTO EN OPORTUNIDADES FUTURAS:
+Rechazar solicitudes de servicio, no estar disponible o periodos de inactividad
+NO constituyen causa de desactivacion. NUNCA sera desactivado por ejercer su
+derecho a rechazar servicios o elegir su propia disponibilidad.
+
+--------------------------------------------------------------------------------
+7. ASUNCION DE RIESGO Y SEGURO
+--------------------------------------------------------------------------------
+
+A. NO SON "RIESGOS DE TRABAJO":
+Dado que NO existe relacion laboral, las lesiones, accidentes o condiciones de
+salud que surjan durante o en conexion con su uso de la plataforma NO son
+"riesgos de trabajo" conforme al Titulo Noveno (Arts. 473-515) de la LFT.
+TORO DRIVER NO tiene obligacion de proporcionar compensacion por lesiones
+laborales, cobertura de enfermedades profesionales ni beneficios por
+fallecimiento conforme a la LFT.
+
+B. ASUNCION DE RIESGO:
+Usted reconoce y acepta que la prestacion de servicios de transporte involucra
+riesgos inherentes que incluyen pero no se limitan a: accidentes de transito,
+danos al vehiculo, lesiones personales, robo, asalto y emergencias de salud.
+Usted asume voluntariamente estos riesgos.
+
+C. SEGURO OBLIGATORIO:
+Antes de prestar servicios a traves de la plataforma en Mexico, DEBE mantener
+a su propio costo:
+  - Seguro de responsabilidad civil que cubra lesiones a terceros y danos a
+    propiedad
+  - Seguro contra accidentes personales
+  - Seguro vehicular valido conforme a la ley estatal aplicable
+  - Cualquier cobertura adicional requerida por regulaciones locales de
+    transporte
+
+D. COMPROBANTE DE SEGURO:
+TORO DRIVER puede solicitar comprobante de seguro valido en cualquier momento.
+No mantener la cobertura de seguro requerida es causa de desactivacion de
+cuenta.
+
+E. INDEMNIZACION:
+Usted acepta indemnizar y mantener libre de responsabilidad a TORO DRIVER LLC
+de cualquier reclamacion, dano, perdida o gasto derivado de accidentes,
+lesiones o incidentes ocurridos durante su uso de la plataforma, en la maxima
+medida permitida por la ley aplicable.
+
+--------------------------------------------------------------------------------
+8. PRIVACIDAD Y PROTECCION DE DATOS (MEXICO)
+--------------------------------------------------------------------------------
+
+Ademas de la Politica de Privacidad principal, lo siguiente aplica en Mexico:
+
+A. CUMPLIMIENTO CON LFPDPPP:
+El tratamiento de sus datos personales se rige por la Ley Federal de
+Proteccion de Datos Personales en Posesion de los Particulares (LFPDPPP)
+y su Reglamento.
+
+B. FINALIDAD DE LA RECOLECCION DE DATOS:
+Los datos personales se recopilan para: verificacion de identidad, cumplimiento
+de seguridad, facilitacion de servicios, procesamiento de pagos, cumplimiento
+legal y resolucion de disputas. Sus datos NO se utilizan para evaluacion de
+desempeno laboral, monitoreo de productividad ni vigilancia del lugar de
+trabajo.
+
+C. GPS Y DATOS DE UBICACION:
+Los datos de ubicacion se recopilan durante viajes activos UNICAMENTE para:
+seguridad del pasajero, verificacion de ruta en caso de disputas y
+cumplimiento regulatorio. Los datos de ubicacion NO se utilizan para
+supervisar su trabajo, asignar viajes ni evaluar su desempeno.
+
+D. DERECHOS ARCO:
+Tiene derecho de Acceso, Rectificacion, Cancelacion y Oposicion al
+tratamiento de sus datos personales (derechos ARCO). Las solicitudes deben
+dirigirse a ${LegalConstants.privacyEmail}.
+
+--------------------------------------------------------------------------------
+9. GRABACION Y CONSENTIMIENTO (MEXICO)
 --------------------------------------------------------------------------------
 
 Grabacion de audio/video durante viajes en Mexico:
-- Sujeta a las leyes federales y estatales de privacidad aplicables
+- Sujeta a las leyes federales y estatales de privacidad, incluyendo LFPDPPP
 - Los pasajeros son notificados de la capacidad de grabacion
-- Las grabaciones se usan solo para fines de seguridad y legales
+- Las grabaciones se usan solo para seguridad, fines legales y resolucion
+  de disputas
+- Las grabaciones NO se usan para supervision laboral ni evaluacion de
+  desempeno
 
 --------------------------------------------------------------------------------
-6. REPORTE DE INCIDENTES (MEXICO)
+10. REPORTE DE INCIDENTES (MEXICO)
 --------------------------------------------------------------------------------
 
 En Mexico, tambien debe:
@@ -1734,6 +2343,66 @@ En Mexico, tambien debe:
 - Cooperar con el Ministerio Publico si se requiere
 - Preservar evidencia segun lo requiera la ley mexicana
 - Reportar incidentes con armas de fuego o violencia a las autoridades
+- Llamar al 911 para emergencias
+
+--------------------------------------------------------------------------------
+11. RESOLUCION DE CONTROVERSIAS (MEXICO)
+--------------------------------------------------------------------------------
+
+A. NATURALEZA COMERCIAL:
+Las controversias derivadas de este Acuerdo son de naturaleza MERCANTIL y
+seran resueltas a traves de canales legales comerciales, NO ante tribunales
+laborales (Juntas de Conciliacion y Arbitraje / Tribunales Laborales).
+
+B. CONCILIACION:
+Antes de iniciar cualquier procedimiento legal, ambas partes acuerdan intentar
+una conciliacion de buena fe. Puede contactar a ${LegalConstants.supportEmail}
+para iniciar un proceso de resolucion de controversias.
+
+C. JURISDICCION:
+Para controversias derivadas de operaciones en Mexico, los tribunales
+competentes son los juzgados civiles/mercantiles de la Ciudad de Mexico,
+renunciando expresamente a cualquier otra jurisdiccion que pudiera
+corresponder por razon de domicilio, presente o futuro.
+
+D. RENUNCIA A JURISDICCION LABORAL:
+Usted reconoce expresamente que la relacion regulada por este Acuerdo es de
+naturaleza comercial y acepta que los tribunales laborales no tienen
+jurisdiccion sobre controversias derivadas de este Acuerdo.
+
+--------------------------------------------------------------------------------
+12. SEGURIDAD (MEXICO)
+--------------------------------------------------------------------------------
+
+Requisitos adicionales de seguridad para Mexico:
+- Cumplir con regulaciones locales de transito y leyes estatales de transporte
+- Mantener documentacion vehicular requerida (tarjeta de circulacion,
+  verificacion vehicular, tenencia si aplica)
+- Reportar incidentes a las autoridades locales correspondientes
+- Cooperar con investigaciones estatales/federales cuando la ley lo requiera
+- Mantener cobertura de seguro valida conforme a la Seccion 7
+
+--------------------------------------------------------------------------------
+13. DIVISIBILIDAD Y RECONOCIMIENTO
+--------------------------------------------------------------------------------
+
+A. DIVISIBILIDAD:
+Si alguna disposicion de esta Adenda es declarada invalida o inaplicable
+conforme a la ley mexicana, las disposiciones restantes continuaran en pleno
+vigor y efecto.
+
+B. RECONOCIMIENTO COMPLETO:
+Al aceptar esta Adenda, usted reconoce que:
+  - Ha leido y entendido TODAS las secciones de este documento
+  - Entiende que su relacion con TORO DRIVER es COMERCIAL, no una relacion
+    laboral
+  - Entiende que NO existe subordinacion
+  - NO tiene derecho a prestaciones laborales
+  - TORO DRIVER NO lo registrara ante IMSS, INFONAVIT ni AFORE
+  - Es responsable de sus propios impuestos, seguros y seguridad social
+  - La desactivacion de su cuenta NO es "despido injustificado"
+  - Acepta voluntariamente los riesgos inherentes a la prestacion de servicios
+  - Puede consultar con un asesor legal independiente antes de aceptar
 
 ================================================================================
 FIN DE LA ADENDA DE MEXICO v${LegalConstants.mexicoAddendumVersion}

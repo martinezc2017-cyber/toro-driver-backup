@@ -20,6 +20,7 @@ import io.flutter.embedding.android.TransparencyMode
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.engine.FlutterShellArgs
 import io.flutter.plugin.common.MethodChannel
+import androidx.activity.enableEdgeToEdge
 
 class MainActivity : FlutterFragmentActivity() {
 
@@ -61,6 +62,7 @@ class MainActivity : FlutterFragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         log("onCreate START")
+        enableEdgeToEdge()
 
         // Keep Android 12+ splash screen visible for 3 seconds so Flutter has
         // time to initialize. When the splash dismisses, particles are already running.

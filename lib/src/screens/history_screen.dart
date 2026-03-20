@@ -18,6 +18,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   bool _isLoading = true;
   List<TripHistory> _trips = [];
   HistorySummary _summary = HistorySummary();
+  String _countryCode = 'US';
 
   @override
   void initState() {
@@ -38,7 +39,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       // Get driver ID
       final driverResponse = await SupabaseConfig.client
           .from('drivers')
-          .select('id')
+          .select('id, country_code')
           .eq('user_id', user.id)
           .maybeSingle();
 
@@ -48,6 +49,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       }
 
       final driverId = driverResponse['id'];
+      _countryCode = (driverResponse['country_code'] as String?) ?? 'US';
 
       // Calculate date range
       DateTime startDate;
@@ -85,7 +87,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       _trips = (tripsResponse as List).map((t) => TripHistory(
         id: t['id'] ?? '',
         pickupAddress: t['pickup_address'] ?? 'Origen',
-        dropoffAddress: t['dropoff_address'] ?? 'Destino',
+        dropoffAddress: t['destination_address'] ?? 'Destino',
         fare: (t['fare'] as num?)?.toDouble() ?? 0,
         distance: (t['distance_miles'] as num?)?.toDouble() ?? 0,
         duration: t['duration_minutes'] ?? 0,
@@ -238,8 +240,7 @@ Summary:
 - Total Trips: ${_summary.totalTrips}
 - Total Earnings: \$${_summary.totalEarnings.toStringAsFixed(2)}
 - Total Miles: ${_summary.totalMiles.toStringAsFixed(1)} mi
-- Time Online: ${_summary.onlineHours.toStringAsFixed(1)}h
-- Average Rating: ${_summary.avgRating.toStringAsFixed(1)}
+${_countryCode != 'MX' ? '- Time Online: ${_summary.onlineHours.toStringAsFixed(1)}h\n' : ''}- Average Rating: ${_summary.avgRating.toStringAsFixed(1)}
 
 Recent Trips:
 ${_trips.take(5).map((t) => '- ${t.pickupAddress} → ${t.dropoffAddress}: \$${t.fare.toStringAsFixed(2)}').join('\n')}
@@ -381,8 +382,10 @@ ${_trips.take(5).map((t) => '- ${t.pickupAddress} → ${t.dropoffAddress}: \$${t
           const SizedBox(height: 12),
           Row(
             children: [
-              Expanded(child: _buildStatItem(Icons.access_time, '${_summary.onlineHours.toStringAsFixed(1)}h', 'online'.tr())),
-              Container(width: 1, height: 36, color: AppColors.border),
+              if (_countryCode != 'MX') ...[
+                Expanded(child: _buildStatItem(Icons.access_time, '${_summary.onlineHours.toStringAsFixed(1)}h', 'online'.tr())),
+                Container(width: 1, height: 36, color: AppColors.border),
+              ],
               Expanded(child: _buildStatItem(Icons.timer, '${(_summary.totalMinutes / 60).toStringAsFixed(1)}h', 'driving'.tr())),
               Container(width: 1, height: 36, color: AppColors.border),
               Expanded(child: _buildStatItem(Icons.star, _summary.avgRating.toStringAsFixed(1), 'rating'.tr())),

@@ -148,7 +148,7 @@ class MexicoCfdiService {
       CfdiUsoCatalog(code: 'P01', description: 'Por definir'),
       CfdiUsoCatalog(code: 'S01', description: 'Sin efectos fiscales'),
       CfdiUsoCatalog(code: 'CP01', description: 'Pagos'),
-      CfdiUsoCatalog(code: 'CN01', description: 'Nómina'),
+      // CN01 (Nomina) excluded - not applicable for independent service providers
     ];
   }
 

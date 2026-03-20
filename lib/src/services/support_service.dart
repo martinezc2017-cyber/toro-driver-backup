@@ -28,14 +28,12 @@ class SupportService {
         try {
           final driverData = await SupabaseConfig.client
               .from('drivers')
-              .select('first_name, last_name, email, phone')
+              .select('name, email, phone')
               .eq('id', driverId)
               .maybeSingle();
 
           if (driverData != null) {
-            final firstName = driverData['first_name'] ?? '';
-            final lastName = driverData['last_name'] ?? '';
-            name = '$firstName $lastName'.trim();
+            name = (driverData['name'] as String?)?.trim() ?? '';
             email = driverData['email'];
             phone = driverData['phone'];
           }

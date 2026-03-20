@@ -218,4 +218,119 @@ class AuditService {
       },
     );
   }
+
+  // ============================================
+  // TOURISM EVENT AUDIT EVENTS
+  // ============================================
+
+  /// Event republished to broadcast (returned to draft)
+  Future<void> logEventRepublished({
+    required String eventId,
+    required String action,
+    String? previousDriverId,
+    String? previousVehicleId,
+    String? previousStatus,
+    String? reason,
+  }) async {
+    await logEvent(
+      eventType: 'event_republished',
+      entityType: 'tourism_event',
+      entityId: eventId,
+      description: 'Event returned to broadcast: $action',
+      metadata: {
+        'action': action,
+        'previous_driver_id': previousDriverId,
+        'previous_vehicle_id': previousVehicleId,
+        'previous_status': previousStatus,
+        'reason': reason,
+        'timestamp': DateTime.now().toIso8601String(),
+      },
+    );
+  }
+
+  /// Driver assigned to event
+  Future<void> logEventDriverAssigned({
+    required String eventId,
+    required String driverId,
+    String? vehicleId,
+    String? method,
+  }) async {
+    await logEvent(
+      eventType: 'event_driver_assigned',
+      entityType: 'tourism_event',
+      entityId: eventId,
+      description: 'Driver assigned via $method',
+      metadata: {
+        'driver_id': driverId,
+        'vehicle_id': vehicleId,
+        'method': method,
+        'timestamp': DateTime.now().toIso8601String(),
+      },
+    );
+  }
+
+  /// Driver left/rejected event
+  Future<void> logEventDriverLeft({
+    required String eventId,
+    required String driverId,
+    String? reason,
+  }) async {
+    await logEvent(
+      eventType: 'event_driver_left',
+      entityType: 'tourism_event',
+      entityId: eventId,
+      description: 'Driver left event: ${reason ?? "voluntary"}',
+      metadata: {
+        'driver_id': driverId,
+        'reason': reason,
+        'timestamp': DateTime.now().toIso8601String(),
+      },
+    );
+  }
+
+  /// Event status changed
+  Future<void> logEventStatusChange({
+    required String eventId,
+    required String fromStatus,
+    required String toStatus,
+    String? changedBy,
+    String? reason,
+  }) async {
+    await logEvent(
+      eventType: 'event_status_change',
+      entityType: 'tourism_event',
+      entityId: eventId,
+      description: 'Status: $fromStatus → $toStatus',
+      metadata: {
+        'from_status': fromStatus,
+        'to_status': toStatus,
+        'changed_by': changedBy,
+        'reason': reason,
+        'timestamp': DateTime.now().toIso8601String(),
+      },
+    );
+  }
+
+  /// Bid activity on event
+  Future<void> logEventBidActivity({
+    required String eventId,
+    required String bidId,
+    required String action,
+    String? driverId,
+    double? pricePerKm,
+  }) async {
+    await logEvent(
+      eventType: 'event_bid_$action',
+      entityType: 'tourism_event',
+      entityId: eventId,
+      description: 'Bid $action on event',
+      metadata: {
+        'bid_id': bidId,
+        'driver_id': driverId,
+        'action': action,
+        'price_per_km': pricePerKm,
+        'timestamp': DateTime.now().toIso8601String(),
+      },
+    );
+  }
 }

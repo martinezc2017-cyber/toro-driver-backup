@@ -9,9 +9,9 @@ import '../utils/haptic_service.dart';
 
 /// Driver QR Points & Commission Screen
 /// Shows driver's QR tier and how it reduces platform commission
-/// Commission Reduction Model:
-///   Tier 0: Toro 20% | Tier 5: Toro 15%
-///   Driver gets the difference (64% → 69%)
+/// Commission Reduction Model (percentages loaded from pricing_config):
+///   US/AZ: Platform 20.4%, Driver 57% | MX/CDMX: Platform 25%, Driver 75%
+///   Each tier reduces platform by 1%, driver gains the difference
 class QRPointsScreen extends StatefulWidget {
   const QRPointsScreen({super.key});
 

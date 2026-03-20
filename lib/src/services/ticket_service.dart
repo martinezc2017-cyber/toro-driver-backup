@@ -106,7 +106,7 @@ class TicketService {
     try {
       final response = await _client
           .from('deliveries')
-          .select('id, created_at, pickup_address, dropoff_address, final_price, status')
+          .select('id, created_at, pickup_address, destination_address, final_price, status')
           .eq('driver_id', driverId)
           .inFilter('status', ['completed', 'delivered'])
           .order('completed_at', ascending: false)

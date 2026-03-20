@@ -445,6 +445,10 @@ class AuthProvider with ChangeNotifier {
   }
 
   String _getAuthErrorMessage(String message) {
+    // Cross-app message: pass through as-is (already user-friendly in Spanish)
+    if (message.contains('Ya tienes una cuenta TORO')) {
+      return message;
+    }
     if (message.contains('Invalid login credentials')) {
       return 'Invalid email or password';
     } else if (message.contains('Email not confirmed')) {

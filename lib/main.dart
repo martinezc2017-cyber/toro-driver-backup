@@ -108,6 +108,10 @@ void main() async {
   await EasyLocalization.ensureInitialized();
   debugPrint('[MAIN] EasyLocalization done at ${_mainSw.elapsedMilliseconds}ms');
 
+  // Supabase MUST init before runApp — AuthProvider accesses client in constructor
+  await SupabaseConfig.initialize();
+  debugPrint('[MAIN] Supabase done at ${_mainSw.elapsedMilliseconds}ms');
+
   debugPrint('[MAIN] runApp at ${_mainSw.elapsedMilliseconds}ms');
   // Run app IMMEDIATELY so splash shows while services init in background
   runApp(
@@ -123,11 +127,10 @@ void main() async {
   );
 }
 
-/// Phase 1: Only Firebase + Supabase (blocks splash)
+/// Phase 1: Only Firebase (Supabase already initialized in main())
 Future<void> _initCriticalServices() async {
   final sw = Stopwatch()..start();
 
-  // Run Firebase and Supabase in PARALLEL — they are independent SDKs
   await Future.wait([
     // Firebase (skip on web — no firebase_options.dart for web)
     if (!kIsWeb) () async {
@@ -137,16 +140,6 @@ Future<void> _initCriticalServices() async {
         debugPrint('[SERVICES] Firebase done at ${sw.elapsedMilliseconds}ms');
       } catch (e) {
         debugPrint('[SERVICES] Firebase skipped: $e');
-      }
-    }(),
-    // Supabase
-    () async {
-      try {
-        await SupabaseConfig.initialize();
-        debugPrint('[SERVICES] Supabase done at ${sw.elapsedMilliseconds}ms');
-      } catch (e) {
-        debugPrint('[SERVICES] Supabase init error: $e');
-        // Don't try to access client if init failed — it may not exist
       }
     }(),
   ]);

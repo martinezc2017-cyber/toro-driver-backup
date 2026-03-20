@@ -116,7 +116,7 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
           _buildBulletPoint('100% of tips go directly to you'),
           _buildBulletPoint('Platform fee applies to each completed trip'),
           _buildBulletPoint('Keep documents current to stay active'),
-          _buildBulletPoint('Weekly deposits to your bank account'),
+          _buildBulletPoint('Periodic settlement of service fees to your bank account'),
         ],
       ),
     );
@@ -626,7 +626,7 @@ You agree to:
 • Earn per completed trip (distance + time + demand)
 • Tips are 100% yours
 • Platform fee deducted from gross fares
-• Weekly deposits via direct deposit
+• Periodic settlement of service fees via direct deposit
 
 5. TAXES
 • You receive IRS Form 1099-NEC for payments over \$600/year
@@ -643,17 +643,18 @@ You agree to:
 • Never drive under influence
 • Not discriminate against riders
 
-7. DEACTIVATION
-Company may deactivate for:
-• Safety violations
-• Document expiration
-• Rating below threshold
+7. ACCOUNT REVIEW
+Platform may review your account for:
+• Safety violations endangering passengers or public
+• Document expiration or failure to maintain required documentation
+• Fraudulent activity or material breach of terms
 • Failed background check
+Deactivation decisions include human review and appeal process.
 
 8. CANCELLATIONS
-• Frequent cancellations affect rating
-• May result in account review
+• Cancellation policies apply per platform terms
 • Rider cancellation fees apply per policy
+• You may decline service requests without penalty
 
 By signing below, you acknowledge reading and agreeing to all terms.
 ''';

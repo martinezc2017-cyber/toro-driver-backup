@@ -92,7 +92,7 @@ class AppStateValidator {
 
       final activeCarpool = await client
           .from('share_ride_bookings')
-          .select('id, status, pickup_address, dropoff_address')
+          .select('id, status, pickup_address, destination_address')
           .eq('driver_id', driverId)
           .inFilter('status', ['confirmed', 'in_progress', 'driver_arrived'])
           .maybeSingle();
@@ -115,7 +115,7 @@ class AppStateValidator {
           debugPrint('  ID: ${activeCarpool['id']}');
           debugPrint('  Status: ${activeCarpool['status']}');
           debugPrint('  Pickup: ${activeCarpool['pickup_address']}');
-          debugPrint('  Dropoff: ${activeCarpool['dropoff_address']}');
+          debugPrint('  Dropoff: ${activeCarpool['destination_address']}');
         }
 
         // Store the active ride ID

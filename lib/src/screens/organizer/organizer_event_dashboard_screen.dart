@@ -1582,20 +1582,28 @@ Enviado desde TORO
 
   /// Warning banner when event has no driver or vehicle assigned.
   /// Disappears automatically when organizer assigns a driver with vehicle.
+  /// Shows "Re-publicar" button when event is in limbo (driver without vehicle).
   Widget _buildNeedsDriverBanner() {
     final hasDriver = _event?['driver_id'] != null;
     final hasVehicle = _event?['vehicle_id'] != null;
+    final currentStatus = _event?['status'] as String? ?? '';
+    final isInLimbo = hasDriver && !hasVehicle && currentStatus != 'draft';
+    final bidVisibility = _event?['bid_visibility'] as String? ?? 'public';
+    final isInBroadcast = currentStatus == 'draft' && !hasDriver && bidVisibility == 'public';
 
     String message;
     IconData icon;
-    if (!hasDriver && !hasVehicle) {
-      message = 'Para publicar tu evento necesitas asignar un chofer con su unidad';
+    if (isInBroadcast) {
+      message = 'event_history.broadcast_active'.tr();
+      icon = Icons.cell_tower_rounded;
+    } else if (!hasDriver && !hasVehicle) {
+      message = 'event_history.needs_driver_and_vehicle'.tr();
       icon = Icons.warning_amber_rounded;
     } else if (!hasDriver) {
-      message = 'Falta asignar un chofer para que tu evento sea visible';
+      message = 'event_history.needs_driver'.tr();
       icon = Icons.person_off_rounded;
     } else {
-      message = 'Falta asignar una unidad/vehículo al evento';
+      message = 'event_history.needs_vehicle'.tr();
       icon = Icons.directions_bus_rounded;
     }
 
@@ -1603,24 +1611,36 @@ Enviado desde TORO
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.warning.withValues(alpha: 0.08),
+        color: isInBroadcast
+            ? AppColors.success.withValues(alpha: 0.08)
+            : AppColors.warning.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.warning.withValues(alpha: 0.3), width: 1.5),
+        border: Border.all(
+          color: isInBroadcast
+              ? AppColors.success.withValues(alpha: 0.3)
+              : AppColors.warning.withValues(alpha: 0.3),
+          width: 1.5,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(icon, color: AppColors.warning, size: 24),
+              Icon(icon,
+                color: isInBroadcast ? AppColors.success : AppColors.warning,
+                size: 24,
+              ),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Evento no visible para pasajeros',
-                      style: TextStyle(
+                    Text(
+                      isInBroadcast
+                          ? 'event_history.broadcast_title'.tr()
+                          : 'event_history.not_visible_title'.tr(),
+                      style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
                         color: AppColors.textPrimary,
@@ -1637,29 +1657,58 @@ Enviado desde TORO
             ],
           ),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: SizedBox(
+          if (isInBroadcast)
+            // Event is in broadcast mode - show info only
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 40,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        HapticService.mediumImpact();
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => OrganizerBiddingScreen(eventId: widget.eventId),
+                          ),
+                        ).then((_) => _loadData());
+                      },
+                      icon: const Icon(Icons.visibility, size: 16),
+                      label: Text(
+                        'event_history.view_bids'.tr(),
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.success,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        elevation: 0,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            )
+          else if (isInLimbo)
+            // Limbo: has driver but no vehicle — show Re-publicar + manual options
+            Column(
+              children: [
+                SizedBox(
+                  width: double.infinity,
                   height: 40,
                   child: ElevatedButton.icon(
-                    onPressed: () {
-                      HapticService.mediumImpact();
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => OrganizerBiddingScreen(eventId: widget.eventId),
-                        ),
-                      ).then((_) => _loadData());
-                    },
-                    icon: const Icon(Icons.gavel, size: 16),
-                    label: const Text(
-                      'Buscar Chofer',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                    onPressed: _republishEvent,
+                    icon: const Icon(Icons.cell_tower, size: 16),
+                    label: Text(
+                      'event_history.republish'.tr(),
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.gold,
-                      foregroundColor: Colors.black,
+                      backgroundColor: Colors.blue,
+                      foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
@@ -1667,39 +1716,202 @@ Enviado desde TORO
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              SizedBox(
-                height: 40,
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    HapticService.lightImpact();
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => OrganizerVehicleSelectionScreen(eventId: widget.eventId),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 36,
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            HapticService.mediumImpact();
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => OrganizerBiddingScreen(eventId: widget.eventId),
+                              ),
+                            ).then((_) => _loadData());
+                          },
+                          icon: const Icon(Icons.gavel, size: 14),
+                          label: Text(
+                            'event_history.manual_search'.tr(),
+                            style: const TextStyle(fontSize: 11),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.textSecondary,
+                            side: const BorderSide(color: AppColors.border),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
                       ),
-                    ).then((_) => _loadData());
-                  },
-                  icon: const Icon(Icons.directions_bus, size: 16),
-                  label: const Text(
-                    'Directo',
-                    style: TextStyle(fontSize: 12),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.textSecondary,
-                    side: const BorderSide(color: AppColors.border),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: SizedBox(
+                        height: 36,
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            HapticService.lightImpact();
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => OrganizerVehicleSelectionScreen(eventId: widget.eventId),
+                              ),
+                            ).then((_) => _loadData());
+                          },
+                          icon: const Icon(Icons.directions_bus, size: 14),
+                          label: Text(
+                            'event_history.direct_select'.tr(),
+                            style: const TextStyle(fontSize: 11),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.textSecondary,
+                            side: const BorderSide(color: AppColors.border),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            )
+          else
+            // Normal: no driver, no vehicle — standard options
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 40,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        HapticService.mediumImpact();
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => OrganizerBiddingScreen(eventId: widget.eventId),
+                          ),
+                        ).then((_) => _loadData());
+                      },
+                      icon: const Icon(Icons.gavel, size: 16),
+                      label: Text(
+                        'event_history.search_driver'.tr(),
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.gold,
+                        foregroundColor: Colors.black,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        elevation: 0,
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(width: 10),
+                SizedBox(
+                  height: 40,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      HapticService.lightImpact();
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => OrganizerVehicleSelectionScreen(eventId: widget.eventId),
+                        ),
+                      ).then((_) => _loadData());
+                    },
+                    icon: const Icon(Icons.directions_bus, size: 16),
+                    label: Text(
+                      'event_history.direct_select'.tr(),
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.textSecondary,
+                      side: const BorderSide(color: AppColors.border),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// Re-publishes event to broadcast mode with confirmation
+  Future<void> _republishEvent() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.cell_tower, color: Colors.blue, size: 24),
+            const SizedBox(width: 10),
+            Expanded(child: Text(
+              'event_history.republish_title'.tr(),
+              style: const TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w700),
+            )),
+          ],
+        ),
+        content: Text(
+          'event_history.republish_confirm'.tr(),
+          style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('event_history.cancel'.tr(),
+              style: const TextStyle(color: AppColors.textTertiary)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              elevation: 0,
+            ),
+            child: Text('event_history.republish'.tr(),
+              style: const TextStyle(fontWeight: FontWeight.w600)),
           ),
         ],
       ),
     );
+
+    if (confirmed != true || !mounted) return;
+
+    final result = await _eventService.republishEvent(
+      widget.eventId,
+      reason: 'organizer_manual_republish',
+    );
+
+    if (result.isNotEmpty && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.cell_tower, color: Colors.white, size: 20),
+              const SizedBox(width: 10),
+              Expanded(child: Text('event_history.republish_success'.tr())),
+            ],
+          ),
+          backgroundColor: Colors.blue.shade700,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      _loadData();
+    }
   }
 
   /// Compact stat strip — single row, minimal space

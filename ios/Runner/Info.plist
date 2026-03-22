@@ -74,6 +74,14 @@
 				<key>CFBundleURLName</key>
 				<string>io.supabase.torodriver</string>
 			</dict>
+			<dict>
+				<key>CFBundleURLSchemes</key>
+				<array>
+					<string>com.googleusercontent.apps.732187337384-snno15jpuhkceiaempop0uksi3ce5o85</string>
+				</array>
+				<key>CFBundleURLName</key>
+				<string>google-sign-in</string>
+			</dict>
 		</array>
 		<key>FlutterDeepLinkingEnabled</key>
 		<true/>

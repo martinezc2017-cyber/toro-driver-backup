@@ -1,0 +1,75 @@
+workflows:
+
+  # ── iOS App Store Build ────────────────────────────────────────────────────
+  ios-release:
+    name: TORO Driver — iOS App Store
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+
+    environment:
+      flutter: 3.41.1
+      xcode: latest
+      cocoapods: default
+      groups:
+        - apple_credentials
+      vars:
+        BUNDLE_ID: com.tororide.driver
+
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: master
+          include: true
+
+    scripts:
+      - name: Fetch signing files
+        script: |
+          keychain initialize
+          echo "$APP_STORE_CONNECT_PRIVATE_KEY" | base64 --decode > /tmp/AuthKey.p8
+
+          # Use stored cert key if available, otherwise generate and print for saving
+          if [ -n "$CERT_PRIVATE_KEY" ]; then
+            echo "$CERT_PRIVATE_KEY" | base64 --decode > /tmp/cert_key.pem
+            echo "Using stored certificate private key"
+          else
+            openssl genrsa -out /tmp/cert_key.pem 2048
+            echo "=== SAVE THIS KEY AS CERT_PRIVATE_KEY ENV VAR (base64) ==="
+            base64 < /tmp/cert_key.pem | tr -d '\n'
+            echo ""
+            echo "=== END KEY ==="
+          fi
+
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create \
+            --certificate-key "$(cat /tmp/cert_key.pem)" \
+            --private-key "$(cat /tmp/AuthKey.p8)" \
+            --key-id "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
+            --issuer-id "$APP_STORE_CONNECT_ISSUER_ID"
+          keychain add-certificates
+
+      - name: Get Flutter packages
+        script: flutter pub get
+
+      - name: Install CocoaPods
+        script: |
+          cd ios && pod install --repo-update
+
+      - name: Apply profiles and build IPA
+        script: |
+          xcode-project use-profiles
+          flutter build ipa --release \
+            --export-options-plist=$HOME/export_options.plist
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+
+    publishing:
+      app_store_connect:
+        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+        submit_to_testflight: true
+        submit_to_app_store: false

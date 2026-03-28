@@ -240,16 +240,16 @@ class _DocumentsScreenState extends State<DocumentsScreen>
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Row(
                 children: [
-                  Icon(Icons.celebration, color: Colors.white),
-                  SizedBox(width: 8),
+                  const Icon(Icons.celebration, color: Colors.white),
+                  const SizedBox(width: 8),
                   Text('screens.documents.all_complete'.tr()),
                 ],
               ),
               backgroundColor: Colors.green,
-              duration: Duration(seconds: 4),
+              duration: const Duration(seconds: 4),
             ),
           );
         }

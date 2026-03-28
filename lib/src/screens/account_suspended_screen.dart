@@ -56,21 +56,21 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen> {
 
   void _showReactivatedNotification() {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
+      SnackBar(
         content: Row(
           children: [
-            Icon(Icons.check_circle, color: Colors.white),
-            SizedBox(width: 12),
+            const Icon(Icons.check_circle, color: Colors.white),
+            const SizedBox(width: 12),
             Expanded(
               child: Text(
                 'screens.suspended.account_reactivated'.tr(),
-                style: TextStyle(fontWeight: FontWeight.w600),
+                style: const TextStyle(fontWeight: FontWeight.w600),
               ),
             ),
           ],
         ),
-        backgroundColor: Color(0xFF10B981),
-        duration: Duration(seconds: 4),
+        backgroundColor: const Color(0xFF10B981),
+        duration: const Duration(seconds: 4),
       ),
     );
 

@@ -849,6 +849,11 @@ class _LoginScreenState extends State<LoginScreen>
           // Google Sign In Button
           _buildGoogleButton(),
 
+          const SizedBox(height: 10),
+
+          // Apple Sign In Button (required by Apple for iOS)
+          _buildAppleButton(),
+
           // Biometric button (only in login mode when available)
           if (_isLogin && _biometricAvailable) ...[
             const SizedBox(height: 10),
@@ -1010,6 +1015,51 @@ class _LoginScreenState extends State<LoginScreen>
             HapticService.buttonPress();
             await authProvider.signInWithGoogle();
           },
+        );
+      },
+    );
+  }
+
+  Widget _buildAppleButton() {
+    // Only show on iOS
+    if (kIsWeb) return const SizedBox.shrink();
+    // Check platform safely
+    bool isIOS = false;
+    try {
+      isIOS = Theme.of(context).platform == TargetPlatform.iOS;
+    } catch (_) {}
+    if (!isIOS) return const SizedBox.shrink();
+
+    return Consumer<AuthProvider>(
+      builder: (context, authProvider, child) {
+        return SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: ElevatedButton.icon(
+            onPressed: authProvider.isLoading
+                ? null
+                : () async {
+                    HapticService.buttonPress();
+                    await authProvider.signInWithApple();
+                  },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: Colors.black,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 0,
+            ),
+            icon: const Icon(Icons.apple, size: 24, color: Colors.black),
+            label: const Text(
+              'Continue with Apple',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: Colors.black,
+              ),
+            ),
+          ),
         );
       },
     );

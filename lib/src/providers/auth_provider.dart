@@ -368,6 +368,35 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  // Sign in with Apple
+  Future<bool> signInWithApple() async {
+    try {
+      _status = AuthStatus.loading;
+      _error = null;
+      notifyListeners();
+
+      final success = await _authService.signInWithApple();
+
+      if (!success) {
+        _error = 'Apple sign in error';
+        _status = AuthStatus.unauthenticated;
+        notifyListeners();
+      }
+      return success;
+    } catch (e) {
+      final msg = e.toString();
+      if (msg.contains('cancelled') || msg.contains('canceled') || msg.contains('AuthorizationErrorCode.canceled')) {
+        _status = AuthStatus.unauthenticated;
+        notifyListeners();
+        return false;
+      }
+      _error = 'No se pudo iniciar sesión con Apple. Intenta de nuevo o usa correo y contraseña.';
+      _status = AuthStatus.unauthenticated;
+      notifyListeners();
+      return false;
+    }
+  }
+
   // Sign out
   Future<void> signOut() async {
     try {

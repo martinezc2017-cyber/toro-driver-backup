@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io' show ContentType, HttpRequest, HttpServer, InternetAddress, Platform;
+import 'dart:math' as math;
 import 'dart:ui' show PlatformDispatcher;
 import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:geolocator/geolocator.dart';
@@ -8,7 +9,9 @@ import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:app_links/app_links.dart';
+import 'package:crypto/crypto.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../config/supabase_config.dart';
 import '../models/driver_model.dart';
@@ -196,6 +199,45 @@ class AuthService {
     } catch (e) {
       return false;
     }
+  }
+
+  // Sign in with Apple (required by Apple for iOS apps with third-party login)
+  Future<bool> signInWithApple() async {
+    try {
+      // Generate a random nonce for security
+      final rawNonce = _generateNonce();
+      final hashedNonce = sha256.convert(utf8.encode(rawNonce)).toString();
+
+      final credential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+        nonce: hashedNonce,
+      );
+
+      final idToken = credential.identityToken;
+      if (idToken == null) {
+        return false;
+      }
+
+      final response = await _client.auth.signInWithIdToken(
+        provider: OAuthProvider.apple,
+        idToken: idToken,
+        nonce: rawNonce,
+      );
+
+      return response.session != null;
+    } catch (e) {
+      debugPrint('Apple Sign In error: $e');
+      return false;
+    }
+  }
+
+  String _generateNonce([int length = 32]) {
+    const charset = '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
+    final random = math.Random.secure();
+    return List.generate(length, (_) => charset[random.nextInt(charset.length)]).join();
   }
 
   /// Sign in con Google para Android/iOS usando Google Sign In nativo

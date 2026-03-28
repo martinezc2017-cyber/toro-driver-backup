@@ -1,7 +1,7 @@
 name: toro_driver
 description: "Toro Driver - Rideshare Driver App"
 publish_to: 'none'
-version: 1.2.31+4044
+version: 1.2.32+4045
 
 environment:
   sdk: ^3.10.4
@@ -57,6 +57,10 @@ dependencies:
 
   # Google Sign In
   google_sign_in: ^6.2.1
+
+  # Apple Sign In
+  sign_in_with_apple: ^6.1.4
+  crypto: ^3.0.6
 
   # Deep Links
   app_links: ^6.1.0

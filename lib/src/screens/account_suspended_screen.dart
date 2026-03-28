@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../providers/driver_provider.dart';
@@ -62,7 +63,7 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen> {
             SizedBox(width: 12),
             Expanded(
               child: Text(
-                'Tu cuenta ha sido reactivada!',
+                'screens.suspended.account_reactivated'.tr(),
                 style: TextStyle(fontWeight: FontWeight.w600),
               ),
             ),
@@ -105,9 +106,9 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen> {
 
         if (result != null) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Solicitud enviada al administrador'),
-              backgroundColor: Color(0xFF10B981),
+            SnackBar(
+              content: Text('screens.suspended.request_sent_admin'.tr()),
+              backgroundColor: const Color(0xFF10B981),
             ),
           );
         }
@@ -117,7 +118,7 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen> {
         setState(() => _isSendingRequest = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: $e'),
+            content: Text('screens.suspended.error_generic'.tr(namedArgs: {'error': e.toString()})),
             backgroundColor: const Color(0xFFDC2626),
           ),
         );
@@ -162,9 +163,9 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen> {
         _showReactivatedNotification();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Tu cuenta sigue suspendida. Contacta al admin.'),
-            backgroundColor: Color(0xFFF59E0B),
+          SnackBar(
+            content: Text('screens.suspended.account_still_suspended'.tr()),
+            backgroundColor: const Color(0xFFF59E0B),
           ),
         );
       }
@@ -199,8 +200,8 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen> {
 
               const SizedBox(height: 24),
 
-              const Text(
-                'CUENTA SUSPENDIDA',
+              Text(
+                'screens.suspended.title'.tr(),
                 style: TextStyle(
                   color: Color(0xFFDC2626),
                   fontSize: 22,
@@ -212,7 +213,7 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen> {
               const SizedBox(height: 12),
 
               Text(
-                'Tu cuenta ha sido suspendida por saldo pendiente de efectivo.',
+                'screens.suspended.subtitle'.tr(),
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Colors.white.withOpacity(0.7),
@@ -234,8 +235,8 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen> {
                 ),
                 child: Column(
                   children: [
-                    const Text(
-                      'SALDO PENDIENTE',
+                    Text(
+                      'screens.suspended.pending_balance'.tr(),
                       style: TextStyle(
                         color: Colors.white70,
                         fontSize: 12,
@@ -280,8 +281,8 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Para reactivar tu cuenta:',
+                    Text(
+                      'screens.suspended.reactivate_title'.tr(),
                       style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w700,
@@ -289,9 +290,9 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    _buildStep('1', 'Realiza el deposito por transferencia bancaria'),
-                    _buildStep('2', 'Sube el comprobante en "Depositar"'),
-                    _buildStep('3', 'El admin aprobara y tu cuenta se reactiva automaticamente'),
+                    _buildStep('1', 'screens.suspended.step1'.tr()),
+                    _buildStep('2', 'screens.suspended.step2'.tr()),
+                    _buildStep('3', 'screens.suspended.step3'.tr()),
                   ],
                 ),
               ),
@@ -310,8 +311,8 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen> {
                     );
                   },
                   icon: const Icon(Icons.upload_file_rounded),
-                  label: const Text(
-                    'Depositar Ahora',
+                  label: Text(
+                    'screens.suspended.deposit_now'.tr(),
                     style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
                   ),
                   style: ElevatedButton.styleFrom(
@@ -336,10 +337,10 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen> {
                   ),
                   label: Text(
                     _isSendingRequest
-                        ? 'Enviando...'
+                        ? 'screens.suspended.sending'.tr()
                         : _requestSent
-                            ? 'Solicitud Enviada'
-                            : 'Contactar Administrador',
+                            ? 'screens.suspended.request_sent'.tr()
+                            : 'screens.suspended.contact_admin'.tr(),
                     style: TextStyle(
                       color: _requestSent ? const Color(0xFF10B981) : Colors.white70,
                       fontWeight: FontWeight.w600,
@@ -367,7 +368,7 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen> {
                       )
                     : const Icon(Icons.refresh, color: Colors.white38, size: 18),
                 label: Text(
-                  _isCheckingStatus ? 'Verificando...' : 'Verificar estado de cuenta',
+                  _isCheckingStatus ? 'screens.suspended.checking'.tr() : 'screens.suspended.check_status'.tr(),
                   style: const TextStyle(color: Colors.white38, fontSize: 13),
                 ),
               ),

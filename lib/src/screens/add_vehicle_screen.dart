@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -237,7 +238,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error al seleccionar imagen: $e'),
+            content: Text('screens.vehicle.error_select_image'.tr(namedArgs: {'error': e.toString()})),
             backgroundColor: AppColors.error,
           ),
         );
@@ -391,7 +392,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
         HapticService.error();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Selecciona la fecha de vencimiento del seguro'),
+            content: Text('screens.vehicle.select_insurance_expiry'.tr()),
             backgroundColor: AppColors.error,
           ),
         );
@@ -403,8 +404,8 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
         HapticService.error();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text(
-              'Sube la foto del frente de tu tarjeta de seguro',
+            content: Text(
+              'screens.vehicle.upload_insurance_front'.tr(),
             ),
             backgroundColor: AppColors.error,
           ),
@@ -417,8 +418,8 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
       HapticService.error();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text(
-            'Sube la foto del reverso de tu tarjeta de seguro',
+          content: Text(
+            'screens.vehicle.upload_insurance_back'.tr(),
           ),
           backgroundColor: AppColors.error,
         ),
@@ -431,7 +432,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
       HapticService.error();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Sube la foto del documento de endorsement'),
+          content: Text('screens.vehicle.upload_endorsement_doc'.tr()),
           backgroundColor: AppColors.error,
         ),
       );
@@ -570,7 +571,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
         HapticService.success();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Vehiculo registrado exitosamente'),
+            content: Text('screens.vehicle.registered_success'.tr()),
             backgroundColor: AppColors.success,
           ),
         );

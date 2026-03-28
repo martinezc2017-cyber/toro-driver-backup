@@ -245,7 +245,7 @@ class _DocumentsScreenState extends State<DocumentsScreen>
                 children: [
                   Icon(Icons.celebration, color: Colors.white),
                   SizedBox(width: 8),
-                  Text('All documents complete! You are now ACTIVE'),
+                  Text('screens.documents.all_complete'.tr()),
                 ],
               ),
               backgroundColor: Colors.green,
@@ -336,7 +336,7 @@ class _DocumentsScreenState extends State<DocumentsScreen>
                   child: OutlinedButton.icon(
                     onPressed: () => _pickAndUpload(type, ImageSource.camera),
                     icon: const Icon(Icons.camera_alt, size: 18),
-                    label: const Text('Cámara'),
+                    label: Text('screens.documents.camera'.tr()),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.primary,
                       side: BorderSide(color: AppColors.primary),
@@ -350,7 +350,7 @@ class _DocumentsScreenState extends State<DocumentsScreen>
                   child: ElevatedButton.icon(
                     onPressed: () => _pickAndUpload(type, ImageSource.gallery),
                     icon: const Icon(Icons.photo_library, size: 18),
-                    label: const Text('Galería'),
+                    label: Text('screens.documents.gallery'.tr()),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.black,
@@ -392,7 +392,7 @@ class _DocumentsScreenState extends State<DocumentsScreen>
               children: [
                 const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
                 const SizedBox(width: 12),
-                const Text('Subiendo...'),
+                Text('screens.documents.uploading'.tr()),
               ],
             ),
             duration: const Duration(seconds: 30),

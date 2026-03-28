@@ -101,7 +101,7 @@ class _BankAccountScreenState extends State<BankAccountScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
+          SnackBar(content: Text('screens.bank_account.error_generic'.tr(namedArgs: {'error': e.toString()})), backgroundColor: AppColors.error),
         );
       }
     } finally {

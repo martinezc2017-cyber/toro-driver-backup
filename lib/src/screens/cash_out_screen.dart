@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../utils/app_theme.dart';
 import '../providers/riverpod_providers.dart';
@@ -111,8 +112,8 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
         _showSuccessDialog();
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Error procesando el pago. Intenta de nuevo.'),
+          SnackBar(
+            content: Text('screens.cash_out.error_processing'.tr()),
             backgroundColor: AppTheme.error,
           ),
         );
@@ -120,7 +121,7 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.error),
+          SnackBar(content: Text('screens.cash_out.error_generic'.tr(namedArgs: {'error': e.toString()})), backgroundColor: AppTheme.error),
         );
       }
     } finally {
@@ -147,8 +148,8 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
               child: const Icon(Icons.check, color: AppTheme.success, size: 50),
             ),
             const SizedBox(height: 20),
-            const Text(
-              '¡Cash Out Exitoso!',
+            Text(
+              'screens.cash_out.cash_out_success'.tr(),
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 20,
@@ -167,8 +168,8 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
             const SizedBox(height: 10),
             Text(
               _selectedMethod == 'debit_card'
-                  ? 'El dinero llegará a tu tarjeta en minutos'
-                  : 'El dinero llegará a tu cuenta en 1-3 días',
+                  ? 'screens.cash_out.money_to_card'.tr()
+                  : 'screens.cash_out.money_to_account'.tr(),
               style: const TextStyle(color: AppTheme.textMuted, fontSize: 13),
               textAlign: TextAlign.center,
             ),
@@ -217,8 +218,8 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: const Text(
-                'Listo',
+              child: Text(
+                'screens.cash_out.done'.tr(),
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
@@ -305,9 +306,9 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
                 size: 20,
               ),
               const SizedBox(width: 8),
-              const Text(
-                'Balance Disponible',
-                style: TextStyle(color: Colors.white70, fontSize: 13),
+              Text(
+                'screens.cash_out.available_balance'.tr(),
+                style: const TextStyle(color: Colors.white70, fontSize: 13),
               ),
               const Spacer(),
               if (_pendingBalance > 0)
@@ -321,7 +322,7 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    '\$${_pendingBalance.toStringAsFixed(2)} pendiente',
+                    '\$${_pendingBalance.toStringAsFixed(2)} ${'screens.cash_out.pending_suffix'.tr()}',
                     style: const TextStyle(color: Colors.white70, fontSize: 11),
                   ),
                 ),
@@ -345,8 +346,8 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Monto a retirar',
+        Text(
+          'screens.cash_out.amount_to_withdraw'.tr(),
           style: TextStyle(
             color: Colors.white,
             fontSize: 16,
@@ -428,7 +429,7 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  'Monto excede tu balance disponible',
+                  'screens.cash_out.exceeds_balance'.tr(),
                   style: TextStyle(color: AppTheme.error, fontSize: 12),
                 ),
               ],
@@ -486,8 +487,8 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Método de pago',
+        Text(
+          'screens.cash_out.payment_method'.tr(),
           style: TextStyle(
             color: Colors.white,
             fontSize: 16,
@@ -498,7 +499,7 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
 
         // Debit cards (instant)
         if (_debitCards.isNotEmpty) ...[
-          _buildMethodHeader('⚡ Instant (Tarjeta)', 'Minutos'),
+          _buildMethodHeader('⚡ ${'screens.cash_out.instant_card'.tr()}', 'screens.cash_out.minutes'.tr()),
           ..._debitCards.map(
             (card) => _buildPaymentOption(
               card,
@@ -514,7 +515,7 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
 
         // Bank accounts (1-3 days)
         if (_bankAccounts.isNotEmpty) ...[
-          _buildMethodHeader('🏦 Transferencia', '1-3 días'),
+          _buildMethodHeader('🏦 ${'screens.cash_out.wire_transfer'.tr()}', 'screens.cash_out.one_three_days'.tr()),
           ..._bankAccounts.map(
             (account) => _buildPaymentOption(
               account,
@@ -532,7 +533,7 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
         OutlinedButton.icon(
           onPressed: _addPaymentMethod,
           icon: const Icon(Icons.add, size: 18),
-          label: const Text('Agregar método de pago'),
+          label: Text('screens.cash_out.add_payment_method'.tr()),
           style: OutlinedButton.styleFrom(
             foregroundColor: AppTheme.textMuted,
             side: const BorderSide(color: AppTheme.border),
@@ -681,15 +682,15 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
       ),
       child: Column(
         children: [
-          _buildFeeRow('Monto', '\$${_selectedAmount.toStringAsFixed(2)}'),
+          _buildFeeRow('screens.cash_out.amount_label'.tr(), '\$${_selectedAmount.toStringAsFixed(2)}'),
           _buildFeeRow(
-            'Fee de servicio',
+            'screens.cash_out.service_fee'.tr(),
             '-\$${_fee.toStringAsFixed(2)}',
             isNegative: true,
           ),
           const Divider(color: AppTheme.border, height: 20),
           _buildFeeRow(
-            'Recibirás',
+            'screens.cash_out.you_receive'.tr(),
             '\$${_netAmount.toStringAsFixed(2)}',
             isTotal: true,
           ),
@@ -786,8 +787,8 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
           Expanded(
             child: Text(
               _selectedMethod == 'debit_card'
-                  ? 'Los fondos llegarán a tu tarjeta en minutos. Fee: 1.5% (mín. \$0.50)'
-                  : 'Los fondos llegarán a tu cuenta en 1-3 días hábiles.',
+                  ? 'screens.cash_out.disclaimer_card'.tr(namedArgs: {'min': '\$0.50'})
+                  : 'screens.cash_out.disclaimer_bank'.tr(),
               style: TextStyle(color: AppTheme.info, fontSize: 12),
             ),
           ),
@@ -817,8 +818,8 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
               ),
             ),
             const SizedBox(height: 20),
-            const Text(
-              'Agregar Método de Pago',
+            Text(
+              'screens.cash_out.add_payment_method'.tr(),
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 18,
@@ -835,13 +836,13 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
                 ),
                 child: const Icon(Icons.credit_card, color: AppTheme.warning),
               ),
-              title: const Text(
-                'Tarjeta de Débito',
-                style: TextStyle(color: Colors.white),
+              title: Text(
+                'screens.cash_out.debit_card_label'.tr(),
+                style: const TextStyle(color: Colors.white),
               ),
-              subtitle: const Text(
-                'Instant - Recibe en minutos',
-                style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
+              subtitle: Text(
+                'screens.cash_out.instant_receive_minutes'.tr(),
+                style: const TextStyle(color: AppTheme.textMuted, fontSize: 12),
               ),
               trailing: const Icon(
                 Icons.chevron_right,
@@ -851,8 +852,8 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
                 Navigator.pop(context);
                 // TODO: Navigate to add debit card screen
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Agregar tarjeta - Próximamente'),
+                  SnackBar(
+                    content: Text('screens.cash_out.add_card_coming_soon'.tr()),
                   ),
                 );
               },
@@ -867,13 +868,13 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
                 ),
                 child: const Icon(Icons.account_balance, color: AppTheme.info),
               ),
-              title: const Text(
-                'Cuenta Bancaria',
-                style: TextStyle(color: Colors.white),
+              title: Text(
+                'screens.cash_out.bank_account_label'.tr(),
+                style: const TextStyle(color: Colors.white),
               ),
-              subtitle: const Text(
-                '1-3 días hábiles',
-                style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
+              subtitle: Text(
+                'screens.cash_out.one_three_business_days'.tr(),
+                style: const TextStyle(color: AppTheme.textMuted, fontSize: 12),
               ),
               trailing: const Icon(
                 Icons.chevron_right,
@@ -883,8 +884,8 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
                 Navigator.pop(context);
                 // TODO: Navigate to add bank account screen
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Agregar cuenta - Próximamente'),
+                  SnackBar(
+                    content: Text('screens.cash_out.add_account_coming_soon'.tr()),
                   ),
                 );
               },

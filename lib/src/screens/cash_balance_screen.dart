@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../providers/driver_provider.dart';
@@ -721,13 +722,13 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
                 isExpanded: true,
                 dropdownColor: AppColors.surface,
                 style: const TextStyle(color: Colors.white),
-                items: const [
-                  DropdownMenuItem(value: 'transfer', child: Text('Transferencia Bancaria')),
-                  DropdownMenuItem(value: 'spei', child: Text('SPEI')),
-                  DropdownMenuItem(value: 'oxxo', child: Text('OXXO')),
-                  DropdownMenuItem(value: 'zelle', child: Text('Zelle')),
-                  DropdownMenuItem(value: 'venmo', child: Text('Venmo')),
-                  DropdownMenuItem(value: 'cash_office', child: Text('Efectivo en oficina')),
+                items: [
+                  DropdownMenuItem(value: 'transfer', child: Text('screens.cash_balance.bank_transfer'.tr())),
+                  DropdownMenuItem(value: 'spei', child: Text('screens.cash_balance.spei'.tr())),
+                  DropdownMenuItem(value: 'oxxo', child: Text('screens.cash_balance.oxxo'.tr())),
+                  DropdownMenuItem(value: 'zelle', child: Text('screens.cash_balance.zelle'.tr())),
+                  DropdownMenuItem(value: 'venmo', child: Text('screens.cash_balance.venmo'.tr())),
+                  DropdownMenuItem(value: 'cash_office', child: Text('screens.cash_balance.cash_office'.tr())),
                 ],
                 onChanged: (v) => setState(() => _depositMethod = v ?? 'transfer'),
               ),
@@ -975,17 +976,17 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
   String _methodLabel(String method) {
     switch (method) {
       case 'transfer':
-        return 'Transferencia';
+        return 'screens.cash_balance.transfer_label'.tr();
       case 'spei':
-        return 'SPEI';
+        return 'screens.cash_balance.spei'.tr();
       case 'oxxo':
-        return 'OXXO';
+        return 'screens.cash_balance.oxxo'.tr();
       case 'zelle':
-        return 'Zelle';
+        return 'screens.cash_balance.zelle'.tr();
       case 'venmo':
-        return 'Venmo';
+        return 'screens.cash_balance.venmo'.tr();
       case 'cash_office':
-        return 'Efectivo';
+        return 'screens.cash_balance.cash_label'.tr();
       case 'stripe':
         return 'Stripe';
       default:
@@ -1005,7 +1006,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
     final amountText = _depositAmountController.text.trim();
     if (amountText.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ingresa el monto del deposito')),
+        SnackBar(content: Text('screens.cash_balance.enter_deposit_amount'.tr())),
       );
       return;
     }
@@ -1013,7 +1014,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
     final amount = double.tryParse(amountText);
     if (amount == null || amount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Monto invalido')),
+        SnackBar(content: Text('screens.cash_balance.invalid_amount'.tr())),
       );
       return;
     }
@@ -1047,9 +1048,9 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
 
     if (result != null && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Deposito enviado. Esperando aprobacion del admin.'),
-          backgroundColor: Color(0xFF10B981),
+        SnackBar(
+          content: Text('screens.cash_balance.deposit_sent'.tr()),
+          backgroundColor: const Color(0xFF10B981),
         ),
       );
       _depositAmountController.clear();
@@ -1058,9 +1059,9 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
       await _loadData();
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Error al enviar deposito. Intenta de nuevo.'),
-          backgroundColor: Color(0xFFDC2626),
+        SnackBar(
+          content: Text('screens.cash_balance.deposit_error'.tr()),
+          backgroundColor: const Color(0xFFDC2626),
         ),
       );
     }
@@ -1104,9 +1105,9 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
 
       if (result != null && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Solicitud enviada al admin'),
-            backgroundColor: Color(0xFF10B981),
+          SnackBar(
+            content: Text('screens.cash_balance.request_sent_admin'.tr()),
+            backgroundColor: const Color(0xFF10B981),
           ),
         );
       }

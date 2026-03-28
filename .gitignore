@@ -1,6 +1,20 @@
-# Secrets
+# Secrets & credentials
 .env
 supabase/.env
+*.pem
+*.p12
+*.p8
+*.mobileprovision
+*.jks
+android/key.properties
+
+# Firebase config (contains API keys)
+# google-services.json
+# GoogleService-Info.plist
+
+# Claude local settings (may contain secrets)
+.claude/settings.local.json
+.claude/SUPABASE_CONNECTION.md
 
 # Miscellaneous
 *.class
@@ -15,6 +29,13 @@ supabase/.env
 .svn/
 .swiftpm/
 migrate_working_dir/
+
+# Node modules & caches
+**/node_modules/
+**/.cache/
+
+# Utility scripts with secrets
+*.ps1
 
 # IntelliJ related
 *.iml

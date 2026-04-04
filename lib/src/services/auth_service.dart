@@ -638,16 +638,23 @@ class AuthService {
     final phone = meta['phone'] as String? ?? '';
     final now = DateTime.now().toIso8601String();
 
-    // Detect country by GPS
+    // Detect country: 1) check profiles table, 2) GPS, 3) default US
     String countryCode = 'US';
+    try {
+      final profile = await _client.from('profiles').select('country_code').eq('id', user.id).maybeSingle();
+      if (profile != null && profile['country_code'] != null) {
+        countryCode = profile['country_code'];
+      }
+    } catch (_) {}
     try {
       final position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.low,
         timeLimit: const Duration(seconds: 5),
       );
-      // Mexico: lat < 33 and lng between -118 and -86
       if (position.latitude < 33 && position.longitude > -118 && position.longitude < -86) {
         countryCode = 'MX';
+      } else {
+        countryCode = 'US';
       }
     } catch (_) {}
 

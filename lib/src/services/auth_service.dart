@@ -638,6 +638,19 @@ class AuthService {
     final phone = meta['phone'] as String? ?? '';
     final now = DateTime.now().toIso8601String();
 
+    // Detect country by GPS
+    String countryCode = 'US';
+    try {
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.low,
+        timeLimit: const Duration(seconds: 5),
+      );
+      // Mexico: lat < 33 and lng between -118 and -86
+      if (position.latitude < 33 && position.longitude > -118 && position.longitude < -86) {
+        countryCode = 'MX';
+      }
+    } catch (_) {}
+
     await _client.from(SupabaseConfig.driversTable).upsert({
       'id': user.id,
       'user_id': user.id,
@@ -646,7 +659,7 @@ class AuthService {
       'first_name': firstName.isNotEmpty ? firstName : null,
       'last_name': lastName.isNotEmpty ? lastName : null,
       'phone': phone,
-      'country_code': 'US',
+      'country_code': countryCode,
       'rating': 0.0,
       'total_rides': 0,
       'total_earnings': 0.0,

@@ -105,9 +105,13 @@ class LocationService {
     try {
       // Update driver's location directly in drivers table (for admin visibility)
       // Only update columns that exist in the drivers table
+      // Detect country from GPS
+      final detectedCountry = (position.latitude < 33 && position.longitude > -118 && position.longitude < -86) ? 'MX' : 'US';
+
       await _client.from(SupabaseConfig.driversTable).update({
         'current_lat': position.latitude,
         'current_lng': position.longitude,
+        'country_code': detectedCountry,
         'updated_at': DateTime.now().toIso8601String(),
       }).eq('id', driverId);
 

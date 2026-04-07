@@ -846,13 +846,8 @@ class _LoginScreenState extends State<LoginScreen>
 
           const SizedBox(height: 12),
 
-          // Google Sign In Button
-          _buildGoogleButton(),
-
-          const SizedBox(height: 10),
-
-          // Apple Sign In Button (required by Apple for iOS)
-          _buildAppleButton(),
+          // Platform-specific sign-in: Apple on iOS, Google on Android
+          _buildPlatformSignInButton(),
 
           // Biometric button (only in login mode when available)
           if (_isLogin && _biometricAvailable) ...[
@@ -1020,16 +1015,16 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  Widget _buildAppleButton() {
-    // Only show on iOS
-    if (kIsWeb) return const SizedBox.shrink();
-    // Check platform safely
+  Widget _buildPlatformSignInButton() {
+    if (kIsWeb) return _buildGoogleButton();
     bool isIOS = false;
     try {
       isIOS = Theme.of(context).platform == TargetPlatform.iOS;
     } catch (_) {}
-    if (!isIOS) return const SizedBox.shrink();
+    return isIOS ? _buildAppleButton() : _buildGoogleButton();
+  }
 
+  Widget _buildAppleButton() {
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
         return SizedBox(

@@ -547,6 +547,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
 				DEVELOPMENT_TEAM = 5H7LQ235R2;
 				PRODUCT_BUNDLE_IDENTIFIER = com.tororide.driver;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -570,6 +571,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
 				DEVELOPMENT_TEAM = 5H7LQ235R2;
 				PRODUCT_BUNDLE_IDENTIFIER = com.tororide.driver;
 				PRODUCT_NAME = "$(TARGET_NAME)";

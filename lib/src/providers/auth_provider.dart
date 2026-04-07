@@ -335,6 +335,7 @@ class AuthProvider with ChangeNotifier {
   // Sign in with Google
   Future<bool> signInWithGoogle() async {
     try {
+      _safetyTimer?.cancel(); // Cancel safety timer — user is actively signing in
       _status = AuthStatus.loading;
       _error = null;
       notifyListeners();
@@ -371,6 +372,7 @@ class AuthProvider with ChangeNotifier {
   // Sign in with Apple
   Future<bool> signInWithApple() async {
     try {
+      _safetyTimer?.cancel(); // Cancel safety timer — user is actively signing in
       _status = AuthStatus.loading;
       _error = null;
       notifyListeners();
@@ -382,6 +384,7 @@ class AuthProvider with ChangeNotifier {
         _status = AuthStatus.unauthenticated;
         notifyListeners();
       }
+      // Auth state listener will handle the rest (same as Google sign-in)
       return success;
     } catch (e) {
       final msg = e.toString();

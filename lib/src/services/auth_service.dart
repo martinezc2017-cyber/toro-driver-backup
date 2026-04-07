@@ -638,7 +638,7 @@ class AuthService {
     final phone = meta['phone'] as String? ?? '';
     final now = DateTime.now().toIso8601String();
 
-    // Detect country: 1) check profiles table, 2) GPS, 3) default US
+    // Detect country: 1) check profiles table, 2) last known GPS, 3) default US
     String countryCode = 'US';
     try {
       final profile = await _client.from('profiles').select('country_code').eq('id', user.id).maybeSingle();
@@ -647,14 +647,13 @@ class AuthService {
       }
     } catch (_) {}
     try {
-      final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.low,
-        timeLimit: const Duration(seconds: 5),
-      );
-      if (position.latitude < 33 && position.longitude > -118 && position.longitude < -86) {
-        countryCode = 'MX';
-      } else {
-        countryCode = 'US';
+      final position = await Geolocator.getLastKnownPosition();
+      if (position != null) {
+        if (position.latitude < 33 && position.longitude > -118 && position.longitude < -86) {
+          countryCode = 'MX';
+        } else {
+          countryCode = 'US';
+        }
       }
     } catch (_) {}
 

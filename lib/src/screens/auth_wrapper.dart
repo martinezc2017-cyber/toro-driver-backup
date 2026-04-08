@@ -143,8 +143,8 @@ class _AuthWrapperState extends State<AuthWrapper> {
       builder: (context, authProvider, _) {
         DebugLogger.log('WRAPPER_BUILD', detail: 'status=${authProvider.status}, driver=${authProvider.driver?.id}, role=${authProvider.driver?.role}');
 
-        if (authProvider.status == AuthStatus.initial) {
-          DebugLogger.log('WRAPPER_SCREEN', detail: 'LOADING (initial)');
+        if (authProvider.status == AuthStatus.initial || authProvider.status == AuthStatus.loading) {
+          DebugLogger.log('WRAPPER_SCREEN', detail: 'LOADING (${authProvider.status})');
           return _buildLoadingScreen();
         }
 

@@ -128,9 +128,9 @@ class AuthProvider with ChangeNotifier {
     if (session != null) {
       await DebugLogger.log('AUTH_EVENT', detail: 'event=$event, status=$_status, driverId=${_driver?.id}', userId: session.user.id);
       if (event == AuthChangeEvent.signedIn) {
+        _initialResolved = true; // Prevent late initialSession from resetting state
         if (_status != AuthStatus.authenticated || _driver?.id != session.user.id) {
           await _loadDriverProfile(caller: '_handleAuthStateChange($event)');
-          // Backfill GPS for existing users + mark driver_app_installed
           _authService.backfillLocationIfMissing();
         }
       } else if (event == AuthChangeEvent.tokenRefreshed) {

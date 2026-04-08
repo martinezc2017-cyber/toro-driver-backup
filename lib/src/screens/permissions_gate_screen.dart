@@ -61,22 +61,32 @@ class _PermissionsGateScreenState extends State<PermissionsGateScreen>
 
     setState(() => _checking = true);
 
-    // Check GPS service
-    final gpsEnabled = await Geolocator.isLocationServiceEnabled();
+    // Check GPS service — timeout to prevent hang
+    bool gpsEnabled = false;
+    try {
+      gpsEnabled = await Geolocator.isLocationServiceEnabled().timeout(const Duration(seconds: 3), onTimeout: () => false);
+    } catch (_) {}
 
     // Check location permission
-    final locPerm = await Geolocator.checkPermission();
+    LocationPermission locPerm = LocationPermission.denied;
+    try {
+      locPerm = await Geolocator.checkPermission().timeout(const Duration(seconds: 3), onTimeout: () => LocationPermission.denied);
+    } catch (_) {}
     final locGranted = locPerm == LocationPermission.always ||
         locPerm == LocationPermission.whileInUse;
     final locDeniedForever = locPerm == LocationPermission.deniedForever;
 
-    // Check notification permission
-    final msgSettings = await FirebaseMessaging.instance.getNotificationSettings();
-    // notDetermined = user hasn't been asked yet (emulator/FCM issue) — treat as ok
-    final notifGranted =
-        msgSettings.authorizationStatus == AuthorizationStatus.authorized ||
-            msgSettings.authorizationStatus == AuthorizationStatus.provisional ||
-            msgSettings.authorizationStatus == AuthorizationStatus.notDetermined;
+    // Check notification permission — may hang on iOS if Firebase not ready
+    bool notifGranted = true;
+    try {
+      final msgSettings = await FirebaseMessaging.instance.getNotificationSettings().timeout(const Duration(seconds: 3));
+      notifGranted =
+          msgSettings.authorizationStatus == AuthorizationStatus.authorized ||
+              msgSettings.authorizationStatus == AuthorizationStatus.provisional ||
+              msgSettings.authorizationStatus == AuthorizationStatus.notDetermined;
+    } catch (_) {
+      notifGranted = true;
+    }
 
     DebugLogger.log('PERMISSIONS_CHECK', detail: 'gps=$gpsEnabled, loc=$locGranted, locDeniedForever=$locDeniedForever, notif=$notifGranted, allGranted=${locGranted && gpsEnabled}');
     if (mounted) {

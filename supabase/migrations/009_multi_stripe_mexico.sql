@@ -124,8 +124,8 @@ $$ LANGUAGE plpgsql;
 -- Environment variables needed in Supabase Edge Functions:
 --   STRIPE_US_SECRET_KEY=sk_live_xxx (existing)
 --   STRIPE_US_PUBLISHABLE_KEY=pk_live_xxx (existing)
---   STRIPE_MX_SECRET_KEY=sk_test_51SvLIZJL6dZ5MsYqJsjZy6OWsk5DMzIovXGJofFvFSNG4q7dfcCAEDDtWb7hBoWn05oBZz3biaoIoHdxqvjQoNXn00iwWNE7t7
---   STRIPE_MX_PUBLISHABLE_KEY=pk_test_51SvLIZJL6dZ5MsYqvDAUIhO74kK7r93XLcYSlTLP5oupLb6lwhLe4XppoSOUWuhkNenCvcdo6xQ7DBkLO3yWRpVT000m01MebB
+--   STRIPE_MX_SECRET_KEY=sk_test_REDACTED (set in Supabase Edge Functions secrets)
+--   STRIPE_MX_PUBLISHABLE_KEY=pk_test_REDACTED (set in Supabase Edge Functions secrets)
 -- ============================================================================
 
 COMMENT ON COLUMN public.driver_stripe_accounts.provider IS 'Stripe provider: us for United States, mx for Mexico';

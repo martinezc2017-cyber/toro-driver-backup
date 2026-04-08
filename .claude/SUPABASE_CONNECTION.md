@@ -15,7 +15,7 @@ https://gkqcrkqaijwhiksyjekv.supabase.co
 
 ### Database Connection String
 ```
-postgresql://postgres:VI6rC4T3BJkOWfqh@db.gkqcrkqaijwhiksyjekv.supabase.co:5432/postgres
+postgresql://postgres:[SEE_ENV_OR_DASHBOARD]@db.gkqcrkqaijwhiksyjekv.supabase.co:5432/postgres
 ```
 
 ### API Keys
@@ -32,7 +32,7 @@ Need to retrieve from: https://app.supabase.com/project/gkqcrkqaijwhiksyjekv/set
 
 **Database Password**:
 ```
-VI6rC4T3BJkOWfqh
+[SEE_ENV_OR_DASHBOARD]
 ```
 
 ## Quick Access URLs

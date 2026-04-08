@@ -1,0 +1,148 @@
+================================================================================
+TORO DRIVER APP — SISTEMA QR DE COMISIÓN
+================================================================================
+
+CONCEPTO GENERAL
+----------------
+Los drivers de TORO ganan puntos QR cada vez que un rider escanea su código QR
+personal al terminar un viaje. Más QRs escaneados = comisión más baja de la
+plataforma = el driver se lleva más dinero.
+
+El sistema funciona por semanas (lunes a domingo). Se resetea cada lunes.
+El driver tiene hasta 30 QR scans por semana.
+
+
+ESTRUCTURA DE TIERS (NIVELES)
+------------------------------
+
+TIER 0  │  0 QRs    │  TORO cobra 20%  │  Driver recibe 64%
+TIER 1  │  1-6 QRs  │  TORO cobra 19%  │  Driver recibe 65%
+TIER 2  │  7-12 QRs │  TORO cobra 18%  │  Driver recibe 66%
+TIER 3  │  13-18 QRs│  TORO cobra 17%  │  Driver recibe 67%
+TIER 4  │  19-24 QRs│  TORO cobra 16%  │  Driver recibe 68%
+TIER 5  │  25-30 QRs│  TORO cobra 15%  │  Driver recibe 69%  ← MÁXIMO
+
+Nota: El 16% restante es IVA (16%) que permanece fijo siempre.
+Desglose base de un viaje: Driver 64% | TORO 20% | IVA 16%
+
+
+CÓMO FUNCIONA EL QR
+--------------------
+1. Cada driver tiene un código QR único personal
+2. El rider abre la app TORO Rider, escanea el QR del driver al final del viaje
+3. Ambos ganan: el driver sube de tier, el rider acumula puntos para descuentos
+4. Cada scan válido requiere: viaje ≥ 0.8 km Y duración ≥ 3 minutos
+5. Los scans se acumulan durante la semana (lunes-domingo)
+6. El lunes se resetea el contador y vuelve a Tier 0
+
+
+BENEFICIOS POR TIER
+--------------------
+Tier 0 → Tier 1: Driver pasa de ganar 64% a 65% (+1%)
+Tier 1 → Tier 2: Driver pasa de ganar 65% a 66% (+1%)
+Tier 2 → Tier 3: Driver pasa de ganar 66% a 67% (+1%)
+Tier 3 → Tier 4: Driver pasa de ganar 67% a 68% (+1%)
+Tier 4 → Tier 5: Driver pasa de ganar 68% a 69% (+1%)
+
+En Tier 5 MÁXIMO: Driver lleva 69% de cada viaje (vs 64% sin QRs)
+Diferencia total: 5% más en cada viaje para el driver
+
+
+EJEMPLO REAL
+------------
+Viaje de $200 MXN:
+  - Sin QRs (Tier 0):  Driver recibe $128 | TORO recibe $40  | IVA $32
+  - Tier 5 (25+ QRs):  Driver recibe $138 | TORO recibe $30  | IVA $32
+  - Ganancia extra:    $10 más por viaje
+
+En una semana de 50 viajes a $200 c/u:
+  - Tier 0: Driver gana $6,400
+  - Tier 5: Driver gana $6,900
+  - Diferencia: $500 MXN más a la semana solo por mostrar el QR
+
+
+RANKING ESTATAL
+---------------
+- Los drivers compiten por posición dentro de su estado (ej: Jalisco, CDMX)
+- Se muestra el top 20 de drivers por nivel QR en la semana actual
+- Drivers con el mismo nivel comparten posición (tie)
+- El ranking se actualiza en tiempo real via Supabase Realtime
+
+
+PANTALLA QR EN EL APP (DRIVER)
+--------------------------------
+Ubicación: Home Screen → Panel QR (expandible, con ícono QR)
+Tabs disponibles en QRPointsScreen:
+  1. COMISIÓN - Muestra tier actual, progreso al siguiente tier, tabla completa
+  2. RANKING - Leaderboard estatal de la semana
+  3. TIPS - Historial de propinas/tips recibidos via QR
+
+
+DATOS EN SUPABASE
+-----------------
+Tabla: driver_qr_points
+Columnas:
+  - id (UUID)
+  - driver_id (UUID → FK a drivers)
+  - week_start (DATE - lunes de la semana)
+  - qrs_accepted (INT - scans acumulados)
+  - current_level (INT - mismo valor que qrs_accepted, máx 30)
+  - qr_tier (INT - tier actual 0-5)
+  - country_code (TEXT - 'US' o 'MX')
+  - bonus_percent (FLOAT - legacy, ya no se usa)
+  - total_bonus_earned (FLOAT - legacy)
+  - created_at / updated_at (TIMESTAMP)
+
+Tabla: qr_tip_history
+Columnas:
+  - id, driver_id, rider_id, ride_id
+  - points_spent (puntos del rider usados)
+  - tip_amount (propina en dinero)
+  - original_price / final_price
+  - week_start, created_at
+
+
+CONFIGURACIÓN POR ESTADO (pricing_config)
+------------------------------------------
+El sistema puede configurarse diferente por estado:
+  - qr_max_level (default: 30)
+  - qr_tier_1_max (default: 6), qr_tier_1_bonus (default: 1.0%)
+  - qr_tier_2_max (default: 12), qr_tier_2_bonus (default: 2.0%)
+  - qr_tier_3_max (default: 18), qr_tier_3_bonus (default: 3.0%)
+  - qr_tier_4_max (default: 24), qr_tier_4_bonus (default: 4.0%)
+  - qr_tier_5_bonus (default: 5.0%)
+
+
+PALETA DE COLORES (para imagen)
+---------------------------------
+Fondo principal: Oscuro (#0D1117 o negro azulado)
+Tier activo / Tier 5: Verde neón (#00FF66)
+Acento azul (panel QR): #1E88E5
+Acento cian: #00BCD4
+Texto principal: Blanco (#FFFFFF)
+Texto secundario: Blanco 60% (#99FFFFFF)
+Card/panel: #1A1A2E o similar oscuro
+
+Iconos sugeridos para cada tier:
+  Tier 0: ⚫ círculo vacío / gris
+  Tier 1: 🟤 bronce
+  Tier 2: ⚪ plata
+  Tier 3: 🟡 oro
+  Tier 4: 💎 diamante / azul
+  Tier 5: 👑 corona / verde neón brillante
+
+
+ESLOGAN / TEXTO SUGERIDO PARA LA IMAGEN
+-----------------------------------------
+"Más QRs = Menos comisión = Más dinero en tu bolsillo"
+"Llega al Tier 5 y llévate el 69% de cada viaje"
+"Riders escanean tu QR → Tú ganas más"
+"Sistema semanal: ¿Cuántos QRs puedes conseguir esta semana?"
+
+
+================================================================================
+NOMBRE DEL SISTEMA: TORO QR TIERS
+APP: TORO Driver (Android/iOS)
+MERCADO: México y Estados Unidos
+EMPRESA: Toro Ride LLC
+================================================================================

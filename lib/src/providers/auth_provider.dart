@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/auth_service.dart';
 import '../models/driver_model.dart';
 import '../core/logging/app_logger.dart';
+import '../core/logging/debug_logger.dart';
 
 enum AuthStatus {
   initial,
@@ -125,8 +126,7 @@ class AuthProvider with ChangeNotifier {
     AppLogger.log('[AUTH] onAuthStateChange: event=$event, session=${session != null}, status=$_status, initialResolved=$_initialResolved');
 
     if (session != null) {
-      // Only respond to explicit sign-in events, NOT stale session recovery
-      // This prevents the loop: stale token → loading → fail → unauthenticated → stale token...
+      await DebugLogger.log('AUTH_EVENT', detail: 'event=$event, status=$_status, driverId=${_driver?.id}', userId: session.user.id);
       if (event == AuthChangeEvent.signedIn) {
         if (_status != AuthStatus.authenticated || _driver?.id != session.user.id) {
           await _loadDriverProfile(caller: '_handleAuthStateChange($event)');
@@ -206,6 +206,7 @@ class AuthProvider with ChangeNotifier {
 
       _status = _authService.isAuthenticated ? AuthStatus.authenticated : AuthStatus.unauthenticated;
       AppLogger.log('[AUTH] final status: $_status');
+      await DebugLogger.log('PROFILE_LOADED', detail: 'driver=${_driver?.id}, role=${_driver?.role}, status=$_status', userId: _driver?.id);
       _error = null;
     } catch (e) {
       AppLogger.log('[AUTH] ERROR in _loadDriverProfile: $e');
@@ -372,19 +373,20 @@ class AuthProvider with ChangeNotifier {
   // Sign in with Apple
   Future<bool> signInWithApple() async {
     try {
-      _safetyTimer?.cancel(); // Cancel safety timer — user is actively signing in
+      _safetyTimer?.cancel();
       _status = AuthStatus.loading;
       _error = null;
       notifyListeners();
+      await DebugLogger.log('PROVIDER_APPLE_1', detail: 'Calling authService.signInWithApple');
 
       final success = await _authService.signInWithApple();
 
+      await DebugLogger.log('PROVIDER_APPLE_2', detail: 'Result: $success, status: $_status');
       if (!success) {
         _error = 'Apple sign in error';
         _status = AuthStatus.unauthenticated;
         notifyListeners();
       }
-      // Auth state listener will handle the rest (same as Google sign-in)
       return success;
     } catch (e) {
       final msg = e.toString();

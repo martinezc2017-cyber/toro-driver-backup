@@ -28,7 +28,7 @@ cat .claude/SUPABASE_CONNECTION.md
 ### Step 2: Test Connection
 ```bash
 # Quick health check
-psql "postgresql://postgres:VI6rC4T3BJkOWfqh@db.gkqcrkqaijwhiksyjekv.supabase.co:5432/postgres" \
+psql "postgresql://postgres:[stored in .env.local]@db.gkqcrkqaijwhiksyjekv.supabase.co:5432/postgres" \
   -c "SELECT COUNT(*) FROM profiles"
 ```
 

@@ -6,6 +6,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import '../utils/app_colors.dart';
 import '../services/notification_service.dart';
 import '../core/logging/app_logger.dart';
+import '../core/logging/debug_logger.dart';
 
 /// Mandatory permissions gate screen for TORO Driver.
 /// Blocks app usage until GPS and Notification permissions are granted.
@@ -77,13 +78,14 @@ class _PermissionsGateScreenState extends State<PermissionsGateScreen>
             msgSettings.authorizationStatus == AuthorizationStatus.provisional ||
             msgSettings.authorizationStatus == AuthorizationStatus.notDetermined;
 
+    DebugLogger.log('PERMISSIONS_CHECK', detail: 'gps=$gpsEnabled, loc=$locGranted, locDeniedForever=$locDeniedForever, notif=$notifGranted, allGranted=${locGranted && gpsEnabled}');
     if (mounted) {
       setState(() {
         _gpsEnabled = gpsEnabled;
         _locationGranted = locGranted;
         _locationDeniedForever = locDeniedForever;
         _notificationGranted = notifGranted;
-        _allGranted = locGranted && gpsEnabled; // notifications optional
+        _allGranted = locGranted && gpsEnabled;
         _checking = false;
       });
     }
@@ -148,12 +150,8 @@ class _PermissionsGateScreenState extends State<PermissionsGateScreen>
     }
 
     if (_checking) {
-      return Scaffold(
-        backgroundColor: AppColors.background,
-        body: const Center(
-          child: CircularProgressIndicator(color: Color(0xFFFFD700)),
-        ),
-      );
+      // Don't show spinner — it looks like a loop. Just show dark screen briefly.
+      return Scaffold(backgroundColor: AppColors.background);
     }
 
     final allOk = _locationGranted && _notificationGranted && _gpsEnabled;

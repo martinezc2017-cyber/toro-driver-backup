@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/legal/consent_service.dart';
 import '../core/legal/legal_constants.dart';
 import '../core/logging/app_logger.dart';
+import '../core/logging/debug_logger.dart';
 import '../config/supabase_config.dart';
 import '../providers/auth_provider.dart';
 import '../providers/driver_provider.dart';
@@ -140,28 +141,31 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
     return Consumer<AuthProvider>(
       builder: (context, authProvider, _) {
+        DebugLogger.log('WRAPPER_BUILD', detail: 'status=${authProvider.status}, driver=${authProvider.driver?.id}, role=${authProvider.driver?.role}');
+
         if (authProvider.status == AuthStatus.initial) {
+          DebugLogger.log('WRAPPER_SCREEN', detail: 'LOADING (initial)');
           return _buildLoadingScreen();
         }
 
         if (!authProvider.isAuthenticated) {
           _initializedDriverId = null;
+          DebugLogger.log('WRAPPER_SCREEN', detail: 'LOGIN (not authenticated)');
           return const LoginScreen();
         }
 
         final driver = authProvider.driver;
 
-        // CRITICAL: If authenticated but no driver profile, go to onboarding
-        // This prevents the loop where HomeScreen tries to use null driver
         if (driver == null) {
           final email = Supabase.instance.client.auth.currentUser?.email ?? 'NO EMAIL';
           final uid = Supabase.instance.client.auth.currentUser?.id ?? 'NO UID';
-          debugPrint('[AUTH_WRAPPER] Authenticated as: $email (uid: $uid) but no driver profile - going to onboarding');
+          DebugLogger.log('WRAPPER_SCREEN', detail: 'ONBOARDING (driver null) email=$email uid=$uid');
           return const DriverOnboardingScreen();
         }
 
         final driverStatus = driver.status;
         if (driverStatus == DriverStatus.suspended || driverStatus == DriverStatus.rejected) {
+          DebugLogger.log('WRAPPER_SCREEN', detail: 'PENDING_APPROVAL (status=$driverStatus)');
           return const PendingApprovalScreen();
         }
 
@@ -194,6 +198,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
           );
         }
 
+        DebugLogger.log('WRAPPER_SCREEN', detail: 'HOME (driver=${driver.id}, role=${driver.role}, vehicleMode=${driver.vehicleMode})');
         return const PermissionsGateScreen(child: HomeScreen());
       },
     );

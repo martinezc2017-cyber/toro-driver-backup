@@ -16,6 +16,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import '../config/supabase_config.dart';
 import '../models/driver_model.dart';
 import '../core/logging/app_logger.dart';
+import '../core/logging/debug_logger.dart';
 
 class AuthService {
   /// Lazy getter — avoids accessing Supabase.instance before initialization.
@@ -204,10 +205,11 @@ class AuthService {
   // Sign in with Apple (required by Apple for iOS apps with third-party login)
   Future<bool> signInWithApple() async {
     try {
-      // Generate a random nonce for security
+      await DebugLogger.log('APPLE_1_START', detail: 'Starting Apple Sign-In');
       final rawNonce = _generateNonce();
       final hashedNonce = sha256.convert(utf8.encode(rawNonce)).toString();
 
+      await DebugLogger.log('APPLE_2_CREDENTIAL', detail: 'Requesting Apple credential');
       final credential = await SignInWithApple.getAppleIDCredential(
         scopes: [
           AppleIDAuthorizationScopes.email,
@@ -217,18 +219,24 @@ class AuthService {
       );
 
       final idToken = credential.identityToken;
+      await DebugLogger.log('APPLE_3_TOKEN', detail: 'Got token: ${idToken != null ? "YES" : "NULL"}, email: ${credential.email}');
       if (idToken == null) {
+        await DebugLogger.log('APPLE_3_FAIL', detail: 'No ID token');
         return false;
       }
 
+      await DebugLogger.log('APPLE_4_SUPABASE', detail: 'Calling signInWithIdToken');
       final response = await _client.auth.signInWithIdToken(
         provider: OAuthProvider.apple,
         idToken: idToken,
         nonce: rawNonce,
       );
 
-      return response.session != null;
+      final hasSession = response.session != null;
+      await DebugLogger.log('APPLE_5_RESULT', detail: 'session: $hasSession, user: ${response.user?.email}', userId: response.user?.id);
+      return hasSession;
     } catch (e) {
+      await DebugLogger.log('APPLE_ERROR', detail: e.toString());
       debugPrint('Apple Sign In error: $e');
       return false;
     }

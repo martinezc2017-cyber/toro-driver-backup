@@ -624,7 +624,7 @@ class AuthService {
     }
 
     // Sign out from Supabase with global scope to clear ALL sessions
-    await _client.auth.signOut(scope: SignOutScope.global);
+    await _client.auth.signOut(scope: SignOutScope.local);
   }
 
   /// Ensures a driver profile exists for the given auth user.

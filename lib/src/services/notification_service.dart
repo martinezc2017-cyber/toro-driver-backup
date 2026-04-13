@@ -656,22 +656,36 @@ class NotificationService {
   Future<void> updateFCMToken(String driverId) async {
     if (kIsWeb) return;
     try {
-      final token = await _messaging.getToken();
-      if (token == null) return;
+      var token = await _messaging.getToken();
 
-      debugPrint('🔔 FCM Token: ${token.substring(0, 20)}...');
+      // iOS: token may be null if permission not yet granted or APNs token still in transit
+      if (token == null && !kIsWeb) {
+        debugPrint('🔔 FCM Token null, retrying in 2s (iOS APNs delay)...');
+        await Future.delayed(const Duration(seconds: 2));
+        token = await _messaging.getToken();
+      }
+      // One more retry after 5s if still null
+      if (token == null && !kIsWeb) {
+        debugPrint('🔔 FCM Token still null, retrying in 5s...');
+        await Future.delayed(const Duration(seconds: 5));
+        token = await _messaging.getToken();
+      }
 
-      // Save to drivers table
-      await _client.from(SupabaseConfig.driversTable).update({
-        'fcm_token': token,
-        'fcm_token_updated_at': DateTime.now().toIso8601String(),
-      }).eq('id', driverId);
+      if (token != null) {
+        debugPrint('🔔 FCM Token: ${token.substring(0, 20)}...');
+        await _client.from(SupabaseConfig.driversTable).update({
+          'fcm_token': token,
+          'fcm_token_updated_at': DateTime.now().toIso8601String(),
+        }).eq('id', driverId);
+        debugPrint('🔔 FCM Token saved for driver $driverId');
+      } else {
+        debugPrint('🔔 FCM Token still null after retries');
+      }
 
-      debugPrint('🔔 FCM Token saved for driver $driverId');
-
-      // Listen for token refresh
+      // Always listen for token refresh — even if first getToken() failed,
+      // iOS will eventually deliver the token via this callback
       _messaging.onTokenRefresh.listen((newToken) async {
-        debugPrint('🔔 FCM Token refreshed');
+        debugPrint('🔔 FCM Token refreshed: ${newToken.substring(0, 20)}...');
         await _client.from(SupabaseConfig.driversTable).update({
           'fcm_token': newToken,
           'fcm_token_updated_at': DateTime.now().toIso8601String(),

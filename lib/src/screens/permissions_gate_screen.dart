@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:geolocator/geolocator.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import '../utils/app_colors.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/notification_service.dart';
 import '../core/logging/app_logger.dart';
 import '../core/logging/debug_logger.dart';
@@ -139,11 +140,17 @@ class _PermissionsGateScreenState extends State<PermissionsGateScreen>
       }
     }
 
-    // If granted, initialize notification service to register FCM token
+    // If granted, initialize notification service and register FCM token
     if (settings.authorizationStatus == AuthorizationStatus.authorized ||
         settings.authorizationStatus == AuthorizationStatus.provisional) {
       try {
-        await NotificationService().requestPermissions();
+        final notifService = NotificationService();
+        await notifService.requestPermissions();
+        // Now that permission is granted, register FCM token
+        final userId = Supabase.instance.client.auth.currentUser?.id;
+        if (userId != null) {
+          await notifService.updateFCMToken(userId);
+        }
       } catch (e) {
         AppLogger.log('PERMISSIONS_GATE -> FCM init error: $e');
       }

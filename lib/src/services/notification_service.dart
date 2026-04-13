@@ -656,12 +656,25 @@ class NotificationService {
   Future<void> updateFCMToken(String driverId) async {
     if (kIsWeb) return;
     try {
+      // iOS: ensure APNs token is available before requesting FCM token
+      if (Platform.isIOS) {
+        final apnsToken = await _messaging.getAPNSToken();
+        debugPrint('🔔 APNs token: ${apnsToken != null ? "present" : "null"}');
+        if (apnsToken == null) {
+          // Wait for APNs token delivery
+          debugPrint('🔔 Waiting 3s for APNs token...');
+          await Future.delayed(const Duration(seconds: 3));
+          final retryApns = await _messaging.getAPNSToken();
+          debugPrint('🔔 APNs token retry: ${retryApns != null ? "present" : "still null"}');
+        }
+      }
+
       var token = await _messaging.getToken();
 
-      // iOS: token may be null if permission not yet granted or APNs token still in transit
+      // iOS: token may be null if APNs token still in transit
       if (token == null && !kIsWeb) {
-        debugPrint('🔔 FCM Token null, retrying in 2s (iOS APNs delay)...');
-        await Future.delayed(const Duration(seconds: 2));
+        debugPrint('🔔 FCM Token null, retrying in 3s...');
+        await Future.delayed(const Duration(seconds: 3));
         token = await _messaging.getToken();
       }
       // One more retry after 5s if still null

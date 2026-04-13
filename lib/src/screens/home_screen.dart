@@ -159,7 +159,13 @@ class _HomeScreenState extends State<HomeScreen>
     }
     // Small delay then request notifications
     await Future.delayed(const Duration(milliseconds: 500));
-    NotificationService().requestPermissions();
+    final notifService = NotificationService();
+    await notifService.requestPermissions();
+    // After permission granted, register FCM token
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId != null) {
+      await notifService.updateFCMToken(userId);
+    }
   }
 
   @override

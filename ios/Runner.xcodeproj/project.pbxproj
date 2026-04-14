@@ -15,6 +15,9 @@
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
 		F0B4B5A02D0E000000000001 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = F0B4B5A02D0E000000000002 /* GoogleService-Info.plist */; };
+		F0B4B5A02D0E000000000010 /* notification.caf in Resources */ = {isa = PBXBuildFile; fileRef = F0B4B5A02D0E000000000011 /* notification.caf */; };
+		F0B4B5A02D0E000000000020 /* ride_alert.caf in Resources */ = {isa = PBXBuildFile; fileRef = F0B4B5A02D0E000000000021 /* ride_alert.caf */; };
+		F0B4B5A02D0E000000000030 /* message.caf in Resources */ = {isa = PBXBuildFile; fileRef = F0B4B5A02D0E000000000031 /* message.caf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -57,6 +60,9 @@
 		97C147001CF9000F007C117D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		F0B4B5A02D0E000000000002 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
+		F0B4B5A02D0E000000000011 /* notification.caf */ = {isa = PBXFileReference; lastKnownFileType = audio.caf; path = "Sounds/notification.caf"; sourceTree = "<group>"; };
+		F0B4B5A02D0E000000000021 /* ride_alert.caf */ = {isa = PBXFileReference; lastKnownFileType = audio.caf; path = "Sounds/ride_alert.caf"; sourceTree = "<group>"; };
+		F0B4B5A02D0E000000000031 /* message.caf */ = {isa = PBXFileReference; lastKnownFileType = audio.caf; path = "Sounds/message.caf"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -120,6 +126,9 @@
 				74858FAE1ED2DC5600515810 /* AppDelegate.swift */,
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
 				F0B4B5A02D0E000000000002 /* GoogleService-Info.plist */,
+				F0B4B5A02D0E000000000011 /* notification.caf */,
+				F0B4B5A02D0E000000000021 /* ride_alert.caf */,
+				F0B4B5A02D0E000000000031 /* message.caf */,
 			);
 			path = Runner;
 			sourceTree = "<group>";
@@ -220,6 +229,9 @@
 				97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */,
 				97C146FC1CF9000F007C117D /* Main.storyboard in Resources */,
 				F0B4B5A02D0E000000000001 /* GoogleService-Info.plist in Resources */,
+				F0B4B5A02D0E000000000010 /* notification.caf in Resources */,
+				F0B4B5A02D0E000000000020 /* ride_alert.caf in Resources */,
+				F0B4B5A02D0E000000000030 /* message.caf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

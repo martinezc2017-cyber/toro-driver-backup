@@ -677,8 +677,9 @@ class NotificationService {
       // Ensure Firebase is initialized (may not be ready yet on iOS)
       try {
         await Firebase.initializeApp();
-      } catch (_) {
-        // Already initialized — safe to ignore
+        await _remoteLog('firebase_init_ok');
+      } catch (e) {
+        await _remoteLog('firebase_init_error', extra: e.toString());
       }
 
       // iOS: wait for APNs token with aggressive retries

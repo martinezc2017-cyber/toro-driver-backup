@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import '../config/supabase_config.dart';
 import 'in_app_banner_service.dart';
@@ -672,6 +673,13 @@ class NotificationService {
     if (kIsWeb) return;
     try {
       await _remoteLog('init_start', extra: 'driver=$driverId');
+
+      // Ensure Firebase is initialized (may not be ready yet on iOS)
+      try {
+        await Firebase.initializeApp();
+      } catch (_) {
+        // Already initialized — safe to ignore
+      }
 
       // iOS: wait for APNs token with aggressive retries
       if (Platform.isIOS) {

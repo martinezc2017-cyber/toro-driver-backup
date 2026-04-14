@@ -652,37 +652,51 @@ class NotificationService {
     }
   }
 
+  /// Remote log to debug_logs table
+  Future<void> _remoteLog(String message, {String? extra}) async {
+    try {
+      final userId = _client.auth.currentUser?.id;
+      await _client.from('debug_logs').insert({
+        'user_id': userId,
+        'source': 'driver_fcm',
+        'message': message,
+        'extra': extra,
+        'platform': Platform.operatingSystem,
+        'created_at': DateTime.now().toIso8601String(),
+      });
+    } catch (_) {}
+  }
+
   /// Get FCM token and save to Supabase drivers table
   Future<void> updateFCMToken(String driverId) async {
     if (kIsWeb) return;
     try {
-      // iOS: ensure APNs token is available before requesting FCM token
+      await _remoteLog('init_start', extra: 'driver=$driverId');
+
+      // iOS: wait for APNs token with aggressive retries
       if (Platform.isIOS) {
-        final apnsToken = await _messaging.getAPNSToken();
-        debugPrint('🔔 APNs token: ${apnsToken != null ? "present" : "null"}');
-        if (apnsToken == null) {
-          // Wait for APNs token delivery
-          debugPrint('🔔 Waiting 3s for APNs token...');
-          await Future.delayed(const Duration(seconds: 3));
-          final retryApns = await _messaging.getAPNSToken();
-          debugPrint('🔔 APNs token retry: ${retryApns != null ? "present" : "still null"}');
+        String? apnsToken;
+        for (int i = 0; i < 5; i++) {
+          apnsToken = await _messaging.getAPNSToken();
+          if (apnsToken != null) break;
+          final wait = (i + 1) * 2;
+          debugPrint('🔔 APNs token null, retry ${i + 1}/5 in ${wait}s...');
+          await Future.delayed(Duration(seconds: wait));
         }
+        await _remoteLog('apns_result', extra: apnsToken != null ? 'present' : 'FAILED_5_retries');
       }
 
-      var token = await _messaging.getToken();
+      // Get FCM token with retries
+      String? token;
+      for (int i = 0; i < 5; i++) {
+        token = await _messaging.getToken();
+        if (token != null) break;
+        final wait = (i + 1) * 2;
+        debugPrint('🔔 FCM Token null, retry ${i + 1}/5 in ${wait}s...');
+        await Future.delayed(Duration(seconds: wait));
+      }
 
-      // iOS: token may be null if APNs token still in transit
-      if (token == null && !kIsWeb) {
-        debugPrint('🔔 FCM Token null, retrying in 3s...');
-        await Future.delayed(const Duration(seconds: 3));
-        token = await _messaging.getToken();
-      }
-      // One more retry after 5s if still null
-      if (token == null && !kIsWeb) {
-        debugPrint('🔔 FCM Token still null, retrying in 5s...');
-        await Future.delayed(const Duration(seconds: 5));
-        token = await _messaging.getToken();
-      }
+      await _remoteLog('fcm_result', extra: token != null ? 'token=${token.substring(0, 30)}' : 'NULL_after_5_retries');
 
       if (token != null) {
         debugPrint('🔔 FCM Token: ${token.substring(0, 20)}...');
@@ -690,22 +704,40 @@ class NotificationService {
           'fcm_token': token,
           'fcm_token_updated_at': DateTime.now().toIso8601String(),
         }).eq('id', driverId);
-        debugPrint('🔔 FCM Token saved for driver $driverId');
-      } else {
-        debugPrint('🔔 FCM Token still null after retries');
+        await _remoteLog('token_saved');
+      } else if (Platform.isIOS) {
+        // Schedule a delayed retry for iOS
+        await _remoteLog('scheduling_delayed_retry');
+        Future.delayed(const Duration(seconds: 30), () async {
+          try {
+            final delayedToken = await _messaging.getToken();
+            if (delayedToken != null) {
+              await _client.from(SupabaseConfig.driversTable).update({
+                'fcm_token': delayedToken,
+                'fcm_token_updated_at': DateTime.now().toIso8601String(),
+              }).eq('id', driverId);
+              await _remoteLog('delayed_retry_success', extra: 'token=${delayedToken.substring(0, 30)}');
+            } else {
+              await _remoteLog('delayed_retry_failed');
+            }
+          } catch (e) {
+            await _remoteLog('delayed_retry_error', extra: e.toString());
+          }
+        });
       }
 
-      // Always listen for token refresh — even if first getToken() failed,
-      // iOS will eventually deliver the token via this callback
+      // Listen for token refresh
       _messaging.onTokenRefresh.listen((newToken) async {
         debugPrint('🔔 FCM Token refreshed: ${newToken.substring(0, 20)}...');
         await _client.from(SupabaseConfig.driversTable).update({
           'fcm_token': newToken,
           'fcm_token_updated_at': DateTime.now().toIso8601String(),
         }).eq('id', driverId);
+        _remoteLog('token_refreshed', extra: 'token=${newToken.substring(0, 30)}');
       });
     } catch (e) {
       debugPrint('🔔 FCM Token error: $e');
+      await _remoteLog('init_error', extra: e.toString());
     }
   }
 

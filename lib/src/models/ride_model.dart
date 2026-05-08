@@ -57,9 +57,10 @@ String statusToDatabase(RideStatus status) {
 }
 
 enum RideType {
-  passenger, // Maps to 'ride' in client
-  package,   // Maps to 'package' in client
-  carpool,   // Maps to 'carpool' in client
+  passenger,    // Maps to 'ride' in client
+  package,      // Maps to 'package' in client
+  carpool,      // Maps to 'carpool' in client
+  marketplace,  // Maps to 'marketplace' — pick up at vendor, deliver to buyer
 }
 
 // Helper to convert client service_type to driver RideType
@@ -71,8 +72,10 @@ RideType parseServiceType(String? serviceType) {
       return RideType.package;
     case 'carpool':
       return RideType.carpool;
+    case 'marketplace':
+      return RideType.marketplace;
     default:
-      return RideType.package; // Default to package since it's most common
+      return RideType.package;
   }
 }
 

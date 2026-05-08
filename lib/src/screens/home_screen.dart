@@ -52,6 +52,7 @@ import 'cash_balance_screen.dart';
 import 'account_suspended_screen.dart';
 import 'rental/browse_rentals_screen.dart';
 import '../widgets/toro_3d_pin.dart';
+import '../widgets/bug_report_button.dart';
 import '../core/logging/app_logger.dart';
 
 /// Tracks which event chat screens are currently open on the driver side.
@@ -920,6 +921,10 @@ class _HomeScreenState extends State<HomeScreen>
           ),
           child: Scaffold(
             backgroundColor: AppColors.background,
+            floatingActionButton: const BugReportButton(
+              screenName: 'home',
+            ),
+            floatingActionButtonLocation: FloatingActionButtonLocation.endTop,
             body: Stack(
               children: [
                 _buildBody(),
@@ -1828,7 +1833,34 @@ class _HomeScreenState extends State<HomeScreen>
                     }
                   }
 
-                  await driverProvider.toggleOnlineStatus();
+                  try {
+                    await driverProvider.toggleOnlineStatus();
+                  } catch (e) {
+                    // Mostrar error de validación de documentos
+                    if (context.mounted) {
+                      final msg = e.toString().replaceFirst('Exception: ', '');
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Row(
+                            children: [
+                              const Icon(Icons.warning_amber_rounded, color: Colors.white),
+                              const SizedBox(width: 12),
+                              Expanded(child: Text(msg)),
+                            ],
+                          ),
+                          backgroundColor: const Color(0xFFFF3B30),
+                          duration: const Duration(seconds: 4),
+                          action: SnackBarAction(
+                            label: 'Documentos',
+                            textColor: Colors.white,
+                            onPressed: () {
+                              Navigator.pushNamed(context, '/documents');
+                            },
+                          ),
+                        ),
+                      );
+                    }
+                  }
                 },
                 child: _LuxuryToggle(isOnline: isOnline),
               ),
@@ -2025,7 +2057,20 @@ class _HomeScreenState extends State<HomeScreen>
             await locationProvider.startTracking(driverProvider.driver!.id);
           }
 
-          await driverProvider.toggleOnlineStatus();
+          try {
+            await driverProvider.toggleOnlineStatus();
+          } catch (e) {
+            if (mounted) {
+              final msg = e.toString().replaceFirst('Exception: ', '');
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(msg),
+                  backgroundColor: const Color(0xFFFF3B30),
+                  duration: const Duration(seconds: 4),
+                ),
+              );
+            }
+          }
         }
       },
       child: Container(
@@ -3998,6 +4043,8 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
         return '📦';
       case RideType.carpool:
         return '👥';
+      case RideType.marketplace:
+        return '🛍️';
     }
   }
 
@@ -4009,6 +4056,8 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
         return 'ride_type_package'.tr();
       case RideType.carpool:
         return 'ride_type_carpool'.tr();
+      case RideType.marketplace:
+        return 'Marketplace';
     }
   }
 

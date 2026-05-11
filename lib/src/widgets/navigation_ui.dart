@@ -696,6 +696,11 @@ class NavigationUI extends StatelessWidget {
         typeColor = const Color(0xFF2196F3);
         typeLabel = 'Carpool';
         break;
+      case RideType.marketplace:
+        typeIcon = Icons.shopping_bag;
+        typeColor = const Color(0xFFFFD700);
+        typeLabel = 'Market';
+        break;
     }
 
     return Container(

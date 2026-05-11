@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
 import '../models/package_delivery_model.dart';
@@ -183,6 +184,62 @@ class DeliveryService {
       }).eq('delivery_id', deliveryId);
 
       return PackageDeliveryModel.fromJson(response);
+    }
+  }
+
+  // ─── Marketplace pickup/delivery confirmation (with OTP + photo + GPS) ───
+
+  /// Confirms marketplace pickup. Calls RPC marketplace_confirm_pickup.
+  /// Throws on failure (wrong OTP, photo missing, geofence too far, etc.)
+  Future<bool> confirmMarketplacePickup({
+    required String orderId,
+    required String otp,
+    required String photoUrl,
+    double? lat,
+    double? lng,
+  }) async {
+    final res = await _client.rpc('marketplace_confirm_pickup', params: {
+      'p_order_id': orderId,
+      'p_otp': otp,
+      'p_photo_url': photoUrl,
+      'p_driver_lat': lat,
+      'p_driver_lng': lng,
+    });
+    return res == true;
+  }
+
+  /// Confirms marketplace delivery. Calls RPC marketplace_confirm_delivery.
+  Future<bool> confirmMarketplaceDelivery({
+    required String orderId,
+    required String otp,
+    required String photoUrl,
+    double? lat,
+    double? lng,
+  }) async {
+    final res = await _client.rpc('marketplace_confirm_delivery', params: {
+      'p_order_id': orderId,
+      'p_otp': otp,
+      'p_photo_url': photoUrl,
+      'p_driver_lat': lat,
+      'p_driver_lng': lng,
+    });
+    return res == true;
+  }
+
+  /// Uploads a proof photo to the marketplace-proofs bucket and returns its URL.
+  Future<String?> uploadProofPhoto({
+    required String orderId,
+    required String stage, // 'pickup' or 'delivery'
+    required Uint8List bytes,
+  }) async {
+    try {
+      final ext = 'jpg';
+      final path = '$orderId/${stage}_${DateTime.now().millisecondsSinceEpoch}.$ext';
+      await _client.storage.from('marketplace-proofs').uploadBinary(path, bytes,
+          fileOptions: const FileOptions(contentType: 'image/jpeg', upsert: false));
+      return _client.storage.from('marketplace-proofs').getPublicUrl(path);
+    } catch (e) {
+      return null;
     }
   }
 

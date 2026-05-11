@@ -61,6 +61,11 @@ class NavigationService {
   int _offRouteCount = 0;
   static const int _offRouteCountThreshold = 2; // Necesita 2 detecciones seguidas
 
+  // Guard: arrival callback fires only once per navigation segment.
+  // Prevents repeated onArrival() while the driver is parked at pickup/dropoff
+  // (e.g. short rides where driver accepts while already <30m from target).
+  bool _arrivalAlreadyFired = false;
+
   // Tracking de distancia para detectar cuando pasamos un maneuver
   double _lastDistToManeuver = double.infinity;
   bool _wasApproaching = false; // true si la distancia estaba disminuyendo
@@ -148,6 +153,7 @@ class NavigationService {
     _tollAlertedOnStart = false;
     _parkingAlertSent = false;
     _offRouteCount = 0;
+    _arrivalAlreadyFired = false;
 
     // Alerta de peajes al inicio de la ruta
     if (route.hasTolls) {
@@ -225,8 +231,9 @@ class NavigationService {
     // Actualizar annotations (speed limit, congestion)
     _updateAnnotations(lat, lng);
 
-    // Verificar llegada
-    if (_checkArrival(lat, lng)) {
+    // Verificar llegada (solo una vez por segmento de navegacion)
+    if (!_arrivalAlreadyFired && _checkArrival(lat, lng)) {
+      _arrivalAlreadyFired = true;
       _handleArrival();
       return;
     }
@@ -332,6 +339,7 @@ class NavigationService {
     _currentStepIndex = 0;
     _currentLegIndex = 0;
     _offRouteCount = 0;
+    _arrivalAlreadyFired = false;
     _notifyStateChanged();
   }
 

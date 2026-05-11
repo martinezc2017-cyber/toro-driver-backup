@@ -139,11 +139,29 @@ class _RidesScreenState extends State<RidesScreen>
               _OnlineStatusButton(
                 isOnline: isOnline,
                 onTap: () async {
-                  await driverProvider.toggleOnlineStatus();
-                  if (driverProvider.isOnline) {
-                    HapticService.success();
-                  } else {
-                    HapticService.mediumImpact();
+                  try {
+                    await driverProvider.toggleOnlineStatus();
+                    if (driverProvider.isOnline) {
+                      HapticService.success();
+                    } else {
+                      HapticService.mediumImpact();
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      final msg = e.toString().replaceFirst('Exception: ', '');
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(msg),
+                          backgroundColor: const Color(0xFFFF3B30),
+                          duration: const Duration(seconds: 4),
+                          action: SnackBarAction(
+                            label: 'Documentos',
+                            textColor: Colors.white,
+                            onPressed: () => Navigator.pushNamed(context, '/documents'),
+                          ),
+                        ),
+                      );
+                    }
                   }
                 },
               ),

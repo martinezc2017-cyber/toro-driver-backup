@@ -1,7 +1,7 @@
 name: toro_driver
 description: "Toro Driver - Rideshare Driver App"
 publish_to: 'none'
-version: 1.2.37+4066
+version: 1.2.40+4069
 
 environment:
   sdk: ^3.10.4

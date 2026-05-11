@@ -233,20 +233,119 @@ class DriverProvider with ChangeNotifier {
   }
 
   // Update online status
+  // VALIDA documentos y auto-aprueba si están completos
   Future<void> setOnlineStatus(bool online) async {
     if (_driver == null) return;
 
-    // Always try to update database first (even for mock drivers)
-    // This ensures admin can see the driver's status
-    try {
-      await _driverService.updateOnlineStatus(_driver!.id, online);
-    } catch (e) {
-      // Continue with local update even if DB fails
+    // Si va a OFFLINE, permitir siempre
+    if (!online) {
+      try {
+        await _driverService.updateOnlineStatus(_driver!.id, false);
+      } catch (e) {
+        debugPrint('Error setting offline: $e');
+      }
+      _driver = _driver!.copyWith(isOnline: false);
+      notifyListeners();
+      return;
     }
 
-    // Always update local state so UI works
-    _driver = _driver!.copyWith(isOnline: online);
-    notifyListeners();
+    // Si va a ONLINE, validar que pueda
+    final driver = _driver!;
+
+    // 1. Verificar status no suspendido/rechazado
+    if (driver.status == DriverStatus.suspended) {
+      _error = 'Tu cuenta está suspendida. Contacta a soporte.';
+      notifyListeners();
+      throw Exception(_error);
+    }
+    if (driver.status == DriverStatus.rejected) {
+      _error = 'Tu cuenta fue rechazada. Contacta a soporte.';
+      notifyListeners();
+      throw Exception(_error);
+    }
+
+    // 2. Verificar documentos firmados
+    if (!driver.allDocumentsSigned) {
+      final missing = <String>[];
+      if (!driver.agreementSigned) missing.add('Acuerdo de driver');
+      if (!driver.icaSigned) missing.add('Contrato ICA');
+      if (!driver.safetyPolicySigned) missing.add('Política de seguridad');
+      if (!driver.bgcConsentSigned) missing.add('Consentimiento BGC');
+      _error = 'Faltan documentos por firmar: ${missing.join(", ")}';
+      notifyListeners();
+      throw Exception(_error);
+    }
+
+    // 3. Verificar documentos vigentes (licencia + seguro)
+    if (driver.licenseNumber == null || driver.licenseNumber!.isEmpty) {
+      _error = 'Falta subir tu licencia de conducir';
+      notifyListeners();
+      throw Exception(_error);
+    }
+    if (driver.licenseExpiry != null && driver.licenseExpiry!.isBefore(DateTime.now())) {
+      _error = 'Tu licencia está vencida';
+      notifyListeners();
+      throw Exception(_error);
+    }
+    if (driver.insurancePolicy == null || driver.insurancePolicy!.isEmpty) {
+      _error = 'Falta subir tu seguro';
+      notifyListeners();
+      throw Exception(_error);
+    }
+    if (driver.insuranceExpiry != null && driver.insuranceExpiry!.isBefore(DateTime.now())) {
+      _error = 'Tu seguro está vencido';
+      notifyListeners();
+      throw Exception(_error);
+    }
+
+    // 4. Verificar vehículo registrado
+    if (driver.vehiclePlate == null || driver.vehiclePlate!.isEmpty) {
+      _error = 'Debes registrar tu vehículo';
+      notifyListeners();
+      throw Exception(_error);
+    }
+
+    // 5. ✨ AUTO-APROBACIÓN: Si tiene todos los documentos pero no está aprobado
+    if (!driver.adminApproved || driver.status != DriverStatus.active) {
+      debugPrint('🎯 AUTO-APPROVAL: Documents complete, auto-approving driver ${driver.id}');
+      try {
+        await Supabase.instance.client.from('drivers').update({
+          'admin_approved': true,
+          'admin_approved_at': DateTime.now().toIso8601String(),
+          'admin_approved_by': 'auto-approval-system',
+          'status': 'active',
+          'can_receive_rides': true,
+          'onboarding_stage': 'approved',
+          'approved_at': DateTime.now().toIso8601String(),
+        }).eq('id', driver.id);
+
+        _driver = driver.copyWith(
+          adminApproved: true,
+          adminApprovedAt: DateTime.now(),
+          status: DriverStatus.active,
+          canReceiveRides: true,
+          onboardingStage: 'approved',
+        );
+        debugPrint('✅ Driver auto-approved successfully');
+      } catch (e) {
+        debugPrint('❌ Auto-approval failed: $e');
+        _error = 'Error al aprobar cuenta: $e';
+        notifyListeners();
+        throw Exception(_error);
+      }
+    }
+
+    // 6. Ya validado, poner online
+    try {
+      await _driverService.updateOnlineStatus(_driver!.id, true);
+      _driver = _driver!.copyWith(isOnline: true);
+      _error = null;
+      notifyListeners();
+    } catch (e) {
+      _error = 'Error al ponerse online: $e';
+      notifyListeners();
+      throw Exception(_error);
+    }
   }
 
   // Toggle online status

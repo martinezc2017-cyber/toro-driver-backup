@@ -23,6 +23,7 @@ import '../services/navigation_service.dart';
 import '../services/poi_service.dart';
 // Map matching removido - usamos los steps de la ruta para nombre de calle (gratis)
 import '../widgets/navigation_ui.dart';
+import 'marketplace_confirm_screen.dart';
 import '../widgets/ride_chat_popup.dart';
 import 'report_ride_screen.dart';
 
@@ -110,6 +111,10 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
 
   // Periodic arrival check timer (covers case when GPS stream stops due to distanceFilter)
   Timer? _arrivalCheckTimer;
+
+  // Idempotency guard: prevents double-firing of lifecycle handlers
+  // (double-tap, listener re-entry, button-spam, etc.)
+  bool _isProcessingLifecycle = false;
 
   @override
   void initState() {
@@ -447,6 +452,31 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
     if (ride?.id == _lastCheckedRideId && ride?.status == _lastCheckedStatus) {
       return;  // Ya verificamos este ride con este status
     }
+
+    // Detect illegal status jumps within the same ride.
+    // Legal order: pending → accepted → arrivedAtPickup → inProgress → completed
+    // (cancelled may happen at any time)
+    if (ride != null &&
+        ride.id == _lastCheckedRideId &&
+        _lastCheckedStatus != null) {
+      const order = {
+        RideStatus.pending: 0,
+        RideStatus.accepted: 1,
+        RideStatus.arrivedAtPickup: 2,
+        RideStatus.inProgress: 3,
+        RideStatus.completed: 4,
+      };
+      final prev = order[_lastCheckedStatus];
+      final curr = order[ride.status];
+      if (prev != null && curr != null && curr > prev + 1) {
+        debugPrint(
+          '⚠️ STATUS SKIP DETECTED on ride ${ride.id}: '
+          '${_lastCheckedStatus!.name} → ${ride.status.name} '
+          '(jumped ${curr - prev} steps). Possible backend bug or stale state.',
+        );
+      }
+    }
+
     _lastCheckedRideId = ride?.id;
     _lastCheckedStatus = ride?.status;
 
@@ -562,13 +592,21 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
     _arrivalCheckTimer?.cancel();
     _arrivalCheckTimer = null;
 
+    // IMPORTANT: do NOT auto-transition status on arrival.
+    // The driver MUST manually tap "He llegado" / "Iniciar viaje" / "Completar viaje".
+    // Auto-arrival caused bug: if driver accepted while already near pickup (common in
+    // short rides / Mexicali compact area), the geofence triggered immediately and
+    // skipped the accept→at_pickup→started flow.
     if (_currentTargetType == 'pickup') {
-      // Auto-trigger arrived at pickup
-      _handleArriveAtPickup();
-    } else {
-      // At dropoff - show snackbar, driver manually finalizes
+      if (!_isMuted) {
+        _tts.speak('Has llegado al punto de recogida. Toca "He llegado" cuando estes con el pasajero.');
+      }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Has llegado al destino')),
+        const SnackBar(content: Text('Has llegado al pickup — toca "He llegado" para confirmar')),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Has llegado al destino — toca "Completar viaje"')),
       );
     }
 
@@ -594,42 +632,142 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
   // ============================================================================
 
   Future<void> _handleArriveAtPickup() async {
-    final rideProvider = context.read<RideProvider>();
-    final success = await rideProvider.arriveAtPickup();
-    if (success) {
-      // Start wait timer
-      _waitSeconds = 0;
-      _waitTimer?.cancel();
-      _waitTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-        if (mounted) {
-          setState(() => _waitSeconds++);
-        } else {
-          timer.cancel();
-        }
-      });
-      if (!_isMuted) {
-        _tts.speak('Has llegado al punto de recogida. Esperando al pasajero.');
+    if (_isProcessingLifecycle) return; // idempotency: ignore double-tap/re-entry
+    _isProcessingLifecycle = true;
+    try {
+      final rideProvider = context.read<RideProvider>();
+      final ride = rideProvider.activeRide;
+      // Guard: only valid from 'accepted' or 'pending' (en route to pickup)
+      if (ride == null ||
+          (ride.status != RideStatus.accepted &&
+              ride.status != RideStatus.pending)) {
+        debugPrint('⚠️ _handleArriveAtPickup ignored: status=${ride?.status}');
+        return;
       }
+      final success = await rideProvider.arriveAtPickup();
+      if (success) {
+        // Start wait timer
+        _waitSeconds = 0;
+        _waitTimer?.cancel();
+        _waitTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+          if (mounted) {
+            setState(() => _waitSeconds++);
+          } else {
+            timer.cancel();
+          }
+        });
+        if (!_isMuted) {
+          _tts.speak('Has llegado al punto de recogida. Esperando al pasajero.');
+        }
+      }
+    } finally {
+      _isProcessingLifecycle = false;
     }
   }
 
   Future<void> _handleStartRide() async {
-    final rideProvider = context.read<RideProvider>();
-    final success = await rideProvider.startRide();
-    if (success) {
-      _waitTimer?.cancel();
-      _waitSeconds = 0;
-      if (!_isMuted) {
-        _tts.speak('Viaje iniciado. Navegando al destino.');
+    if (_isProcessingLifecycle) return; // idempotency
+    _isProcessingLifecycle = true;
+    try {
+      final rideProvider = context.read<RideProvider>();
+      final ride = rideProvider.activeRide;
+
+      // Guard: only valid from 'arrivedAtPickup'
+      if (ride == null || ride.status != RideStatus.arrivedAtPickup) {
+        debugPrint('⚠️ _handleStartRide ignored: status=${ride?.status}');
+        return;
       }
+
+      // Marketplace deliveries require OTP + photo + GPS to confirm pickup before start
+      if (ride.type == RideType.marketplace) {
+        final orderId = await _fetchMarketplaceOrderIdByDeliveryId(ride.id);
+        if (orderId == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No se encontro el pedido marketplace'), backgroundColor: Colors.red),
+          );
+          return;
+        }
+        final confirmed = await Navigator.push<bool>(
+          context,
+          MaterialPageRoute(builder: (_) => MarketplaceConfirmScreen(orderId: orderId, mode: 'pickup')),
+        );
+        if (confirmed != true) return; // driver canceled or RPC rejected
+      }
+
+      final success = await rideProvider.startRide();
+      if (success) {
+        _waitTimer?.cancel();
+        _waitSeconds = 0;
+        if (!_isMuted) {
+          _tts.speak('Viaje iniciado. Navegando al destino.');
+        }
+      }
+    } finally {
+      _isProcessingLifecycle = false;
+    }
+  }
+
+  /// Looks up marketplace_orders.id from a delivery_id (one row).
+  Future<String?> _fetchMarketplaceOrderIdByDeliveryId(String deliveryId) async {
+    try {
+      final res = await Supabase.instance.client
+          .from('marketplace_orders')
+          .select('id')
+          .eq('delivery_id', deliveryId)
+          .maybeSingle();
+      return res?['id'] as String?;
+    } catch (_) {
+      return null;
     }
   }
 
   Future<void> _handleCompleteRide() async {
+    if (_isProcessingLifecycle) return; // idempotency
+    _isProcessingLifecycle = true;
+    try {
+      await _handleCompleteRideImpl();
+    } finally {
+      _isProcessingLifecycle = false;
+    }
+  }
+
+  Future<void> _handleCompleteRideImpl() async {
     final rideProvider = context.read<RideProvider>();
     final driverProvider = context.read<DriverProvider>();
     final driverId = driverProvider.driver?.id;
     if (driverId == null) return;
+
+    final ride = rideProvider.activeRide;
+
+    // Guard: only valid from 'inProgress'
+    if (ride == null || ride.status != RideStatus.inProgress) {
+      debugPrint('⚠️ _handleCompleteRide ignored: status=${ride?.status}');
+      return;
+    }
+
+    // Marketplace deliveries require OTP + photo + GPS to confirm delivery
+    if (ride.type == RideType.marketplace) {
+      final orderId = await _fetchMarketplaceOrderIdByDeliveryId(ride.id);
+      if (orderId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se encontro el pedido marketplace'), backgroundColor: Colors.red),
+        );
+        return;
+      }
+      final confirmed = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(builder: (_) => MarketplaceConfirmScreen(orderId: orderId, mode: 'delivery')),
+      );
+      if (confirmed != true) return;
+      // confirm_delivery RPC already sets status='delivered' on marketplace_orders
+      // and the sync trigger updates deliveries.status. Skip the regular completion
+      // path because the marketplace order is already 'delivered'.
+      _waitTimer?.cancel();
+      _waitSeconds = 0;
+      _clearRoute();
+      if (mounted) Navigator.of(context).pop();
+      return;
+    }
 
     // Cash payment confirmation
     if (rideProvider.isCashPayment) {
@@ -1906,6 +2044,11 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
         typeIcon = Icons.groups;
         typeColor = const Color(0xFF42A5F5);  // Light blue
         typeLabel = 'POOL';
+        break;
+      case RideType.marketplace:
+        typeIcon = Icons.shopping_bag;
+        typeColor = const Color(0xFFFFD700);  // Gold for marketplace
+        typeLabel = 'MARKET';
         break;
     }
 

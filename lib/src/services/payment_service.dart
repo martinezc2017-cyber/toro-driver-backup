@@ -490,7 +490,9 @@ class PaymentService {
               ? 'Entrega de paquete'
               : serviceType == 'carpool'
                   ? 'Viaje compartido'
-                  : 'Viaje completado',
+                  : serviceType == 'marketplace'
+                      ? 'Pedido marketplace'
+                      : 'Viaje completado',
           createdAt: DateTime.tryParse(dateStr) ?? DateTime.now(),
         );
       }).toList();

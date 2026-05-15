@@ -231,13 +231,30 @@ class DeliveryService {
     required String orderId,
     required String stage, // 'pickup' or 'delivery'
     required Uint8List bytes,
+    double? lat,
+    double? lng,
   }) async {
     try {
       final ext = 'jpg';
       final path = '$orderId/${stage}_${DateTime.now().millisecondsSinceEpoch}.$ext';
       await _client.storage.from('marketplace-proofs').uploadBinary(path, bytes,
           fileOptions: const FileOptions(contentType: 'image/jpeg', upsert: false));
-      return _client.storage.from('marketplace-proofs').getPublicUrl(path);
+      final url = _client.storage.from('marketplace-proofs').getPublicUrl(path);
+
+      // Also write to order_proof_photos canonical table (multi-photo audit trail).
+      // Best effort — if table doesn't exist (older DB), ignore.
+      try {
+        await _client.from('order_proof_photos').insert({
+          'order_id': orderId,
+          'stage': stage,
+          'url': url,
+          'uploaded_by': _client.auth.currentUser?.id,
+          'lat': lat,
+          'lng': lng,
+        });
+      } catch (_) { /* canonical proof table optional */ }
+
+      return url;
     } catch (e) {
       return null;
     }

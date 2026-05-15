@@ -921,10 +921,8 @@ class _HomeScreenState extends State<HomeScreen>
           ),
           child: Scaffold(
             backgroundColor: AppColors.background,
-            floatingActionButton: const BugReportButton(
-              screenName: 'home',
-            ),
-            floatingActionButtonLocation: FloatingActionButtonLocation.endTop,
+            // Bug report button moved to profile menu (it was covering UI here).
+            // Search for `report_bug` action in the profile/settings to invoke it.
             body: Stack(
               children: [
                 _buildBody(),

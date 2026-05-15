@@ -107,6 +107,8 @@ class _MarketplaceConfirmScreenState extends State<MarketplaceConfirmScreen> {
         orderId: widget.orderId,
         stage: widget.mode,
         bytes: bytes,
+        lat: _position!.latitude,
+        lng: _position!.longitude,
       );
       if (url == null) throw 'No se pudo subir la foto';
 

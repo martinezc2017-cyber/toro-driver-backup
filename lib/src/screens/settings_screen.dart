@@ -5,6 +5,7 @@ import '../providers/driver_provider.dart';
 import '../providers/auth_provider.dart';
 import '../services/biometric_service.dart';
 import '../utils/app_colors.dart';
+import '../widgets/bug_report_button.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -179,7 +180,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
           ),
 
-          const SizedBox(height: 32),
+          const SizedBox(height: 24),
+
+          // Soporte: reportar bug + contacto
+          _buildSectionTitle('Soporte'),
+          _buildActionTile(
+            icon: Icons.bug_report_rounded,
+            iconColor: const Color(0xFFFF3B30),
+            title: 'Reportar un bug',
+            subtitle: 'Captura de pantalla + descripcion',
+            onTap: () {
+              showDialog(
+                context: context,
+                builder: (ctx) => const BugReportDialog(screenName: 'settings'),
+              );
+            },
+          ),
+
+          const SizedBox(height: 24),
 
           // Danger Zone
           _buildDangerZone(),
@@ -238,6 +256,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
           activeTrackColor: AppColors.primary,
           activeThumbColor: Colors.white,
         ),
+      ),
+    );
+  }
+
+  Widget _buildActionTile({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    String? subtitle,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.3)),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+        leading: Container(
+          width: 36, height: 36,
+          decoration: BoxDecoration(
+            color: iconColor.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, color: iconColor, size: 18),
+        ),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.textPrimary)),
+        subtitle: subtitle == null ? null : Text(subtitle, style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
+        trailing: Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 18),
+        onTap: onTap,
       ),
     );
   }

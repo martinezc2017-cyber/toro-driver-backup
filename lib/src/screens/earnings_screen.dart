@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../providers/earnings_provider.dart';
 import '../providers/driver_provider.dart';
 import '../providers/cash_account_provider.dart';
 import '../utils/app_colors.dart';
+import '../utils/money_format.dart';
 import '../services/driver_qr_points_service.dart';
 import 'qr_points_screen.dart';
 
@@ -114,7 +117,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
                 // Total
                 Center(
                   child: Text(
-                    '\$${total.toStringAsFixed(2)}',
+                    formatMoney(total, country: countryCode),
                     style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold),
                   ),
                 ),
@@ -291,6 +294,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
   }
 
   Widget _buildCashControlSection() {
+    final countryCode = context.read<DriverProvider>().driver?.countryCode ?? 'US';
     return Consumer<CashAccountProvider>(
       builder: (context, cashProvider, _) {
         if (cashProvider.status == CashAccountStatus.loading) {
@@ -370,7 +374,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        '\$${cashOwed.toStringAsFixed(2)}',
+                        formatMoney(cashOwed, country: countryCode),
                         style: TextStyle(
                           color: isSuspended ? AppColors.error : AppColors.warning,
                           fontWeight: FontWeight.bold,
@@ -399,7 +403,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
 
               // Cash rides + Debes a TORO
               _cashRow('Viajes en Efectivo', '$totalCashRides', Icons.local_taxi, AppColors.textPrimary),
-              _cashRow('DEBES A TORO', '\$${cashOwed.toStringAsFixed(2)}', Icons.payments, cashOwed > 0 ? AppColors.warning : AppColors.success),
+              _cashRow('DEBES A TORO', formatMoney(cashOwed, country: countryCode), Icons.payments, cashOwed > 0 ? AppColors.warning : AppColors.success),
 
               // Breakdown by type
               if (byType.isNotEmpty) ...[
@@ -410,7 +414,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
                 for (final entry in byType.entries)
                   _cashRow(
                     _sourceTypeLabel(entry.key),
-                    '\$${entry.value.toStringAsFixed(2)}',
+                    formatMoney(entry.value, country: countryCode),
                     _sourceTypeIcon(entry.key),
                     AppColors.textPrimary,
                   ),
@@ -550,6 +554,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
   }
 
   void _showPayNowDialog(double amountOwed) {
+    final countryCode = context.read<DriverProvider>().driver?.countryCode ?? 'US';
     String selectedMethod = 'transfer';
     bool _submitting = false;
 
@@ -583,7 +588,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
                   children: [
                     const Text('Monto a pagar', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
                     const SizedBox(height: 4),
-                    Text('\$${amountOwed.toStringAsFixed(2)}', style: const TextStyle(color: AppColors.warning, fontSize: 28, fontWeight: FontWeight.bold)),
+                    Text(formatMoney(amountOwed, country: countryCode), style: const TextStyle(color: AppColors.warning, fontSize: 28, fontWeight: FontWeight.bold)),
                   ],
                 ),
               ),
@@ -592,6 +597,8 @@ class _EarningsScreenState extends State<EarningsScreen> {
               // Payment method
               const Text('Metodo de pago:', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
               const SizedBox(height: 8),
+              _payMethodOption(ctx, setDialogState, selectedMethod, 'card', Icons.credit_card, 'Tarjeta de crédito/débito (instantáneo)', (v) => selectedMethod = v),
+              const SizedBox(height: 6),
               _payMethodOption(ctx, setDialogState, selectedMethod, 'transfer', Icons.account_balance, 'Transferencia Bancaria (SPEI)', (v) => selectedMethod = v),
               const SizedBox(height: 6),
               _payMethodOption(ctx, setDialogState, selectedMethod, 'deposit', Icons.storefront, 'Deposito en Sucursal', (v) => selectedMethod = v),
@@ -627,22 +634,30 @@ class _EarningsScreenState extends State<EarningsScreen> {
             ),
             ElevatedButton(
               onPressed: _submitting ? null : () async {
-                setDialogState(() => _submitting = true);
                 final driverId = context.read<DriverProvider>().driver?.id;
-                if (driverId != null) {
-                  final success = await context.read<CashAccountProvider>().submitDeposit(
-                    amount: amountOwed,
-                    paymentMethod: selectedMethod,
-                  );
+                if (driverId == null) return;
+
+                // ── TARJETA: cobro instantáneo vía Stripe PaymentSheet ──
+                if (selectedMethod == 'card') {
                   if (ctx.mounted) Navigator.pop(ctx);
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text(success
-                          ? 'Solicitud de pago enviada. El admin sera notificado.'
-                          : 'Error al enviar solicitud. Intenta de nuevo.'),
-                      backgroundColor: success ? AppColors.success : AppColors.error,
-                    ));
-                  }
+                  await _payDebtWithCard(amountOwed);
+                  return;
+                }
+
+                // ── Transferencia / depósito: solicitud manual (admin aprueba) ──
+                setDialogState(() => _submitting = true);
+                final success = await context.read<CashAccountProvider>().submitDeposit(
+                  amount: amountOwed,
+                  paymentMethod: selectedMethod,
+                );
+                if (ctx.mounted) Navigator.pop(ctx);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(success
+                        ? 'Solicitud de pago enviada. El admin sera notificado.'
+                        : 'Error al enviar solicitud. Intenta de nuevo.'),
+                    backgroundColor: success ? AppColors.success : AppColors.error,
+                  ));
                 }
               },
               style: ElevatedButton.styleFrom(
@@ -683,6 +698,63 @@ class _EarningsScreenState extends State<EarningsScreen> {
     );
   }
 
+  // Pago de la comisión adeudada CON TARJETA (cobro instantáneo vía Stripe).
+  Future<void> _payDebtWithCard(double amount) async {
+    final driver = context.read<DriverProvider>().driver;
+    final driverId = driver?.id;
+    if (driverId == null) return;
+    final currency = (driver?.countryCode == 'US') ? 'usd' : 'mxn';
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Preparando pago seguro…'), duration: Duration(seconds: 2)));
+    }
+    try {
+      // 1) PaymentIntent en el edge (cobro directo a la cuenta plataforma, sin split)
+      final res = await Supabase.instance.client.functions.invoke(
+        'stripe-driver-pay-debt',
+        body: {'amount': amount, 'driverId': driverId, 'currency': currency},
+      );
+      final data = res.data as Map?;
+      final clientSecret = data?['clientSecret'] as String?;
+      if (clientSecret == null) {
+        throw Exception(data?['error']?.toString() ?? 'No se pudo iniciar el pago');
+      }
+
+      // 2) Stripe PaymentSheet (el SDK ya está inicializado en PaymentService.initialize)
+      await Stripe.instance.initPaymentSheet(
+        paymentSheetParameters: SetupPaymentSheetParameters(
+          paymentIntentClientSecret: clientSecret,
+          merchantDisplayName: 'TORO',
+        ),
+      );
+      await Stripe.instance.presentPaymentSheet();
+
+      // 3) Éxito → registrar el pago como tarjeta (la reconciliación final del
+      //    saldo la confirma el webhook payment_intent.succeeded en el server).
+      await context.read<CashAccountProvider>().submitDeposit(
+            amount: amount,
+            paymentMethod: 'card',
+          );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('¡Pago con tarjeta exitoso! Tu saldo se actualizará.'),
+          backgroundColor: AppColors.success));
+      }
+    } on StripeException catch (e) {
+      if (mounted && e.error.code != FailureCode.Canceled) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Pago rechazado: ${e.error.localizedMessage ?? e.error.code}'),
+          backgroundColor: AppColors.error));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Error en el pago: $e'), backgroundColor: AppColors.error));
+      }
+    }
+  }
+
   void _contactSupport() async {
     final uri = Uri.parse('https://wa.me/+526865551234?text=Hola,%20necesito%20ayuda%20con%20mi%20balance%20de%20efectivo');
     try {
@@ -704,13 +776,14 @@ class _EarningsScreenState extends State<EarningsScreen> {
   }
 
   Widget _row(String label, double amount, {bool bold = false}) {
+    final countryCode = context.read<DriverProvider>().driver?.countryCode ?? 'US';
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: TextStyle(fontSize: 14, fontWeight: bold ? FontWeight.bold : FontWeight.normal)),
-          Text('\$${amount.toStringAsFixed(2)}', style: TextStyle(fontSize: 14, fontWeight: bold ? FontWeight.bold : FontWeight.normal)),
+          Text(formatMoney(amount, country: countryCode), style: TextStyle(fontSize: 14, fontWeight: bold ? FontWeight.bold : FontWeight.normal)),
         ],
       ),
     );

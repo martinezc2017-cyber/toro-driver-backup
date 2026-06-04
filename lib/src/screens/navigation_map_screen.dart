@@ -17,6 +17,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../providers/ride_provider.dart';
 import '../providers/driver_provider.dart';
 import '../models/ride_model.dart';
+import '../utils/money_format.dart';
 import '../services/geocoding_service.dart';
 import '../services/directions_service.dart';
 import '../services/navigation_service.dart';
@@ -759,6 +760,19 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
         MaterialPageRoute(builder: (_) => MarketplaceConfirmScreen(orderId: orderId, mode: 'delivery')),
       );
       if (confirmed != true) return;
+      // ── CAPTURA del cobro con TARJETA al entregar (auth → capture). El PI se
+      // creó con capture_method:manual en el checkout; aquí se cobra de verdad.
+      // Para cash/wallet el edge no hace nada (no hay PaymentIntent de tarjeta).
+      // Fire-and-forget + idempotente (mp_capture_<order>). Si no, la auth expira
+      // en 7 días y NO entra el dinero.
+      try {
+        await Supabase.instance.client.functions.invoke(
+          'stripe-marketplace-capture',
+          body: {'order_id': orderId},
+        );
+      } catch (e) {
+        debugPrint('marketplace capture (non-fatal): $e');
+      }
       // confirm_delivery RPC already sets status='delivered' on marketplace_orders
       // and the sync trigger updates deliveries.status. Skip the regular completion
       // path because the marketplace order is already 'delivered'.
@@ -778,7 +792,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
           title: const Text('Confirmar pago en efectivo',
               style: TextStyle(color: Colors.white)),
           content: Text(
-            '¿Recibiste \$${rideProvider.cashAmountToCollect.toStringAsFixed(2)} en efectivo?',
+            '¿Recibiste ${formatMoney(rideProvider.cashAmountToCollect, country: context.read<DriverProvider>().driver?.countryCode ?? 'US')} en efectivo?',
             style: const TextStyle(color: Colors.white70),
           ),
           actions: [
@@ -877,59 +891,68 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
               const SizedBox(height: 24),
 
               // Total earnings (big number)
-              Text(
-                '\$${ride.driverEarnings.toStringAsFixed(2)}',
-                style: TextStyle(
-                  color: Colors.green.shade400,
-                  fontSize: 36,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const Text(
-                'Tus ganancias',
-                style: TextStyle(color: Colors.white60, fontSize: 14),
-              ),
-              const SizedBox(height: 20),
+              Builder(
+                builder: (ctx) {
+                  final cc = ctx.read<DriverProvider>().driver?.countryCode ?? 'US';
+                  return Column(
+                    children: [
+                      Text(
+                        formatMoney(ride.driverEarnings, country: cc),
+                        style: TextStyle(
+                          color: Colors.green.shade400,
+                          fontSize: 36,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const Text(
+                        'Tus ganancias',
+                        style: TextStyle(color: Colors.white60, fontSize: 14),
+                      ),
+                      const SizedBox(height: 20),
 
-              // Breakdown
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white.withAlpha(13),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  children: [
-                    _earningsRow(
-                      'Tarifa base',
-                      '\$${ride.fare.toStringAsFixed(2)}',
-                      Icons.directions_car,
-                    ),
-                    const Divider(color: Colors.white24, height: 16),
-                    _earningsRow(
-                      'Tu parte',
-                      '\$${baseEarnings.toStringAsFixed(2)}',
-                      Icons.account_balance_wallet,
-                      highlight: true,
-                    ),
-                    if (hasTip) ...[
-                      const Divider(color: Colors.white24, height: 16),
-                      _earningsRow(
-                        'Propina',
-                        '+\$${ride.tip.toStringAsFixed(2)}',
-                        Icons.star,
-                        color: Colors.amber,
+                      // Breakdown
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withAlpha(13),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          children: [
+                            _earningsRow(
+                              'Tarifa base',
+                              formatMoney(ride.fare, country: cc),
+                              Icons.directions_car,
+                            ),
+                            const Divider(color: Colors.white24, height: 16),
+                            _earningsRow(
+                              'Tu parte',
+                              formatMoney(baseEarnings, country: cc),
+                              Icons.account_balance_wallet,
+                              highlight: true,
+                            ),
+                            if (hasTip) ...[
+                              const Divider(color: Colors.white24, height: 16),
+                              _earningsRow(
+                                'Propina',
+                                '+${formatMoney(ride.tip, country: cc)}',
+                                Icons.star,
+                                color: Colors.amber,
+                              ),
+                            ],
+                            const Divider(color: Colors.white24, height: 16),
+                            _earningsRow(
+                              'Comisión Toro',
+                              '-${formatMoney(ride.platformFee, country: cc)}',
+                              Icons.business,
+                              color: Colors.white38,
+                            ),
+                          ],
+                        ),
                       ),
                     ],
-                    const Divider(color: Colors.white24, height: 16),
-                    _earningsRow(
-                      'Comisión Toro',
-                      '-\$${ride.platformFee.toStringAsFixed(2)}',
-                      Icons.business,
-                      color: Colors.white38,
-                    ),
-                  ],
-                ),
+                  );
+                },
               ),
               const SizedBox(height: 8),
 
@@ -2121,7 +2144,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                       const Icon(Icons.payments, color: Colors.green, size: 12),
                       const SizedBox(width: 4),
                       Text(
-                        'Cobrar: \$${ride.fare.toStringAsFixed(2)}',
+                        'Cobrar: ${formatMoney(ride.fare, country: context.read<DriverProvider>().driver?.countryCode ?? 'US')}',
                         style: const TextStyle(
                           color: Colors.green,
                           fontSize: 14,
@@ -2144,7 +2167,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                       const Icon(Icons.check_circle, color: Colors.blue, size: 12),
                       const SizedBox(width: 4),
                       Text(
-                        '\$${ride.driverEarnings.toStringAsFixed(2)}',
+                        formatMoney(ride.driverEarnings, country: context.read<DriverProvider>().driver?.countryCode ?? 'US'),
                         style: const TextStyle(
                           color: Colors.blue,
                           fontSize: 14,
@@ -2200,7 +2223,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
               const Icon(Icons.route, color: Colors.white38, size: 12),
               const SizedBox(width: 2),
               Text(
-                '${(ride.distanceKm * 0.621371).toStringAsFixed(1)} mi',
+                formatDistance(ride.distanceKm, country: context.read<DriverProvider>().driver?.countryCode ?? 'US'),
                 style: const TextStyle(color: Colors.white54, fontSize: 10),
               ),
               const SizedBox(width: 8),
@@ -2552,7 +2575,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                           const SizedBox(width: 6),
                           _buildTripDetailChip(Icons.schedule, _navState.formattedDurationRemaining),
                         ] else ...[
-                          _buildTripDetailChip(Icons.route, '${(ride.distanceKm * 0.621371).toStringAsFixed(1)} mi'),
+                          _buildTripDetailChip(Icons.route, formatDistance(ride.distanceKm, country: context.read<DriverProvider>().driver?.countryCode ?? 'US')),
                           const SizedBox(width: 6),
                           _buildTripDetailChip(Icons.schedule, '~${ride.estimatedMinutes} min'),
                         ],
@@ -2578,8 +2601,8 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                         Text(
                           // CASH: show fare (what to collect), CARD: show driver earnings
                           ride.paymentMethod == PaymentMethod.cash
-                              ? '\$${ride.fare.toStringAsFixed(2)}'
-                              : '\$${ride.driverEarnings.toStringAsFixed(2)}',
+                              ? formatMoney(ride.fare, country: context.read<DriverProvider>().driver?.countryCode ?? 'US')
+                              : formatMoney(ride.driverEarnings, country: context.read<DriverProvider>().driver?.countryCode ?? 'US'),
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,

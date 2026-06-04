@@ -187,6 +187,65 @@ class DeliveryService {
     }
   }
 
+  // ─── Marketplace delivery: accept + load full context ───
+
+  /// Loads a marketplace delivery + its linked order + vendor + items.
+  /// Returns null if not found.
+  Future<Map<String, dynamic>?> getMarketplaceDeliveryContext(String deliveryId) async {
+    try {
+      final delivery = await _client
+          .from('deliveries')
+          .select('id, service_type, status, driver_id, '
+              'pickup_lat, pickup_lng, pickup_address, '
+              'destination_lat, destination_lng, destination_address, '
+              'estimated_price, driver_earnings, '
+              'country_code, state_code, notes, created_at')
+          .eq('id', deliveryId)
+          .maybeSingle();
+      if (delivery == null) return null;
+      if (delivery['service_type'] != 'marketplace') {
+        return {'delivery': delivery, 'is_marketplace': false};
+      }
+      final order = await _client
+          .from('marketplace_orders')
+          .select('id, status, subtotal, delivery_fee, flat_commission, total, '
+              'vendor_payout, payment_method, buyer_name, buyer_phone, '
+              'pickup_otp, delivery_otp, '
+              'vendor_id, vendor_pickup_address, delivery_address, '
+              'delivery_notes, prep_time_min')
+          .eq('delivery_id', deliveryId)
+          .maybeSingle();
+      Map<String, dynamic>? vendor;
+      if (order != null) {
+        vendor = await _client
+            .from('vendors')
+            .select('id, business_name, category_primary, logo_url')
+            .eq('id', order['vendor_id'])
+            .maybeSingle();
+      }
+      final items = order == null ? [] : await _client
+          .from('marketplace_order_items')
+          .select('id, product_name_snapshot, quantity, unit_price_snapshot, line_total')
+          .eq('order_id', order['id']);
+      return {
+        'is_marketplace': true,
+        'delivery': delivery,
+        'order': order,
+        'vendor': vendor,
+        'items': items,
+      };
+    } catch (_) { return null; }
+  }
+
+  /// Accepts a marketplace delivery. Sets driver_id on delivery + status='driver_assigned'
+  /// on marketplace_orders. Throws if not eligible or already taken.
+  Future<Map<String, dynamic>> acceptMarketplaceDelivery(String deliveryId) async {
+    final res = await _client.rpc('driver_accept_marketplace_delivery', params: {
+      'p_delivery_id': deliveryId,
+    });
+    return (res is Map) ? Map<String, dynamic>.from(res) : <String, dynamic>{};
+  }
+
   // ─── Marketplace pickup/delivery confirmation (with OTP + photo + GPS) ───
 
   /// Confirms marketplace pickup. Calls RPC marketplace_confirm_pickup.

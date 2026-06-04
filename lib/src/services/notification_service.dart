@@ -9,8 +9,11 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/material.dart' show MaterialPageRoute;
 import '../config/supabase_config.dart';
+import '../utils/money_format.dart';
 import 'in_app_banner_service.dart';
+import '../screens/marketplace_delivery_accept_screen.dart';
 
 /// Top-level background message handler (must be top-level function)
 @pragma('vm:entry-point')
@@ -225,10 +228,11 @@ class NotificationService {
     required String rideId,
     required String pickupAddress,
     required double fare,
+    String? country,
   }) async {
     await _showLocalNotification(
       title: '¡Nueva solicitud de viaje!',
-      body: 'Recoger en: $pickupAddress\nTarifa: \$${fare.toStringAsFixed(2)}',
+      body: 'Recoger en: $pickupAddress\nTarifa: ${formatMoney(fare, country: country)}',
       payload: jsonEncode({'type': 'ride_request', 'id': rideId}),
       channelId: rideChannel,
     );
@@ -252,10 +256,11 @@ class NotificationService {
   Future<void> showEarningNotification({
     required double amount,
     required String description,
+    String? country,
   }) async {
     await _showLocalNotification(
       title: '¡Ganancia recibida!',
-      body: '+\$${amount.toStringAsFixed(2)} - $description',
+      body: '+${formatMoney(amount, country: country)} - $description',
       payload: jsonEncode({'type': 'earning'}),
       channelId: earningsChannel,
     );
@@ -267,13 +272,14 @@ class NotificationService {
     required double baseFare,
     double tip = 0,
     double qrBonus = 0,
+    String? country,
   }) async {
-    final parts = <String>['\$${baseFare.toStringAsFixed(2)} base'];
-    if (tip > 0) parts.add('+\$${tip.toStringAsFixed(2)} propina');
-    if (qrBonus > 0) parts.add('+\$${qrBonus.toStringAsFixed(2)} QR bonus');
+    final parts = <String>['${formatMoney(baseFare, country: country)} base'];
+    if (tip > 0) parts.add('+${formatMoney(tip, country: country)} propina');
+    if (qrBonus > 0) parts.add('+${formatMoney(qrBonus, country: country)} QR bonus');
 
     await _showLocalNotification(
-      title: '+\$${totalEarnings.toStringAsFixed(2)} - Viaje completado',
+      title: '+${formatMoney(totalEarnings, country: country)} - Viaje completado',
       body: parts.join(' | '),
       payload: jsonEncode({'type': 'earning'}),
       channelId: earningsChannel,
@@ -405,7 +411,7 @@ class NotificationService {
     if (accepted) {
       await _showLocalNotification(
         title: 'Nueva Oferta Recibida',
-        body: '$driverName ofrece \$${pricePerKm.toStringAsFixed(2)}/km',
+        body: '$driverName ofrece ${formatMoney(pricePerKm, country: 'MX')}/km',
         payload: jsonEncode({'type': 'bid_response', 'id': bidId}),
         channelId: earningsChannel,
       );
@@ -429,7 +435,7 @@ class NotificationService {
     if (isWinner) {
       await _showLocalNotification(
         title: '¡Tu Puja Fue Seleccionada!',
-        body: 'Ganaste: $eventName a \$${pricePerKm.toStringAsFixed(2)}/km',
+        body: 'Ganaste: $eventName a ${formatMoney(pricePerKm, country: 'MX')}/km',
         payload: jsonEncode({'type': 'bid_won', 'id': bidId}),
         channelId: earningsChannel,
       );
@@ -451,7 +457,7 @@ class NotificationService {
   }) async {
     await _showLocalNotification(
       title: 'Contra-oferta Recibida',
-      body: 'El organizador propone \$${counterOfferPrice.toStringAsFixed(2)}/km para: $eventName',
+      body: 'El organizador propone ${formatMoney(counterOfferPrice, country: 'MX')}/km para: $eventName',
       payload: jsonEncode({
         'type': 'bid_counter_offer',
         'bid_id': bidId,
@@ -516,10 +522,11 @@ class NotificationService {
     required String statementId,
     required double amountDue,
     required String dueDate,
+    String? country,
   }) async {
     await _showLocalNotification(
       title: 'Liquidacion de Servicios',
-      body: 'Debes \$${amountDue.toStringAsFixed(2)}\nFecha límite: $dueDate',
+      body: 'Debes ${formatMoney(amountDue, country: country)}\nFecha límite: $dueDate',
       payload: jsonEncode({'type': 'weekly_statement', 'id': statementId}),
       channelId: earningsChannel,
     );
@@ -530,12 +537,13 @@ class NotificationService {
     required String statementId,
     required double amountDue,
     required bool isOverdue,
+    String? country,
   }) async {
     await _showLocalNotification(
       title: isOverdue ? '⚠️ Pago Vencido' : 'Recordatorio de Pago',
       body: isOverdue
-          ? 'Pago vencido de \$${amountDue.toStringAsFixed(2)}\nTu cuenta puede ser suspendida'
-          : 'Tienes un pago pendiente de \$${amountDue.toStringAsFixed(2)}',
+          ? 'Pago vencido de ${formatMoney(amountDue, country: country)}\nTu cuenta puede ser suspendida'
+          : 'Tienes un pago pendiente de ${formatMoney(amountDue, country: country)}',
       payload: jsonEncode({'type': 'payment_due', 'id': statementId}),
       channelId: isOverdue ? rideChannel : earningsChannel,
     );
@@ -545,10 +553,11 @@ class NotificationService {
   Future<void> showPaymentApprovedNotification({
     required String paymentId,
     required double amount,
+    String? country,
   }) async {
     await _showLocalNotification(
       title: '✅ Pago Aprobado',
-      body: 'Tu pago de \$${amount.toStringAsFixed(2)} ha sido aprobado',
+      body: 'Tu pago de ${formatMoney(amount, country: country)} ha sido aprobado',
       payload: jsonEncode({'type': 'payment_approved', 'id': paymentId}),
       channelId: earningsChannel,
     );
@@ -872,7 +881,17 @@ class NotificationService {
         navigator.pushNamed('/notifications');
         break;
 
-      // Ride-related
+      // Ride-related — also covers marketplace deliveries (notify-drivers-of-ride
+      // sends type='new_ride'). Route by service_type: marketplace → accept screen,
+      // everything else → existing rides flow.
+      case 'new_ride':
+        final rideId = data['ride_id'] as String?;
+        if (rideId == null) {
+          navigator.pushNamed('/rides');
+          break;
+        }
+        _routeByServiceType(rideId);
+        break;
       case 'ride_request':
       case 'ride_update':
       case 'trip':
@@ -909,6 +928,30 @@ class NotificationService {
         navigator.pushNamed('/notifications');
         break;
     }
+  }
+
+  /// Routes a `new_ride` notification based on the delivery's service_type.
+  /// Marketplace → MarketplaceDeliveryAcceptScreen. Otherwise → /rides.
+  Future<void> _routeByServiceType(String rideId) async {
+    final navigator = InAppBannerService.navigatorKey.currentState;
+    if (navigator == null) return;
+    try {
+      final row = await _client
+          .from('deliveries')
+          .select('service_type')
+          .eq('id', rideId)
+          .maybeSingle();
+      final svc = row?['service_type'] as String?;
+      if (svc == 'marketplace') {
+        navigator.push(MaterialPageRoute(
+          builder: (_) => MarketplaceDeliveryAcceptScreen(deliveryId: rideId),
+        ));
+        return;
+      }
+    } catch (e) {
+      debugPrint('🔔 _routeByServiceType lookup failed: $e');
+    }
+    navigator.pushNamed('/rides');
   }
 
   // Dispose

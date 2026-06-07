@@ -17,6 +17,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
 import '../services/delivery_service.dart';
+import '../services/background_location_service.dart';
 import 'marketplace_confirm_screen.dart';
 
 class MarketplaceActiveDeliveryScreen extends StatefulWidget {
@@ -37,6 +38,9 @@ class _State extends State<MarketplaceActiveDeliveryScreen> {
 
   final _service = DeliveryService();
   Map<String, dynamic>? _ctx;
+  /// Full multi-order context from delivery_full_context RPC:
+  /// `{delivery, orders: [order1, order2, ...]}`
+  Map<String, dynamic>? _full;
   bool _loading = true;
   String? _error;
   RealtimeChannel? _orderChannel;
@@ -55,17 +59,107 @@ class _State extends State<MarketplaceActiveDeliveryScreen> {
 
   Future<void> _load() async {
     try {
+      // Load both: legacy single-order context AND full multi-order context.
+      // Multi-order context is the new canonical source; single-order kept for
+      // back-compat with existing widgets until UI is fully migrated.
       final ctx = await _service.getMarketplaceDeliveryContext(widget.deliveryId);
+      final full = await _service.getDeliveryFullContext(widget.deliveryId);
       if (!mounted) return;
       if (ctx == null || ctx['is_marketplace'] != true) {
         setState(() { _error = 'Delivery no encontrada'; _loading = false; });
         return;
       }
-      setState(() { _ctx = ctx; _loading = false; });
+      setState(() {
+        _ctx = ctx;
+        _full = full;
+        _loading = false;
+      });
       _subscribeOrder();
+      _syncBackgroundLocation();
     } catch (e) {
       if (mounted) setState(() { _error = e.toString(); _loading = false; });
     }
+  }
+
+  /// True when this delivery has 2+ marketplace_orders bundled under it.
+  bool get _isBundled {
+    final orders = (_full?['orders'] as List?) ?? const [];
+    return orders.length >= 2;
+  }
+
+  /// List of bundled orders sorted by created_at (already sorted from RPC).
+  List<Map<String, dynamic>> get _orders {
+    final orders = (_full?['orders'] as List?) ?? const [];
+    return orders.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  }
+
+  /// Build the sequenced stop list: vendor pickup(s) → buyer drop(s).
+  /// For same-vendor bundles, we collapse to ONE pickup stop with all OTPs
+  /// shown together, then ONE drop stop per order.
+  List<_Stop> _buildStops() {
+    final orders = _orders;
+    final stops = <_Stop>[];
+    if (orders.isEmpty) return stops;
+
+    // Group by vendor_id for pickups
+    final pickupGroups = <String, List<Map<String, dynamic>>>{};
+    for (final o in orders) {
+      final vid = (o['vendor']?['id'] ?? '') as String;
+      pickupGroups.putIfAbsent(vid, () => []).add(o);
+    }
+
+    int seq = 1;
+    pickupGroups.forEach((vid, group) {
+      stops.add(_Stop(
+        kind: 'pickup',
+        sequence: seq++,
+        label: group.first['vendor']?['business_name']?.toString() ?? 'Tienda',
+        address: group.first['vendor_pickup_address']?.toString() ?? '',
+        lat: (group.first['vendor_pickup_lat'] as num?)?.toDouble(),
+        lng: (group.first['vendor_pickup_lng'] as num?)?.toDouble(),
+        orders: group,
+      ));
+    });
+    for (final o in orders) {
+      stops.add(_Stop(
+        kind: 'drop',
+        sequence: seq++,
+        label: o['buyer_name']?.toString() ?? 'Cliente',
+        address: o['delivery_address']?.toString() ?? '',
+        lat: (o['delivery_lat'] as num?)?.toDouble(),
+        lng: (o['delivery_lng'] as num?)?.toDouble(),
+        orders: [o],
+      ));
+    }
+    return stops;
+  }
+
+  /// Ensures the BackgroundLocationService is broadcasting our GPS to
+  /// deliveries.driver_lat/lng while this delivery is active (pre-completion).
+  /// Stops broadcasting once the order is delivered/completed so the buyer's
+  /// tracking map can resolve to the final delivered state.
+  Future<void> _syncBackgroundLocation() async {
+    final order = _ctx?['order'] as Map<String, dynamic>?;
+    final vendor = _ctx?['vendor'] as Map<String, dynamic>?;
+    final status = order?['status']?.toString() ?? '';
+    final terminal = status == 'delivered' || status == 'completed'
+        || status.startsWith('cancel') || status == 'failed';
+    final ctl = BackgroundLocationController();
+    if (terminal) {
+      if (ctl.isRunning) await ctl.stopTracking();
+      return;
+    }
+    final url = SupabaseConfig.supabaseUrl;
+    final anon = SupabaseConfig.supabaseAnonKey;
+    if (url.isEmpty || anon.isEmpty) return;
+    await ctl.startTracking(
+      deliveryId: widget.deliveryId,
+      supabaseUrl: url,
+      supabaseKey: anon,
+      riderName: order?['buyer_name']?.toString()
+          ?? vendor?['business_name']?.toString(),
+      tableName: 'deliveries',
+    );
   }
 
   void _subscribeOrder() {
@@ -105,18 +199,127 @@ class _State extends State<MarketplaceActiveDeliveryScreen> {
     if (await canLaunchUrl(uri)) await launchUrl(uri);
   }
 
-  Future<void> _openConfirm(String mode) async {
-    final order = _ctx!['order'] as Map<String, dynamic>;
-    final vendor = _ctx?['vendor'] as Map<String, dynamic>?;
-    final result = await Navigator.of(context).push<bool>(MaterialPageRoute(
-      builder: (_) => MarketplaceConfirmScreen(
-        orderId: order['id'] as String,
-        mode: mode,
-        vendorBusinessName: vendor?['business_name']?.toString(),
-        buyerName: order['buyer_name']?.toString(),
+  bool _canCancel() {
+    final delivery = _ctx?['delivery'] as Map<String, dynamic>?;
+    final ds = delivery?['status']?.toString() ?? '';
+    return ds == 'pending' || ds == 'accepted';
+  }
+
+  Future<void> _cancelDelivery() async {
+    // Reasons follow the canonical structured-cancellation pattern used by
+    // Rappi/DiDi: short list, one-tap selection, optional free-text note.
+    const reasons = <Map<String, String>>[
+      {'code': 'vendor_closed', 'label': 'Tienda cerrada'},
+      {'code': 'order_not_ready', 'label': 'Pedido no listo / esperé mucho'},
+      {'code': 'wrong_address', 'label': 'Dirección errónea'},
+      {'code': 'vehicle_problem', 'label': 'Problema con vehículo'},
+      {'code': 'other', 'label': 'Otro motivo'},
+    ];
+    final picked = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: _card,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-    ));
-    if (result == true) await _load();
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 14),
+                child: Text('¿Por qué cancelas?',
+                  style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800)),
+              ),
+              for (final r in reasons)
+                ListTile(
+                  leading: const Icon(Icons.report_problem, color: Colors.orange),
+                  title: Text(r['label']!, style: const TextStyle(color: Colors.white)),
+                  onTap: () => Navigator.pop(context, r['code']),
+                ),
+              const Divider(color: _muted, height: 1),
+              ListTile(
+                leading: const Icon(Icons.close, color: _muted),
+                title: const Text('No cancelar', style: TextStyle(color: _muted)),
+                onTap: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (picked == null) return;
+    try {
+      final res = await _service.cancelMarketplaceDelivery(
+        widget.deliveryId, reason: picked,
+      );
+      if (!mounted) return;
+      if (res['success'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Cancelado: $picked. Buscando otro chofer.'),
+          backgroundColor: Colors.orange,
+        ));
+        Navigator.of(context).maybePop();
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Error: ${e.toString().split(',').first}'),
+        backgroundColor: Colors.red,
+      ));
+    }
+  }
+
+  /// Returns the orders that still need confirmation for the given stage.
+  /// pickup → orders with status `driver_assigned` (or `ready_for_pickup`)
+  /// delivery → orders with status `picked_up` or `in_transit`
+  List<Map<String, dynamic>> _ordersPendingForStage(String mode) {
+    final pendingStatuses = mode == 'pickup'
+      ? const {'driver_assigned', 'ready_for_pickup', 'accepted_by_vendor'}
+      : const {'picked_up', 'in_transit'};
+    final source = _isBundled ? _orders : <Map<String, dynamic>>[
+      if (_ctx?['order'] != null) Map<String, dynamic>.from(_ctx!['order'] as Map),
+    ];
+    return source.where((o) {
+      final s = o['status']?.toString() ?? '';
+      return pendingStatuses.contains(s);
+    }).toList();
+  }
+
+  /// Opens MarketplaceConfirmScreen sequentially for each pending order at
+  /// this stage. Each order has its own OTP/photo/geofence verification.
+  /// If the driver bails on one, we stop (next confirm will trigger on next tap).
+  Future<void> _openConfirm(String mode) async {
+    final pending = _ordersPendingForStage(mode);
+    if (pending.isEmpty) return;
+    final vendor = _ctx?['vendor'] as Map<String, dynamic>?;
+    for (var i = 0; i < pending.length; i++) {
+      final o = pending[i];
+      final orderId = o['id'] as String;
+      final vendorName = (o['vendor']?['business_name'] as String?)
+          ?? vendor?['business_name']?.toString();
+      final buyerName = o['buyer_name']?.toString();
+      if (_isBundled && mounted) {
+        // Quick info banner so driver knows which package they're confirming
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Paquete ${i + 1} de ${pending.length} · ${mode == 'pickup' ? "recoger" : "entregar"} a ${buyerName ?? "cliente"}'),
+          backgroundColor: const Color(0xFFFFD700),
+          duration: const Duration(seconds: 2),
+        ));
+      }
+      final result = await Navigator.of(context).push<bool>(MaterialPageRoute(
+        builder: (_) => MarketplaceConfirmScreen(
+          orderId: orderId,
+          mode: mode,
+          vendorBusinessName: vendorName,
+          buyerName: buyerName,
+        ),
+      ));
+      if (result != true) break;
+      await _load();
+      if (!mounted) return;
+    }
   }
 
   @override
@@ -129,6 +332,14 @@ class _State extends State<MarketplaceActiveDeliveryScreen> {
         title: const Text('Entrega activa', style: TextStyle(color: Colors.white)),
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
+          // Cancel is allowed only BEFORE pickup (deliveries.status in pending|accepted).
+          // After in_progress the driver has the goods → support case, not self-cancel.
+          if (_canCancel())
+            IconButton(
+              icon: const Icon(Icons.cancel_outlined, color: Colors.orange),
+              tooltip: 'Cancelar entrega',
+              onPressed: _cancelDelivery,
+            ),
           IconButton(
             icon: const Icon(Icons.refresh, color: Colors.white70),
             onPressed: _load,
@@ -162,6 +373,14 @@ class _State extends State<MarketplaceActiveDeliveryScreen> {
         // Stage banner
         _stageBanner(isPickupStage, isDeliveryStage, isDone),
         const SizedBox(height: 16),
+
+        // Bundle banner — visible only when 2+ orders share this delivery
+        if (_isBundled) ...[
+          _bundleBanner(),
+          const SizedBox(height: 12),
+          _bundleStopList(),
+          const SizedBox(height: 16),
+        ],
 
         // Earnings (compact)
         Container(
@@ -314,6 +533,117 @@ class _State extends State<MarketplaceActiveDeliveryScreen> {
     );
   }
 
+  /// Yellow banner shown when 2+ orders are bundled under this delivery.
+  /// Reminds the driver to collect/verify all OTPs in sequence.
+  Widget _bundleBanner() {
+    final n = _orders.length;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: _yellow.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _yellow, width: 1.5),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.inventory_2, color: _yellow, size: 26),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('PEDIDOS COMBINADOS · $n paquetes',
+                  style: const TextStyle(color: _yellow, fontSize: 14, fontWeight: FontWeight.w900, letterSpacing: 1)),
+                const SizedBox(height: 2),
+                const Text('Lleva cada uno por separado — tienen PIN distinto',
+                  style: TextStyle(color: Colors.white70, fontSize: 12)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Per-order quick reference: 1 row per bundled order with its PIN status.
+  /// Shown directly under the bundle banner so driver always sees the OTPs
+  /// pending. Done orders are dimmed.
+  Widget _bundleStopList() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: _card,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF2A2A2A)),
+      ),
+      child: Column(
+        children: [
+          for (var i = 0; i < _orders.length; i++) ...[
+            if (i > 0) const Divider(color: Color(0xFF2A2A2A), height: 16),
+            _orderRow(i + 1, _orders[i]),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _orderRow(int n, Map<String, dynamic> o) {
+    final status = o['status']?.toString() ?? '';
+    final isDone = status == 'delivered' || status == 'completed';
+    final isPicked = status == 'picked_up' || status == 'in_transit';
+    final items = (o['items'] as List?) ?? const [];
+    final summary = items.map((e) {
+      final m = e as Map;
+      return '${m['quantity']}× ${m['product_name_snapshot']}';
+    }).join(', ');
+    final buyer = o['buyer_name']?.toString() ?? 'Cliente';
+    final dim = isDone ? 0.4 : 1.0;
+    return Opacity(
+      opacity: dim,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 28, height: 28,
+            decoration: BoxDecoration(
+              color: isDone ? _green : (isPicked ? _yellow : _orange),
+              shape: BoxShape.circle,
+            ),
+            alignment: Alignment.center,
+            child: isDone
+                ? const Icon(Icons.check, color: Colors.black, size: 16)
+                : Text('$n', style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w900)),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Paquete $n · para $buyer',
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                Text(summary,
+                  style: const TextStyle(color: Colors.white60, fontSize: 12),
+                  maxLines: 2, overflow: TextOverflow.ellipsis),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          if (!isDone) Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(isPicked ? 'PIN entrega' : 'PIN recoger',
+                style: const TextStyle(color: _muted, fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
+              Text(isPicked
+                ? (o['delivery_otp']?.toString() ?? '----')
+                : (o['pickup_otp']?.toString() ?? '----'),
+                style: const TextStyle(color: _yellow, fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: 2)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _stageBanner(bool pickup, bool delivery, bool done) {
     final (color, text) = done
         ? (_green, 'PASO 3 · ENTREGADO')
@@ -433,4 +763,26 @@ class _State extends State<MarketplaceActiveDeliveryScreen> {
       ),
     );
   }
+}
+
+/// One stop on the driver's sequenced route. Either a vendor pickup or a buyer drop.
+/// `orders` holds the marketplace_orders rows that resolve at this stop (1 for drops;
+/// 1..N for pickups when multiple orders are bundled at the same vendor).
+class _Stop {
+  final String kind; // 'pickup' | 'drop'
+  final int sequence;
+  final String label;
+  final String address;
+  final double? lat;
+  final double? lng;
+  final List<Map<String, dynamic>> orders;
+  _Stop({
+    required this.kind,
+    required this.sequence,
+    required this.label,
+    required this.address,
+    required this.lat,
+    required this.lng,
+    required this.orders,
+  });
 }

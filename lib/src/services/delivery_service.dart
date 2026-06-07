@@ -189,6 +189,21 @@ class DeliveryService {
 
   // ─── Marketplace delivery: accept + load full context ───
 
+  /// Loads a delivery + ALL bundled marketplace orders + their items + vendor.
+  /// Uses the canonical `delivery_full_context` RPC which returns a single
+  /// jsonb payload with `{delivery, orders: [...]}`.
+  Future<Map<String, dynamic>?> getDeliveryFullContext(String deliveryId) async {
+    try {
+      final res = await _client.rpc('delivery_full_context', params: {
+        'p_delivery_id': deliveryId,
+      });
+      if (res == null) return null;
+      return Map<String, dynamic>.from(res as Map);
+    } catch (e) {
+      return null;
+    }
+  }
+
   /// Loads a marketplace delivery + its linked order + vendor + items.
   /// Returns null if not found.
   Future<Map<String, dynamic>?> getMarketplaceDeliveryContext(String deliveryId) async {
@@ -242,6 +257,20 @@ class DeliveryService {
   Future<Map<String, dynamic>> acceptMarketplaceDelivery(String deliveryId) async {
     final res = await _client.rpc('driver_accept_marketplace_delivery', params: {
       'p_delivery_id': deliveryId,
+    });
+    return (res is Map) ? Map<String, dynamic>.from(res) : <String, dynamic>{};
+  }
+
+  /// Releases a marketplace delivery back to the dispatch pool with a recorded
+  /// reason. Only valid before pickup — once driver has taken possession of
+  /// the goods this raises an error and becomes a support case.
+  Future<Map<String, dynamic>> cancelMarketplaceDelivery(
+    String deliveryId, {
+    required String reason,
+  }) async {
+    final res = await _client.rpc('driver_cancel_marketplace_delivery', params: {
+      'p_delivery_id': deliveryId,
+      'p_reason': reason,
     });
     return (res is Map) ? Map<String, dynamic>.from(res) : <String, dynamic>{};
   }

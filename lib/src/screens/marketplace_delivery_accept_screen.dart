@@ -5,12 +5,22 @@
 
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
+import '../config/supabase_config.dart';
 import '../services/delivery_service.dart';
 import 'marketplace_active_delivery_screen.dart';
 
 class MarketplaceDeliveryAcceptScreen extends StatefulWidget {
   final String deliveryId;
-  const MarketplaceDeliveryAcceptScreen({super.key, required this.deliveryId});
+  /// True when this offer arrived as a stacked/on-the-way offer to a driver
+  /// already holding another delivery. Renders a green "extra ingreso" banner
+  /// and a shorter countdown.
+  final bool isStackedOffer;
+  const MarketplaceDeliveryAcceptScreen({
+    super.key,
+    required this.deliveryId,
+    this.isStackedOffer = false,
+  });
 
   @override
   State<MarketplaceDeliveryAcceptScreen> createState() => _State();
@@ -30,6 +40,11 @@ class _State extends State<MarketplaceDeliveryAcceptScreen> {
   String? _error;
   Timer? _countdownTimer;
   Duration _elapsed = Duration.zero;
+  // Driver must answer within this many seconds. After that the offer
+  // expires and the screen auto-closes so the dispatch can re-fire to
+  // the next eligible driver.
+  static const _offerTimeoutSec = 30;
+  int _secsLeft = _offerTimeoutSec;
 
   @override
   void initState() {
@@ -64,16 +79,41 @@ class _State extends State<MarketplaceDeliveryAcceptScreen> {
 
   void _startCountdown() {
     final created = DateTime.tryParse(_ctx?['delivery']?['created_at'] ?? '');
-    if (created == null) return;
     _countdownTimer?.cancel();
-    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!mounted) return;
-      setState(() => _elapsed = DateTime.now().difference(created));
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) { t.cancel(); return; }
+      setState(() {
+        if (created != null) _elapsed = DateTime.now().difference(created);
+        if (_secsLeft > 0) _secsLeft--;
+      });
+      if (_secsLeft == 0) {
+        t.cancel();
+        _autoExpire();
+      }
     });
-    _elapsed = DateTime.now().difference(created);
+    if (created != null) _elapsed = DateTime.now().difference(created);
+  }
+
+  void _autoExpire() {
+    debugPrint('🔔 marketplace offer ${widget.deliveryId} expired after ${_offerTimeoutSec}s');
+    // Best-effort server-side log (the cron will also catch unanswered offers)
+    SupabaseConfig.client.from('app_logs').insert({
+      'level': 'info',
+      'source': 'driver_marketplace',
+      'event': 'offer_expired',
+      'context': {'delivery_id': widget.deliveryId, 'seconds': _offerTimeoutSec},
+      'app_role': 'driver',
+    }).then((_) {}).catchError((_) {});
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      content: Text('Oferta expirada — pasa al siguiente chofer'),
+      backgroundColor: Colors.orange,
+    ));
+    Navigator.of(context).maybePop();
   }
 
   Future<void> _accept() async {
+    _countdownTimer?.cancel();
     setState(() => _busy = true);
     try {
       final res = await _service.acceptMarketplaceDelivery(widget.deliveryId);
@@ -159,6 +199,34 @@ class _State extends State<MarketplaceDeliveryAcceptScreen> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        if (widget.isStackedOffer) ...[
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: _green.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: _green, width: 1.5),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.add_road, color: _green, size: 24),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('OFERTA EXTRA EN TU RUTA',
+                        style: TextStyle(color: _green, fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1)),
+                      Text('Recoge este pedido también — sin desviarte mucho',
+                        style: TextStyle(color: Colors.white70, fontSize: 12)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
         // Earnings hero
         Container(
           padding: const EdgeInsets.all(20),
@@ -184,7 +252,10 @@ class _State extends State<MarketplaceDeliveryAcceptScreen> {
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
+        // Offer-expiration countdown (auto-decline if vendor doesn't act)
+        _offerCountdownChip(),
+        const SizedBox(height: 12),
         // Vendor / Pickup
         _sectionCard(
           icon: Icons.store,
@@ -276,6 +347,55 @@ class _State extends State<MarketplaceDeliveryAcceptScreen> {
         ),
         const SizedBox(height: 24),
       ],
+    );
+  }
+
+  Widget _offerCountdownChip() {
+    final isUrgent = _secsLeft <= 10;
+    final color = isUrgent ? Colors.red : _yellow;
+    final pct = _secsLeft / _offerTimeoutSec;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color, width: isUrgent ? 2 : 1.2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.timer, color: color, size: 22),
+              const SizedBox(width: 8),
+              Text(
+                isUrgent ? 'EXPIRA EN ${_secsLeft}s' : 'Responde en $_secsLeft s',
+                style: TextStyle(
+                  color: color,
+                  fontWeight: FontWeight.w900,
+                  fontSize: isUrgent ? 18 : 15,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '${(_offerTimeoutSec - _secsLeft)}/${_offerTimeoutSec}s',
+                style: const TextStyle(color: _muted, fontSize: 12),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: pct,
+              minHeight: 6,
+              backgroundColor: Colors.white.withValues(alpha: 0.08),
+              valueColor: AlwaysStoppedAnimation(color),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

@@ -22,6 +22,10 @@ interface NotifyRequest {
   state_code?: string
   city?: string
   search_radius_km?: number
+  /// When set, narrows dispatch to ONLY this driver (stacked offer flow).
+  /// The push body gets a `stacked=true` flag so the app can show a different UI.
+  preferred_driver_id?: string
+  stacked?: boolean
 }
 
 function fcmUrl(projectId: string) {
@@ -133,16 +137,25 @@ async function sendFcm(
   token: string,
   accessToken: string,
   projectId: string,
-  ride: { ride_id: string; pickup_address: string; estimated_price: number },
+  ride: { ride_id: string; pickup_address: string; estimated_price: number; stacked?: boolean },
 ): Promise<{ ok: boolean; status?: number; error?: string; errorCode?: string }> {
+  const isStacked = ride.stacked === true
+  const title = isStacked
+    ? '➕ Oferta extra en tu ruta'
+    : '🚗 ¡Nuevo viaje disponible!'
   const message = {
     message: {
       token,
       notification: {
-        title: '🚗 ¡Nuevo viaje disponible!',
+        title,
         body: `${ride.pickup_address} • $${ride.estimated_price.toFixed(0)}`,
       },
-      data: { type: 'new_ride', ride_id: ride.ride_id, click_action: 'FLUTTER_NOTIFICATION_CLICK' },
+      data: {
+        type: 'new_ride',
+        ride_id: ride.ride_id,
+        click_action: 'FLUTTER_NOTIFICATION_CLICK',
+        stacked: String(isStacked),
+      },
       android: {
         priority: 'HIGH',
         notification: { channel_id: 'rides_high', sound: 'default', default_vibrate_timings: true },
@@ -191,6 +204,8 @@ serve(async (req) => {
       estimated_price = 0,
       country_code, state_code, city,
       search_radius_km = 15,
+      preferred_driver_id,
+      stacked = false,
     } = body
 
     if (!ride_id) {
@@ -228,8 +243,18 @@ serve(async (req) => {
       )
     }
 
-    // === CANONICAL ZONE FILTER ===
-    // 1) country_code (MX vs US) — strict
+    // === ZONE FILTER ===
+    // For MARKETPLACE we cast a WIDE net: country only + larger radius. The
+    // state_code restriction was hiding drivers from neighboring states who
+    // could still physically reach the pickup. Physical reachability is what
+    // matters, not bureaucratic operating_state.
+    // For rides we keep the strict state_code match (ride drivers need local
+    // licensing).
+    const isMarketplace = body.service_type === 'marketplace'
+    const effectiveRadiusKm = isMarketplace
+      ? Math.max(search_radius_km, 30)   // wide net: 30 km default for marketplace
+      : search_radius_km
+
     let query = client
       .from('drivers')
       .select('id, fcm_token, current_lat, current_lng, full_name, operating_city, operating_state, country_code, state_code')
@@ -237,14 +262,19 @@ serve(async (req) => {
       .eq('can_receive_rides', true)
       .eq('country_code', zoneCountry)
       .not('fcm_token', 'is', null)
+    // Stacked offers: narrow to ONE driver. Skip the zone radius dance below.
+    if (preferred_driver_id) {
+      query = query.eq('id', preferred_driver_id)
+    }
 
-    // 2) state_code (BC vs CDMX vs AZ) — strict if available
-    if (zoneState) {
+    // state_code filter only for rides; marketplace skips it (drivers from
+    // any state in the country can pick up if they're physically nearby).
+    if (zoneState && !isMarketplace) {
       query = query.or(`state_code.eq.${zoneState},operating_state.eq.${zoneState}`)
     }
 
-    // 3) Geographic bounding box (degree approximation) — drops far-away drivers fast
-    const degreeOffset = (search_radius_km + 5) / 111  // +5km buffer for the box
+    // Geographic bounding box (degree approximation) — drops far-away drivers fast
+    const degreeOffset = (effectiveRadiusKm + 5) / 111  // +5km buffer for the box
     query = query
       .gte('current_lat', zoneLat - degreeOffset)
       .lte('current_lat', zoneLat + degreeOffset)
@@ -260,11 +290,11 @@ serve(async (req) => {
       )
     }
 
-    // 4) Final precision filter: haversine distance (real km, not bounding box)
+    // Final precision filter: haversine distance (real km, not bounding box)
     const eligible = (candidates ?? []).filter(d => {
       if (d.current_lat == null || d.current_lng == null) return false
       const km = haversineKm(zoneLat!, zoneLng!, Number(d.current_lat), Number(d.current_lng))
-      return km <= search_radius_km
+      return km <= effectiveRadiusKm
     })
 
     if (eligible.length === 0) {
@@ -294,7 +324,7 @@ serve(async (req) => {
       if (auth && d.fcm_token) {
         try {
           const fcmResult = await sendFcm(d.fcm_token, auth.token, auth.projectId, {
-            ride_id, pickup_address, estimated_price,
+            ride_id, pickup_address, estimated_price, stacked,
           })
           sent = fcmResult.ok
           errorCode = fcmResult.errorCode

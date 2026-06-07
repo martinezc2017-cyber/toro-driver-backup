@@ -10,8 +10,10 @@ import '../models/ride_model.dart';
 import '../services/pricing_config_service.dart';
 import '../utils/app_colors.dart';
 import '../utils/haptic_service.dart';
+import '../utils/money_format.dart';
 import '../widgets/futuristic_widgets.dart';
 import 'report_ride_screen.dart';
+import 'marketplace_delivery_accept_screen.dart';
 
 class RidesScreen extends StatefulWidget {
   const RidesScreen({super.key});
@@ -416,6 +418,14 @@ class _RidesScreenState extends State<RidesScreen>
           borderRadius: BorderRadius.circular(14),
           onTap: () {
             HapticService.lightImpact();
+            // Marketplace deliveries have their own canonical accept flow
+            // (countdown timer + earnings + ACCEPT triggers driver_accept_marketplace_delivery RPC).
+            if (ride.type == RideType.marketplace) {
+              Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => MarketplaceDeliveryAcceptScreen(deliveryId: ride.id),
+              ));
+              return;
+            }
             _showRideDetails(ride);
           },
           child: Padding(
@@ -428,18 +438,24 @@ class _RidesScreenState extends State<RidesScreen>
                       width: 40,
                       height: 40,
                       decoration: BoxDecoration(
-                        gradient: AppColors.primaryGradient,
+                        gradient: ride.type == RideType.marketplace
+                            ? const LinearGradient(colors: [Color(0xFFFFD700), Color(0xFFFFA500)])
+                            : AppColors.primaryGradient,
                         borderRadius: BorderRadius.circular(10),
                         boxShadow: [
                           BoxShadow(
-                            color: AppColors.primary.withValues(alpha: 0.3),
+                            color: (ride.type == RideType.marketplace
+                                ? const Color(0xFFFFD700)
+                                : AppColors.primary).withValues(alpha: 0.3),
                             blurRadius: 6,
                           ),
                         ],
                       ),
-                      child: const Icon(
-                        Icons.local_taxi_rounded,
-                        color: Colors.white,
+                      child: Icon(
+                        ride.type == RideType.marketplace
+                            ? Icons.shopping_bag_rounded
+                            : Icons.local_taxi_rounded,
+                        color: ride.type == RideType.marketplace ? Colors.black : Colors.white,
                         size: 20,
                       ),
                     ),
@@ -448,6 +464,19 @@ class _RidesScreenState extends State<RidesScreen>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          if (ride.type == RideType.marketplace)
+                            Container(
+                              margin: const EdgeInsets.only(bottom: 4),
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFFD700),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text('🛒 MERCADO',
+                                style: TextStyle(
+                                  color: Colors.black, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 1,
+                                )),
+                            ),
                           Row(
                             children: [
                               Flexible(
@@ -510,7 +539,7 @@ class _RidesScreenState extends State<RidesScreen>
                                         Icon(Icons.near_me, size: 10, color: AppColors.warning),
                                         const SizedBox(width: 2),
                                         Text(
-                                          '${distToPickup.toStringAsFixed(1)} mi',
+                                          formatDistanceFromMiles(distToPickup, country: context.read<DriverProvider>().driver?.countryCode ?? 'US'),
                                           style: TextStyle(
                                             color: AppColors.warning,
                                             fontSize: 10,
@@ -532,7 +561,7 @@ class _RidesScreenState extends State<RidesScreen>
                               ),
                               // Trip distance and duration
                               Text(
-                                '${(ride.distanceKm * 0.621371).toStringAsFixed(1)} mi • ${ride.estimatedMinutes} min',
+                                '${formatDistance(ride.distanceKm, country: context.read<DriverProvider>().driver?.countryCode ?? 'US')} • ${ride.estimatedMinutes} min',
                                 style: TextStyle(
                                   color: AppColors.textSecondary,
                                   fontSize: 11,
@@ -573,7 +602,7 @@ class _RidesScreenState extends State<RidesScreen>
                               ? ride.driverEarnings
                               : ride.fare * (_driverPercent / 100);
                           return Text(
-                            '\$${earnings.toStringAsFixed(2)}',
+                            formatMoney(earnings, country: context.read<DriverProvider>().driver?.countryCode ?? 'US'),
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -769,7 +798,7 @@ class _RidesScreenState extends State<RidesScreen>
                   ],
                 ),
                 Text(
-                  '${(ride.distanceKm * 0.621371).toStringAsFixed(1)} mi • ${_formatDate(ride.createdAt)}',
+                  '${formatDistance(ride.distanceKm, country: context.read<DriverProvider>().driver?.countryCode ?? 'US')} • ${_formatDate(ride.createdAt)}',
                   style: TextStyle(
                     fontSize: 10,
                     color: AppColors.textSecondary,
@@ -786,7 +815,7 @@ class _RidesScreenState extends State<RidesScreen>
                     ? ride.driverEarnings
                     : ride.fare * (_driverPercent / 100);
                 return Text(
-                  '+\$${earnings.toStringAsFixed(2)}',
+                  '+${formatMoney(earnings, country: context.read<DriverProvider>().driver?.countryCode ?? 'US')}',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: AppColors.success,
@@ -1034,7 +1063,7 @@ class _RidesScreenState extends State<RidesScreen>
                                     },
                                   ),
                                   Text(
-                                    '${(ride.distanceKm * 0.621371).toStringAsFixed(1)} mi • ${ride.estimatedMinutes} min',
+                                    '${formatDistance(ride.distanceKm, country: context.read<DriverProvider>().driver?.countryCode ?? 'US')} • ${ride.estimatedMinutes} min',
                                     style: TextStyle(color: AppColors.textSecondary),
                                   ),
                                 ],
@@ -1080,7 +1109,7 @@ class _RidesScreenState extends State<RidesScreen>
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
                               Text(
-                                '\$${earnings.toStringAsFixed(2)}',
+                                formatMoney(earnings, country: context.read<DriverProvider>().driver?.countryCode ?? 'US'),
                                 style: TextStyle(
                                   fontSize: 28,
                                   fontWeight: FontWeight.bold,

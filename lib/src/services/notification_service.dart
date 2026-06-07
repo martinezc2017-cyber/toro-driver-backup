@@ -883,14 +883,16 @@ class NotificationService {
 
       // Ride-related — also covers marketplace deliveries (notify-drivers-of-ride
       // sends type='new_ride'). Route by service_type: marketplace → accept screen,
-      // everything else → existing rides flow.
+      // everything else → existing rides flow. Forward 'stacked' flag so the
+      // accept screen can show a different UI.
       case 'new_ride':
         final rideId = data['ride_id'] as String?;
+        final isStacked = (data['stacked']?.toString() ?? 'false') == 'true';
         if (rideId == null) {
           navigator.pushNamed('/rides');
           break;
         }
-        _routeByServiceType(rideId);
+        _routeByServiceType(rideId, stacked: isStacked);
         break;
       case 'ride_request':
       case 'ride_update':
@@ -932,7 +934,9 @@ class NotificationService {
 
   /// Routes a `new_ride` notification based on the delivery's service_type.
   /// Marketplace → MarketplaceDeliveryAcceptScreen. Otherwise → /rides.
-  Future<void> _routeByServiceType(String rideId) async {
+  /// [stacked] indicates this is an on-the-way offer to a driver already
+  /// holding another delivery — accept screen renders a "extra package" banner.
+  Future<void> _routeByServiceType(String rideId, {bool stacked = false}) async {
     final navigator = InAppBannerService.navigatorKey.currentState;
     if (navigator == null) return;
     try {
@@ -944,7 +948,10 @@ class NotificationService {
       final svc = row?['service_type'] as String?;
       if (svc == 'marketplace') {
         navigator.push(MaterialPageRoute(
-          builder: (_) => MarketplaceDeliveryAcceptScreen(deliveryId: rideId),
+          builder: (_) => MarketplaceDeliveryAcceptScreen(
+            deliveryId: rideId,
+            isStackedOffer: stacked,
+          ),
         ));
         return;
       }

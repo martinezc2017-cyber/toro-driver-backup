@@ -53,7 +53,17 @@ serve(async (req) => {
 
   const start = Date.now()
   try {
-    const { order_id } = await req.json()
+    const body = await req.json()
+    const order_id: string | undefined = body?.order_id
+    // target options:
+    //   'vendor'         (default, new-order alarm)
+    //   'buyer'          (driver-arriving)
+    //   'buyer_bundled'  (your order was combined with another, $0 extra delivery)
+    const rawTarget = body?.target
+    const target: 'vendor' | 'buyer' | 'buyer_bundled' =
+      rawTarget === 'buyer' ? 'buyer' :
+      rawTarget === 'buyer_bundled' ? 'buyer_bundled' :
+      'vendor'
     if (!order_id) return new Response(JSON.stringify({ error: 'order_id required' }), {
       status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
@@ -85,10 +95,12 @@ serve(async (req) => {
     }
     const order = orderRes.rows[0]
 
-    // 2) Vendor's FCM tokens
+    // 2) Recipient FCM tokens — vendor's user_id (default) or buyer's (any 'buyer*' target)
+    const recipientUserId =
+      (target === 'buyer' || target === 'buyer_bundled') ? order.buyer_id : order.user_id
     const tokRes = await client.queryObject<{ token: string }>(`
       SELECT token FROM fcm_tokens WHERE user_id = $1 AND token IS NOT NULL
-    `, [order.user_id])
+    `, [recipientUserId])
     const tokens = tokRes.rows.map(r => r.token)
 
     if (tokens.length === 0) {
@@ -112,35 +124,51 @@ serve(async (req) => {
     const summary = order.items_summary || 'Pedido nuevo'
     const total = Number(order.total || 0).toFixed(0)
 
+    // Message content + channel + deep-link depend on target
+    const title =
+      target === 'buyer'         ? '🚗 Tu chofer está llegando' :
+      target === 'buyer_bundled' ? '🎁 Pedido combinado — $0 extra delivery' :
+                                   '🔔 NUEVO PEDIDO'
+    const bodyText =
+      target === 'buyer'         ? `${order.vendor_name}: ${summary}` :
+      target === 'buyer_bundled' ? `Tu pedido nuevo se combinó con el anterior de ${order.vendor_name}. Llega junto, no pagas delivery extra.` :
+                                   `${summary} — $${total}`
+    const dataType =
+      target === 'buyer'         ? 'driver_arriving' :
+      target === 'buyer_bundled' ? 'order_bundled' :
+                                   'vendor_new_order'
+    const deepLink =
+      (target === 'buyer' || target === 'buyer_bundled') ? `/marketplace/order/${order_id}` :
+                                                            '/marketplace/vendor-cascade'
+    const androidChannel = target === 'vendor' ? 'vendor_new_order_high' : 'rides_high'
+    const apnsSound      = target === 'vendor' ? 'vendor_new_order.caf'  : 'default'
+
     const results = await Promise.all(tokens.map(async (token) => {
       const body = {
         message: {
           token,
-          notification: {
-            title: '🔔 NUEVO PEDIDO',
-            body: `${summary} — $${total}`,
-          },
+          notification: { title, body: bodyText },
           data: {
-            type: 'vendor_new_order',
+            type: dataType,
             order_id,
             vendor_id: order.vendor_id,
-            deep_link: '/marketplace/vendor-cascade',
+            deep_link: deepLink,
           },
           android: {
             priority: 'HIGH',
             notification: {
-              channel_id: 'vendor_new_order_high',
-              sound: 'vendor_new_order',
-              default_vibrate_timings: false,
-              vibrate_timings: ['0s', '0.6s', '0.3s', '0.6s'],
+              channel_id: androidChannel,
+              sound: target === 'buyer' ? 'default' : 'vendor_new_order',
+              default_vibrate_timings: target === 'buyer',
+              vibrate_timings: target === 'buyer' ? undefined : ['0s', '0.6s', '0.3s', '0.6s'],
             },
           },
           apns: {
             headers: { 'apns-priority': '10' },
             payload: {
               aps: {
-                alert: { title: '🔔 NUEVO PEDIDO', body: `${summary} — $${total}` },
-                sound: 'vendor_new_order.caf',
+                alert: { title, body: bodyText },
+                sound: apnsSound,
                 'interruption-level': 'time-sensitive',
                 'content-available': 1,
               },

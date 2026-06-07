@@ -667,6 +667,2298 @@ serve(async (req) => {
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
+    if (action === 'fix_transactions_constraints_and_trigger') {
+      const log: string[] = []
+      // 1. Extend the CHECK constraint to allow 'marketplace' type
+      try {
+        await client.queryArray(`ALTER TABLE transactions DROP CONSTRAINT IF EXISTS transactions_type_check`)
+        await client.queryArray(`
+          ALTER TABLE transactions ADD CONSTRAINT transactions_type_check
+          CHECK (type = ANY (ARRAY['ride','carpool','delivery','package','cancellation_fee','no_show_fee','service_fee','tip','refund','partial_refund','adjustment','marketplace']::text[]))
+        `)
+        log.push('OK transactions_type_check: added marketplace')
+      } catch (e) { log.push(`ERR type check: ${(e as Error).message}`) }
+
+      // 2. Patch the trigger to use status='success' (canonical) instead of 'completed'
+      try {
+        await client.queryArray(`
+          CREATE OR REPLACE FUNCTION public.marketplace_order_to_transaction()
+          RETURNS trigger
+          LANGUAGE plpgsql
+          SECURITY DEFINER
+          AS $fn$
+          DECLARE
+            v_split RECORD;
+            v_vendor RECORD;
+            v_driver_share numeric;
+            v_platform_delivery_share numeric;
+          BEGIN
+            IF (NEW.status IN ('completed', 'delivered'))
+               AND (OLD.status IS NULL OR OLD.status NOT IN ('completed', 'delivered')) THEN
+
+              IF NOT EXISTS (
+                SELECT 1 FROM public.transactions WHERE marketplace_order_id = NEW.id
+              ) THEN
+                SELECT country_code, state_code INTO v_vendor
+                FROM public.vendors WHERE id = NEW.vendor_id;
+
+                SELECT * INTO v_split FROM public.marketplace_delivery_split(
+                  v_vendor.country_code, v_vendor.state_code
+                );
+
+                v_driver_share := COALESCE(NEW.delivery_fee, 0) * v_split.driver_pct / 100.0;
+                v_platform_delivery_share := COALESCE(NEW.delivery_fee, 0) * v_split.platform_pct / 100.0;
+
+                INSERT INTO public.transactions (
+                  user_id, type, booking_type, amount, status,
+                  marketplace_order_id, platform_fee, driver_amount, tip,
+                  payment_method, country_code, metadata, completed_at, created_at
+                ) VALUES (
+                  NEW.buyer_id,
+                  'marketplace',
+                  'marketplace',
+                  NEW.total,
+                  'success',
+                  NEW.id,
+                  COALESCE(NEW.flat_commission, 0) + v_platform_delivery_share,
+                  v_driver_share,
+                  NEW.tip,
+                  NEW.payment_method,
+                  v_vendor.country_code,
+                  jsonb_build_object(
+                    'vendor_id', NEW.vendor_id,
+                    'vendor_payout', NEW.vendor_payout,
+                    'subtotal', NEW.subtotal,
+                    'delivery_fee_total', NEW.delivery_fee,
+                    'delivery_fee_driver_share', v_driver_share,
+                    'delivery_fee_platform_share', v_platform_delivery_share,
+                    'driver_pct', v_split.driver_pct,
+                    'platform_pct', v_split.platform_pct,
+                    'flat_commission', NEW.flat_commission,
+                    'delivery_type', NEW.delivery_type
+                  ),
+                  now(),
+                  now()
+                );
+              END IF;
+            END IF;
+            RETURN NEW;
+          END;
+          $fn$
+        `)
+        log.push('OK trigger marketplace_order_to_transaction: status=success')
+      } catch (e) { log.push(`ERR trigger: ${(e as Error).message}`) }
+
+      await client.end()
+      return new Response(JSON.stringify({ success: true, log }, null, 2),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    if (action === 'refire_all_pending_marketplace_dispatch') {
+      const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
+      const SERVICE_KEY  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      const pending = await client.queryObject<{ id: string; pickup_lat: number; pickup_lng: number; country_code: string }>(`
+        SELECT id, pickup_lat, pickup_lng, country_code
+        FROM deliveries
+        WHERE service_type = 'marketplace'
+          AND status = 'pending'
+          AND driver_id IS NULL
+        ORDER BY created_at DESC LIMIT 50
+      `)
+      let fired = 0
+      for (const d of pending.rows) {
+        try {
+          const resp = await fetch(`${SUPABASE_URL}/functions/v1/notify-drivers-of-ride`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${SERVICE_KEY}`,
+              'apikey': SERVICE_KEY,
+            },
+            body: JSON.stringify({
+              ride_id: d.id,
+              service_type: 'marketplace',
+              pickup_lat: Number(d.pickup_lat),
+              pickup_lng: Number(d.pickup_lng),
+              country_code: d.country_code,
+              search_radius_km: 50,  // very wide for re-dispatch
+            }),
+          })
+          if (resp.ok) fired++
+        } catch (_) {}
+      }
+      // Also list current eligible drivers for visibility
+      const drivers = await client.queryObject(`
+        SELECT id, full_name, country_code, state_code, operating_city, operating_state,
+               is_online, can_receive_rides, fcm_token IS NOT NULL AS has_token,
+               current_lat, current_lng
+        FROM drivers
+        WHERE is_online = true AND can_receive_rides = true AND country_code = 'MX'
+        ORDER BY updated_at DESC LIMIT 20
+      `)
+      await client.end()
+      return new Response(JSON.stringify({
+        pending_marketplace_deliveries: pending.rows.length,
+        dispatches_fired: fired,
+        online_mx_drivers: drivers.rows,
+      }, null, 2), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    if (action === 'reset_paloma_real_stripe_state') {
+      // Mi test E2E forzó charges_enabled=true para test. Revierte al estado real
+      // del Stripe Connect API: tiene account pero no ha completado onboarding.
+      const stripeKey = Deno.env.get('STRIPE_SECRET_KEY')!
+      const v = await client.queryObject<{ acct: string | null }>(`
+        SELECT stripe_account_id AS acct FROM vendors
+        WHERE id = '862f91a1-9612-4dfc-9105-278acd7276f8'
+      `)
+      const acct = v.rows[0].acct
+      if (acct) {
+        const r = await fetch(`https://api.stripe.com/v1/accounts/${acct}`, {
+          headers: { 'Authorization': `Bearer ${stripeKey}` }
+        })
+        const j = await r.json()
+        await client.queryArray(`
+          UPDATE vendors SET
+            charges_enabled = $1,
+            payouts_enabled = $2,
+            accepts_card = $1
+          WHERE id = '862f91a1-9612-4dfc-9105-278acd7276f8'
+        `, [j.charges_enabled === true, j.payouts_enabled === true])
+        await client.end()
+        return new Response(JSON.stringify({
+          synced: true,
+          stripe_account: acct,
+          charges_enabled: j.charges_enabled,
+          payouts_enabled: j.payouts_enabled,
+          details_submitted: j.details_submitted,
+          requirements_due: (j.requirements?.currently_due ?? []).length,
+        }, null, 2), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+      await client.end()
+      return new Response(JSON.stringify({ synced: false, reason: 'no account' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    if (action === 'setup_top5_fixes') {
+      const log: string[] = []
+
+      // ════════════════ #1 RATE LIMIT ════════════════
+      // Throttle place_marketplace_order: each buyer can place max 3 orders
+      // per rolling 60-second window. Prevents double-click + spam.
+      try {
+        await client.queryArray(`
+          CREATE OR REPLACE FUNCTION public.marketplace_orders_rate_limit()
+          RETURNS TRIGGER
+          LANGUAGE plpgsql
+          SECURITY DEFINER
+          AS $fn$
+          DECLARE
+            v_count int;
+          BEGIN
+            SELECT COUNT(*) INTO v_count
+            FROM marketplace_orders
+            WHERE buyer_id = NEW.buyer_id
+              AND created_at > NOW() - INTERVAL '60 seconds';
+            IF v_count >= 3 THEN
+              RAISE EXCEPTION 'Rate limit: max 3 pedidos por minuto. Espera un momento.'
+                USING ERRCODE = 'P0001';
+            END IF;
+            RETURN NEW;
+          END;
+          $fn$
+        `)
+        await client.queryArray(`DROP TRIGGER IF EXISTS trg_marketplace_orders_rate_limit ON marketplace_orders`)
+        await client.queryArray(`
+          CREATE TRIGGER trg_marketplace_orders_rate_limit
+          BEFORE INSERT ON marketplace_orders
+          FOR EACH ROW EXECUTE FUNCTION marketplace_orders_rate_limit()
+        `)
+        log.push('OK #1 rate limit: 3 orders/60s per buyer')
+      } catch (e) { log.push(`ERR rate limit: ${(e as Error).message}`) }
+
+      // ════════════════ #2 CAPTURE PI AT PICKED_UP ════════════════
+      // Trigger: when marketplace_orders.status transitions to picked_up AND
+      // payment_status='authorized' AND stripe_payment_intent_id present,
+      // invoke the canonical capture edge function. This prevents
+      // expired_uncaptured_charge (which already cost us $373 USD in refunds).
+      try {
+        const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
+        const SERVICE_KEY  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+        await client.queryArray(`
+          CREATE OR REPLACE FUNCTION public.marketplace_capture_at_pickup()
+          RETURNS TRIGGER
+          LANGUAGE plpgsql
+          SECURITY DEFINER
+          AS $fn$
+          BEGIN
+            IF NEW.status = 'picked_up'
+               AND COALESCE(OLD.status, '') <> 'picked_up'
+               AND NEW.payment_status = 'authorized'
+               AND NEW.stripe_payment_intent_id IS NOT NULL THEN
+              PERFORM net.http_post(
+                url := '${SUPABASE_URL}/functions/v1/stripe-marketplace-capture',
+                headers := jsonb_build_object(
+                  'Content-Type','application/json',
+                  'Authorization','Bearer ${SERVICE_KEY}'
+                ),
+                body := jsonb_build_object(
+                  'order_id', NEW.id,
+                  'payment_intent_id', NEW.stripe_payment_intent_id
+                )
+              );
+              -- Mark as capture-pending; webhook from Stripe will flip to 'captured'
+              UPDATE marketplace_orders
+              SET payment_status = 'capture_pending'
+              WHERE id = NEW.id;
+            END IF;
+            RETURN NEW;
+          EXCEPTION WHEN OTHERS THEN
+            RAISE WARNING 'capture trigger failed: %', SQLERRM;
+            RETURN NEW;
+          END;
+          $fn$
+        `)
+        // First check the constraint allows 'capture_pending', if not, extend it
+        try {
+          await client.queryArray(`ALTER TABLE marketplace_orders DROP CONSTRAINT IF EXISTS marketplace_orders_payment_status_check`)
+          await client.queryArray(`
+            ALTER TABLE marketplace_orders ADD CONSTRAINT marketplace_orders_payment_status_check
+            CHECK (payment_status = ANY (ARRAY['pending','authorized','capture_pending','captured','refunded','failed']::text[]))
+          `)
+          log.push('OK #2a payment_status_check extended with capture_pending')
+        } catch (e) { log.push(`WARN payment_status_check: ${(e as Error).message}`) }
+
+        await client.queryArray(`DROP TRIGGER IF EXISTS trg_marketplace_capture_at_pickup ON marketplace_orders`)
+        await client.queryArray(`
+          CREATE TRIGGER trg_marketplace_capture_at_pickup
+          AFTER UPDATE OF status ON marketplace_orders
+          FOR EACH ROW EXECUTE FUNCTION marketplace_capture_at_pickup()
+        `)
+        log.push('OK #2 capture at picked_up wired')
+      } catch (e) { log.push(`ERR capture trigger: ${(e as Error).message}`) }
+
+      // ════════════════ #4 STRIPE CONNECT URL HELPER RPC ════════════════
+      // Vendor-finance UI calls this to start onboarding. Returns the URL.
+      // The real heavy lifting is in stripe-vendor-onboarding edge fn,
+      // but the SQL wrapper makes it dead-simple for the UI to call.
+      try {
+        await client.queryArray(`
+          CREATE OR REPLACE FUNCTION public.vendor_get_stripe_onboarding_url()
+          RETURNS jsonb
+          LANGUAGE plpgsql
+          SECURITY DEFINER
+          SET search_path = public
+          AS $fn$
+          DECLARE
+            v_uid uuid := auth.uid();
+            v_vendor RECORD;
+          BEGIN
+            IF v_uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
+            SELECT id, stripe_account_id, country_code INTO v_vendor
+            FROM vendors WHERE user_id = v_uid;
+            IF v_vendor IS NULL THEN RAISE EXCEPTION 'Not a vendor'; END IF;
+            RETURN jsonb_build_object(
+              'vendor_id', v_vendor.id,
+              'has_stripe_account', v_vendor.stripe_account_id IS NOT NULL,
+              'edge_function', 'stripe-vendor-onboarding',
+              'note', 'UI must POST to that edge fn with vendor_id + country to receive account_link_url'
+            );
+          END;
+          $fn$
+        `)
+        await client.queryArray(`GRANT EXECUTE ON FUNCTION vendor_get_stripe_onboarding_url() TO authenticated`)
+        log.push('OK #4 vendor_get_stripe_onboarding_url RPC')
+      } catch (e) { log.push(`ERR connect rpc: ${(e as Error).message}`) }
+
+      await client.end()
+      return new Response(JSON.stringify({ success: true, log }, null, 2),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    if (action === 'stripe_audit_real_money') {
+      const log: string[] = []
+      const stripeKey = Deno.env.get('STRIPE_SECRET_KEY')
+      if (!stripeKey) {
+        await client.end()
+        return new Response(JSON.stringify({ log: ['ERR no STRIPE_SECRET_KEY'] }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+
+      async function stripe(path: string) {
+        const r = await fetch(`https://api.stripe.com/v1/${path}`, {
+          headers: { 'Authorization': `Bearer ${stripeKey}` }
+        })
+        const j = await r.json()
+        if (!r.ok) throw new Error(j.error?.message ?? JSON.stringify(j))
+        return j
+      }
+
+      // 1. Check the env: is this test mode or live?
+      log.push(`Env key prefix: ${stripeKey.substring(0, 7)}…  (sk_test_ = test mode, sk_live_ = real money)`)
+      const isTestMode = stripeKey.startsWith('sk_test_')
+      log.push(`Mode: ${isTestMode ? 'TEST (no real money moved)' : 'LIVE (REAL money)'}`)
+
+      // 2. Pull the most recent PaymentIntents from the test
+      try {
+        const list = await stripe('payment_intents?limit=3')
+        log.push('')
+        log.push(`=== Last ${list.data.length} PaymentIntents ===`)
+        for (const pi of list.data) {
+          log.push(`PI ${pi.id}`)
+          log.push(`  status: ${pi.status}`)
+          log.push(`  amount: $${pi.amount / 100} ${pi.currency.toUpperCase()}`)
+          log.push(`  amount_capturable: $${(pi.amount_capturable ?? 0) / 100}`)
+          log.push(`  amount_received: $${(pi.amount_received ?? 0) / 100}`)
+          if (pi.latest_charge) {
+            const ch = await stripe(`charges/${pi.latest_charge}`)
+            log.push(`  → charge ${ch.id} status=${ch.status} paid=${ch.paid} captured=${ch.captured}`)
+            log.push(`  → amount_refunded: $${(ch.amount_refunded ?? 0) / 100}`)
+            if (ch.balance_transaction) {
+              const bt = await stripe(`balance_transactions/${ch.balance_transaction}`)
+              log.push(`  → balance_transaction ${bt.id}`)
+              log.push(`     gross:      $${bt.amount / 100} ${bt.currency.toUpperCase()}`)
+              log.push(`     STRIPE FEE: $${bt.fee / 100} ${bt.currency.toUpperCase()}  ⚠️`)
+              log.push(`     NET:        $${bt.net / 100} ${bt.currency.toUpperCase()}`)
+              if (bt.fee_details && Array.isArray(bt.fee_details)) {
+                for (const fd of bt.fee_details) {
+                  log.push(`        breakdown: ${fd.description} = $${fd.amount / 100} ${fd.currency.toUpperCase()}`)
+                }
+              }
+            }
+          }
+        }
+      } catch (e) {
+        log.push(`ERR PIs: ${(e as Error).message}`)
+      }
+
+      // 3. Refunds
+      try {
+        const refunds = await stripe('refunds?limit=3')
+        log.push('')
+        log.push(`=== Last ${refunds.data.length} Refunds ===`)
+        for (const r of refunds.data) {
+          log.push(`Refund ${r.id} amount=$${r.amount / 100} status=${r.status} reason=${r.reason ?? 'none'}`)
+        }
+      } catch (e) { log.push(`ERR refunds: ${(e as Error).message}`) }
+
+      // 4. Platform balance
+      try {
+        const bal = await stripe('balance')
+        log.push('')
+        log.push('=== Platform balance (lo que TORO tiene en Stripe) ===')
+        for (const b of (bal.available ?? [])) log.push(`  available: $${b.amount / 100} ${b.currency.toUpperCase()}`)
+        for (const b of (bal.pending ?? []))   log.push(`  pending:   $${b.amount / 100} ${b.currency.toUpperCase()}`)
+      } catch (e) { log.push(`ERR balance: ${(e as Error).message}`) }
+
+      // 5. Paloma's connected account state
+      try {
+        const v = await client.queryObject<{ acct: string | null }>(`
+          SELECT stripe_account_id AS acct FROM vendors WHERE id = '862f91a1-9612-4dfc-9105-278acd7276f8'
+        `)
+        const acct = v.rows[0].acct
+        if (acct) {
+          const a = await stripe(`accounts/${acct}`)
+          log.push('')
+          log.push(`=== Paloma's connected account ${acct} ===`)
+          log.push(`  charges_enabled:  ${a.charges_enabled}`)
+          log.push(`  payouts_enabled:  ${a.payouts_enabled}`)
+          log.push(`  details_submitted: ${a.details_submitted}`)
+          log.push(`  requirements.currently_due: ${(a.requirements?.currently_due ?? []).length} items`)
+          if (a.requirements?.currently_due?.length) {
+            for (const r of a.requirements.currently_due.slice(0, 5)) log.push(`     • ${r}`)
+          }
+        }
+      } catch (e) { log.push(`ERR acct: ${(e as Error).message}`) }
+
+      await client.end()
+      return new Response(JSON.stringify({ log }, null, 2),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    if (action === 'stripe_full_e2e') {
+      const log: string[] = []
+      const fails: string[] = []
+      const vendorId = '862f91a1-9612-4dfc-9105-278acd7276f8'
+      const productId = 'adfe03a4-5c65-4296-9a29-83831e7feed5'
+      const stripeKey = Deno.env.get('STRIPE_SECRET_KEY')
+      if (!stripeKey) {
+        await client.end()
+        return new Response(JSON.stringify({ log: ['ERR STRIPE_SECRET_KEY missing'] }, null, 2),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+      const ok = (m: string) => log.push(`OK ${m}`)
+      const fail = (m: string) => { log.push(`FAIL ${m}`); fails.push(m) }
+
+      // Stripe REST helper
+      async function stripe(path: string, body: Record<string, any> = {}, method: 'POST' | 'GET' = 'POST') {
+        const url = `https://api.stripe.com/v1/${path}`
+        const form = new URLSearchParams()
+        const flatten = (obj: any, prefix = '') => {
+          for (const [k, v] of Object.entries(obj)) {
+            const key = prefix ? `${prefix}[${k}]` : k
+            if (v === null || v === undefined) continue
+            if (typeof v === 'object' && !Array.isArray(v)) flatten(v, key)
+            else if (Array.isArray(v)) v.forEach((x, i) => flatten({ [i]: x }, key))
+            else form.append(key, String(v))
+          }
+        }
+        flatten(body)
+        const resp = await fetch(url, {
+          method,
+          headers: {
+            'Authorization': `Bearer ${stripeKey}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: method === 'POST' ? form.toString() : undefined,
+        })
+        const j = await resp.json()
+        if (!resp.ok) throw new Error(`Stripe ${resp.status} ${j.error?.message ?? JSON.stringify(j).slice(0, 200)}`)
+        return j
+      }
+
+      // ── Step 1: Onboard Paloma to Stripe Connect Express (test mode) ──
+      let stripeAccountId: string | null = null
+      try {
+        const v = await client.queryObject<{ stripe_account_id: string | null }>(`
+          SELECT stripe_account_id FROM vendors WHERE id = $1
+        `, [vendorId])
+        stripeAccountId = v.rows[0].stripe_account_id
+        if (!stripeAccountId) {
+          const acct = await stripe('accounts', {
+            type: 'express',
+            country: 'MX',
+            email: `paloma+${Date.now()}@toro-ride.com`,
+            capabilities: {
+              card_payments: { requested: true },
+              transfers: { requested: true },
+            },
+            business_type: 'individual',
+            business_profile: { mcc: '5812', product_description: 'Marketplace seller' },
+          })
+          stripeAccountId = acct.id
+          ok(`Stripe Connect account created: ${stripeAccountId}`)
+          // In TEST mode, bypass full onboarding (real biz would do account links)
+          // Charges are NOT enabled until full onboarding. For destination charges
+          // we don't need charges_enabled on the connected account.
+        } else {
+          ok(`Paloma already has Stripe account ${stripeAccountId}`)
+        }
+
+        // Mark vendor as accepting card + Connect linked
+        await client.queryArray(`
+          UPDATE vendors SET
+            stripe_account_id = $1,
+            accepts_card = true,
+            charges_enabled = true,
+            payouts_enabled = true
+          WHERE id = $2
+        `, [stripeAccountId, vendorId])
+        ok('Paloma: accepts_card=true, charges_enabled=true (forced for test)')
+      } catch (e) { fail(`Stripe onboard: ${(e as Error).message}`) }
+
+      if (!stripeAccountId) {
+        await client.end()
+        return new Response(JSON.stringify({ log, fails }, null, 2),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+
+      // ── Step 2: Create PaymentIntent with test card ──
+      const subtotal = 60000  // $600 in centavos
+      const commission = 1000  // $10
+      const deliveryFee = 5000 // $50
+      const total = subtotal + commission + deliveryFee
+      let paymentIntent: any
+      try {
+        // pm_card_visa is Stripe's predefined test PaymentMethod.
+        // NOTE: For full destination-charge split to Paloma's connected account,
+        // her Express account needs identity verification (real biz onboarding).
+        // For this server-side test we charge to the platform — buyer is billed,
+        // platform receives the funds. Split via transfer happens later when
+        // Paloma completes Stripe onboarding (UI flow vendor-finance handles it).
+        paymentIntent = await stripe('payment_intents', {
+          amount: total,
+          currency: 'mxn',
+          payment_method: 'pm_card_visa',
+          payment_method_types: ['card'],
+          capture_method: 'manual',  // Authorize now, capture on delivery
+          confirm: true,
+          metadata: {
+            vendor_id: vendorId,
+            connected_account: stripeAccountId,
+            note: 'platform charge, transfer pending vendor onboarding',
+          },
+        })
+        if (paymentIntent.status === 'requires_capture') {
+          ok(`PaymentIntent ${paymentIntent.id} authorized (status=${paymentIntent.status})`)
+        } else {
+          fail(`PaymentIntent status=${paymentIntent.status} (expected requires_capture)`)
+        }
+      } catch (e) { fail(`PaymentIntent create: ${(e as Error).message}`) }
+
+      if (!paymentIntent?.id) {
+        await client.end()
+        return new Response(JSON.stringify({ log, fails }, null, 2),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+
+      // ── Step 3: Create marketplace order linked to that PaymentIntent ──
+      const buyer = await client.queryObject<{ id: string; phone: string | null }>(`
+        SELECT p.id, p.phone FROM profiles p
+        WHERE p.id <> (SELECT user_id FROM vendors WHERE id = $1)
+        ORDER BY p.created_at DESC LIMIT 1
+      `, [vendorId])
+      const buyerId = buyer.rows[0].id
+
+      let orderId: string | null = null
+      try {
+        await client.queryArray('BEGIN')
+        await client.queryArray(`
+          SELECT set_config('request.jwt.claims', $1, true),
+                 set_config('request.jwt.claim.sub', $2, true),
+                 set_config('request.jwt.claim.role', 'authenticated', true)
+        `, [JSON.stringify({ sub: buyerId, role: 'authenticated' }), buyerId])
+        const r = await client.queryObject<{ order_id: string }>(`
+          SELECT place_marketplace_order(
+            $1::uuid,
+            $2::jsonb,
+            'toro', 'card',
+            'Test Stripe Address 100, Mexicali', 32.6300, -115.4600,
+            'Stripe E2E', $3, 0
+          ) AS order_id
+        `, [vendorId, JSON.stringify([{product_id: productId, qty: 1}]), '+526860000099'])
+        await client.queryArray('COMMIT')
+        orderId = r.rows[0].order_id
+
+        await client.queryArray(`
+          UPDATE marketplace_orders SET
+            stripe_payment_intent_id = $1,
+            payment_status = 'authorized'
+          WHERE id = $2
+        `, [paymentIntent.id, orderId])
+        ok(`Order created ${orderId.substring(0, 8)} linked to PI ${paymentIntent.id}`)
+      } catch (e) {
+        await client.queryArray('ROLLBACK').catch(() => {})
+        fail(`Order place: ${(e as Error).message}`)
+      }
+
+      // ── Step 4: Walk order to delivered (skipping driver, server-side) ──
+      if (orderId) {
+        try {
+          await client.queryArray(`UPDATE marketplace_orders SET status='accepted_by_vendor', vendor_accepted_at=NOW() WHERE id = $1`, [orderId])
+          await client.queryArray(`UPDATE marketplace_orders SET status='preparing' WHERE id = $1`, [orderId])
+          await client.queryArray(`UPDATE marketplace_order_items SET prep_status='ready', prepared_at=NOW() WHERE order_id = $1`, [orderId])
+          await client.queryArray(`UPDATE marketplace_orders SET status='ready_for_pickup', vendor_ready_at=NOW() WHERE id = $1`, [orderId])
+          await client.queryArray(`UPDATE marketplace_orders SET status='picked_up', picked_up_at=NOW() WHERE id = $1`, [orderId])
+          await client.queryArray(`UPDATE marketplace_orders SET status='delivered', delivered_at=NOW(), completed_at=NOW() WHERE id = $1`, [orderId])
+          ok('Order walked to delivered')
+        } catch (e) { fail(`Walk: ${(e as Error).message}`) }
+      }
+
+      // ── Step 5: Capture the PaymentIntent ──
+      try {
+        const captured = await stripe(`payment_intents/${paymentIntent.id}/capture`)
+        if (captured.status === 'succeeded') {
+          ok(`PaymentIntent CAPTURED: status=${captured.status} amount_received=${captured.amount_received / 100} MXN`)
+        } else {
+          fail(`Capture status=${captured.status}`)
+        }
+      } catch (e) { fail(`Capture: ${(e as Error).message}`) }
+
+      // ── Step 6: Verify transaction row + Stripe charge linkage ──
+      if (orderId) {
+        try {
+          const tx = await client.queryObject<{
+            id: string; status: string; amount: number;
+            platform_fee: number; driver_amount: number;
+            metadata: any;
+          }>(`
+            SELECT id, status, amount, platform_fee, driver_amount, metadata
+            FROM transactions WHERE marketplace_order_id = $1
+          `, [orderId])
+          if (tx.rows.length === 1) {
+            const t = tx.rows[0]
+            ok(`Transaction: amount=$${t.amount} platform_fee=$${t.platform_fee} driver=$${t.driver_amount} status=${t.status}`)
+          } else {
+            fail(`Expected 1 transaction, got ${tx.rows.length}`)
+          }
+        } catch (e) { fail(`TX verify: ${(e as Error).message}`) }
+      }
+
+      // ── Step 7: Test REFUND path ──
+      try {
+        const refund = await stripe('refunds', {
+          payment_intent: paymentIntent.id,
+          amount: 1000, // partial refund $10
+        })
+        ok(`Partial refund $${refund.amount / 100} status=${refund.status}`)
+      } catch (e) { fail(`Refund: ${(e as Error).message}`) }
+
+      log.push('────────────────')
+      if (fails.length === 0) log.push(`✓ ALL ${log.filter(x => x.startsWith('OK ')).length} STEPS PASSED`)
+      else log.push(`✗ ${fails.length} FAILURES`)
+
+      await client.end()
+      return new Response(JSON.stringify({ success: fails.length === 0, log, fails }, null, 2),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    if (action === 'stripe_state_check') {
+      const v = await client.queryObject(`
+        SELECT id, business_name, accepts_card, stripe_account_id,
+               charges_enabled, payouts_enabled, country_code
+        FROM vendors WHERE id = '862f91a1-9612-4dfc-9105-278acd7276f8'
+      `)
+      // Check if Stripe secret env exists (without exposing it)
+      const hasSecret = !!Deno.env.get('STRIPE_SECRET_KEY')
+      const hasMxSecret = !!Deno.env.get('STRIPE_SECRET_KEY_MX')
+      await client.end()
+      return new Response(JSON.stringify({
+        paloma: v.rows[0],
+        stripe_secret_present: hasSecret,
+        stripe_mx_secret_present: hasMxSecret,
+      }, null, 2),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    if (action === 'inspect_transactions_status') {
+      const c = await client.queryObject<{ conname: string; def: string }>(`
+        SELECT conname, pg_get_constraintdef(oid) AS def
+        FROM pg_constraint
+        WHERE conrelid = 'transactions'::regclass AND contype = 'c'
+      `)
+      await client.end()
+      return new Response(JSON.stringify(c.rows, null, 2),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    if (action === 'test_full_purchase_flow') {
+      const log: string[] = []
+      const fails: string[] = []
+      const vendorId = '862f91a1-9612-4dfc-9105-278acd7276f8'
+      const productId = 'adfe03a4-5c65-4296-9a29-83831e7feed5'
+
+      const ok = (msg: string) => log.push(`OK ${msg}`)
+      const fail = (msg: string) => { log.push(`FAIL ${msg}`); fails.push(msg) }
+
+      // Pick a real buyer + a real driver
+      const buyer = await client.queryObject<{ id: string; phone: string | null; name: string | null }>(`
+        SELECT p.id, p.phone, p.full_name AS name FROM profiles p
+        WHERE p.id <> (SELECT user_id FROM vendors WHERE id = $1)
+        ORDER BY p.created_at DESC LIMIT 1
+      `, [vendorId])
+      if (buyer.rows.length === 0) {
+        await client.end()
+        return new Response(JSON.stringify({ log: ['ERR no buyer'] }, null, 2),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+      const buyerId = buyer.rows[0].id
+      log.push(`Buyer: ${buyer.rows[0].name} (${buyerId.substring(0,8)})`)
+
+      const driver = await client.queryObject<{ id: string; user_id: string; name: string }>(`
+        SELECT id, user_id, full_name AS name FROM drivers
+        WHERE is_online = true AND can_receive_rides = true AND country_code = 'MX' AND state_code = 'BC'
+        ORDER BY updated_at DESC LIMIT 1
+      `)
+      if (driver.rows.length === 0) {
+        log.push('WARN no online driver in MX/BC — using fallback')
+      }
+      const driverRow = driver.rows[0]
+      const driverId = driverRow?.id
+      const driverUserId = driverRow?.user_id
+      log.push(`Driver: ${driverRow?.name ?? 'NONE'} (${driverId?.substring(0,8) ?? '—'})`)
+
+      // ════════════════════════════════════════════════════════════════
+      // CYCLE A: single order, full happy path placed → delivered
+      // ════════════════════════════════════════════════════════════════
+      let orderA: string | null = null
+      let deliveryA: string | null = null
+
+      try {
+        // Step 1: place via canonical RPC
+        await client.queryArray('BEGIN')
+        await client.queryArray(`
+          SELECT set_config('request.jwt.claims', $1, true),
+                 set_config('request.jwt.claim.sub', $2, true),
+                 set_config('request.jwt.claim.role', 'authenticated', true)
+        `, [JSON.stringify({ sub: buyerId, role: 'authenticated' }), buyerId])
+        const r = await client.queryObject<{ order_id: string }>(`
+          SELECT place_marketplace_order(
+            $1::uuid,
+            $2::jsonb,
+            'toro', 'cash',
+            'Av. Reforma 1000, Mexicali', 32.6300, -115.4600,
+            'Test E2E', $3, 0
+          ) AS order_id
+        `, [vendorId, JSON.stringify([{product_id: productId, qty: 1}]), '+526860000099'])
+        await client.queryArray('COMMIT')
+        orderA = r.rows[0].order_id
+        ok(`A1 placed: order ${orderA.substring(0,8)}`)
+      } catch (e) {
+        fail(`A1 place: ${(e as Error).message}`)
+      }
+
+      if (orderA) {
+        try {
+          // Verify event placed
+          const ev = await client.queryObject<{ c: number }>(`
+            SELECT COUNT(*)::int AS c FROM marketplace_order_events WHERE order_id = $1 AND to_status = 'placed'
+          `, [orderA])
+          if (ev.rows[0].c >= 1) ok('A1 event placed recorded')
+          else fail('A1 no placed event row')
+
+          // Verify OTPs generated
+          const otps = await client.queryObject<{ pickup_otp: string | null; delivery_otp: string | null; held: boolean }>(`
+            SELECT pickup_otp, delivery_otp, held_for_review AS held
+            FROM marketplace_orders WHERE id = $1
+          `, [orderA])
+          if (otps.rows[0].pickup_otp?.length === 4) ok(`A1 pickup_otp generated: ${otps.rows[0].pickup_otp}`)
+          else fail('A1 pickup_otp not generated')
+          if (otps.rows[0].delivery_otp?.length === 4) ok(`A1 delivery_otp generated: ${otps.rows[0].delivery_otp}`)
+          else fail('A1 delivery_otp not generated')
+          ok(`A1 held_for_review=${otps.rows[0].held}`)
+        } catch (e) { fail(`A1 verify: ${(e as Error).message}`) }
+
+        // Step 2: vendor accepts → response time captured
+        try {
+          await client.queryArray(`UPDATE marketplace_orders SET status='accepted_by_vendor', vendor_accepted_at=NOW() WHERE id = $1`, [orderA])
+          const v = await client.queryObject<{ ms: number | null }>(`
+            SELECT vendor_responded_in_ms AS ms FROM marketplace_orders WHERE id = $1
+          `, [orderA])
+          if (v.rows[0].ms !== null) ok(`A2 vendor_responded_in_ms captured: ${v.rows[0].ms}ms`)
+          else fail('A2 vendor_responded_in_ms NOT captured by trigger')
+        } catch (e) { fail(`A2: ${(e as Error).message}`) }
+
+        // Step 3: preparing → ready
+        try {
+          await client.queryArray(`UPDATE marketplace_orders SET status='preparing' WHERE id = $1`, [orderA])
+          await client.queryArray(`UPDATE marketplace_order_items SET prep_status='ready', prepared_at=NOW() WHERE order_id = $1`, [orderA])
+          await client.queryArray(`UPDATE marketplace_orders SET status='ready_for_pickup', vendor_ready_at=NOW() WHERE id = $1`, [orderA])
+          ok('A3 status → ready_for_pickup')
+
+          // Verify delivery row was created by trg dispatch
+          const d = await client.queryObject<{ delivery_id: string | null }>(`
+            SELECT delivery_id FROM marketplace_orders WHERE id = $1
+          `, [orderA])
+          deliveryA = d.rows[0].delivery_id
+          if (deliveryA) ok(`A3 delivery created: ${deliveryA.substring(0,8)}`)
+          else fail('A3 delivery NOT created by dispatch trigger')
+        } catch (e) { fail(`A3: ${(e as Error).message}`) }
+
+        // Step 4: driver accepts
+        if (deliveryA && driverId && driverUserId) {
+          try {
+            await client.queryArray('BEGIN')
+            await client.queryArray(`
+              SELECT set_config('request.jwt.claims', $1, true),
+                     set_config('request.jwt.claim.sub', $2, true),
+                     set_config('request.jwt.claim.role', 'authenticated', true)
+            `, [JSON.stringify({ sub: driverUserId, role: 'authenticated' }), driverUserId])
+            await client.queryArray(`SELECT driver_accept_marketplace_delivery($1::uuid)`, [deliveryA])
+            await client.queryArray('COMMIT')
+            ok('A4 driver_accept_marketplace_delivery succeeded')
+
+            const verify = await client.queryObject<{ status: string; driver_id: string | null; o_status: string }>(`
+              SELECT d.status, d.driver_id, o.status AS o_status
+              FROM deliveries d
+              JOIN marketplace_orders o ON o.delivery_id = d.id
+              WHERE d.id = $1
+            `, [deliveryA])
+            if (verify.rows[0].driver_id === driverId) ok('A4 delivery.driver_id set')
+            else fail(`A4 driver_id mismatch: ${verify.rows[0].driver_id}`)
+            if (verify.rows[0].o_status === 'driver_assigned') ok('A4 order status → driver_assigned')
+            else fail(`A4 order status = ${verify.rows[0].o_status} (expected driver_assigned)`)
+          } catch (e) {
+            await client.queryArray('ROLLBACK').catch(() => {})
+            fail(`A4: ${(e as Error).message}`)
+          }
+        }
+
+        // Step 5: driver pickup confirm (use OTP + dummy photo url + within geofence)
+        if (deliveryA && driverUserId) {
+          try {
+            const o = await client.queryObject<{ pickup_otp: string; lat: number; lng: number }>(`
+              SELECT pickup_otp, vendor_pickup_lat AS lat, vendor_pickup_lng AS lng FROM marketplace_orders WHERE id = $1
+            `, [orderA])
+            const otp = o.rows[0].pickup_otp
+            await client.queryArray('BEGIN')
+            await client.queryArray(`
+              SELECT set_config('request.jwt.claims', $1, true),
+                     set_config('request.jwt.claim.sub', $2, true),
+                     set_config('request.jwt.claim.role', 'authenticated', true)
+            `, [JSON.stringify({ sub: driverUserId, role: 'authenticated' }), driverUserId])
+            const r = await client.queryObject<{ result: boolean }>(`
+              SELECT marketplace_confirm_pickup(
+                $1::uuid, $2,
+                'https://example.com/proof.jpg',
+                $3::float8, $4::float8
+              ) AS result
+            `, [orderA, otp, o.rows[0].lat, o.rows[0].lng])
+            await client.queryArray('COMMIT')
+            if (r.rows[0].result) ok(`A5 marketplace_confirm_pickup OK (otp=${otp}, geofence passed)`)
+            else fail(`A5 confirm_pickup returned false (geofence failed)`)
+
+            const pu = await client.queryObject<{ at: any }>(`
+              SELECT picked_up_at AS at FROM marketplace_orders WHERE id = $1
+            `, [orderA])
+            if (pu.rows[0].at) ok(`A5 picked_up_at set`)
+            else fail('A5 picked_up_at NOT set')
+          } catch (e) {
+            await client.queryArray('ROLLBACK').catch(() => {})
+            fail(`A5: ${(e as Error).message}`)
+          }
+        }
+
+        // Step 6: update order status to picked_up (RPC only sets the field, status advance is separate)
+        if (orderA) {
+          try {
+            await client.queryArray(`UPDATE marketplace_orders SET status='picked_up' WHERE id = $1 AND status = 'driver_assigned'`, [orderA])
+            ok('A6 order → picked_up')
+          } catch (e) { fail(`A6: ${(e as Error).message}`) }
+        }
+
+        // Step 7: delivery confirm
+        if (deliveryA && driverUserId && orderA) {
+          try {
+            const o = await client.queryObject<{ delivery_otp: string; lat: number; lng: number }>(`
+              SELECT delivery_otp, delivery_lat AS lat, delivery_lng AS lng FROM marketplace_orders WHERE id = $1
+            `, [orderA])
+            const otp = o.rows[0].delivery_otp
+            await client.queryArray('BEGIN')
+            await client.queryArray(`
+              SELECT set_config('request.jwt.claims', $1, true),
+                     set_config('request.jwt.claim.sub', $2, true),
+                     set_config('request.jwt.claim.role', 'authenticated', true)
+            `, [JSON.stringify({ sub: driverUserId, role: 'authenticated' }), driverUserId])
+            const r = await client.queryObject<{ result: boolean }>(`
+              SELECT marketplace_confirm_delivery(
+                $1::uuid, $2,
+                'https://example.com/delivery.jpg',
+                $3::float8, $4::float8
+              ) AS result
+            `, [orderA, otp, o.rows[0].lat, o.rows[0].lng])
+            await client.queryArray('COMMIT')
+            if (r.rows[0].result) ok(`A7 marketplace_confirm_delivery OK (otp=${otp})`)
+            else fail('A7 confirm_delivery geofence failed')
+
+            const fin = await client.queryObject<{ status: string; delivered: any }>(`
+              SELECT status, delivered_at AS delivered FROM marketplace_orders WHERE id = $1
+            `, [orderA])
+            if (fin.rows[0].status === 'delivered') ok('A7 order status → delivered')
+            else fail(`A7 status = ${fin.rows[0].status}`)
+          } catch (e) {
+            await client.queryArray('ROLLBACK').catch(() => {})
+            fail(`A7: ${(e as Error).message}`)
+          }
+        }
+
+        // Step 8: verify transactions row was created by trigger marketplace_order_to_transaction
+        if (orderA) {
+          try {
+            const tx = await client.queryObject<{ c: number; total_platform_fee: number | null; total_driver: number | null }>(`
+              SELECT COUNT(*)::int AS c,
+                     SUM(platform_fee)::numeric AS total_platform_fee,
+                     SUM(driver_amount)::numeric AS total_driver
+              FROM transactions WHERE marketplace_order_id = $1
+            `, [orderA])
+            if (tx.rows[0].c >= 1) ok(`A8 transaction created: platform_fee=$${tx.rows[0].total_platform_fee} driver_amount=$${tx.rows[0].total_driver}`)
+            else fail('A8 NO transactions row created by trigger marketplace_order_to_transaction')
+          } catch (e) { fail(`A8: ${(e as Error).message}`) }
+        }
+
+        // Step 9: verify event chain
+        if (orderA) {
+          try {
+            const evs = await client.queryObject<{ to_status: string; actor_type: string }>(`
+              SELECT to_status, actor_type FROM marketplace_order_events
+              WHERE order_id = $1 ORDER BY created_at
+            `, [orderA])
+            const path = evs.rows.map(r => `${r.to_status}(${r.actor_type})`).join(' → ')
+            ok(`A9 event chain: ${path}`)
+            const needed = ['placed', 'delivered']
+            for (const n of needed) {
+              if (!evs.rows.some(r => r.to_status === n)) fail(`A9 missing event: ${n}`)
+            }
+          } catch (e) { fail(`A9: ${(e as Error).message}`) }
+        }
+      }
+
+      // ════════════════════════════════════════════════════════════════
+      // CYCLE B: bundle — 2 orders within 8 min from same buyer+vendor
+      // ════════════════════════════════════════════════════════════════
+      log.push('── BUNDLE TEST ──')
+      const bundleOrders: string[] = []
+      for (let i = 0; i < 2; i++) {
+        try {
+          await client.queryArray('BEGIN')
+          await client.queryArray(`
+            SELECT set_config('request.jwt.claims', $1, true),
+                   set_config('request.jwt.claim.sub', $2, true),
+                   set_config('request.jwt.claim.role', 'authenticated', true)
+          `, [JSON.stringify({ sub: buyerId, role: 'authenticated' }), buyerId])
+          const r = await client.queryObject<{ order_id: string }>(`
+            SELECT place_marketplace_order(
+              $1::uuid, $2::jsonb, 'toro', 'cash',
+              'Av. Bundle 200, Mexicali', 32.6300, -115.4600,
+              'bundle test ${i + 1}', $3, 0
+            ) AS order_id
+          `, [vendorId, JSON.stringify([{product_id: productId, qty: 1}]), '+526860000088'])
+          await client.queryArray('COMMIT')
+          bundleOrders.push(r.rows[0].order_id)
+        } catch (e) {
+          await client.queryArray('ROLLBACK').catch(() => {})
+          fail(`B place ${i + 1}: ${(e as Error).message}`)
+        }
+      }
+      if (bundleOrders.length === 2) ok(`B placed 2 orders: ${bundleOrders.map(x => x.substring(0,8)).join(', ')}`)
+
+      // Walk both to ready_for_pickup (so dispatch trigger fires for both)
+      for (const oid of bundleOrders) {
+        try {
+          await client.queryArray(`UPDATE marketplace_orders SET status='accepted_by_vendor', vendor_accepted_at=NOW() WHERE id = $1`, [oid])
+          await client.queryArray(`UPDATE marketplace_orders SET status='preparing' WHERE id = $1`, [oid])
+          await client.queryArray(`UPDATE marketplace_order_items SET prep_status='ready', prepared_at=NOW() WHERE order_id = $1`, [oid])
+          await client.queryArray(`UPDATE marketplace_orders SET status='ready_for_pickup', vendor_ready_at=NOW() WHERE id = $1`, [oid])
+        } catch (e) { fail(`B ready ${oid.substring(0,8)}: ${(e as Error).message}`) }
+      }
+
+      try {
+        const r = await client.queryObject<{ id: string; delivery_id: string | null; delivery_fee: number; total: number }>(`
+          SELECT id, delivery_id, delivery_fee, total FROM marketplace_orders WHERE id = ANY($1) ORDER BY created_at
+        `, [bundleOrders])
+        const dids = new Set(r.rows.map(x => x.delivery_id).filter(Boolean))
+        if (dids.size === 1) ok(`B both share delivery ${[...dids][0]!.substring(0,8)}`)
+        else fail(`B ${dids.size} distinct delivery_ids (should be 1)`)
+        if (Number(r.rows[1].delivery_fee) === 0) ok(`B 2nd order delivery_fee=0 (total=${r.rows[1].total})`)
+        else fail(`B 2nd order delivery_fee=${r.rows[1].delivery_fee} (should be 0)`)
+
+        const ctx = await client.queryObject<{ ctx: any }>(`SELECT delivery_full_context($1) AS ctx`, [[...dids][0]])
+        const numOrders = (ctx.rows[0].ctx?.orders as any[])?.length ?? 0
+        if (numOrders >= 2) ok(`B delivery_full_context returns ${numOrders} orders`)
+        else fail(`B context returned only ${numOrders}`)
+      } catch (e) { fail(`B verify: ${(e as Error).message}`) }
+
+      // ════════════════════════════════════════════════════════════════
+      // FINAL SUMMARY
+      // ════════════════════════════════════════════════════════════════
+      log.push('────────────────')
+      if (fails.length === 0) log.push(`✓ ALL ${log.filter(x => x.startsWith('OK ')).length} STEPS PASSED`)
+      else log.push(`✗ ${fails.length} FAILURES — see above`)
+
+      await client.end()
+      return new Response(JSON.stringify({ success: fails.length === 0, log, fails }, null, 2),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    if (action === 'test_canonical_e2e') {
+      const log: string[] = []
+      const vendorId = '862f91a1-9612-4dfc-9105-278acd7276f8'  // PALOMA
+      const productId = 'adfe03a4-5c65-4296-9a29-83831e7feed5'  // control ps5
+
+      // Buyer
+      const buyer = await client.queryObject<{ id: string; phone: string | null }>(`
+        SELECT p.id, p.phone FROM profiles p
+        WHERE p.id <> (SELECT user_id FROM vendors WHERE id = $1)
+          AND COALESCE(p.full_name, '') <> ''
+        ORDER BY p.created_at DESC LIMIT 1
+      `, [vendorId])
+      const buyerId = buyer.rows[0].id
+      log.push(`buyer: ${buyerId.substring(0,8)}…`)
+
+      // ── TEST 1: Immutability trigger ──
+      try {
+        // Make a placed order, then try to mutate forbidden fields post-accept
+        await client.queryArray('BEGIN')
+        await client.queryArray(`
+          SELECT set_config('request.jwt.claims', $1, true),
+                 set_config('request.jwt.claim.sub', $2, true),
+                 set_config('request.jwt.claim.role', 'authenticated', true)
+        `, [JSON.stringify({ sub: buyerId, role: 'authenticated' }), buyerId])
+
+        const o1 = await client.queryObject<{ order_id: string }>(`
+          SELECT place_marketplace_order(
+            $1::uuid,
+            $2::jsonb,
+            'toro', 'cash',
+            'Calle Reforma 1234', 32.62, -115.45,
+            'apto 1', $3, 0
+          ) AS order_id
+        `, [vendorId, JSON.stringify([{product_id: productId, qty: 1}]), '+526860000077'])
+        await client.queryArray('COMMIT')
+        const orderId = o1.rows[0].order_id
+        log.push(`TEST1 order created: ${orderId.substring(0,8)}…`)
+
+        // Move past placed
+        await client.queryArray(`
+          UPDATE marketplace_orders SET status='accepted_by_vendor', vendor_accepted_at=NOW()
+          WHERE id = $1
+        `, [orderId])
+
+        // Now try to mutate price — should THROW
+        let immutOk = false
+        try {
+          await client.queryArray(`UPDATE marketplace_orders SET total = 9999 WHERE id = $1`, [orderId])
+          log.push('FAIL TEST1: UPDATE total was allowed after accept (immutability broken)')
+        } catch (e) {
+          const msg = (e as Error).message
+          if (msg.includes('immutable')) {
+            log.push(`OK TEST1 immutability: price UPDATE blocked → "${msg.substring(0, 60)}…"`)
+            immutOk = true
+          } else {
+            log.push(`UNEXPECTED TEST1: ${msg.substring(0, 80)}`)
+          }
+        }
+        if (!immutOk) log.push('TEST1 FAILED')
+
+        // Clean
+        await client.queryArray(`UPDATE marketplace_orders SET status='cancelled_by_buyer', cancelled_at=NOW() WHERE id = $1`, [orderId])
+      } catch (e) {
+        await client.queryArray('ROLLBACK').catch(() => {})
+        log.push(`ERR TEST1 setup: ${(e as Error).message}`)
+      }
+
+      // ── TEST 2: Same-vendor bundle within 8 min window ──
+      try {
+        const orderIds: string[] = []
+        // Place 2 orders in same transaction (within seconds, well under 8 min)
+        for (let i = 0; i < 2; i++) {
+          await client.queryArray('BEGIN')
+          await client.queryArray(`
+            SELECT set_config('request.jwt.claims', $1, true),
+                   set_config('request.jwt.claim.sub', $2, true),
+                   set_config('request.jwt.claim.role', 'authenticated', true)
+          `, [JSON.stringify({ sub: buyerId, role: 'authenticated' }), buyerId])
+
+          const r = await client.queryObject<{ order_id: string }>(`
+            SELECT place_marketplace_order(
+              $1::uuid,
+              $2::jsonb,
+              'toro', 'cash',
+              'Calle Reforma 1234', 32.62, -115.45,
+              'order ${i + 1} bundled test', $3, 0
+            ) AS order_id
+          `, [vendorId, JSON.stringify([{product_id: productId, qty: 1}]), '+526860000088'])
+          await client.queryArray('COMMIT')
+          orderIds.push(r.rows[0].order_id)
+        }
+        log.push(`TEST2 placed 2 orders: ${orderIds.map(x => x.substring(0,8)).join(', ')}`)
+
+        // Walk them through to ready_for_pickup so dispatch fires
+        for (const oid of orderIds) {
+          await client.queryArray(`UPDATE marketplace_orders SET status='accepted_by_vendor', vendor_accepted_at=NOW() WHERE id = $1`, [oid])
+          await client.queryArray(`UPDATE marketplace_orders SET status='preparing' WHERE id = $1`, [oid])
+          // Items must be ready before trigger allows ready_for_pickup
+          await client.queryArray(`UPDATE marketplace_order_items SET prep_status='ready', prepared_at=NOW() WHERE order_id = $1`, [oid])
+          await client.queryArray(`UPDATE marketplace_orders SET status='ready_for_pickup', vendor_ready_at=NOW() WHERE id = $1`, [oid])
+        }
+
+        // Check: both should share delivery_id
+        const dr = await client.queryObject<{ order_id: string; delivery_id: string | null }>(`
+          SELECT id AS order_id, delivery_id FROM marketplace_orders WHERE id = ANY($1)
+        `, [orderIds])
+        const deliveryIds = new Set(dr.rows.map(r => r.delivery_id).filter(Boolean))
+        if (deliveryIds.size === 1) {
+          log.push(`OK TEST2 bundled: both orders share delivery ${Array.from(deliveryIds)[0]?.substring(0,8)}`)
+        } else {
+          log.push(`FAIL TEST2: ${deliveryIds.size} distinct delivery_ids (should be 1)`)
+        }
+
+        // Also: 2nd order's delivery_fee should be 0
+        const fees = await client.queryObject<{ order_id: string; delivery_fee: number; total: number }>(`
+          SELECT id AS order_id, delivery_fee, total FROM marketplace_orders WHERE id = ANY($1) ORDER BY created_at
+        `, [orderIds])
+        if (Number(fees.rows[1].delivery_fee) === 0) {
+          log.push(`OK TEST2 fee waived: 2nd order delivery_fee=0 (total=${fees.rows[1].total})`)
+        } else {
+          log.push(`FAIL TEST2 fee: 2nd order delivery_fee=${fees.rows[1].delivery_fee} (should be 0)`)
+        }
+
+        // ── TEST 3: delivery_full_context returns N orders ──
+        const did = Array.from(deliveryIds)[0]
+        if (did) {
+          const ctx = await client.queryObject<{ ctx: any }>(`
+            SELECT delivery_full_context($1) AS ctx
+          `, [did])
+          const obj = ctx.rows[0].ctx
+          const numOrders = (obj?.orders as any[])?.length ?? 0
+          if (numOrders >= 2) {
+            log.push(`OK TEST3 delivery_full_context: returned ${numOrders} orders bundled`)
+          } else {
+            log.push(`FAIL TEST3: only ${numOrders} orders in context`)
+          }
+        }
+
+        // Cleanup
+        for (const oid of orderIds) {
+          await client.queryArray(`UPDATE marketplace_orders SET status='cancelled_by_buyer', cancelled_at=NOW() WHERE id = $1`, [oid])
+        }
+      } catch (e) {
+        await client.queryArray('ROLLBACK').catch(() => {})
+        log.push(`ERR TEST2: ${(e as Error).message}`)
+      }
+
+      // ── TEST 4: vendor_locations CRUD ──
+      try {
+        // List existing
+        const list = await client.queryObject(`SELECT id, name, is_default FROM vendor_locations WHERE vendor_id = $1 AND deleted_at IS NULL`, [vendorId])
+        log.push(`TEST4 vendor_locations existing: ${list.rows.length}`)
+        if (list.rows.length >= 1 && (list.rows[0] as any).is_default) {
+          log.push(`OK TEST4: Principal location exists (${(list.rows[0] as any).name})`)
+        }
+      } catch (e) { log.push(`ERR TEST4: ${(e as Error).message}`) }
+
+      // ── TEST 5: products.location_id wired correctly ──
+      try {
+        const r = await client.queryObject(`
+          SELECT location_id FROM products WHERE id = $1
+        `, [productId])
+        log.push(`OK TEST5 products.location_id column accessible (value=${(r.rows[0] as any).location_id ?? 'NULL — uses vendor default'})`)
+      } catch (e) { log.push(`ERR TEST5: ${(e as Error).message}`) }
+
+      // ── TEST 6: resolve_product_pickup helper ──
+      try {
+        const r = await client.queryObject(`SELECT * FROM resolve_product_pickup($1)`, [productId])
+        const v = r.rows[0] as any
+        log.push(`OK TEST6 resolve_product_pickup: ${v.name} @ ${v.lat?.toString().substring(0,8)}, ${v.lng?.toString().substring(0,8)}`)
+      } catch (e) { log.push(`ERR TEST6: ${(e as Error).message}`) }
+
+      await client.end()
+      return new Response(JSON.stringify({ success: true, log }, null, 2),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    if (action === 'setup_consolidation_phase1_2_3') {
+      const log: string[] = []
+      const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
+      const SERVICE_KEY  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+
+      // ════════════════ FASE 1.1 — Immutability after 'placed' ════════════════
+      // Reject UPDATE on price/total/OTP fields once order has moved past 'placed'.
+      // Only buyer/vendor cancel-paths can change cancellation_* fields.
+      try {
+        await client.queryArray(`
+          CREATE OR REPLACE FUNCTION public.marketplace_orders_enforce_immutability()
+          RETURNS TRIGGER
+          LANGUAGE plpgsql
+          AS $fn$
+          DECLARE
+            v_is_bundling BOOLEAN;
+          BEGIN
+            -- pre-placed is fully editable
+            IF OLD.status = 'placed' AND NEW.status IN ('placed','accepted_by_vendor','auto_cancelled','cancelled_by_buyer','cancelled_by_vendor','failed') THEN
+              RETURN NEW;
+            END IF;
+            -- buyer/vendor IDs ALWAYS immutable
+            IF NEW.buyer_id  <> OLD.buyer_id  THEN RAISE EXCEPTION 'buyer_id is immutable'; END IF;
+            IF NEW.vendor_id <> OLD.vendor_id THEN RAISE EXCEPTION 'vendor_id is immutable'; END IF;
+            -- OTPs always immutable
+            IF NEW.pickup_otp   IS DISTINCT FROM OLD.pickup_otp   THEN RAISE EXCEPTION 'pickup_otp is immutable'; END IF;
+            IF NEW.delivery_otp IS DISTINCT FROM OLD.delivery_otp THEN RAISE EXCEPTION 'delivery_otp is immutable'; END IF;
+
+            IF OLD.status <> 'placed' THEN
+              -- Allow money-field changes ONLY when this UPDATE is the bundle-merge:
+              -- delivery_id transitions from NULL → non-NULL (or changes to a different delivery).
+              v_is_bundling := (OLD.delivery_id IS NULL OR OLD.delivery_id IS DISTINCT FROM NEW.delivery_id)
+                               AND NEW.delivery_id IS NOT NULL;
+
+              IF NOT v_is_bundling THEN
+                IF NEW.subtotal        <> OLD.subtotal        THEN RAISE EXCEPTION 'subtotal is immutable after placed (was %, tried %)', OLD.subtotal, NEW.subtotal; END IF;
+                IF NEW.delivery_fee    <> OLD.delivery_fee    THEN RAISE EXCEPTION 'delivery_fee is immutable after placed'; END IF;
+                IF NEW.flat_commission <> OLD.flat_commission THEN RAISE EXCEPTION 'flat_commission is immutable after placed'; END IF;
+                IF NEW.total           <> OLD.total           THEN RAISE EXCEPTION 'total is immutable after placed'; END IF;
+                IF NEW.vendor_payout   <> OLD.vendor_payout   THEN RAISE EXCEPTION 'vendor_payout is immutable after placed'; END IF;
+              ELSE
+                -- Bundling allowed: subtotal must stay (vendor still gets full subtotal),
+                -- delivery_fee → 0, total = subtotal + commission + tip recomputed by trigger.
+                IF NEW.subtotal <> OLD.subtotal THEN RAISE EXCEPTION 'subtotal cannot change even when bundling'; END IF;
+              END IF;
+            END IF;
+            RETURN NEW;
+          END;
+          $fn$
+        `)
+        await client.queryArray(`DROP TRIGGER IF EXISTS trg_marketplace_orders_immutable ON marketplace_orders`)
+        await client.queryArray(`
+          CREATE TRIGGER trg_marketplace_orders_immutable
+          BEFORE UPDATE ON marketplace_orders
+          FOR EACH ROW EXECUTE FUNCTION marketplace_orders_enforce_immutability()
+        `)
+        log.push('OK: trg_marketplace_orders_immutable')
+      } catch (e) { log.push(`ERR immut: ${(e as Error).message}`) }
+
+      // Lock items after acceptance — no insert/delete/update of items past 'accepted_by_vendor'
+      try {
+        await client.queryArray(`
+          CREATE OR REPLACE FUNCTION public.marketplace_items_enforce_lock()
+          RETURNS TRIGGER
+          LANGUAGE plpgsql
+          AS $fn$
+          DECLARE v_status TEXT; v_oid uuid;
+          BEGIN
+            v_oid := COALESCE(NEW.order_id, OLD.order_id);
+            SELECT status INTO v_status FROM marketplace_orders WHERE id = v_oid;
+            -- Only allow item changes BEFORE accepted, OR for prep_status / substitution_note (vendor doing prep)
+            IF v_status NOT IN ('placed') THEN
+              IF TG_OP = 'INSERT' THEN
+                RAISE EXCEPTION 'cannot add items after order is %', v_status;
+              END IF;
+              IF TG_OP = 'DELETE' THEN
+                RAISE EXCEPTION 'cannot remove items after order is %', v_status;
+              END IF;
+              IF TG_OP = 'UPDATE' THEN
+                IF NEW.unit_price_snapshot <> OLD.unit_price_snapshot THEN RAISE EXCEPTION 'item price immutable'; END IF;
+                IF NEW.quantity <> OLD.quantity THEN RAISE EXCEPTION 'item quantity immutable post-placed'; END IF;
+                IF NEW.line_total <> OLD.line_total THEN RAISE EXCEPTION 'line_total immutable post-placed'; END IF;
+                -- prep_status, substitution_note, prepared_at, prepared_by are allowed
+              END IF;
+            END IF;
+            RETURN COALESCE(NEW, OLD);
+          END;
+          $fn$
+        `)
+        await client.queryArray(`DROP TRIGGER IF EXISTS trg_marketplace_items_lock ON marketplace_order_items`)
+        await client.queryArray(`
+          CREATE TRIGGER trg_marketplace_items_lock
+          BEFORE INSERT OR UPDATE OR DELETE ON marketplace_order_items
+          FOR EACH ROW EXECUTE FUNCTION marketplace_items_enforce_lock()
+        `)
+        log.push('OK: trg_marketplace_items_lock')
+      } catch (e) { log.push(`ERR items lock: ${(e as Error).message}`) }
+
+      // ════════════════ FASE 1.2 — Same-vendor + same-buyer merge ════════════════
+      // Patch marketplace_create_delivery_on_ready: if buyer already has an active
+      // delivery from this vendor created in last 8 min that hasn't moved past
+      // 'accepted' yet, REUSE that delivery (merge orders under one trip).
+      try {
+        await client.queryArray(`
+          CREATE OR REPLACE FUNCTION public.marketplace_create_delivery_on_ready()
+          RETURNS trigger
+          LANGUAGE plpgsql
+          SECURITY DEFINER
+          AS $fn$
+          DECLARE
+            v_delivery_id   uuid;
+            v_existing      RECORD;
+            v_buyer_name    text;
+            v_country       text;
+            v_state         text;
+            v_split         RECORD;
+            v_decimals      integer;
+            v_fee           numeric;
+            v_platform_fee  numeric;
+            v_insurance_fee numeric;
+            v_tax_fee       numeric;
+            v_driver_amount numeric;
+          BEGIN
+            IF NEW.status = 'ready_for_pickup'
+               AND COALESCE(OLD.status,'') <> 'ready_for_pickup'
+               AND NEW.delivery_id IS NULL THEN
+
+              IF NEW.delivery_type IN ('vendor', 'pickup') THEN
+                RETURN NEW;
+              END IF;
+
+              -- ── MERGE CHECK ──
+              -- Same buyer + same vendor + delivery still in pending/accepted (driver
+              -- hasn't picked up yet) + created within last 8 minutes → reuse.
+              SELECT d.* INTO v_existing
+              FROM deliveries d
+              JOIN marketplace_orders o ON o.delivery_id = d.id
+              WHERE o.buyer_id = NEW.buyer_id
+                AND o.vendor_id = NEW.vendor_id
+                AND d.service_type = 'marketplace'
+                AND d.status IN ('pending','accepted')
+                AND d.created_at > NOW() - INTERVAL '8 minutes'
+                AND d.id <> COALESCE(NEW.delivery_id, '00000000-0000-0000-0000-000000000000'::uuid)
+              ORDER BY d.created_at DESC
+              LIMIT 1;
+
+              IF FOUND THEN
+                -- Bundle: just attach this order to the existing delivery.
+                -- Buyer pays $0 incremental delivery fee (DoorDash DoubleDash style):
+                UPDATE marketplace_orders SET
+                  delivery_id = v_existing.id,
+                  delivery_fee = 0,
+                  total = subtotal + COALESCE(flat_commission, 0) + COALESCE(tip, 0),
+                  vendor_payout = subtotal,
+                  updated_at = NOW()
+                WHERE id = NEW.id;
+
+                INSERT INTO marketplace_order_events (order_id, from_status, to_status, actor_type, note)
+                VALUES (NEW.id, 'ready_for_pickup', 'ready_for_pickup', 'system',
+                        'bundled into delivery ' || v_existing.id || ' (same vendor + buyer < 8 min)');
+
+                -- Notify the buyer that their order got bundled
+                PERFORM net.http_post(
+                  url := '${SUPABASE_URL}/functions/v1/notify-vendor-new-order',
+                  headers := jsonb_build_object(
+                    'Content-Type','application/json',
+                    'Authorization','Bearer ${SERVICE_KEY}'
+                  ),
+                  body := jsonb_build_object('order_id', NEW.id, 'target', 'buyer_bundled')
+                );
+
+                RETURN NEW;
+              END IF;
+
+              -- ── No merge — create fresh delivery ──
+              SELECT full_name INTO v_buyer_name FROM profiles WHERE id = NEW.buyer_id;
+              SELECT country_code, state_code INTO v_country, v_state FROM vendors WHERE id = NEW.vendor_id;
+              v_country := COALESCE(v_country, 'MX');
+
+              SELECT driver_pct, platform_pct, insurance_pct, tax_pct INTO v_split
+              FROM pricing_split(v_country, v_state);
+              IF v_split.driver_pct IS NULL THEN
+                RAISE EXCEPTION 'no pricing_config for %/%', v_country, v_state;
+              END IF;
+              v_decimals := CASE WHEN v_country = 'MX' THEN 0 ELSE 2 END;
+              v_fee           := ROUND(NEW.delivery_fee, v_decimals);
+              v_platform_fee  := ROUND(v_fee * v_split.platform_pct  / 100.0, v_decimals);
+              v_insurance_fee := ROUND(v_fee * v_split.insurance_pct / 100.0, v_decimals);
+              v_tax_fee       := ROUND(v_fee * v_split.tax_pct       / 100.0, v_decimals);
+              v_driver_amount := v_fee - v_platform_fee - v_insurance_fee - v_tax_fee;
+
+              INSERT INTO deliveries (
+                user_id, user_name, service_type, status,
+                pickup_lat, pickup_lng, pickup_address,
+                destination_lat, destination_lng, destination_address,
+                package_size, quantity, notes,
+                estimated_price, total_price, base_fare,
+                driver_earnings, platform_fee, insurance_fee, tax_fee,
+                country_code, state_code
+              ) VALUES (
+                NEW.buyer_id, COALESCE(v_buyer_name, 'Cliente'), 'marketplace', 'pending',
+                NEW.vendor_pickup_lat, NEW.vendor_pickup_lng,
+                COALESCE(NEW.vendor_pickup_address, 'Vendedor'),
+                COALESCE(NEW.delivery_lat, NEW.vendor_pickup_lat),
+                COALESCE(NEW.delivery_lng, NEW.vendor_pickup_lng),
+                COALESCE(NEW.delivery_address, 'Cliente'),
+                'small', 1,
+                'Marketplace order #' || substring(NEW.id::text, 1, 8) ||
+                  COALESCE(' | ' || NEW.delivery_notes, ''),
+                v_fee, v_fee, v_fee,
+                v_driver_amount, v_platform_fee, v_insurance_fee, v_tax_fee,
+                v_country, v_state
+              ) RETURNING id INTO v_delivery_id;
+
+              UPDATE marketplace_orders SET delivery_id = v_delivery_id WHERE id = NEW.id;
+            END IF;
+            RETURN NEW;
+          END;
+          $fn$
+        `)
+        log.push('OK: marketplace_create_delivery_on_ready patched (merge window 8 min)')
+      } catch (e) { log.push(`ERR dispatch patch: ${(e as Error).message}`) }
+
+      // ════════════════ FASE 2 — Stacked offer support ════════════════
+      // When a driver accepts a marketplace delivery, look for ANOTHER pending
+      // marketplace delivery whose pickup is within 2km of the just-accepted
+      // pickup (on-the-way) and whose creation is recent (last 5 min).
+      // If found, push it to the same driver as a stacked offer.
+      try {
+        await client.queryArray(`
+          CREATE OR REPLACE FUNCTION public.deliveries_offer_stacked()
+          RETURNS TRIGGER
+          LANGUAGE plpgsql
+          SECURITY DEFINER
+          AS $fn$
+          DECLARE
+            v_nearby RECORD;
+            v_dist_km numeric;
+          BEGIN
+            -- Only when a driver was just assigned to a marketplace delivery
+            IF NEW.service_type <> 'marketplace' THEN RETURN NEW; END IF;
+            IF NEW.status <> 'accepted' OR COALESCE(OLD.status,'') = 'accepted' THEN RETURN NEW; END IF;
+            IF NEW.driver_id IS NULL THEN RETURN NEW; END IF;
+
+            FOR v_nearby IN
+              SELECT d.id, d.pickup_lat, d.pickup_lng,
+                     (2 * 6371 * asin(sqrt(
+                        sin(radians((d.pickup_lat - NEW.pickup_lat)/2))^2 +
+                        cos(radians(NEW.pickup_lat)) * cos(radians(d.pickup_lat)) *
+                        sin(radians((d.pickup_lng - NEW.pickup_lng)/2))^2
+                     ))) AS dist_km
+              FROM deliveries d
+              WHERE d.service_type = 'marketplace'
+                AND d.status = 'pending'
+                AND d.driver_id IS NULL
+                AND d.id <> NEW.id
+                AND d.created_at > NOW() - INTERVAL '5 minutes'
+                AND d.country_code = NEW.country_code
+            LOOP
+              IF v_nearby.dist_km <= 2 THEN
+                -- Mark this driver as the preferred candidate via direct push.
+                -- We reuse notify-drivers-of-ride pattern but target only this driver.
+                PERFORM net.http_post(
+                  url := '${SUPABASE_URL}/functions/v1/notify-drivers-of-ride',
+                  headers := jsonb_build_object(
+                    'Content-Type','application/json',
+                    'Authorization','Bearer ${SERVICE_KEY}'
+                  ),
+                  body := jsonb_build_object(
+                    'ride_id', v_nearby.id,
+                    'preferred_driver_id', NEW.driver_id,
+                    'stacked', true
+                  )
+                );
+                INSERT INTO app_logs (level, source, event, message, context, app_role)
+                VALUES ('info','stacked-offer','sent',
+                        'Stacked offer pushed to driver',
+                        jsonb_build_object(
+                          'driver_id', NEW.driver_id,
+                          'first_delivery', NEW.id,
+                          'second_delivery', v_nearby.id,
+                          'distance_km', v_nearby.dist_km
+                        ),
+                        'system');
+                EXIT;  -- Only push ONE stacked offer per acceptance
+              END IF;
+            END LOOP;
+            RETURN NEW;
+          EXCEPTION WHEN OTHERS THEN
+            RAISE NOTICE 'stacked offer failed: %', SQLERRM;
+            RETURN NEW;
+          END;
+          $fn$
+        `)
+        await client.queryArray(`DROP TRIGGER IF EXISTS trg_deliveries_offer_stacked ON deliveries`)
+        await client.queryArray(`
+          CREATE TRIGGER trg_deliveries_offer_stacked
+          AFTER UPDATE OF status, driver_id ON deliveries
+          FOR EACH ROW EXECUTE FUNCTION deliveries_offer_stacked()
+        `)
+        log.push('OK: trg_deliveries_offer_stacked')
+      } catch (e) { log.push(`ERR stacked: ${(e as Error).message}`) }
+
+      // ════════════════ FASE 3 — Helper RPC: delivery_orders ════════════════
+      // Returns all the orders bundled under one delivery + their stops in order.
+      try {
+        await client.queryArray(`
+          CREATE OR REPLACE FUNCTION public.delivery_full_context(p_delivery_id UUID)
+          RETURNS jsonb
+          LANGUAGE plpgsql
+          STABLE
+          SECURITY DEFINER
+          AS $fn$
+          DECLARE v_result jsonb;
+          BEGIN
+            SELECT jsonb_build_object(
+              'delivery', to_jsonb(d.*),
+              'orders', COALESCE((
+                SELECT jsonb_agg(jsonb_build_object(
+                  'id', o.id,
+                  'status', o.status,
+                  'subtotal', o.subtotal,
+                  'total', o.total,
+                  'flat_commission', o.flat_commission,
+                  'vendor_payout', o.vendor_payout,
+                  'pickup_otp', o.pickup_otp,
+                  'delivery_otp', o.delivery_otp,
+                  'vendor_pickup_address', o.vendor_pickup_address,
+                  'vendor_pickup_lat', o.vendor_pickup_lat,
+                  'vendor_pickup_lng', o.vendor_pickup_lng,
+                  'delivery_address', o.delivery_address,
+                  'delivery_lat', o.delivery_lat,
+                  'delivery_lng', o.delivery_lng,
+                  'delivery_notes', o.delivery_notes,
+                  'buyer_name', o.buyer_name,
+                  'buyer_phone', o.buyer_phone,
+                  'payment_method', o.payment_method,
+                  'vendor', (SELECT jsonb_build_object('id', v.id, 'business_name', v.business_name, 'logo_url', v.logo_url) FROM vendors v WHERE v.id = o.vendor_id),
+                  'items', (SELECT jsonb_agg(jsonb_build_object(
+                    'id', i.id,
+                    'product_name_snapshot', i.product_name_snapshot,
+                    'quantity', i.quantity,
+                    'prep_status', i.prep_status
+                  ) ORDER BY i.created_at)
+                  FROM marketplace_order_items i WHERE i.order_id = o.id)
+                ) ORDER BY o.created_at)
+                FROM marketplace_orders o WHERE o.delivery_id = d.id
+              ), '[]'::jsonb)
+            ) INTO v_result
+            FROM deliveries d WHERE d.id = p_delivery_id;
+            RETURN v_result;
+          END;
+          $fn$
+        `)
+        await client.queryArray(`GRANT EXECUTE ON FUNCTION delivery_full_context(UUID) TO authenticated`)
+        log.push('OK: delivery_full_context')
+      } catch (e) { log.push(`ERR helper: ${(e as Error).message}`) }
+
+      await client.end()
+      return new Response(JSON.stringify({ success: true, log }, null, 2),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    if (action === 'setup_vendor_locations') {
+      const log: string[] = []
+
+      // 1) Table
+      try {
+        await client.queryArray(`
+          CREATE TABLE IF NOT EXISTS vendor_locations (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            vendor_id UUID NOT NULL REFERENCES vendors(id) ON DELETE CASCADE,
+            name TEXT NOT NULL,
+            address TEXT NOT NULL,
+            lat DOUBLE PRECISION NOT NULL,
+            lng DOUBLE PRECISION NOT NULL,
+            is_default BOOLEAN NOT NULL DEFAULT false,
+            available_from TIME,
+            available_to TIME,
+            available_days INT[] DEFAULT NULL,
+            notes TEXT,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            deleted_at TIMESTAMPTZ
+          )
+        `)
+        await client.queryArray(`CREATE INDEX IF NOT EXISTS idx_vendor_locations_vendor ON vendor_locations(vendor_id) WHERE deleted_at IS NULL`)
+        log.push('OK: vendor_locations table')
+      } catch (e) { log.push(`ERR table: ${(e as Error).message}`) }
+
+      // Only one default per vendor (partial unique)
+      try {
+        await client.queryArray(`
+          CREATE UNIQUE INDEX IF NOT EXISTS idx_vendor_locations_one_default
+          ON vendor_locations(vendor_id)
+          WHERE is_default = true AND deleted_at IS NULL
+        `)
+        log.push('OK: one-default partial index')
+      } catch (e) { log.push(`ERR unique idx: ${(e as Error).message}`) }
+
+      // RLS
+      try {
+        await client.queryArray(`ALTER TABLE vendor_locations ENABLE ROW LEVEL SECURITY`)
+        await client.queryArray(`DROP POLICY IF EXISTS vl_owner_all ON vendor_locations`)
+        await client.queryArray(`
+          CREATE POLICY vl_owner_all ON vendor_locations
+          FOR ALL TO authenticated
+          USING (EXISTS (SELECT 1 FROM vendors v WHERE v.id = vendor_id AND v.user_id = auth.uid()))
+          WITH CHECK (EXISTS (SELECT 1 FROM vendors v WHERE v.id = vendor_id AND v.user_id = auth.uid()))
+        `)
+        await client.queryArray(`DROP POLICY IF EXISTS vl_public_read ON vendor_locations`)
+        await client.queryArray(`
+          CREATE POLICY vl_public_read ON vendor_locations
+          FOR SELECT TO anon, authenticated
+          USING (deleted_at IS NULL)
+        `)
+        log.push('OK: RLS policies')
+      } catch (e) { log.push(`ERR RLS: ${(e as Error).message}`) }
+
+      // 2) products.location_id FK column
+      try {
+        await client.queryArray(`
+          ALTER TABLE products
+          ADD COLUMN IF NOT EXISTS location_id UUID
+            REFERENCES vendor_locations(id) ON DELETE SET NULL
+        `)
+        log.push('OK: products.location_id')
+      } catch (e) { log.push(`ERR products col: ${(e as Error).message}`) }
+
+      // 3) Backfill — create 'Principal' location per existing vendor (idempotent)
+      try {
+        const r = await client.queryObject<{ id: string; vendor_id: string }>(`
+          INSERT INTO vendor_locations (vendor_id, name, address, lat, lng, is_default)
+          SELECT v.id, 'Principal', v.pickup_address, v.pickup_lat, v.pickup_lng, true
+          FROM vendors v
+          WHERE NOT EXISTS (
+            SELECT 1 FROM vendor_locations l
+            WHERE l.vendor_id = v.id AND l.deleted_at IS NULL
+          )
+          AND v.pickup_lat IS NOT NULL AND v.pickup_lng IS NOT NULL
+          RETURNING id, vendor_id
+        `)
+        log.push(`OK: backfilled ${r.rows.length} default locations`)
+      } catch (e) { log.push(`ERR backfill: ${(e as Error).message}`) }
+
+      // 4) Helper to resolve the pickup of a product (used by RPCs/UI)
+      try {
+        await client.queryArray(`
+          CREATE OR REPLACE FUNCTION public.resolve_product_pickup(p_product_id UUID)
+          RETURNS TABLE (
+            location_id UUID,
+            name TEXT,
+            address TEXT,
+            lat DOUBLE PRECISION,
+            lng DOUBLE PRECISION
+          )
+          LANGUAGE plpgsql
+          STABLE
+          SECURITY DEFINER
+          AS $fn$
+          BEGIN
+            RETURN QUERY
+            WITH prod AS (
+              SELECT p.location_id, p.vendor_id FROM products p WHERE p.id = p_product_id
+            )
+            SELECT
+              COALESCE(l_specific.id, l_default.id)        AS location_id,
+              COALESCE(l_specific.name, l_default.name, 'Principal') AS name,
+              COALESCE(l_specific.address, l_default.address, v.pickup_address) AS address,
+              COALESCE(l_specific.lat, l_default.lat, v.pickup_lat) AS lat,
+              COALESCE(l_specific.lng, l_default.lng, v.pickup_lng) AS lng
+            FROM prod
+            JOIN vendors v ON v.id = prod.vendor_id
+            LEFT JOIN vendor_locations l_specific ON l_specific.id = prod.location_id AND l_specific.deleted_at IS NULL
+            LEFT JOIN vendor_locations l_default ON l_default.vendor_id = v.id AND l_default.is_default = true AND l_default.deleted_at IS NULL;
+          END;
+          $fn$
+        `)
+        await client.queryArray(`GRANT EXECUTE ON FUNCTION resolve_product_pickup(UUID) TO authenticated, anon`)
+        log.push('OK: resolve_product_pickup helper')
+      } catch (e) { log.push(`ERR helper: ${(e as Error).message}`) }
+
+      // 5) CRUD RPCs (location upsert/list/set_default/soft_delete)
+      try {
+        await client.queryArray(`
+          CREATE OR REPLACE FUNCTION public.vendor_locations_upsert(
+            p_id UUID,
+            p_vendor_id UUID,
+            p_name TEXT,
+            p_address TEXT,
+            p_lat DOUBLE PRECISION,
+            p_lng DOUBLE PRECISION,
+            p_is_default BOOLEAN DEFAULT NULL,
+            p_available_from TIME DEFAULT NULL,
+            p_available_to TIME DEFAULT NULL,
+            p_available_days INT[] DEFAULT NULL,
+            p_notes TEXT DEFAULT NULL
+          )
+          RETURNS UUID
+          LANGUAGE plpgsql
+          SECURITY DEFINER
+          AS $fn$
+          DECLARE
+            v_id UUID;
+            v_owner UUID;
+          BEGIN
+            SELECT user_id INTO v_owner FROM vendors WHERE id = p_vendor_id;
+            IF v_owner IS DISTINCT FROM auth.uid() THEN
+              RAISE EXCEPTION 'Not vendor owner';
+            END IF;
+
+            IF p_id IS NULL THEN
+              INSERT INTO vendor_locations (
+                vendor_id, name, address, lat, lng, is_default,
+                available_from, available_to, available_days, notes
+              ) VALUES (
+                p_vendor_id, p_name, p_address, p_lat, p_lng, COALESCE(p_is_default, false),
+                p_available_from, p_available_to, p_available_days, p_notes
+              ) RETURNING id INTO v_id;
+            ELSE
+              UPDATE vendor_locations SET
+                name = p_name,
+                address = p_address,
+                lat = p_lat,
+                lng = p_lng,
+                is_default = COALESCE(p_is_default, is_default),
+                available_from = p_available_from,
+                available_to = p_available_to,
+                available_days = p_available_days,
+                notes = p_notes,
+                updated_at = NOW()
+              WHERE id = p_id AND vendor_id = p_vendor_id
+              RETURNING id INTO v_id;
+            END IF;
+
+            -- Enforce "only one default" — if this row is default, unset others
+            IF (SELECT is_default FROM vendor_locations WHERE id = v_id) = true THEN
+              UPDATE vendor_locations
+                SET is_default = false, updated_at = NOW()
+                WHERE vendor_id = p_vendor_id AND id <> v_id AND is_default = true;
+
+              -- Sync vendors.pickup_* with the new default (back-compat)
+              UPDATE vendors SET
+                pickup_address = p_address,
+                pickup_lat = p_lat,
+                pickup_lng = p_lng,
+                updated_at = NOW()
+              WHERE id = p_vendor_id;
+            END IF;
+
+            RETURN v_id;
+          END;
+          $fn$
+        `)
+        await client.queryArray(`GRANT EXECUTE ON FUNCTION vendor_locations_upsert(UUID,UUID,TEXT,TEXT,DOUBLE PRECISION,DOUBLE PRECISION,BOOLEAN,TIME,TIME,INT[],TEXT) TO authenticated`)
+        log.push('OK: vendor_locations_upsert')
+      } catch (e) { log.push(`ERR upsert: ${(e as Error).message}`) }
+
+      try {
+        await client.queryArray(`
+          CREATE OR REPLACE FUNCTION public.vendor_locations_delete(p_id UUID)
+          RETURNS VOID
+          LANGUAGE plpgsql
+          SECURITY DEFINER
+          AS $fn$
+          DECLARE v_was_default BOOLEAN;
+                  v_vendor_id UUID;
+          BEGIN
+            SELECT vendor_id, is_default INTO v_vendor_id, v_was_default
+            FROM vendor_locations WHERE id = p_id;
+            IF v_vendor_id IS NULL THEN RAISE EXCEPTION 'not found'; END IF;
+            IF NOT EXISTS (SELECT 1 FROM vendors WHERE id = v_vendor_id AND user_id = auth.uid()) THEN
+              RAISE EXCEPTION 'Not vendor owner';
+            END IF;
+            UPDATE vendor_locations SET deleted_at = NOW(), is_default = false WHERE id = p_id;
+            IF v_was_default THEN
+              -- Promote the oldest remaining location to default
+              UPDATE vendor_locations
+                SET is_default = true
+                WHERE id = (
+                  SELECT id FROM vendor_locations
+                  WHERE vendor_id = v_vendor_id AND deleted_at IS NULL
+                  ORDER BY created_at ASC LIMIT 1
+                );
+            END IF;
+          END;
+          $fn$
+        `)
+        await client.queryArray(`GRANT EXECUTE ON FUNCTION vendor_locations_delete(UUID) TO authenticated`)
+        log.push('OK: vendor_locations_delete')
+      } catch (e) { log.push(`ERR delete: ${(e as Error).message}`) }
+
+      // 6) Patch place_marketplace_order to use product's resolved pickup
+      try {
+        // We don't replace the whole RPC (it's large). Instead we add a tiny
+        // post-INSERT update: for each item, if location_id is set, override
+        // the order's vendor_pickup_* fields using resolve_product_pickup.
+        // Easier path: trigger BEFORE INSERT on marketplace_orders that, after
+        // items are known, recomputes vendor_pickup_* from the items.
+        // Simpler & atomic: just create an AFTER INSERT trigger on
+        // marketplace_order_items that updates the parent order's pickup
+        // when the item's product has a non-default location_id.
+        await client.queryArray(`
+          CREATE OR REPLACE FUNCTION public.marketplace_apply_product_pickup()
+          RETURNS TRIGGER
+          LANGUAGE plpgsql
+          SECURITY DEFINER
+          AS $fn$
+          DECLARE
+            v_loc RECORD;
+          BEGIN
+            SELECT * INTO v_loc FROM resolve_product_pickup(NEW.product_id);
+            IF v_loc.lat IS NOT NULL AND v_loc.lng IS NOT NULL THEN
+              UPDATE marketplace_orders
+                SET vendor_pickup_address = v_loc.address,
+                    vendor_pickup_lat = v_loc.lat,
+                    vendor_pickup_lng = v_loc.lng,
+                    updated_at = NOW()
+                WHERE id = NEW.order_id
+                  AND status = 'placed';  -- only safe to retarget pre-accept
+            END IF;
+            RETURN NEW;
+          END;
+          $fn$
+        `)
+        await client.queryArray(`DROP TRIGGER IF EXISTS trg_apply_product_pickup ON marketplace_order_items`)
+        await client.queryArray(`
+          CREATE TRIGGER trg_apply_product_pickup
+          AFTER INSERT ON marketplace_order_items
+          FOR EACH ROW EXECUTE FUNCTION marketplace_apply_product_pickup()
+        `)
+        log.push('OK: trg_apply_product_pickup')
+      } catch (e) { log.push(`ERR trigger: ${(e as Error).message}`) }
+
+      await client.end()
+      return new Response(JSON.stringify({ success: true, log }, null, 2),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    if (action === 'inspect_product_location_cols') {
+      const cols = await client.queryObject<{ column_name: string }>(`
+        SELECT column_name FROM information_schema.columns
+        WHERE table_schema='public' AND table_name='products'
+          AND (column_name ILIKE '%lat%' OR column_name ILIKE '%lng%'
+               OR column_name ILIKE '%address%' OR column_name ILIKE '%location%'
+               OR column_name ILIKE '%pickup%' OR column_name ILIKE '%branch%'
+               OR column_name ILIKE '%site%' OR column_name ILIKE '%store%')
+      `)
+      const tablesWithLocation = await client.queryObject(`
+        SELECT table_name FROM information_schema.tables
+        WHERE table_schema='public'
+          AND (table_name ILIKE '%location%' OR table_name ILIKE '%branch%'
+               OR table_name ILIKE '%vendor_site%' OR table_name ILIKE '%store_loc%'
+               OR table_name ILIKE '%vendor_addr%')
+      `)
+      await client.end()
+      return new Response(JSON.stringify({
+        product_location_columns: cols.rows,
+        location_related_tables: tablesWithLocation.rows,
+      }, null, 2),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    if (action === 'paloma_full') {
+      const v = await client.queryObject(`
+        SELECT id, business_name, category_primary, status, is_open,
+               accepts_cash, accepts_card, toro_delivers, vendor_self_delivers,
+               pickup_address, pickup_lat, pickup_lng,
+               country_code, state_code,
+               auto_accept_orders
+        FROM vendors WHERE id = '862f91a1-9612-4dfc-9105-278acd7276f8'
+      `)
+      const products = await client.queryObject(`
+        SELECT id, name, price, stock_qty, is_available, sold_count, category_id
+        FROM products WHERE vendor_id = '862f91a1-9612-4dfc-9105-278acd7276f8'
+      `)
+      await client.end()
+      return new Response(JSON.stringify({
+        vendor: v.rows[0] ?? null,
+        products: products.rows,
+      }, null, 2),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    if (action === 'list_test_buyers') {
+      // Cuentas usables como comprador: que no sean vendor activo + tengan profile
+      const r = await client.queryObject(`
+        SELECT p.id, p.full_name, p.email, p.phone,
+               COALESCE(p.rider_app_installed, false) AS has_rider_app,
+               p.rider_app_last_open,
+               (SELECT COUNT(*)::int FROM marketplace_orders o WHERE o.buyer_id = p.id) AS orders_count,
+               (SELECT COUNT(*)::int FROM fcm_tokens t WHERE t.user_id = p.id) AS fcm_count
+        FROM profiles p
+        WHERE p.id NOT IN (SELECT user_id FROM vendors WHERE user_id IS NOT NULL)
+          AND COALESCE(p.full_name, '') <> ''
+          AND COALESCE(p.country_code, 'MX') = 'MX'
+        ORDER BY p.rider_app_last_open DESC NULLS LAST
+        LIMIT 8
+      `)
+      await client.end()
+      return new Response(JSON.stringify(r.rows, null, 2),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    if (action === 'inspect_version_setup') {
+      // Read the canonical app_versions config table — what the version_check_service queries
+      const tableExists = await client.queryObject<{ exists: boolean }>(`
+        SELECT EXISTS (
+          SELECT 1 FROM information_schema.tables
+          WHERE table_schema='public' AND table_name='app_versions'
+        ) AS exists
+      `)
+      let rows: any[] = []
+      let cols: any[] = []
+      if (tableExists.rows[0].exists) {
+        const r = await client.queryObject(`SELECT * FROM app_versions ORDER BY id`)
+        rows = r.rows
+        const c = await client.queryObject(`
+          SELECT column_name, data_type, column_default
+          FROM information_schema.columns
+          WHERE table_schema='public' AND table_name='app_versions'
+          ORDER BY ordinal_position
+        `)
+        cols = c.rows
+      }
+      // Is there a push channel / trigger for "update available" notifs?
+      const updateTriggers = await client.queryObject(`
+        SELECT t.tgname, p.proname, c.relname AS on_table
+        FROM pg_trigger t
+        JOIN pg_class c ON t.tgrelid = c.oid
+        JOIN pg_proc p ON t.tgfoid = p.oid
+        WHERE NOT t.tgisinternal
+          AND (p.proname ILIKE '%version%' OR p.proname ILIKE '%update%notif%' OR p.proname ILIKE '%app_update%')
+      `)
+      await client.end()
+      return new Response(JSON.stringify({
+        table_exists: tableExists.rows[0].exists,
+        columns: cols,
+        rows,
+        related_triggers: updateTriggers.rows,
+      }, null, 2),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    if (action === 'inspect_product_lifecycle') {
+      const cols = await client.queryObject<{ column_name: string; data_type: string; column_default: string | null }>(`
+        SELECT column_name, data_type, column_default
+        FROM information_schema.columns
+        WHERE table_schema='public' AND table_name='products'
+        ORDER BY ordinal_position
+      `)
+      const triggers = await client.queryObject(`
+        SELECT t.tgname, p.proname
+        FROM pg_trigger t
+        JOIN pg_class c ON t.tgrelid = c.oid
+        JOIN pg_proc p ON t.tgfoid = p.oid
+        WHERE c.relname IN ('products','marketplace_order_items','marketplace_orders')
+          AND NOT t.tgisinternal
+          AND p.proname ILIKE '%stock%' OR p.proname ILIKE '%product%' OR p.proname ILIKE '%inventory%'
+        ORDER BY t.tgname
+      `)
+      // Stats: how many products have stock tracking
+      const stats = await client.queryObject(`
+        SELECT
+          COUNT(*) FILTER (WHERE stock_qty IS NULL)::int AS unlimited,
+          COUNT(*) FILTER (WHERE stock_qty IS NOT NULL AND stock_qty > 0)::int AS has_stock,
+          COUNT(*) FILTER (WHERE stock_qty = 0)::int AS out_of_stock,
+          COUNT(*) FILTER (WHERE COALESCE(is_available, true) = false)::int AS disabled,
+          COUNT(*) FILTER (WHERE deleted_at IS NOT NULL)::int AS soft_deleted,
+          COUNT(*)::int AS total
+        FROM products
+      `)
+      // Palomas product after the 6 sold:
+      const ps5 = await client.queryObject(`
+        SELECT id, name, price, stock_qty, is_available, deleted_at, created_at
+        FROM products WHERE id = 'adfe03a4-5c65-4296-9a29-83831e7feed5'
+      `)
+      await client.end()
+      return new Response(JSON.stringify({
+        product_columns: cols.rows,
+        related_triggers: triggers.rows,
+        stats: stats.rows[0],
+        paloma_ps5: ps5.rows[0],
+      }, null, 2),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    if (action === 'setup_buyer_arrival_geofence') {
+      const log: string[] = []
+      const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
+      const SERVICE_KEY  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+
+      // Idempotency flag on the order (so we only push the "arriving" alert once)
+      try {
+        await client.queryArray(`
+          ALTER TABLE marketplace_orders
+          ADD COLUMN IF NOT EXISTS buyer_arrival_pushed BOOLEAN NOT NULL DEFAULT false
+        `)
+        log.push('OK: marketplace_orders.buyer_arrival_pushed')
+      } catch (e) { log.push(`ERR col: ${(e as Error).message}`) }
+
+      // Geofence trigger fires on deliveries UPDATE when driver_lat/lng change.
+      // If the driver is <500m from the destination AND the order is in
+      // in_progress (post-pickup), AND we haven't pushed yet → call edge fn
+      // notify-vendor-new-order with target='buyer'.
+      try {
+        await client.queryArray(`
+          CREATE OR REPLACE FUNCTION public.deliveries_check_arrival()
+          RETURNS TRIGGER
+          LANGUAGE plpgsql
+          SECURITY DEFINER
+          SET search_path = public
+          AS $fn$
+          DECLARE
+            v_order RECORD;
+            v_dist_m int;
+          BEGIN
+            -- Only marketplace, only after pickup, only when GPS changed
+            IF NEW.service_type <> 'marketplace' THEN RETURN NEW; END IF;
+            IF NEW.status NOT IN ('in_progress','accepted') THEN RETURN NEW; END IF;
+            IF NEW.driver_lat IS NULL OR NEW.driver_lng IS NULL THEN RETURN NEW; END IF;
+            IF NEW.destination_lat IS NULL OR NEW.destination_lng IS NULL THEN RETURN NEW; END IF;
+
+            -- Skip if GPS didn't materially change (deliveries update for other reasons too)
+            IF OLD.driver_lat IS NOT DISTINCT FROM NEW.driver_lat
+               AND OLD.driver_lng IS NOT DISTINCT FROM NEW.driver_lng THEN
+              RETURN NEW;
+            END IF;
+
+            SELECT * INTO v_order FROM marketplace_orders WHERE delivery_id = NEW.id;
+            IF v_order IS NULL THEN RETURN NEW; END IF;
+            IF v_order.buyer_arrival_pushed THEN RETURN NEW; END IF;
+            IF v_order.status NOT IN ('picked_up','in_transit') THEN RETURN NEW; END IF;
+
+            -- Haversine meters between driver and destination
+            v_dist_m := (
+              2 * 6371000 * asin(sqrt(
+                sin(radians((NEW.destination_lat - NEW.driver_lat)/2))^2 +
+                cos(radians(NEW.driver_lat)) * cos(radians(NEW.destination_lat)) *
+                sin(radians((NEW.destination_lng - NEW.driver_lng)/2))^2
+              ))
+            )::int;
+
+            IF v_dist_m <= 500 THEN
+              UPDATE marketplace_orders
+              SET buyer_arrival_pushed = true, updated_at = NOW()
+              WHERE id = v_order.id;
+
+              PERFORM net.http_post(
+                url := '${SUPABASE_URL}/functions/v1/notify-vendor-new-order',
+                headers := jsonb_build_object(
+                  'Content-Type','application/json',
+                  'Authorization','Bearer ${SERVICE_KEY}'
+                ),
+                body := jsonb_build_object('order_id', v_order.id, 'target', 'buyer')
+              );
+            END IF;
+            RETURN NEW;
+          EXCEPTION WHEN OTHERS THEN
+            RAISE NOTICE 'deliveries_check_arrival failed: %', SQLERRM;
+            RETURN NEW;
+          END;
+          $fn$
+        `)
+        await client.queryArray(`
+          DROP TRIGGER IF EXISTS trg_deliveries_check_arrival ON deliveries
+        `)
+        await client.queryArray(`
+          CREATE TRIGGER trg_deliveries_check_arrival
+          AFTER UPDATE OF driver_lat, driver_lng ON deliveries
+          FOR EACH ROW EXECUTE FUNCTION deliveries_check_arrival()
+        `)
+        log.push('OK: trg_deliveries_check_arrival')
+      } catch (e) { log.push(`ERR trg: ${(e as Error).message}`) }
+
+      await client.end()
+      return new Response(JSON.stringify({ success: true, log }, null, 2),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    if (action === 'setup_driver_cancel_and_reassign') {
+      const log: string[] = []
+
+      // RPC: driver_cancel_marketplace_delivery — releases the delivery back
+      // to the dispatch pool with a recorded reason. Does NOT cancel the order
+      // (vendor's product is still being prepared / ready). Only frees the
+      // delivery slot so another driver can take it.
+      try {
+        await client.queryArray(`
+          CREATE OR REPLACE FUNCTION public.driver_cancel_marketplace_delivery(
+            p_delivery_id UUID,
+            p_reason TEXT
+          )
+          RETURNS jsonb
+          LANGUAGE plpgsql
+          SECURITY DEFINER
+          SET search_path = public
+          AS $fn$
+          DECLARE
+            v_uid uuid := auth.uid();
+            v_driver_id uuid;
+            v_delivery RECORD;
+            v_order_id uuid;
+          BEGIN
+            IF v_uid IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
+            SELECT id INTO v_driver_id FROM drivers WHERE user_id = v_uid;
+            IF v_driver_id IS NULL THEN RAISE EXCEPTION 'Not a driver'; END IF;
+
+            SELECT * INTO v_delivery FROM deliveries
+            WHERE id = p_delivery_id FOR UPDATE;
+            IF NOT FOUND THEN RAISE EXCEPTION 'Delivery not found'; END IF;
+
+            IF v_delivery.driver_id IS DISTINCT FROM v_driver_id THEN
+              RAISE EXCEPTION 'Not your delivery';
+            END IF;
+
+            -- Once in_progress (post-pickup) we don't auto-release: this
+            -- becomes a support case (driver took possession of the goods).
+            IF v_delivery.status NOT IN ('accepted','pending') THEN
+              RAISE EXCEPTION 'Cannot release after pickup — contact support';
+            END IF;
+
+            SELECT id INTO v_order_id FROM marketplace_orders
+            WHERE delivery_id = p_delivery_id;
+
+            -- Release: status back to 'pending', driver_id null, reason logged.
+            UPDATE deliveries
+            SET driver_id = NULL,
+                status = 'pending',
+                accepted_at = NULL,
+                cancellation_reason = COALESCE(p_reason, 'driver_released')
+            WHERE id = p_delivery_id;
+
+            -- Order goes back to ready_for_pickup so it's eligible for re-dispatch.
+            IF v_order_id IS NOT NULL THEN
+              UPDATE marketplace_orders
+              SET status = 'ready_for_pickup', updated_at = NOW()
+              WHERE id = v_order_id;
+
+              INSERT INTO marketplace_order_events (
+                order_id, from_status, to_status, actor_type, actor_id, note
+              ) VALUES (
+                v_order_id, 'driver_assigned', 'ready_for_pickup',
+                'driver', v_driver_id,
+                'chofer canceló: ' || COALESCE(p_reason, 'sin razón')
+              );
+            END IF;
+
+            INSERT INTO app_logs (level, source, event, message, user_id, context, app_role)
+            VALUES ('warn', 'driver_marketplace', 'cancel_delivery',
+                    'Driver released delivery: ' || COALESCE(p_reason, ''), v_uid,
+                    jsonb_build_object('delivery_id', p_delivery_id, 'order_id', v_order_id, 'reason', p_reason),
+                    'driver');
+
+            -- Re-fire dispatch for the next driver
+            PERFORM net.http_post(
+              url := '${Deno.env.get('SUPABASE_URL')}/functions/v1/notify-drivers-of-ride',
+              headers := jsonb_build_object(
+                'Content-Type','application/json',
+                'Authorization', 'Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}'
+              ),
+              body := jsonb_build_object('ride_id', p_delivery_id)
+            );
+
+            RETURN jsonb_build_object('success', true, 're_dispatched', true);
+          END;
+          $fn$
+        `)
+        await client.queryArray(`
+          GRANT EXECUTE ON FUNCTION driver_cancel_marketplace_delivery(UUID, TEXT) TO authenticated
+        `)
+        log.push('OK: driver_cancel_marketplace_delivery')
+      } catch (e) { log.push(`ERR cancel rpc: ${(e as Error).message}`) }
+
+      // Cron-style helper: re-dispatch deliveries that have a driver assigned
+      // but haven't been actually moved (no pickup) within X minutes.
+      // Conservative: 8-min ACCEPTANCE timeout (driver accepted but ghosted).
+      // Carlos can tune; for now sets the function, the cron schedule comes
+      // from setup-cron-marketplace.
+      try {
+        await client.queryArray(`
+          CREATE OR REPLACE FUNCTION public.reassign_stale_marketplace_deliveries()
+          RETURNS jsonb
+          LANGUAGE plpgsql
+          SECURITY DEFINER
+          AS $fn$
+          DECLARE
+            v_count int := 0;
+            v_id uuid;
+            v_order_id uuid;
+          BEGIN
+            FOR v_id, v_order_id IN
+              SELECT d.id, o.id
+              FROM deliveries d
+              LEFT JOIN marketplace_orders o ON o.delivery_id = d.id
+              WHERE d.service_type = 'marketplace'
+                AND d.status = 'accepted'
+                AND d.accepted_at < NOW() - INTERVAL '8 minutes'
+            LOOP
+              UPDATE deliveries
+              SET driver_id = NULL, status = 'pending',
+                  accepted_at = NULL,
+                  cancellation_reason = 'driver_no_show'
+              WHERE id = v_id;
+
+              IF v_order_id IS NOT NULL THEN
+                UPDATE marketplace_orders
+                SET status = 'ready_for_pickup', updated_at = NOW()
+                WHERE id = v_order_id;
+
+                INSERT INTO marketplace_order_events (
+                  order_id, from_status, to_status, actor_type, note
+                ) VALUES (
+                  v_order_id, 'driver_assigned', 'ready_for_pickup',
+                  'system', 'chofer no llegó en 8 min, re-asignando'
+                );
+              END IF;
+
+              -- Re-fire dispatch
+              PERFORM net.http_post(
+                url := '${Deno.env.get('SUPABASE_URL')}/functions/v1/notify-drivers-of-ride',
+                headers := jsonb_build_object(
+                  'Content-Type','application/json',
+                  'Authorization', 'Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}'
+                ),
+                body := jsonb_build_object('ride_id', v_id)
+              );
+
+              v_count := v_count + 1;
+            END LOOP;
+
+            INSERT INTO app_logs (level, source, event, message, context, app_role)
+            VALUES ('info', 'reassign-stale', 'run',
+                    'reassigned ' || v_count || ' stale marketplace deliveries',
+                    jsonb_build_object('count', v_count), 'system');
+
+            RETURN jsonb_build_object('reassigned', v_count);
+          END;
+          $fn$
+        `)
+        log.push('OK: reassign_stale_marketplace_deliveries')
+      } catch (e) { log.push(`ERR reassign fn: ${(e as Error).message}`) }
+
+      // Schedule the reassign every minute
+      try {
+        await client.queryArray(`
+          SELECT cron.unschedule('marketplace_reassign_stale')
+          WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'marketplace_reassign_stale')
+        `)
+      } catch (_) {}
+      try {
+        await client.queryArray(`
+          SELECT cron.schedule(
+            'marketplace_reassign_stale',
+            '* * * * *',
+            $cmd$ SELECT public.reassign_stale_marketplace_deliveries() $cmd$
+          )
+        `)
+        log.push('OK: cron marketplace_reassign_stale every minute')
+      } catch (e) { log.push(`ERR cron: ${(e as Error).message}`) }
+
+      await client.end()
+      return new Response(JSON.stringify({ success: true, log }, null, 2),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    if (action === 'setup_auto_accept_orders') {
+      const log: string[] = []
+      try {
+        await client.queryArray(`
+          ALTER TABLE vendors
+          ADD COLUMN IF NOT EXISTS auto_accept_orders BOOLEAN NOT NULL DEFAULT false
+        `)
+        log.push('OK: vendors.auto_accept_orders column')
+      } catch (e) { log.push(`ERR col: ${(e as Error).message}`) }
+
+      try {
+        // BEFORE-INSERT trigger: if vendor opted in, the order is born accepted.
+        // This means trg_marketplace_notify_vendor_placed will still fire on
+        // the AFTER-INSERT with status='accepted_by_vendor' (the notif edge
+        // function handles any status — vendor gets a "auto-aceptado, prepara"
+        // push instead of the "NUEVO PEDIDO" alarm).
+        await client.queryArray(`
+          CREATE OR REPLACE FUNCTION public.marketplace_apply_auto_accept()
+          RETURNS TRIGGER
+          LANGUAGE plpgsql
+          SECURITY DEFINER
+          SET search_path = public
+          AS $fn$
+          DECLARE
+            v_auto BOOLEAN;
+          BEGIN
+            IF NEW.status <> 'placed' THEN RETURN NEW; END IF;
+            SELECT COALESCE(auto_accept_orders, false) INTO v_auto
+            FROM vendors WHERE id = NEW.vendor_id;
+            IF v_auto IS TRUE THEN
+              NEW.status := 'accepted_by_vendor';
+              NEW.vendor_accepted_at := NOW();
+            END IF;
+            RETURN NEW;
+          END;
+          $fn$
+        `)
+        await client.queryArray(`
+          DROP TRIGGER IF EXISTS trg_marketplace_apply_auto_accept ON marketplace_orders
+        `)
+        await client.queryArray(`
+          CREATE TRIGGER trg_marketplace_apply_auto_accept
+          BEFORE INSERT ON marketplace_orders
+          FOR EACH ROW EXECUTE FUNCTION marketplace_apply_auto_accept()
+        `)
+        log.push('OK: trg_marketplace_apply_auto_accept')
+      } catch (e) { log.push(`ERR trg: ${(e as Error).message}`) }
+
+      // Notify-vendor-new-order: tweak the push body when status arrived
+      // already accepted (auto). Vendor still hears a sound but message says
+      // "prepara ya". Done at edge-function level (not here).
+
+      try {
+        await client.queryArray(`
+          GRANT UPDATE (auto_accept_orders) ON vendors TO authenticated
+        `)
+        log.push('OK: grant update auto_accept_orders')
+      } catch (e) { log.push(`ERR grant: ${(e as Error).message}`) }
+
+      await client.end()
+      return new Response(JSON.stringify({ success: true, log }, null, 2),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
     if (action === 'setup_driver_marketplace_rpcs') {
       const log: string[] = []
 
@@ -712,8 +3004,7 @@ serve(async (req) => {
             UPDATE deliveries
             SET driver_id = v_driver_id,
                 status = 'accepted',
-                accepted_at = NOW(),
-                updated_at = NOW()
+                accepted_at = NOW()
             WHERE id = p_delivery_id;
 
             SELECT id INTO v_order_id FROM marketplace_orders

@@ -126,25 +126,25 @@ serve(async (req) => {
     const ivaDriverOwes = ivaAmount // The other 8% driver must pay to SAT
     const netAmount = Math.round((gross_amount - isrAmount - ivaAmount) * 100) / 100
 
-    // Insert retention record
+    // Insert retention record into canonical per-driver sub-ledger.
+    // (Was: tax_retentions — legacy table with different schema; admin
+    // Mexico tax screen now reads driver_tax_retentions and so does this fn.)
+    // Column mapping: gross_amount→driver_gross_income, isr_rate→isr_retention_percent,
+    // isr_amount→isr_retention_amount, iva_*→iva_retention_*, net_amount→driver_net_income,
+    // ride_id || delivery_id→trip_id, transaction_type→trip_type.
     const { error: insertError } = await supabaseClient
-      .from('tax_retentions')
+      .from('driver_tax_retentions')
       .insert({
         driver_id,
-        ride_id: ride_id || null,
-        delivery_id: delivery_id || null,
-        transaction_type,
-        gross_amount,
-        has_rfc: hasRfc,
-        isr_rate: isrRate,
-        isr_amount: isrAmount,
-        iva_rate: ivaRate,
-        iva_amount: ivaAmount,
-        iva_driver_owes: ivaDriverOwes,
-        net_amount: netAmount,
-        period_year: new Date().getFullYear(),
-        period_month: new Date().getMonth() + 1,
-        currency: 'MXN'
+        trip_id: ride_id || delivery_id || null,
+        trip_type: transaction_type,
+        driver_gross_income: gross_amount,
+        isr_retention_percent: isrRate * 100,
+        isr_retention_amount: isrAmount,
+        iva_retention_percent: ivaRate * 100,
+        iva_retention_amount: ivaAmount,
+        driver_net_income: netAmount,
+        trip_completed_at: new Date().toISOString(),
       })
 
     if (insertError) {

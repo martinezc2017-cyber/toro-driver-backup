@@ -558,24 +558,31 @@ class DriverService {
     DateTime weekEnd,
   ) async {
     try {
-      // Try to get pre-computed breakdown
-      final breakdown = await _client
-          .from('driver_earnings_breakdown')
-          .select('*')
-          .eq('driver_id', driverId)
-          .eq('period_type', 'weekly')
-          .eq('period_start', weekStart.toIso8601String().split('T')[0])
-          .maybeSingle();
+      // Try to get pre-computed breakdown.
+      // `driver_earnings_breakdown` does NOT exist in any migration —
+      // wrapped defensively so a missing/RLS-blocked table falls through
+      // to the on-the-fly calculation from driver_earnings.
+      try {
+        final breakdown = await _client
+            .from('driver_earnings_breakdown')
+            .select('*')
+            .eq('driver_id', driverId)
+            .eq('period_type', 'weekly')
+            .eq('period_start', weekStart.toIso8601String().split('T')[0])
+            .maybeSingle();
 
-      if (breakdown != null) {
-        return {
-          'summary': breakdown,
-          'daily_breakdown': breakdown['daily_breakdown'] ?? [],
-          'hourly_breakdown': breakdown['hourly_breakdown'] ?? {},
-        };
+        if (breakdown != null) {
+          return {
+            'summary': breakdown,
+            'daily_breakdown': breakdown['daily_breakdown'] ?? [],
+            'hourly_breakdown': breakdown['hourly_breakdown'] ?? {},
+          };
+        }
+      } catch (_) {
+        // Table doesn't exist or RLS-blocked — fall through to on-the-fly calc.
       }
 
-      // Calculate on the fly if no pre-computed data
+      // Calculate on the fly from driver_earnings (canonical source).
       final earnings = await _client
           .from('driver_earnings')
           .select('*')

@@ -4,6 +4,7 @@ import 'package:share_plus/share_plus.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import '../utils/app_colors.dart';
+import '../utils/money_format.dart';
 import '../config/supabase_config.dart';
 
 class HistoryScreen extends StatefulWidget {
@@ -68,35 +69,75 @@ class _HistoryScreenState extends State<HistoryScreen> {
           startDate = DateTime(2020);
       }
 
-      // Load trips
+      // Load trips from `deliveries` (canonical source — `trips`/`driver_stats` tables
+      // do not exist in any migration; legacy queries silently returned empty).
+      // Include both completed/delivered trips AND cancelled ones (UI shows both).
       final tripsResponse = await SupabaseConfig.client
-          .from('trips')
+          .from('deliveries')
           .select('*')
           .eq('driver_id', driverId)
           .gte('created_at', startDate.toIso8601String())
           .order('created_at', ascending: false);
 
-      // Load driver stats
-      final statsResponse = await SupabaseConfig.client
-          .from('driver_stats')
-          .select('*')
-          .eq('driver_id', driverId)
-          .maybeSingle();
+      // Driver stats (online hours, avg rating) read from `drivers` table —
+      // `driver_stats` table does not exist.
+      Map<String, dynamic>? statsResponse;
+      try {
+        statsResponse = await SupabaseConfig.client
+            .from('drivers')
+            .select('rating, total_online_hours')
+            .eq('id', driverId)
+            .maybeSingle();
+      } catch (_) {
+        statsResponse = null;
+      }
 
-      // Parse trips
-      _trips = (tripsResponse as List).map((t) => TripHistory(
-        id: t['id'] ?? '',
-        pickupAddress: t['pickup_address'] ?? 'Origen',
-        dropoffAddress: t['destination_address'] ?? 'Destino',
-        fare: (t['fare'] as num?)?.toDouble() ?? 0,
-        distance: (t['distance_miles'] as num?)?.toDouble() ?? 0,
-        duration: t['duration_minutes'] ?? 0,
-        status: t['status'] ?? 'completed',
-        createdAt: DateTime.tryParse(t['created_at'] ?? '') ?? DateTime.now(),
-        rating: (t['driver_rating'] as num?)?.toDouble(),
-      )).toList();
+      // Parse trips — map `deliveries` columns to TripHistory fields.
+      // Fare = driver_earnings (NET take-home) — canonical for driver UI.
+      _trips = (tripsResponse as List).map((t) {
+        // Distance: prefer distance_miles, else convert distance_km.
+        double distance = (t['distance_miles'] as num?)?.toDouble() ?? 0;
+        if (distance == 0) {
+          final km = (t['distance_km'] as num?)?.toDouble() ?? 0;
+          distance = km * 0.621371;
+        }
 
-      // Calculate summary
+        // Duration: prefer duration_minutes, else estimated_minutes.
+        int duration = (t['duration_minutes'] as num?)?.toInt() ??
+                       (t['estimated_minutes'] as num?)?.toInt() ?? 0;
+
+        // Status: map delivered → completed for UI.
+        final rawStatus = (t['status'] as String?) ?? 'completed';
+        final status = rawStatus == 'delivered' ? 'completed' : rawStatus;
+
+        // Fare: driver_earnings (NET) for completed; cancellation_fee for cancelled.
+        final isCancelled = status == 'cancelled';
+        final fare = isCancelled
+            ? ((t['cancellation_fee'] as num?)?.toDouble() ?? 0)
+            : ((t['driver_earnings'] as num?)?.toDouble() ??
+               (t['final_price'] as num?)?.toDouble() ??
+               (t['estimated_price'] as num?)?.toDouble() ?? 0);
+
+        // Date: prefer completed_at/delivered_at, else created_at.
+        final dateStr = (t['completed_at'] as String?) ??
+                        (t['delivered_at'] as String?) ??
+                        (t['created_at'] as String?) ?? '';
+
+        return TripHistory(
+          id: t['id'] ?? '',
+          pickupAddress: t['pickup_address'] ?? 'Origen',
+          dropoffAddress: t['destination_address'] ?? 'Destino',
+          fare: fare,
+          distance: distance,
+          duration: duration,
+          status: status,
+          createdAt: DateTime.tryParse(dateStr) ?? DateTime.now(),
+          rating: (t['driver_rating'] as num?)?.toDouble() ??
+                  (t['rider_rating'] as num?)?.toDouble(),
+        );
+      }).toList();
+
+      // Calculate summary from completed trips only.
       final completedTrips = _trips.where((t) => t.status == 'completed').toList();
       _summary = HistorySummary(
         totalTrips: completedTrips.length,
@@ -104,7 +145,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
         totalMiles: completedTrips.fold(0, (sum, t) => sum + t.distance),
         totalMinutes: completedTrips.fold(0, (sum, t) => sum + t.duration),
         onlineHours: (statsResponse?['total_online_hours'] as num?)?.toDouble() ?? 0,
-        avgRating: (statsResponse?['average_rating'] as num?)?.toDouble() ?? 5.0,
+        avgRating: (statsResponse?['rating'] as num?)?.toDouble() ?? 5.0,
       );
 
       setState(() => _isLoading = false);
@@ -238,12 +279,12 @@ Period: ${_getPeriodName()}
 
 Summary:
 - Total Trips: ${_summary.totalTrips}
-- Total Earnings: \$${_summary.totalEarnings.toStringAsFixed(2)}
+- Total Earnings: ${formatMoney(_summary.totalEarnings, country: _countryCode)}
 - Total Miles: ${_summary.totalMiles.toStringAsFixed(1)} mi
 ${_countryCode != 'MX' ? '- Time Online: ${_summary.onlineHours.toStringAsFixed(1)}h\n' : ''}- Average Rating: ${_summary.avgRating.toStringAsFixed(1)}
 
 Recent Trips:
-${_trips.take(5).map((t) => '- ${t.pickupAddress} → ${t.dropoffAddress}: \$${t.fare.toStringAsFixed(2)}').join('\n')}
+${_trips.take(5).map((t) => '- ${t.pickupAddress} → ${t.dropoffAddress}: ${formatMoney(t.fare, country: _countryCode)}').join('\n')}
 ''';
 
     await Share.share(summary);
@@ -443,7 +484,7 @@ ${_trips.take(5).map((t) => '- ${t.pickupAddress} → ${t.dropoffAddress}: \$${t
           children: [
             Icon(Icons.route, size: 12, color: AppColors.textSecondary),
             const SizedBox(width: 4),
-            Text('${trip.distance.toStringAsFixed(1)} mi', style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
+            Text(formatDistanceFromMiles(trip.distance, country: _countryCode), style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
             const SizedBox(width: 8),
             Icon(Icons.timer, size: 12, color: AppColors.textSecondary),
             const SizedBox(width: 4),
@@ -461,7 +502,7 @@ ${_trips.take(5).map((t) => '- ${t.pickupAddress} → ${t.dropoffAddress}: \$${t
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Text(
-              isCancelled ? '\$0.00' : '\$${trip.fare.toStringAsFixed(2)}',
+              isCancelled ? formatMoney(0, country: _countryCode) : formatMoney(trip.fare, country: _countryCode),
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
@@ -514,7 +555,7 @@ ${_trips.take(5).map((t) => '- ${t.pickupAddress} → ${t.dropoffAddress}: \$${t
                   child: Text('trip_details'.tr(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
                 ),
                 Text(
-                  '\$${trip.fare.toStringAsFixed(2)}',
+                  formatMoney(trip.fare, country: _countryCode),
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.success),
                 ),
               ],
@@ -522,7 +563,7 @@ ${_trips.take(5).map((t) => '- ${t.pickupAddress} → ${t.dropoffAddress}: \$${t
             const SizedBox(height: 16),
             _buildDetailRow(Icons.my_location, 'pickup'.tr(), trip.pickupAddress),
             _buildDetailRow(Icons.location_on, 'dropoff'.tr(), trip.dropoffAddress),
-            _buildDetailRow(Icons.route, 'distance'.tr(), '${trip.distance.toStringAsFixed(1)} mi'),
+            _buildDetailRow(Icons.route, 'distance'.tr(), formatDistanceFromMiles(trip.distance, country: _countryCode)),
             _buildDetailRow(Icons.timer, 'duration'.tr(), '${trip.duration} min'),
             _buildDetailRow(Icons.calendar_today, 'date'.tr(), DateFormat('MMM dd, yyyy HH:mm').format(trip.createdAt)),
             if (trip.rating != null)

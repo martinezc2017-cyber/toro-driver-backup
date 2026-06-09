@@ -160,34 +160,37 @@ class PaymentService {
     double acceptanceRate = 0, cancellationRate = 0, weeklyGoal = 500;
     int weekPoints = 0;
 
+    // CANONICAL SOURCE: `driver_earnings` table — the same table admin's
+    // Pagos a Drivers reads from. `net_fare` is the after-SAT-retentions
+    // take-home amount. Earlier versions read from `deliveries` which caused
+    // the famous divergence (admin $112.20 vs driver app $124.80).
+    //
+    // `driver_earnings` columns (per driver_service.dart docs):
+    //   net_fare, tip_amount, base_fare, surge_amount, platform_fee,
+    //   distance_miles, duration_minutes, created_at, completed_at, date, ...
+    //
+    // Bonus fields (qr_boost / peak_hours_bonus / damage_fee / extra_bonus)
+    // may not live on driver_earnings — our helpers safely return 0 when
+    // missing, so the math gracefully degrades to net_fare + tip.
+
+    // Helper to read net earnings from a driver_earnings row.
+    double netFromEarnings(Map<String, dynamic> row) {
+      // Prefer net_fare (admin canonical); fall back to amount.
+      final net = (row['net_fare'] as num?)?.toDouble();
+      if (net != null && net > 0) return net;
+      return (row['amount'] as num?)?.toDouble() ?? 0;
+    }
+
     try {
-      // Get today's deliveries - try delivered_at first, then completed_at
-      var todayResponse = await _client
-          .from(SupabaseConfig.packageDeliveriesTable)
+      // Get today's earnings rows.
+      final todayResponse = await _client
+          .from('driver_earnings')
           .select()
           .eq('driver_id', driverId)
-          .inFilter('status', ['completed', 'delivered'])
-          .gte('delivered_at', startOfDay.toIso8601String());
+          .gte('created_at', startOfDay.toIso8601String());
 
-      // If no results with delivered_at, try completed_at
-      if ((todayResponse as List).isEmpty) {
-        todayResponse = await _client
-            .from(SupabaseConfig.packageDeliveriesTable)
-            .select()
-            .eq('driver_id', driverId)
-            .inFilter('status', ['completed', 'delivered'])
-            .gte('completed_at', startOfDay.toIso8601String());
-      }
-
-      // ═══════════════════════════════════════════════════════════════
-      // CALCULAR todayEarnings INCLUYENDO TODOS LOS BONUSES
-      // ═══════════════════════════════════════════════════════════════
-      // PROPÓSITO: todayEarnings debe ser el TOTAL que el driver recibe HOY
-      // INCLUYE: base earnings + QR boost + peak hours + damage fee + extra bonus + tips
-      // PARA QUÉ: Mostrar el total correcto en home screen (card "Hoy")
-      // ═══════════════════════════════════════════════════════════════
-      for (var item in todayResponse) {
-        final earnings = _getEarningsFromDelivery(item);
+      for (var item in (todayResponse as List)) {
+        final earnings = netFromEarnings(item);
         final tips = (item['tip_amount'] as num?)?.toDouble() ?? 0;
         final itemQRBoost = _getQRBoost(item);
         final itemPeakHours = _getPeakHoursBonus(item);
@@ -200,43 +203,22 @@ class PaymentService {
       }
       todayRides = todayResponse.length;
 
-      // Get week's deliveries - try delivered_at first, then completed_at
-      var weekResponse = await _client
-          .from(SupabaseConfig.packageDeliveriesTable)
+      // Get week's earnings rows.
+      final weekResponse = await _client
+          .from('driver_earnings')
           .select()
           .eq('driver_id', driverId)
-          .inFilter('status', ['completed', 'delivered'])
-          .gte('delivered_at', startOfWeek.toIso8601String());
+          .gte('created_at', startOfWeek.toIso8601String());
 
-      // If no results with delivered_at, try completed_at
-      if ((weekResponse as List).isEmpty) {
-        weekResponse = await _client
-            .from(SupabaseConfig.packageDeliveriesTable)
-            .select()
-            .eq('driver_id', driverId)
-            .inFilter('status', ['completed', 'delivered'])
-            .gte('completed_at', startOfWeek.toIso8601String());
-      }
-
-      for (var item in weekResponse) {
-        final earnings = _getEarningsFromDelivery(item);
+      for (var item in (weekResponse as List)) {
+        final earnings = netFromEarnings(item);
         final tips = (item['tip_amount'] as num?)?.toDouble() ?? 0;
 
-        // Detailed breakdown - NO FALLBACKS, solo valores de BD
-        final baseFare = _getBaseFare(item);
-        weekBaseFare += baseFare; // Sin fallback - valor real de BD o 0
+        weekBaseFare += _getBaseFare(item);
+        weekSurgeBonus += _getSurgeAmount(item);
+        weekPromotions += _getPromotions(item);
+        weekPlatformFees += _getPlatformFee(item);
 
-        // QR Boost: calculated on driver earnings, not gross (handled by backend)
-        final qrBoost = _getSurgeAmount(item);
-        weekSurgeBonus += qrBoost; // No fallback - comes from database
-
-        final promotions = _getPromotions(item);
-        weekPromotions += promotions;
-
-        final platformFee = _getPlatformFee(item);
-        weekPlatformFees += platformFee; // Sin fallback - valor real de BD o 0
-
-        // New breakdown fields - extract values first
         final itemQRBoost = _getQRBoost(item);
         final itemPeakHours = _getPeakHoursBonus(item);
         final itemDamageFee = _getDamageFee(item);
@@ -247,13 +229,6 @@ class PaymentService {
         weekDamageFee += itemDamageFee;
         weekExtraBonus += itemExtraBonus;
 
-        // ═══════════════════════════════════════════════════════════════
-        // CALCULAR weekEarnings INCLUYENDO TODOS LOS BONUSES
-        // ═══════════════════════════════════════════════════════════════
-        // PROPÓSITO: weekEarnings debe ser el TOTAL que el driver recibe
-        // INCLUYE: base earnings + QR boost + peak hours + damage fee + extra bonus + tips
-        // PARA QUÉ: Mostrar el total correcto en home screen y sincronizar con earnings screen
-        // ═══════════════════════════════════════════════════════════════
         final totalEarningsForTrip = earnings + itemQRBoost + itemPeakHours + itemDamageFee + itemExtraBonus + tips;
         weekEarnings += totalEarningsForTrip;
         weekTips += tips;
@@ -263,29 +238,15 @@ class PaymentService {
       }
       weekRides = weekResponse.length;
 
-      // Get month's deliveries - try delivered_at first, then completed_at
-      var monthResponse = await _client
-          .from(SupabaseConfig.packageDeliveriesTable)
+      // Get month's earnings rows.
+      final monthResponse = await _client
+          .from('driver_earnings')
           .select()
           .eq('driver_id', driverId)
-          .inFilter('status', ['completed', 'delivered'])
-          .gte('delivered_at', startOfMonth.toIso8601String());
+          .gte('created_at', startOfMonth.toIso8601String());
 
-      // If no results with delivered_at, try completed_at
-      if ((monthResponse as List).isEmpty) {
-        monthResponse = await _client
-            .from(SupabaseConfig.packageDeliveriesTable)
-            .select()
-            .eq('driver_id', driverId)
-            .inFilter('status', ['completed', 'delivered'])
-            .gte('completed_at', startOfMonth.toIso8601String());
-      }
-
-      // ═══════════════════════════════════════════════════════════════
-      // CALCULAR monthEarnings INCLUYENDO TODOS LOS BONUSES
-      // ═══════════════════════════════════════════════════════════════
-      for (var item in monthResponse) {
-        final earnings = _getEarningsFromDelivery(item);
+      for (var item in (monthResponse as List)) {
+        final earnings = netFromEarnings(item);
         final tips = (item['tip_amount'] as num?)?.toDouble() ?? 0;
         final itemQRBoost = _getQRBoost(item);
         final itemPeakHours = _getPeakHoursBonus(item);
@@ -298,18 +259,14 @@ class PaymentService {
       }
       monthRides = monthResponse.length;
 
-      // Get total balance (all time completed)
+      // Get total balance (all time).
       final totalResponse = await _client
-          .from(SupabaseConfig.packageDeliveriesTable)
+          .from('driver_earnings')
           .select()
-          .eq('driver_id', driverId)
-          .inFilter('status', ['completed', 'delivered']);
+          .eq('driver_id', driverId);
 
-      // ═══════════════════════════════════════════════════════════════
-      // CALCULAR totalBalance INCLUYENDO TODOS LOS BONUSES (All time)
-      // ═══════════════════════════════════════════════════════════════
-      for (var item in totalResponse) {
-        final earnings = _getEarningsFromDelivery(item);
+      for (var item in (totalResponse as List)) {
+        final earnings = netFromEarnings(item);
         final tips = (item['tip_amount'] as num?)?.toDouble() ?? 0;
         final itemQRBoost = _getQRBoost(item);
         final itemPeakHours = _getPeakHoursBonus(item);
@@ -348,28 +305,35 @@ class PaymentService {
         weekOnlineMinutes += endedAt.difference(startedAt).inMinutes;
       }
 
-      // Try to get more data from driver_rankings table
-      final rankings = await _client
-          .from('driver_rankings')
-          .select()
-          .eq('driver_id', driverId)
-          .maybeSingle();
+      // Try to get more data from driver_rankings table.
+      // Wrapped in its own try/catch — if the table is missing or RLS-blocked,
+      // we still return the canonical earnings numbers above instead of bailing
+      // out of the entire summary calculation.
+      try {
+        final rankings = await _client
+            .from('driver_rankings')
+            .select()
+            .eq('driver_id', driverId)
+            .maybeSingle();
 
-      if (rankings != null) {
-        final rankAcceptance = (rankings['acceptance_rate'] as num?)?.toDouble() ?? 0;
-        if (rankAcceptance > 0) acceptanceRate = rankAcceptance;
+        if (rankings != null) {
+          final rankAcceptance = (rankings['acceptance_rate'] as num?)?.toDouble() ?? 0;
+          if (rankAcceptance > 0) acceptanceRate = rankAcceptance;
 
-        final rankCancellation = (rankings['cancellation_rate'] as num?)?.toDouble() ?? 0;
-        if (rankCancellation > 0) cancellationRate = rankCancellation;
+          final rankCancellation = (rankings['cancellation_rate'] as num?)?.toDouble() ?? 0;
+          if (rankCancellation > 0) cancellationRate = rankCancellation;
 
-        final rankMiles = (rankings['week_miles'] as num?)?.toDouble() ?? 0;
-        if (rankMiles > 0) weekTotalMiles = rankMiles;
+          final rankMiles = (rankings['week_miles'] as num?)?.toDouble() ?? 0;
+          if (rankMiles > 0) weekTotalMiles = rankMiles;
 
-        // Only use rankings online hours if sessions are empty
-        if (weekOnlineMinutes == 0) {
-          final rankOnlineHours = (rankings['week_online_hours'] as num?)?.toDouble() ?? 0;
-          if (rankOnlineHours > 0) weekOnlineMinutes = rankOnlineHours * 60;
+          // Only use rankings online hours if sessions are empty
+          if (weekOnlineMinutes == 0) {
+            final rankOnlineHours = (rankings['week_online_hours'] as num?)?.toDouble() ?? 0;
+            if (rankOnlineHours > 0) weekOnlineMinutes = rankOnlineHours * 60;
+          }
         }
+      } catch (_) {
+        // driver_rankings unavailable — skip enrichment, keep canonical earnings.
       }
 
       // Final fallback for online minutes

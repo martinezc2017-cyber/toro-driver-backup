@@ -5,6 +5,7 @@ import '../../services/organizer_service.dart';
 import '../../services/tourism_event_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/haptic_service.dart';
+import '../../utils/money_format.dart';
 
 /// Screen for organizers to manage bidding process for tourism events.
 ///
@@ -190,7 +191,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
             const SizedBox(height: 12),
             _detailRow('Vehículo', vehicleName),
             _detailRow('Chofer', driverName),
-            _detailRow('Precio/km', '\$${pricePerKm.toStringAsFixed(2)}'),
+            _detailRow('Precio/km', formatMoney(pricePerKm, country: 'MX')),
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(10),
@@ -299,7 +300,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                   ),
                   const Spacer(),
                   Text(
-                    '\$${currentPrice.toStringAsFixed(2)}/km',
+                    '${formatMoney(currentPrice, country: 'MX')}/km',
                     style: const TextStyle(
                       color: AppColors.textPrimary,
                       fontSize: 14,
@@ -397,7 +398,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
 
       if (mounted) {
         HapticService.success();
-        _showSuccess('Contra-oferta enviada: \$${proposedPrice.toStringAsFixed(2)}/km');
+        _showSuccess('Contra-oferta enviada: ${formatMoney(proposedPrice, country: 'MX')}/km');
         _loadData();
       }
     } catch (e) {
@@ -429,7 +430,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _detailRow('Chofer', driverName),
-            _detailRow('Precio propuesto', '\$${driverPrice.toStringAsFixed(2)}/km'),
+            _detailRow('Precio propuesto', '${formatMoney(driverPrice, country: 'MX')}/km'),
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(10),
@@ -1140,7 +1141,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                     Expanded(
                       flex: 2,
                       child: Text(
-                        '\$${price.toStringAsFixed(2)}',
+                        formatMoney(price, country: 'MX'),
                         style: TextStyle(
                           color: isWinner
                               ? AppColors.success
@@ -1580,7 +1581,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '\$${pricePerKm.toStringAsFixed(2)}',
+                        formatMoney(pricePerKm, country: 'MX'),
                         style: TextStyle(
                           color: isRejected
                               ? AppColors.textSecondary
@@ -1606,7 +1607,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          '\$${estimatedTotal.toStringAsFixed(2)}',
+                          formatMoney(estimatedTotal, country: 'MX'),
                           style: TextStyle(
                             color: isRejected
                                 ? AppColors.textSecondary
@@ -1661,7 +1662,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          '\$${organizerProposedPrice.toStringAsFixed(2)}/km',
+                          '${formatMoney(organizerProposedPrice, country: 'MX')}/km',
                           style: const TextStyle(
                             color: AppColors.warning,
                             fontSize: 16,
@@ -1723,7 +1724,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          '\$${driverProposedPrice.toStringAsFixed(2)}/km',
+                          '${formatMoney(driverProposedPrice, country: 'MX')}/km',
                           style: const TextStyle(
                             color: AppColors.primaryLight,
                             fontSize: 16,

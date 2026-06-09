@@ -18,6 +18,7 @@ import '../../providers/driver_provider.dart';
 import '../../config/supabase_config.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/haptic_service.dart';
+import '../../utils/money_format.dart';
 import '../../widgets/scrollable_time_picker.dart';
 import '../../services/tourism_event_service.dart';
 import '../../services/organizer_service.dart';
@@ -2750,7 +2751,7 @@ class _OrganizerCreateEventSimpleScreenState
                 children: [
                   _finanzasRow('Distancia total', '${distanceKm.toStringAsFixed(1)} km'),
                   const SizedBox(height: 6),
-                  _finanzasRow('Precio/km', '\$${pricePerKm.toStringAsFixed(2)} MXN'),
+                  _finanzasRow('Precio/km', '${formatMoney(pricePerKm, country: 'MX')} MXN'),
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 6),
                     child: Divider(color: AppColors.success.withValues(alpha: 0.3), height: 1),

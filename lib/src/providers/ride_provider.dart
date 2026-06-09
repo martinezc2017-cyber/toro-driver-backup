@@ -95,42 +95,9 @@ class RideProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // Simulate a new ride request (for testing)
-  // ⚠️ MOCK PARA DESARROLLO/TESTING SOLAMENTE
-  // Los valores reales vienen de la BD via StatePricingService
-  // Estos valores son SOLO para simular rides en modo desarrollo
-  void simulateNewRideRequest() {
-    final mockRide = RideModel(
-      id: 'ride-${DateTime.now().millisecondsSinceEpoch}',
-      passengerId: 'passenger-123',
-      passengerName: 'Juan García',
-      passengerPhone: '+52 555 987 6543',
-      passengerRating: 4.8,
-      type: RideType.passenger,
-      status: RideStatus.pending,
-      pickupLocation: LocationPoint(
-        latitude: 19.4326,
-        longitude: -99.1332,
-        address: 'Av. Reforma 222, CDMX',
-      ),
-      dropoffLocation: LocationPoint(
-        latitude: 19.4285,
-        longitude: -99.1277,
-        address: 'Zócalo, Centro Histórico',
-      ),
-      distanceKm: 3.5,
-      estimatedMinutes: 12,
-      // MOCK VALUES - En producción vienen de pricing_config via StatePricingService
-      fare: 85.0,        // Mock fare
-      driverEarnings: 68.0,  // Mock earnings (80% of fare)
-      platformFee: 17.0,     // Mock platform fee (20% of fare)
-      paymentMethod: PaymentMethod.card,
-      createdAt: DateTime.now(),
-    );
-
-    _availableRides = [mockRide, ..._availableRides];
-    notifyListeners();
-  }
+  // Removed simulateNewRideRequest() — had hardcoded fare/earnings/fees and
+  // hardcoded CDMX coordinates. Real rides come from Supabase deliveries table
+  // with state_code-driven pricing via StatePricingService.
 
   // Subscribe to available rides
   void _subscribeToAvailableRides() {
@@ -530,6 +497,23 @@ class RideProvider with ChangeNotifier {
     }
   }
 
+  /// Tear down the active ride locally — caller already cancelled remotely
+  /// (e.g. marketplace delivery cancelled via dedicated RPC). Mirrors the
+  /// cleanup tail of [cancelRide] without calling [_rideService.cancelRide].
+  void clearActiveRide() {
+    if (_activeRide == null) return;
+    _locationService.stopRideTracking();
+    _activeRidePollTimer?.cancel();
+    _activeRidePollTimer = null;
+    _activeRideSubscription?.cancel();
+    _activeRideSubscription = null;
+    _activeRide = null;
+    _status = RideProviderStatus.idle;
+    _error = null;
+    _subscribeToAvailableRides();
+    notifyListeners();
+  }
+
   // Cancel ride
   Future<bool> cancelRide(String reason) async {
     if (_activeRide == null) return false;
@@ -661,19 +645,10 @@ class RideProvider with ChangeNotifier {
     }
   }
 
-  // Calculate fare (sync version with default pricing)
+  // Sync fare calculation removed — prices come from pricing_config in DB.
+  // Use calculateFareAsync instead.
   double calculateFare(double distanceKm, int estimatedMinutes) {
-    // Default Arizona pricing - for real pricing use calculateFareAsync
-    const baseFare = 2.50;
-    const perMileRate = 0.85;
-    const perMinuteRate = 0.16;
-    const bookingFee = 2.00;
-    const serviceFee = 1.50;
-    const minimumFare = 6.00;
-
-    final distanceMiles = distanceKm * 0.621371;
-    double fare = baseFare + (distanceMiles * perMileRate) + (estimatedMinutes * perMinuteRate) + bookingFee + serviceFee;
-    return fare < minimumFare ? minimumFare : fare;
+    throw UnsupportedError('calculateFare: use calculateFareAsync — sync version had hardcoded AZ-only rates');
   }
 
   // Calculate fare async (uses real pricing from DB)

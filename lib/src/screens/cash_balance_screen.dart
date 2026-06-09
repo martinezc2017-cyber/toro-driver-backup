@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../providers/driver_provider.dart';
 import '../services/cash_account_service.dart';
 import '../utils/app_colors.dart';
+import '../utils/money_format.dart';
 
 /// Cash Balance Screen - 3 tabs: Resumen, Historial, Depositar
 class CashBalanceScreen extends StatefulWidget {
@@ -121,6 +122,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
     final totalRides = (_account?['total_cash_rides_completed'] as num?)?.toInt() ?? 0;
     final threshold = (_account?['auto_suspend_threshold'] as num?)?.toDouble() ?? 500;
     final byType = Map<String, double>.from(_summary['by_source_type'] ?? {});
+    final countryCode = Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US';
 
     final isSuspended = status == 'suspended' || status == 'blocked';
 
@@ -165,7 +167,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '\$${cashOwed.toStringAsFixed(2)}',
+                  formatMoney(cashOwed, country: countryCode),
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 42,
@@ -313,6 +315,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
   }
 
   Widget _buildBreakdownRow(String label, double amount) {
+    final countryCode = Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US';
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -320,7 +323,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
         children: [
           Text(label, style: const TextStyle(color: Colors.white70, fontSize: 14)),
           Text(
-            '\$${amount.toStringAsFixed(2)}',
+            formatMoney(amount, country: countryCode),
             style: const TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.w600,
@@ -372,6 +375,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
     final weekEnd = statement['week_end_date'] as String? ?? '';
     final netOwed = (statement['net_owed'] as num?)?.toDouble() ?? 0;
     final paymentStatus = statement['payment_status'] as String? ?? 'pending';
+    final countryCode = Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -392,7 +396,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
                   style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
                 ),
                 Text(
-                  'Adeudo: \$${netOwed.toStringAsFixed(2)}',
+                  'Adeudo: ${formatMoney(netOwed, country: countryCode)}',
                   style: const TextStyle(color: Colors.white54, fontSize: 12),
                 ),
               ],
@@ -476,6 +480,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
     final isDebit = direction == 'debit';
     final amount = (entry['amount'] as num?)?.toDouble() ?? 0;
     final balanceAfter = (entry['balance_after'] as num?)?.toDouble() ?? 0;
+    final countryCode = Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US';
     final sourceType = entry['source_type'] as String? ?? '';
     final description = entry['description'] as String? ?? '';
     final createdAt = entry['created_at'] as String? ?? '';
@@ -547,7 +552,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    '${isDebit ? '+' : '-'}\$${amount.toStringAsFixed(2)}',
+                    '${isDebit ? '+' : '-'}${formatMoney(amount, country: countryCode)}',
                     style: TextStyle(
                       color: isDebit ? const Color(0xFFF59E0B) : const Color(0xFF10B981),
                       fontWeight: FontWeight.w700,
@@ -555,7 +560,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
                     ),
                   ),
                   Text(
-                    'Bal: \$${balanceAfter.toStringAsFixed(2)}',
+                    'Bal: ${formatMoney(balanceAfter, country: countryCode)}',
                     style: const TextStyle(color: Colors.white38, fontSize: 11),
                   ),
                 ],
@@ -596,6 +601,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
   }
 
   Widget _buildMiniRow(String label, double value, {bool bold = false}) {
+    final countryCode = Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US';
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 1),
       child: Row(
@@ -610,7 +616,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
             ),
           ),
           Text(
-            '\$${value.toStringAsFixed(2)}',
+            formatMoney(value, country: countryCode),
             style: TextStyle(
               color: bold ? const Color(0xFFF59E0B) : Colors.white70,
               fontSize: 12,
@@ -628,6 +634,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
 
   Widget _buildDepositarTab() {
     final cashOwed = (_account?['current_balance'] as num?)?.toDouble() ?? 0;
+    final countryCode = Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US';
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -654,7 +661,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
                       style: TextStyle(color: Colors.white54, fontSize: 12),
                     ),
                     Text(
-                      '\$${cashOwed.toStringAsFixed(2)}',
+                      formatMoney(cashOwed, country: countryCode),
                       style: const TextStyle(
                         color: Color(0xFFF59E0B),
                         fontSize: 22,
@@ -892,6 +899,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
     final status = deposit['status'] as String? ?? 'pending';
     final method = deposit['payment_method'] as String? ?? 'transfer';
     final createdAt = deposit['created_at'] as String? ?? '';
+    final countryCode = Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US';
 
     String dateStr = '';
     if (createdAt.isNotEmpty) {
@@ -950,7 +958,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '\$${amount.toStringAsFixed(2)} - ${_methodLabel(method)}',
+                  '${formatMoney(amount, country: countryCode)} - ${_methodLabel(method)}',
                   style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14),
                 ),
                 Text(dateStr, style: const TextStyle(color: Colors.white38, fontSize: 11)),
@@ -1079,7 +1087,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
         backgroundColor: AppColors.surface,
         title: const Text('Solicitar Reset', style: TextStyle(color: Colors.white)),
         content: Text(
-          'Solicitar al admin que resetee tu balance de \$${cashOwed.toStringAsFixed(2)}?\n\nSolo se aprueba si ya depositaste.',
+          'Solicitar al admin que resetee tu balance de ${formatMoney(cashOwed, country: driver.countryCode)}?\n\nSolo se aprueba si ya depositaste.',
           style: const TextStyle(color: Colors.white70),
         ),
         actions: [

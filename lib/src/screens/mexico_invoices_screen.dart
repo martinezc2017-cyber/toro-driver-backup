@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 import '../utils/app_colors.dart';
+import '../utils/money_format.dart';
 import '../config/supabase_config.dart';
 
 class MexicoInvoicesScreen extends StatefulWidget {
@@ -261,7 +262,7 @@ class _MexicoInvoicesScreenState extends State<MexicoInvoicesScreen> {
                 child: _buildSummaryItem('mx_invoices_count'.tr(), '${_invoices.length}'),
               ),
               Expanded(
-                child: _buildSummaryItem('Subtotal', '\$${subtotal.toStringAsFixed(2)}'),
+                child: _buildSummaryItem('Subtotal', formatMoney(subtotal, country: 'MX')),
               ),
             ],
           ),
@@ -269,10 +270,10 @@ class _MexicoInvoicesScreenState extends State<MexicoInvoicesScreen> {
           Row(
             children: [
               Expanded(
-                child: _buildSummaryItem('IVA', '\$${iva.toStringAsFixed(2)}'),
+                child: _buildSummaryItem('IVA', formatMoney(iva, country: 'MX')),
               ),
               Expanded(
-                child: _buildSummaryItem('Total', '\$${total.toStringAsFixed(2)}', highlight: true),
+                child: _buildSummaryItem('Total', formatMoney(total, country: 'MX'), highlight: true),
               ),
             ],
           ),
@@ -382,7 +383,7 @@ class _MexicoInvoicesScreenState extends State<MexicoInvoicesScreen> {
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Text(
-              '\$${invoice.total.toStringAsFixed(2)}',
+              formatMoney(invoice.total, country: 'MX'),
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
             ),
             Text(
@@ -400,9 +401,9 @@ class _MexicoInvoicesScreenState extends State<MexicoInvoicesScreen> {
                 _buildDetailRow('UUID', invoice.uuid ?? 'N/A'),
                 _buildDetailRow('RFC ${'mx_receiver'.tr()}', invoice.rfcReceptor),
                 _buildDetailRow('mx_use'.tr(), invoice.usoCfdi),
-                _buildDetailRow('Subtotal', '\$${invoice.subtotal.toStringAsFixed(2)}'),
-                _buildDetailRow('IVA (16%)', '\$${invoice.iva.toStringAsFixed(2)}'),
-                _buildDetailRow('Total', '\$${invoice.total.toStringAsFixed(2)}', bold: true),
+                _buildDetailRow('Subtotal', formatMoney(invoice.subtotal, country: 'MX')),
+                _buildDetailRow('IVA (16%)', formatMoney(invoice.iva, country: 'MX')),
+                _buildDetailRow('Total', formatMoney(invoice.total, country: 'MX'), bold: true),
                 const SizedBox(height: 12),
                 Row(
                   children: [

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:provider/provider.dart';
 import '../utils/app_colors.dart';
+import '../utils/money_format.dart';
 import '../providers/driver_provider.dart';
 import '../services/ticket_service.dart';
 
@@ -538,7 +539,7 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
                         ),
                       ),
                       Text(
-                        '\$${trip['final_price']?.toStringAsFixed(2) ?? '0.00'}',
+                        formatMoney((trip['final_price'] as num?)?.toDouble() ?? 0, country: context.read<DriverProvider>().driver?.countryCode ?? 'US'),
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,

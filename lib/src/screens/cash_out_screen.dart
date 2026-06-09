@@ -3,7 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../utils/app_theme.dart';
+import '../utils/money_format.dart';
 import '../providers/riverpod_providers.dart';
+import '../models/driver_model.dart';
 /// Instant Cash Out Screen - Like Uber/Lyft instant pay
 class CashOutScreen extends ConsumerStatefulWidget {
   final String driverId;
@@ -21,6 +23,7 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
   double _pendingBalance = 0;
   double _selectedAmount = 0;
   String _selectedMethod = 'debit_card';
+  String _countryCode = 'US';
 
   List<Map<String, dynamic>> _bankAccounts = [];
   List<Map<String, dynamic>> _debitCards = [];
@@ -47,7 +50,11 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
       final accounts = await driverService.getBankAccounts(widget.driverId);
       final cards = await driverService.getDebitCards(widget.driverId);
 
+      // Read driver country
+      final driver = await driverService.getDriver(widget.driverId);
+
       setState(() {
+        _countryCode = driver?.countryCode ?? 'US';
         _availableBalance =
             (stats['available_balance'] as num?)?.toDouble() ?? 0;
         _pendingBalance = (stats['pending_balance'] as num?)?.toDouble() ?? 0;
@@ -158,7 +165,7 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
             ),
             const SizedBox(height: 10),
             Text(
-              '\$${_netAmount.toStringAsFixed(2)}',
+              formatMoney(_netAmount, country: _countryCode),
               style: const TextStyle(
                 color: AppTheme.success,
                 fontSize: 32,
@@ -322,7 +329,7 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    '\$${_pendingBalance.toStringAsFixed(2)} ${'screens.cash_out.pending_suffix'.tr()}',
+                    '${formatMoney(_pendingBalance, country: _countryCode)} ${'screens.cash_out.pending_suffix'.tr()}',
                     style: const TextStyle(color: Colors.white70, fontSize: 11),
                   ),
                 ),
@@ -330,7 +337,7 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            '\$${_availableBalance.toStringAsFixed(2)}',
+            formatMoney(_availableBalance, country: _countryCode),
             style: const TextStyle(
               color: Colors.white,
               fontSize: 36,
@@ -682,10 +689,10 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
       ),
       child: Column(
         children: [
-          _buildFeeRow('screens.cash_out.amount_label'.tr(), '\$${_selectedAmount.toStringAsFixed(2)}'),
+          _buildFeeRow('screens.cash_out.amount_label'.tr(), formatMoney(_selectedAmount, country: _countryCode)),
           _buildFeeRow(
             'screens.cash_out.service_fee'.tr(),
-            '-\$${_fee.toStringAsFixed(2)}',
+            '-${formatMoney(_fee, country: _countryCode)}',
             isNegative: true,
           ),
           const Divider(color: AppTheme.border, height: 20),
@@ -760,7 +767,7 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
                   const Icon(Icons.bolt, color: Colors.white),
                   const SizedBox(width: 8),
                   Text(
-                    'Cash Out \$${_netAmount.toStringAsFixed(2)}',
+                    'Cash Out ${formatMoney(_netAmount, country: _countryCode)}',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 16,

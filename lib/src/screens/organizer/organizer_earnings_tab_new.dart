@@ -8,6 +8,7 @@ import '../../config/supabase_config.dart';
 import '../../services/organizer_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/haptic_service.dart';
+import '../../utils/money_format.dart';
 
 /// NEW Earnings tab - Sistema de Crédito Semanal
 /// Muestra: balance crédito, eventos, estados de cuenta, breakdown completo
@@ -660,7 +661,7 @@ class _OrganizerEarningsTabNewState extends State<OrganizerEarningsTabNew> {
                         ),
                       ),
                       Text(
-                        '\$${amountOwed.toStringAsFixed(2)}',
+                        formatMoney(amountOwed, country: 'MX'),
                         style: const TextStyle(
                           color: AppColors.error,
                           fontSize: 18,

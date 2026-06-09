@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 import '../utils/app_colors.dart';
+import '../utils/money_format.dart';
 import '../services/mexico_tax_service.dart';
 import '../config/supabase_config.dart';
 
@@ -337,12 +338,12 @@ class _MexicoTaxScreenState extends State<MexicoTaxScreen> {
             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
           ),
           const SizedBox(height: 16),
-          _buildSummaryRow('mx_gross_income'.tr(), '\$${summary.totalGross.toStringAsFixed(2)}'),
-          _buildSummaryRow('mx_isr_retained'.tr(), '-\$${summary.totalIsr.toStringAsFixed(2)}', color: AppColors.error),
-          _buildSummaryRow('mx_iva_retained'.tr(), '-\$${summary.totalIvaRetained.toStringAsFixed(2)}', color: AppColors.error),
-          _buildSummaryRow('mx_iva_to_pay'.tr(), '\$${summary.totalIvaOwes.toStringAsFixed(2)}', color: AppColors.warning),
+          _buildSummaryRow('mx_gross_income'.tr(), formatMoney(summary.totalGross, country: 'MX')),
+          _buildSummaryRow('mx_isr_retained'.tr(), '-${formatMoney(summary.totalIsr, country: 'MX')}', color: AppColors.error),
+          _buildSummaryRow('mx_iva_retained'.tr(), '-${formatMoney(summary.totalIvaRetained, country: 'MX')}', color: AppColors.error),
+          _buildSummaryRow('mx_iva_to_pay'.tr(), formatMoney(summary.totalIvaOwes, country: 'MX'), color: AppColors.warning),
           const Divider(height: 24),
-          _buildSummaryRow('mx_net_income'.tr(), '\$${summary.totalNet.toStringAsFixed(2)} MXN', bold: true),
+          _buildSummaryRow('mx_net_income'.tr(), '${formatMoney(summary.totalNet, country: 'MX')} MXN', bold: true),
           const SizedBox(height: 8),
           Row(
             children: [
@@ -430,12 +431,12 @@ class _MexicoTaxScreenState extends State<MexicoTaxScreen> {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: Column(
               children: [
-                _buildMonthDetailRow('mx_gross'.tr(), '\$${summary.totalGross.toStringAsFixed(2)}'),
-                _buildMonthDetailRow('ISR', '-\$${summary.totalIsrRetained.toStringAsFixed(2)}', color: AppColors.error),
-                _buildMonthDetailRow('IVA ${'mx_retained'.tr()}', '-\$${summary.totalIvaRetained.toStringAsFixed(2)}', color: AppColors.error),
-                _buildMonthDetailRow('IVA ${'mx_to_pay'.tr()}', '\$${summary.totalIvaDriverOwes.toStringAsFixed(2)}', color: AppColors.warning),
+                _buildMonthDetailRow('mx_gross'.tr(), formatMoney(summary.totalGross, country: 'MX')),
+                _buildMonthDetailRow('ISR', '-${formatMoney(summary.totalIsrRetained, country: 'MX')}', color: AppColors.error),
+                _buildMonthDetailRow('IVA ${'mx_retained'.tr()}', '-${formatMoney(summary.totalIvaRetained, country: 'MX')}', color: AppColors.error),
+                _buildMonthDetailRow('IVA ${'mx_to_pay'.tr()}', formatMoney(summary.totalIvaDriverOwes, country: 'MX'), color: AppColors.warning),
                 const Divider(),
-                _buildMonthDetailRow('mx_net'.tr(namedArgs: {'amount': ''}), '\$${summary.totalNet.toStringAsFixed(2)}', bold: true),
+                _buildMonthDetailRow('mx_net'.tr(namedArgs: {'amount': ''}), formatMoney(summary.totalNet, country: 'MX'), bold: true),
                 const SizedBox(height: 8),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,

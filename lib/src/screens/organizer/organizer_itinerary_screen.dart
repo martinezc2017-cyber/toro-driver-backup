@@ -1336,7 +1336,6 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
 
     if (totalKm == 0) return const SizedBox.shrink();
 
-    final totalMi = totalKm * 0.621371;
     final hours = (totalMin / 60).floor();
     final mins = (totalMin % 60).round();
     final timeStr =
@@ -1355,7 +1354,7 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
           const Icon(Icons.route, color: AppColors.primary, size: 18),
           const SizedBox(width: 8),
           Text(
-            '${totalMi.toStringAsFixed(1)} mi',
+            '${totalKm.toStringAsFixed(1)} km',
             style: const TextStyle(
               color: AppColors.primary,
               fontSize: 16,
@@ -1434,6 +1433,7 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
   Widget _buildDistanceIndicator(int segmentIndex) {
     final seg = _routeSegments[segmentIndex]!;
     final mi = (seg['mi'] as num?)?.toDouble() ?? 0;
+    final km = mi / 0.621371;
     final min = (seg['min'] as num?)?.toDouble() ?? 0;
 
     return Container(
@@ -1463,7 +1463,7 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
                     size: 12, color: AppColors.info),
                 const SizedBox(width: 6),
                 Text(
-                  '${mi.toStringAsFixed(1)} mi',
+                  '${km.toStringAsFixed(1)} km',
                   style: TextStyle(
                     color: AppColors.info,
                     fontSize: 11,

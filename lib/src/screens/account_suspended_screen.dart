@@ -7,6 +7,7 @@ import '../services/cash_account_service.dart';
 import '../services/notification_service.dart';
 import '../config/supabase_config.dart';
 import '../utils/app_colors.dart';
+import '../utils/money_format.dart';
 import 'cash_balance_screen.dart';
 
 /// Blocking overlay when driver's cash account is suspended.
@@ -246,7 +247,7 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '\$${widget.amountOwed.toStringAsFixed(2)}',
+                      formatMoney(widget.amountOwed, country: context.read<DriverProvider>().driver?.countryCode ?? 'US'),
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 48,

@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/haptic_service.dart';
+import '../../utils/money_format.dart';
 import '../../services/tourism_event_service.dart';
 import '../../services/organizer_service.dart';
 import '../../config/supabase_config.dart';
@@ -1023,7 +1024,7 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
               style: const TextStyle(color: AppColors.textSecondary, fontSize: 14)),
             if (price != null) ...[
               const SizedBox(height: 4),
-              Text('Precio: \$${price.toStringAsFixed(2)}/km',
+              Text('Precio: ${formatMoney(price, country: 'MX')}/km',
                 style: const TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w700)),
             ],
             const SizedBox(height: 12),

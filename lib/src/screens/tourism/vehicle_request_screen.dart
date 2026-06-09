@@ -8,6 +8,7 @@ import '../../providers/driver_provider.dart';
 import '../../services/tourism_event_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/haptic_service.dart';
+import '../../utils/money_format.dart';
 import 'tourism_driver_home_screen.dart';
 
 /// Screen for drivers to view and respond to vehicle/bid requests from organizers.
@@ -43,7 +44,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
   String? _error;
   RealtimeChannel? _realtimeChannel;
   RealtimeChannel? _bidStatusChannel;
-  double _minPricePerKm = 10.0; // default, loaded from pricing_rules_mx
+  double _minPricePerKm = 10.0; // default, loaded from pricing_config (MX/DEFAULT)
   int _driverVehicleSeats = 0; // loaded from bus_vehicles
 
   // Tab controller for "Eventos Abiertos", "Invitaciones", "Mis Pujas"
@@ -245,13 +246,14 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
   Future<void> _loadMinPrice() async {
     try {
       final response = await Supabase.instance.client
-          .from('pricing_rules_mx')
-          .select('per_km')
-          .limit(1)
+          .from('pricing_config')
+          .select('ride_per_km')
+          .eq('country_code', 'MX')
+          .eq('state_code', 'DEFAULT')
           .maybeSingle();
-      if (response != null && response['per_km'] != null) {
+      if (response != null && response['ride_per_km'] != null) {
         setState(() {
-          _minPricePerKm = (response['per_km'] as num).toDouble();
+          _minPricePerKm = (response['ride_per_km'] as num).toDouble();
         });
       }
     } catch (_) {}
@@ -2919,7 +2921,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                 child: Row(
                   children: [
                     Text(
-                      '\$${price.toStringAsFixed(2)}/km',
+                      '${formatMoney(price, country: Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'MX')}/km',
                       style: TextStyle(color: accentColor, fontSize: 16, fontWeight: FontWeight.w700),
                     ),
                     if (totalPrice != null) ...[

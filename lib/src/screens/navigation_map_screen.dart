@@ -22,6 +22,7 @@ import '../services/geocoding_service.dart';
 import '../services/directions_service.dart';
 import '../services/navigation_service.dart';
 import '../services/poi_service.dart';
+import '../services/delivery_service.dart';
 // Map matching removido - usamos los steps de la ruta para nombre de calle (gratis)
 import '../widgets/navigation_ui.dart';
 import 'marketplace_confirm_screen.dart';
@@ -1058,7 +1059,27 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
     );
     if (confirmed == true && mounted) {
       final rideProvider = context.read<RideProvider>();
-      await rideProvider.cancelRide('driver_cancelled');
+      final ride = rideProvider.activeRide;
+      try {
+        if (ride != null && ride.type == RideType.marketplace) {
+          // Marketplace deliveries have their own state machine + immutability triggers.
+          // Generic cancelRide() sets status=pending and writes NULL to driver_id,
+          // which the trigger rejects silently — leaving the row stuck in_progress.
+          await DeliveryService().cancelMarketplaceDelivery(
+            ride.id, reason: 'driver_cancelled',
+          );
+          rideProvider.clearActiveRide();
+        } else {
+          await rideProvider.cancelRide('driver_cancelled');
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('No se pudo cancelar: $e'), backgroundColor: Colors.red),
+          );
+        }
+        return;
+      }
       _waitTimer?.cancel();
       _waitSeconds = 0;
       _clearRoute();
@@ -2562,28 +2583,58 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: statusColor.withOpacity(0.3)),
               ),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Trip info chips
-                  Expanded(
-                    child: Row(
-                      children: [
-                        if (_navState.isNavigating) ...[
-                          _buildTripDetailChip(Icons.access_time_filled, _navState.formattedETA),
-                          const SizedBox(width: 6),
-                          _buildTripDetailChip(Icons.route, _navState.formattedDistanceRemaining),
-                          const SizedBox(width: 6),
-                          _buildTripDetailChip(Icons.schedule, _navState.formattedDurationRemaining),
-                        ] else ...[
-                          _buildTripDetailChip(Icons.route, formatDistance(ride.distanceKm, country: context.read<DriverProvider>().driver?.countryCode ?? 'US')),
-                          const SizedBox(width: 6),
-                          _buildTripDetailChip(Icons.schedule, '~${ride.estimatedMinutes} min'),
-                        ],
+                  // Row 1: trip-info chips (scrollable horizontally if needed) + mute
+                  Row(
+                    children: [
+                      Expanded(
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              if (_navState.isNavigating) ...[
+                                _buildTripDetailChip(Icons.access_time_filled, _navState.formattedETA),
+                                const SizedBox(width: 6),
+                                _buildTripDetailChip(Icons.route, _navState.formattedDistanceRemaining),
+                                const SizedBox(width: 6),
+                                _buildTripDetailChip(Icons.schedule, _navState.formattedDurationRemaining),
+                              ] else ...[
+                                _buildTripDetailChip(Icons.route, formatDistance(ride.distanceKm, country: context.read<DriverProvider>().driver?.countryCode ?? 'US')),
+                                const SizedBox(width: 6),
+                                _buildTripDetailChip(Icons.schedule, '~${ride.estimatedMinutes} min'),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                      if (_navState.isNavigating) ...[
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: () => setState(() => _isMuted = !_isMuted),
+                          child: Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.08),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              _isMuted ? Icons.volume_off : Icons.volume_up,
+                              color: Colors.white70,
+                              size: 18,
+                            ),
+                          ),
+                        ),
                       ],
-                    ),
+                    ],
                   ),
-                  // Payment pill - CASH: show amount to collect, CARD: show "Ya pagado"
+                  const SizedBox(height: 8),
+                  // Row 2: payment pill (full-width, no overlap)
                   Container(
+                    width: double.infinity,
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
                       color: ride.paymentMethod == PaymentMethod.cash
@@ -2596,71 +2647,49 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                             : Colors.blue.withOpacity(0.5),
                       ),
                     ),
-                    child: Column(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
+                        Icon(
+                          ride.paymentMethod == PaymentMethod.cash
+                              ? Icons.payments_outlined
+                              : Icons.check_circle,
+                          color: ride.paymentMethod == PaymentMethod.cash
+                              ? Colors.green
+                              : Colors.blue,
+                          size: 16,
+                        ),
+                        const SizedBox(width: 6),
                         Text(
                           // CASH: show fare (what to collect), CARD: show driver earnings
                           ride.paymentMethod == PaymentMethod.cash
                               ? formatMoney(ride.fare, country: context.read<DriverProvider>().driver?.countryCode ?? 'US')
                               : formatMoney(ride.driverEarnings, country: context.read<DriverProvider>().driver?.countryCode ?? 'US'),
                           style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
                             color: ride.paymentMethod == PaymentMethod.cash
                                 ? Colors.green
                                 : Colors.blue,
                           ),
                         ),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              ride.paymentMethod == PaymentMethod.cash
-                                  ? Icons.payments_outlined
-                                  : Icons.check_circle,
-                              color: ride.paymentMethod == PaymentMethod.cash
-                                  ? Colors.green.withOpacity(0.8)
-                                  : Colors.blue.withOpacity(0.8),
-                              size: 12,
-                            ),
-                            const SizedBox(width: 3),
-                            Text(
-                              ride.paymentMethod == PaymentMethod.cash
-                                  ? 'COBRAR EN EFECTIVO'
-                                  : 'YA PAGADO',
-                              style: TextStyle(
-                                color: ride.paymentMethod == PaymentMethod.cash
-                                    ? Colors.green.withOpacity(0.8)
-                                    : Colors.blue.withOpacity(0.8),
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
+                        const SizedBox(width: 8),
+                        Text(
+                          ride.paymentMethod == PaymentMethod.cash
+                              ? 'COBRAR EN EFECTIVO'
+                              : 'YA PAGADO',
+                          style: TextStyle(
+                            color: ride.paymentMethod == PaymentMethod.cash
+                                ? Colors.green.withOpacity(0.9)
+                                : Colors.blue.withOpacity(0.9),
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.5,
+                          ),
                         ),
                       ],
                     ),
                   ),
-                  // Mute button when navigating
-                  if (_navState.isNavigating) ...[
-                    const SizedBox(width: 8),
-                    GestureDetector(
-                      onTap: () => setState(() => _isMuted = !_isMuted),
-                      child: Container(
-                        width: 32,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Icon(
-                          _isMuted ? Icons.volume_off : Icons.volume_up,
-                          color: Colors.white54,
-                          size: 18,
-                        ),
-                      ),
-                    ),
-                  ],
                 ],
               ),
             ),

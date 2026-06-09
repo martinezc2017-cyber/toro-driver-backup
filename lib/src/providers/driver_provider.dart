@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/driver_service.dart';
 import '../services/notification_service.dart';
 import '../models/driver_model.dart';
+import '../utils/money_format.dart' show setUserCountry;
 
 class DriverProvider with ChangeNotifier {
   final DriverService _driverService = DriverService();
@@ -46,6 +47,7 @@ class DriverProvider with ChangeNotifier {
     try {
       // Load driver profile
       _driver = await _driverService.getDriver(driverId);
+      setUserCountry(_driver?.countryCode);
 
       // If driver doesn't exist in database, create one for testing
       if (_driver == null) {

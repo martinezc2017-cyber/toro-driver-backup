@@ -1,11 +1,13 @@
 // Bus Tourism Payment Split Calculator
 //
-// Split model:
-// - Bus owner sets base price per seat
-// - Passenger pays base_price * 1.21 (21% TORO surcharge)
-// - TORO keeps base_price * 0.18 (18%)
-// - Organizer gets base_price * 0.03 (3%, if present)
-// - Bus owner receives base_price * 1.00 (full price)
+// Split model (defaults from pricing_config canonical columns):
+//   bus_passenger_surcharge_pct (default 21) — % added on top of base for passenger.
+//   bus_platform_keep_pct        (default 18) — TORO keep from the surcharge.
+//   bus_organizer_commission_pct (default 3)  — organizer's cut.
+//
+// Use `BusTourismSplitConfig.fromPricingConfig(row)` to build a per-country/state
+// config. The const default constructor remains for tests and fallback only —
+// production code MUST load the config from pricing_config.
 
 class BusTourismSplitConfig {
   final double toroSurchargePercent;
@@ -17,6 +19,18 @@ class BusTourismSplitConfig {
     this.toroKeepPercent = 18.0,
     this.organizerCommissionPercent = 3.0,
   });
+
+  /// Build from a `pricing_config` row (e.g. result of `get_pricing(country, state)`).
+  factory BusTourismSplitConfig.fromPricingConfig(Map<String, dynamic> row) {
+    return BusTourismSplitConfig(
+      toroSurchargePercent:
+          (row['bus_passenger_surcharge_pct'] as num?)?.toDouble() ?? 21.0,
+      toroKeepPercent:
+          (row['bus_platform_keep_pct'] as num?)?.toDouble() ?? 18.0,
+      organizerCommissionPercent:
+          (row['bus_organizer_commission_pct'] as num?)?.toDouble() ?? 3.0,
+    );
+  }
 }
 
 class BusTourismSplitBreakdown {

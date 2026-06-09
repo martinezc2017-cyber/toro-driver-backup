@@ -5,6 +5,7 @@ import 'package:geocoding/geocoding.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
 import '../config/app_config.dart';
+import '../utils/geo_utils.dart';
 import 'background_location_service.dart';
 
 class LocationService {
@@ -105,8 +106,7 @@ class LocationService {
     try {
       // Update driver's location directly in drivers table (for admin visibility)
       // Only update columns that exist in the drivers table
-      // Detect country from GPS
-      final detectedCountry = (position.latitude < 33 && position.longitude > -118 && position.longitude < -86) ? 'MX' : 'US';
+      final detectedCountry = GeoUtils.countryCode(position.latitude, position.longitude);
 
       await _client.from(SupabaseConfig.driversTable).update({
         'current_lat': position.latitude,
@@ -250,7 +250,12 @@ class LocationService {
     _rideTrackingSubscription = Geolocator.getPositionStream(
       locationSettings: locationSettings,
     ).handleError((error) {
-      debugPrint('[LOCATION] Ride tracking stream error (ignored): $error');
+      debugPrint('[LOCATION] Ride tracking stream error: $error');
+      // Mark GPS as unavailable in DB so rider sees stale-location warning
+      _client.from('deliveries')
+          .update({'driver_gps_lost': true})
+          .eq('id', rideId)
+          .catchError((_) {});
     }).listen((Position position) {
       _currentPosition = position;
       _positionController.add(position);
@@ -309,26 +314,21 @@ class LocationService {
   String? _cachedStateCode;
   Position? _cachedStatePosition;
 
-  /// Get US state code from current GPS position
-  /// Returns 2-letter state code (AZ, CA, TX, etc.) or 'AZ' as fallback
-  Future<String> getStateCodeFromGPS() async {
+  /// Get US state code from current GPS position.
+  /// Returns null if GPS unavailable — callers must handle null and not assume a state.
+  Future<String?> getStateCodeFromGPS() async {
     try {
       final position = await getCurrentPosition();
-      if (position == null) {
-        // LocationService: No GPS position, using fallback AZ');
-        return 'AZ';
-      }
-
+      if (position == null) return null;
       return await getStateCodeFromCoordinates(position.latitude, position.longitude);
     } catch (e) {
-      // LocationService: Error getting state from GPS: $e');
-      return 'AZ';
+      return null;
     }
   }
 
-  /// Get US state code from specific coordinates
-  /// Uses reverse geocoding to determine the state
-  Future<String> getStateCodeFromCoordinates(double lat, double lng) async {
+  /// Get US/MX state code from specific coordinates.
+  /// Returns null if reverse geocoding fails — callers must handle null and not assume a state.
+  Future<String?> getStateCodeFromCoordinates(double lat, double lng) async {
     // Check cache - if position is within 0.1 degree (~11km), use cached value
     if (_cachedStateCode != null && _cachedStatePosition != null) {
       final latDiff = (lat - _cachedStatePosition!.latitude).abs();
@@ -367,11 +367,9 @@ class LocationService {
         }
       }
 
-      // LocationService: Could not determine state, using fallback AZ');
-      return 'AZ';
+      return null;
     } catch (e) {
-      // LocationService: Reverse geocoding error: $e');
-      return 'AZ';
+      return null;
     }
   }
 

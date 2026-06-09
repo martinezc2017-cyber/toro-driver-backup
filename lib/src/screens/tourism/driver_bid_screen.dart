@@ -8,6 +8,7 @@ import '../../providers/driver_provider.dart';
 import '../../services/tourism_event_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/haptic_service.dart';
+import '../../utils/money_format.dart';
 import 'tourism_driver_home_screen.dart';
 
 /// Screen for drivers to view and manage all their bid requests.
@@ -57,14 +58,16 @@ class _DriverBidScreenState extends State<DriverBidScreen>
 
   Future<void> _loadMinPrice() async {
     try {
+      // Canonical: read ride_per_km from pricing_config (MX/DEFAULT row).
       final response = await Supabase.instance.client
-          .from('pricing_rules_mx')
-          .select('per_km')
-          .limit(1)
+          .from('pricing_config')
+          .select('ride_per_km')
+          .eq('country_code', 'MX')
+          .eq('state_code', 'DEFAULT')
           .maybeSingle();
-      if (response != null && response['per_km'] != null) {
+      if (response != null && response['ride_per_km'] != null) {
         setState(() {
-          _minPricePerKm = (response['per_km'] as num).toDouble();
+          _minPricePerKm = (response['ride_per_km'] as num).toDouble();
         });
       }
     } catch (_) {}
@@ -552,7 +555,7 @@ class _DriverBidScreenState extends State<DriverBidScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Precio propuesto: \$${organizerPrice?.toStringAsFixed(2) ?? '?'} MXN/km',
+              'Precio propuesto: ${organizerPrice != null ? formatMoney(organizerPrice, country: 'MX') : '\$?'} MXN/km',
               style: const TextStyle(
                   color: AppColors.textSecondary, fontSize: 14),
             ),
@@ -1644,7 +1647,7 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                             ),
                           ),
                           Text(
-                            '\$${pricePerKm.toStringAsFixed(2)}',
+                            formatMoney(pricePerKm, country: 'MX'),
                             style: const TextStyle(
                               color: AppColors.textPrimary,
                               fontSize: 16,
@@ -1668,7 +1671,7 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                             ),
                           ),
                           Text(
-                            '\$${organizerProposedPrice.toStringAsFixed(2)}',
+                            formatMoney(organizerProposedPrice, country: 'MX'),
                             style: const TextStyle(
                               color: AppColors.warning,
                               fontSize: 16,

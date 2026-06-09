@@ -85,36 +85,61 @@ class MexicoPricingService {
     }
   }
 
-  /// Get all pricing zones
+  /// Get all pricing zones (canonical: MX state rows in pricing_config).
   Future<List<PricingZone>> getAllZones() async {
     try {
       final response = await _client
-          .from('pricing_zones_mx')
-          .select()
+          .from('pricing_config')
+          .select('id, state_code')
+          .eq('country_code', 'MX')
           .eq('is_active', true)
           .order('state_code');
 
       return (response as List).map((data) {
-        return PricingZone.fromJson(data);
+        final stateCode = data['state_code']?.toString() ?? '';
+        return PricingZone.fromJson({
+          ...data,
+          'name': stateCode,
+          'state_code': stateCode,
+          'is_active': true,
+        });
       }).toList();
     } catch (e) {
       rethrow;
     }
   }
 
-  /// Get pricing rules for a zone
+  /// Get pricing rules for a zone (canonical: same pricing_config row, mapped to rule shape).
   Future<List<PricingRule>> getZoneRules(int zoneId) async {
     try {
-      final response = await _client
-          .from('pricing_rules_mx')
+      final row = await _client
+          .from('pricing_config')
           .select()
-          .eq('zone_id', zoneId)
-          .eq('is_active', true)
-          .isFilter('effective_to', null);
+          .eq('id', zoneId.toString())
+          .maybeSingle();
 
-      return (response as List).map((data) {
-        return PricingRule.fromJson(data);
-      }).toList();
+      if (row == null) return [];
+
+      final mapped = <String, dynamic>{
+        'id': row['id'],
+        'zone_id': row['id'],
+        'service_type': 'ride',
+        'vehicle_type': 'standard',
+        'base_fare': row['ride_base_fare'],
+        'per_km': row['ride_per_km'],
+        'per_minute': row['ride_per_minute'],
+        'minimum_fare': row['ride_minimum_fare'],
+        'cancellation_fee': row['ride_cancellation_fee'],
+        'driver_percentage': row['driver_commission'],
+        'platform_percentage': row['platform_commission'],
+        'insurance_percentage': row['insurance_percent'],
+        'iva_rate': (row['tax_percent'] is num)
+            ? (row['tax_percent'] as num).toDouble() / 100
+            : 0.16,
+        'is_active': row['is_active'] ?? true,
+      };
+
+      return [PricingRule.fromJson(mapped)];
     } catch (e) {
       rethrow;
     }

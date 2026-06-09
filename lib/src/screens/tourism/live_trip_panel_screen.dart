@@ -14,6 +14,7 @@ import '../../services/tourism_invitation_service.dart';
 import '../../services/trip_fare_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/haptic_service.dart';
+import '../../utils/money_format.dart';
 
 /// Live Trip Panel Screen - the core screen a driver sees during an active
 /// tourism trip.
@@ -503,7 +504,7 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
                         ),
                       ),
                       Text(
-                        '\$${fare.toStringAsFixed(2)}',
+                        formatMoney(fare, country: context.read<DriverProvider>().driver?.countryCode ?? 'MX'),
                         style: const TextStyle(
                           color: AppColors.success,
                           fontSize: 16,
@@ -874,14 +875,14 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
             _buildDetailRow(
               Icons.attach_money,
               'Tarifa estimada',
-              '\$${estimatedFare.toStringAsFixed(2)}',
+              formatMoney(estimatedFare, country: context.read<DriverProvider>().driver?.countryCode ?? 'MX'),
             ),
             if (finalFare != null) ...[
               const SizedBox(height: 10),
               _buildDetailRow(
                 Icons.receipt,
                 'Tarifa final',
-                '\$${finalFare.toStringAsFixed(2)}',
+                formatMoney(finalFare, country: context.read<DriverProvider>().driver?.countryCode ?? 'MX'),
                 valueColor: AppColors.success,
               ),
             ],
@@ -1028,7 +1029,7 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
           SnackBar(
             content: Text(
               '${passenger['invited_name'] ?? "Pasajero"} bajo - '
-              'Tarifa: \$${fare.toStringAsFixed(2)}',
+              'Tarifa: ${formatMoney(fare, country: context.read<DriverProvider>().driver?.countryCode ?? 'MX')}',
             ),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
@@ -1776,7 +1777,7 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  '\$${displayFare.toStringAsFixed(2)}',
+                  formatMoney(displayFare, country: context.read<DriverProvider>().driver?.countryCode ?? 'MX'),
                   style: TextStyle(
                     color: finalFare != null
                         ? AppColors.success

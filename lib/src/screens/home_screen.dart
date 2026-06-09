@@ -29,6 +29,7 @@ import '../models/driver_model.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_theme.dart';
 import '../utils/haptic_service.dart';
+import '../utils/money_format.dart';
 import '../widgets/futuristic_widgets.dart' hide NeonButton, NeonSwitch;
 import '../config/supabase_config.dart';
 import '../services/audit_service.dart';
@@ -42,6 +43,7 @@ import '../services/notification_service.dart';
 import '../services/cash_account_service.dart';
 import '../services/driver_qr_points_service.dart';
 import '../services/ride_service.dart';
+import '../services/driver_service.dart';
 import 'earnings_screen.dart';
 import 'rides_screen.dart';
 import 'profile_screen.dart';
@@ -187,6 +189,11 @@ class _HomeScreenState extends State<HomeScreen>
         }
         break;
       case AppLifecycleState.detached:
+        // App closed/crashed — mark driver offline immediately (fire and forget)
+        final uid = Supabase.instance.client.auth.currentUser?.id;
+        if (uid != null) {
+          DriverService().updateOnlineStatus(uid, false).catchError((_) {});
+        }
         break;
     }
   }
@@ -1260,7 +1267,7 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'Tu ganancia: \$${estimatedEarnings.toStringAsFixed(2)}',
+                    'Tu ganancia: ${formatMoney(estimatedEarnings, country: Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US')}',
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.9),
                       fontSize: 13,
@@ -2185,7 +2192,7 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '\$${_cashOwed.toStringAsFixed(2)}',
+                    formatMoney(_cashOwed, country: Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US'),
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 24,
@@ -2320,7 +2327,7 @@ class _HomeScreenState extends State<HomeScreen>
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text(success
-                                    ? 'Oferta enviada: \$${proposedPrice.toStringAsFixed(2)}'
+                                    ? 'Oferta enviada: ${formatMoney(proposedPrice, country: Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US')}'
                                     : rideProvider.error ?? 'Error al enviar oferta'),
                                 backgroundColor: success ? const Color(0xFF1E88E5) : Colors.red,
                               ),
@@ -2428,7 +2435,9 @@ class _HomeScreenState extends State<HomeScreen>
     if (driver == null) return const SizedBox.shrink();
 
     final qrCode = driver.qrCode ?? 'TORO-DRV-${driver.id.substring(0, 5).toUpperCase()}';
-    final qrLink = 'https://tororider.app/d/$qrCode';
+    // Beta cerrada: el QR manda al rider a la landing/waitlist de toro-ride.com
+    // (registro de riders aún cerrado) con el ref del driver, no a la app.
+    final qrLink = 'https://toro-ride.com/?ref=$qrCode';
 
     // Live data from DriverQRPointsService
     final qrLevel = _qrPointsService.currentLevel.level;
@@ -3038,7 +3047,7 @@ class _HomeScreenState extends State<HomeScreen>
                             const SizedBox(height: 2),
                             _showDailyEarnings
                                 ? Text(
-                                    '\$${todayEarnings.toStringAsFixed(2)}',
+                                    formatMoney(todayEarnings, country: Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US'),
                                     style: TextStyle(
                                       color: const Color(0xFFFF9500),
                                       fontSize: 22,
@@ -3097,7 +3106,7 @@ class _HomeScreenState extends State<HomeScreen>
                             const SizedBox(height: 2),
                             _showWeeklyEarnings
                                 ? Text(
-                                    '\$${weeklyEarnings.toStringAsFixed(2)}',
+                                    formatMoney(weeklyEarnings, country: Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US'),
                                     style: TextStyle(
                                       color: AppColors.success,
                                       fontSize: 22,
@@ -4177,7 +4186,7 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                             style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                           ),
                           Text(
-                            '\$${baseFare.toStringAsFixed(2)}',
+                            formatMoney(baseFare, country: Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US'),
                             style: const TextStyle(
                               fontSize: 16,
                               color: AppColors.textSecondary,
@@ -4198,7 +4207,7 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                             ),
                           ),
                           Text(
-                            '\$${proposedPrice.toStringAsFixed(2)}',
+                            formatMoney(proposedPrice, country: Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US'),
                             style: const TextStyle(
                               fontSize: 28,
                               fontWeight: FontWeight.bold,
@@ -4220,7 +4229,7 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        '+\$${increase.toStringAsFixed(2)} (+${increasePercent.toStringAsFixed(0)}%)',
+                        '+${formatMoney(increase, country: Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US')} (+${increasePercent.toStringAsFixed(0)}%)',
                         style: const TextStyle(
                           color: Color(0xFF00FF66),
                           fontSize: 14,
@@ -4331,7 +4340,7 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                             const Icon(Icons.send_rounded, color: Colors.white, size: 18),
                             const SizedBox(width: 8),
                             Text(
-                              'ENVIAR OFERTA \$${proposedPrice.toStringAsFixed(2)}',
+                              'ENVIAR OFERTA ${formatMoney(proposedPrice, country: Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US')}',
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 15,
@@ -4599,7 +4608,7 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                             ),
                           ),
                           Text(
-                            '\$${widget.ride.fare.toStringAsFixed(2)}',
+                            formatMoney(widget.ride.fare, country: Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US'),
                             style: TextStyle(
                               color: AppColors.textSecondary,
                               fontSize: 18,
@@ -4627,7 +4636,7 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                             ),
                           ),
                           Text(
-                            '\$${widget.ride.driverEarnings.toStringAsFixed(2)}',
+                            formatMoney(widget.ride.driverEarnings, country: Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US'),
                             style: TextStyle(
                               color: AppColors.success,
                               fontSize: 26,
@@ -4641,14 +4650,16 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                 ),
                 const SizedBox(height: 8),
                 // Distance + Time row (pickup distance + trip distance + trip time)
-                Row(
+                Builder(builder: (ctx) {
+                  final cc = Provider.of<DriverProvider>(ctx, listen: false).driver?.countryCode ?? 'US';
+                  return Row(
                   children: [
-                    // Pickup distance (miles away from driver)
+                    // Pickup distance (away from driver)
                     if (widget.pickupDistanceMiles != null) ...[
                       Icon(Icons.near_me, color: Colors.cyan, size: 18),
                       const SizedBox(width: 4),
                       Text(
-                        '${widget.pickupDistanceMiles!.toStringAsFixed(1)} mi',
+                        formatDistanceFromMiles(widget.pickupDistanceMiles!, country: cc),
                         style: TextStyle(
                           color: Colors.cyan,
                           fontSize: 16,
@@ -4671,7 +4682,7 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      '${(widget.ride.distanceKm * 0.621371).toStringAsFixed(1)} mi',
+                      formatDistance(widget.ride.distanceKm, country: cc),
                       style: TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 16,
@@ -4695,7 +4706,8 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                       ),
                     ),
                   ],
-                ),
+                );
+                }),
                 // Carpool info: recurring days + seats (only for carpool type)
                 if (widget.ride.type == RideType.carpool &&
                     widget.ride.recurringDays.isNotEmpty) ...[
@@ -5122,9 +5134,10 @@ class _RoutePreviewSheetState extends State<_RoutePreviewSheet>
         final distanceMeters = route.distance;
         final durationSeconds = route.duration;
 
+        final cc = Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US';
         _distance = distanceMeters >= 1609
-            ? '${(distanceMeters / 1609.34).toStringAsFixed(1)} mi'
-            : '${(distanceMeters * 3.28084).toInt()} ft';
+            ? formatDistance(distanceMeters / 1000, country: cc)
+            : (cc == 'MX' ? '${distanceMeters.toInt()} m' : '${(distanceMeters * 3.28084).toInt()} ft');
 
         final minutes = (durationSeconds / 60).round();
         _duration = minutes >= 60
@@ -5322,7 +5335,7 @@ class _RoutePreviewSheetState extends State<_RoutePreviewSheet>
                             const SizedBox(height: 4),
                             Consumer<EarningsProvider>(
                               builder: (context, ep, _) => Text(
-                                '\$${ep.todayEarnings.toStringAsFixed(2)}',
+                                formatMoney(ep.todayEarnings, country: Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US'),
                                 style: const TextStyle(
                                   color: Color(0xFFFF9500),
                                   fontSize: 20,
@@ -5381,7 +5394,7 @@ class _RoutePreviewSheetState extends State<_RoutePreviewSheet>
                             const SizedBox(height: 4),
                             Consumer<EarningsProvider>(
                               builder: (context, ep, _) => Text(
-                                '\$${ep.weeklyEarnings.toStringAsFixed(2)}',
+                                formatMoney(ep.weeklyEarnings, country: Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US'),
                                 style: const TextStyle(
                                   color: AppColors.primaryBright,
                                   fontSize: 20,

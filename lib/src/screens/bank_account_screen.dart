@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:provider/provider.dart';
 import '../config/supabase_config.dart';
+import '../providers/driver_provider.dart';
 import '../services/stripe_connect_service.dart';
 import '../utils/app_colors.dart';
+import '../utils/money_format.dart';
 
 class BankAccountScreen extends StatefulWidget {
   const BankAccountScreen({super.key});
@@ -288,6 +291,7 @@ class _BankAccountScreenState extends State<BankAccountScreen> {
   Widget _buildBalanceCard() {
     final available = (_driverData?['available_balance'] as num?)?.toDouble() ?? 0;
     final pending = (_driverData?['pending_balance'] as num?)?.toDouble() ?? 0;
+    final countryCode = Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US';
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -301,7 +305,7 @@ class _BankAccountScreenState extends State<BankAccountScreen> {
           Text('available_balance'.tr(), style: const TextStyle(color: Colors.white70, fontSize: 12)),
           const SizedBox(height: 4),
           Text(
-            '\$${available.toStringAsFixed(2)}',
+            formatMoney(available, country: countryCode),
             style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
@@ -310,7 +314,7 @@ class _BankAccountScreenState extends State<BankAccountScreen> {
               Icon(Icons.schedule, color: Colors.white70, size: 14),
               const SizedBox(width: 4),
               Text(
-                '${'pending'.tr()}: \$${pending.toStringAsFixed(2)}',
+                '${'pending'.tr()}: ${formatMoney(pending, country: countryCode)}',
                 style: const TextStyle(color: Colors.white70, fontSize: 12),
               ),
             ],

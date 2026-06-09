@@ -6,6 +6,7 @@ import '../services/driver_qr_points_service.dart';
 import '../providers/driver_provider.dart';
 import '../utils/app_colors.dart';
 import '../utils/haptic_service.dart';
+import '../utils/money_format.dart';
 
 /// Driver QR Points & Commission Screen
 /// Shows driver's QR tier and how it reduces platform commission
@@ -1232,7 +1233,7 @@ class _QRPointsScreenState extends State<QRPointsScreen>
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '\$${service.allTimeTipsTotal.toStringAsFixed(2)}',
+                  formatMoney(service.allTimeTipsTotal, country: context.read<DriverProvider>().driver?.countryCode ?? 'US'),
                   style: TextStyle(
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
@@ -1329,7 +1330,7 @@ class _QRPointsScreenState extends State<QRPointsScreen>
                 ),
               ),
               Text(
-                '+\$${tip.tipAmount.toStringAsFixed(2)}',
+                '+${formatMoney(tip.tipAmount, country: context.read<DriverProvider>().driver?.countryCode ?? 'US')}',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,

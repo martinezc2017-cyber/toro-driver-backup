@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../services/bus_route_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/haptic_service.dart';
+import '../../utils/money_format.dart';
 
 /// Routes tab for the organizer home screen.
 ///
@@ -273,7 +274,7 @@ class _OrganizerRoutesTabState extends State<OrganizerRoutesTab> {
                   ),
                   _buildInfoChip(
                     icon: Icons.attach_money,
-                    value: '\$${pricePerKm.toStringAsFixed(2)}/km',
+                    value: '${formatMoney(pricePerKm, country: 'MX')}/km',
                   ),
                 ],
               ),

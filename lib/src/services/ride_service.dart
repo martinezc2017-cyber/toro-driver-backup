@@ -447,15 +447,16 @@ class RideService {
 
     // ========================================================================
     // PRICING PER-STATE - Leer de pricing_config por estado
-    // Prioridad: 1) GPS coordinates, 2) fallback AZ
     // ========================================================================
-    String stateCode = 'AZ';
+    String? stateCode;
     if (ride.pickupLocation.latitude != 0) {
-      // Get state from pickup coordinates
       stateCode = await _locationService.getStateCodeFromCoordinates(
         ride.pickupLocation.latitude,
         ride.pickupLocation.longitude,
       );
+    }
+    if (stateCode == null) {
+      throw Exception('No se pudo determinar el estado desde las coordenadas — verifica tu conexión a internet');
     }
 
     StatePricing statePricing;
@@ -790,12 +791,15 @@ class RideService {
     double? pickupLng,
     BookingType bookingType = BookingType.ride,
   }) async {
-    // Resolve stateCode: parameter > GPS > fallback AZ
-    String resolvedStateCode = stateCode ?? 'AZ';
+    // Resolve stateCode: parameter > coords > GPS
+    String? resolvedStateCode = stateCode;
     if (stateCode == null && pickupLat != null && pickupLng != null) {
       resolvedStateCode = await _locationService.getStateCodeFromCoordinates(pickupLat, pickupLng);
     } else if (stateCode == null) {
       resolvedStateCode = await _locationService.getStateCodeFromGPS();
+    }
+    if (resolvedStateCode == null) {
+      throw Exception('GPS no disponible — activa tu ubicación para continuar');
     }
 
     final pricing = await StatePricingService.instance.getPricing(
@@ -830,8 +834,11 @@ class RideService {
     String? stateCode,
     BookingType bookingType = BookingType.ride,
   }) async {
-    // Resolve stateCode: parameter > GPS > fallback AZ
-    String resolvedStateCode = stateCode ?? await _locationService.getStateCodeFromGPS();
+    // Resolve stateCode: parameter > GPS
+    final String? resolvedStateCode = stateCode ?? await _locationService.getStateCodeFromGPS();
+    if (resolvedStateCode == null) {
+      throw Exception('GPS no disponible — activa tu ubicación para calcular precio');
+    }
 
     final pricing = await StatePricingService.instance.getPricing(
       stateCode: resolvedStateCode,
@@ -886,16 +893,15 @@ class RideService {
               : BookingType.ride;
 
       // Get state code from pickup location
-      String stateCode = 'AZ'; // Default fallback
+      String? stateCode;
       if (ride.pickupLocation.latitude != 0 && ride.pickupLocation.longitude != 0) {
-        try {
-          stateCode = await _locationService.getStateCodeFromCoordinates(
-            ride.pickupLocation.latitude,
-            ride.pickupLocation.longitude,
-          );
-        } catch (e) {
-          // Error getting state code, using AZ
-        }
+        stateCode = await _locationService.getStateCodeFromCoordinates(
+          ride.pickupLocation.latitude,
+          ride.pickupLocation.longitude,
+        );
+      }
+      if (stateCode == null) {
+        throw Exception('No se pudo determinar el estado para calcular el precio — verifica tu conexión');
       }
 
       // Get pricing config for state
@@ -1073,12 +1079,15 @@ class RideService {
     }
 
     // Get state code for pricing if not provided
-    String resolvedStateCode = stateCode ?? 'AZ';
+    String? resolvedStateCode = stateCode;
     if (stateCode == null && ride.pickupLocation.latitude != 0) {
       resolvedStateCode = await _locationService.getStateCodeFromCoordinates(
         ride.pickupLocation.latitude,
         ride.pickupLocation.longitude,
       );
+    }
+    if (resolvedStateCode == null) {
+      throw Exception('GPS no disponible — activa tu ubicación para continuar');
     }
 
     // Get pricing config for the state
@@ -1179,8 +1188,18 @@ class RideService {
         debugPrint('⚠️ Cash split warning: ${splitData?['error'] ?? 'unknown'}');
       }
     } catch (e) {
-      // Split processing failure is non-critical for the ride completion
-      debugPrint('Warning: Could not process cash split: $e');
+      // Cash already collected — can't roll back the ride. Log for admin manual recovery.
+      debugPrint('CRITICAL: Cash split failed for ride $rideId — driver $driverId, fare $fare: $e');
+      try {
+        await _client.from('audit_log').insert({
+          'action': 'cash_split_failed',
+          'entity_type': 'delivery',
+          'entity_id': rideId,
+          'description': 'Cash split RPC failed — manual recovery required. Fare: $fare, Driver: $driverId',
+          'metadata': {'ride_id': rideId, 'driver_id': driverId, 'fare': fare, 'error': e.toString()},
+          'country_code': 'MX',
+        });
+      } catch (_) {}
     }
 
     return RideModel.fromJson(response);

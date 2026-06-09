@@ -8,6 +8,7 @@ import '../models/driver_model.dart';
 import '../services/driver_service.dart';
 import '../utils/app_colors.dart';
 import '../utils/haptic_service.dart';
+import '../utils/geo_utils.dart';
 
 /// Simplified 2-step onboarding for new drivers and organizers.
 /// Step 0: Role Selection (Driver/Organizer) + Country (US/MX)
@@ -57,9 +58,7 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
         final position = await Geolocator.getCurrentPosition(
           desiredAccuracy: LocationAccuracy.low,
         ).timeout(const Duration(seconds: 5));
-        // Mexico bounds: lat 14-33, lng -118 to -86
-        if (position.latitude >= 14 && position.latitude <= 33 &&
-            position.longitude >= -118 && position.longitude <= -86) {
+        if (GeoUtils.isMexico(position.latitude, position.longitude)) {
           if (mounted) setState(() => _countryCode = 'MX');
         } else {
           if (mounted) setState(() => _countryCode = 'US');

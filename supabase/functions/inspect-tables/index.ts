@@ -21,6 +21,168 @@ serve(async (req) => {
     const client = new Client(dbUrl)
     await client.connect()
 
+    // ──────────────── ACTION: raw_query ────────────────
+    if (action === 'raw_query') {
+      const body = await req.json().catch(() => ({}))
+      const sql = body.sql as string
+      if (!sql) {
+        await client.end()
+        return new Response(JSON.stringify({ error: 'sql required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+      try {
+        const r = await client.queryObject(sql)
+        await client.end()
+        const safe = (o: any) => JSON.parse(JSON.stringify(o, (_,v) => typeof v === 'bigint' ? Number(v) : v))
+        return new Response(JSON.stringify(safe({ rows: r.rows, rowCount: r.rowCount }), null, 2),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      } catch (e: any) {
+        await client.end()
+        return new Response(JSON.stringify({ error: e.message, hint: e.hint, where: e.where, code: e.code }, null, 2),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+    }
+
+    // ──────────────── ACTION: apply_pricing_canonical_unified ────────────────
+    if (action === 'apply_pricing_canonical_unified') {
+      const body = await req.json().catch(() => ({}))
+      const sql = body.sql as string
+      if (!sql) {
+        await client.end()
+        return new Response(JSON.stringify({ error: 'sql required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+      const errors: any[] = []
+      const ran: string[] = []
+      try {
+        // Execute the whole SQL as a single multi-statement script. Postgres
+        // protocol's simple-query mode happily runs N semicolon-separated stmts.
+        try {
+          await client.queryArray(sql)
+          ran.push('full migration script')
+        } catch (e: any) {
+          errors.push({ error: e.message, hint: e.hint, where: e.where, code: e.code })
+        }
+
+        // Smoke tests with explicit casts
+        let smoke: any = {}
+        try {
+          const surge = await client.queryArray(`SELECT public.pricing_surge_now('MX'::text, 'BC'::text)`)
+          smoke.surge_mx_bc = surge.rows[0][0]
+        } catch (e: any) { smoke.surge_error = e.message }
+        try {
+          const eb = await client.queryArray(`SELECT public.pricing_is_commission_exempt('bus'::text)`)
+          const em = await client.queryArray(`SELECT public.pricing_is_commission_exempt('marketplace'::text)`)
+          smoke.exempt_bus = eb.rows[0][0]
+          smoke.exempt_marketplace = em.rows[0][0]
+        } catch (e: any) { smoke.exempt_error = e.message }
+        try {
+          const h = await client.queryArray(`SELECT count(*)::int FROM public.pricing_holidays`)
+          smoke.holidays = h.rows[0][0]
+        } catch (e: any) { smoke.holidays_error = e.message }
+
+        await client.end()
+        return new Response(JSON.stringify({
+          ok: errors.length === 0,
+          statements_run: ran.length,
+          errors,
+          smoke,
+        }, null, 2), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      } catch (e: any) {
+        await client.end()
+        return new Response(JSON.stringify({ ok: false, ran: ran.length, errors, fatal: e.message }, null, 2),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+    }
+
+    // ──────────────── ACTION: audit_carlos_test_split ────────────────
+    if (action === 'audit_carlos_test_split') {
+      const deliveryId = 'bafae585-cc3c-4280-bd64-25ec067aaf9e'
+      const del = await client.queryObject(`SELECT to_jsonb(x.*) AS row FROM deliveries x WHERE id = $1`, [deliveryId])
+      const order = await client.queryObject(`
+        SELECT to_jsonb(o.*) AS row FROM marketplace_orders o
+        WHERE o.id::text LIKE '6e71b855%' OR o.delivery_id = $1::uuid
+        ORDER BY o.created_at DESC LIMIT 1
+      `, [deliveryId])
+      const splitTbls = await client.queryObject(`
+        SELECT table_name FROM information_schema.tables
+        WHERE table_schema='public' AND table_name ~* '(pricing_split|payment_split|earnings_split|split)'
+      `)
+      const splits: any = { rows: [] }
+      for (const t of (splitTbls.rows as any[])) {
+        try {
+          const r = await client.queryObject(`SELECT '${t.table_name}' AS source, to_jsonb(x.*) AS row FROM ${t.table_name} x LIMIT 3`)
+          splits.rows.push(...r.rows)
+        } catch (_) {}
+      }
+      const transCols = await client.queryObject(`SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name='transactions'`)
+      const trans = await client.queryObject(`SELECT to_jsonb(t.*) AS row FROM transactions t ORDER BY t.created_at DESC LIMIT 6`)
+      const cfgCols = await client.queryObject(`SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name='pricing_config'`)
+      const config = await client.queryObject(`SELECT to_jsonb(c.*) AS row FROM pricing_config c LIMIT 50`)
+      const safe = (o: any) => JSON.parse(JSON.stringify(o, (_,v) => typeof v === 'bigint' ? Number(v) : v))
+      await client.end()
+      return new Response(JSON.stringify(safe({
+        delivery: (del.rows[0] as any)?.row ?? null,
+        marketplace_order: (order.rows[0] as any)?.row ?? null,
+        split_tables_found: splitTbls.rows,
+        pricing_splits_sample: splits.rows,
+        transactions_columns: transCols.rows,
+        recent_transactions: (trans.rows as any[]).map(r => r.row),
+        pricing_config_columns: cfgCols.rows,
+        pricing_config: (config.rows as any[]).map(r => r.row),
+      }), null, 2), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    // ──────────────── ACTION: force_cancel_carlos_stale ────────────────
+    if (action === 'force_cancel_carlos_stale') {
+      const driverId = '230d4ba5-6d67-4583-a127-4c5104ad11c2'
+      const before = await client.queryObject(`
+        SELECT id, status, service_type, notes, picked_up_at FROM deliveries
+        WHERE driver_id = $1 AND status NOT IN ('completed','cancelled','delivered','expired')
+      `, [driverId])
+      const ids = (before.rows as any[]).map(r => r.id)
+      await client.queryObject(`
+        UPDATE deliveries SET status='cancelled', cancelled_at=NOW(), cancelled_by=$2,
+                              cancellation_reason='stale E2E test delivery — manual cleanup'
+        WHERE id = ANY($1::uuid[])
+      `, [ids, driverId])
+      const after = await client.queryObject(`
+        SELECT id, status, cancelled_at FROM deliveries WHERE id = ANY($1::uuid[])
+      `, [ids])
+      await client.end()
+      return new Response(JSON.stringify({ cancelled: ids, before: before.rows, after: after.rows }, null, 2),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    // ──────────────── ACTION: carlos_ride_state ────────────────
+    if (action === 'carlos_ride_state') {
+      const driverId = '230d4ba5-6d67-4583-a127-4c5104ad11c2'
+      const drv = await client.queryObject(`
+        SELECT to_jsonb(d.*) AS row,
+               (SELECT count(*) FROM fcm_tokens t WHERE t.user_id = d.user_id AND t.is_active) AS active_tokens
+        FROM drivers d WHERE d.id = $1
+      `, [driverId])
+      const ridesTbl = await client.queryObject(`
+        SELECT table_name FROM information_schema.tables
+        WHERE table_schema='public' AND table_name ~* '^(rides?|ride_requests?|trips?|bookings?)$'
+      `)
+      const recentRides = { rows: [] as any[] }
+      for (const t of (ridesTbl.rows as any[])) {
+        const tn = t.table_name
+        const r = await client.queryObject(`SELECT '${tn}'::text AS source_table, to_jsonb(x.*) AS row FROM ${tn} x WHERE driver_id = $1 ORDER BY created_at DESC NULLS LAST LIMIT 8`, [driverId])
+        recentRides.rows.push(...r.rows)
+      }
+      const recentDeliveries = await client.queryObject(`
+        SELECT to_jsonb(x.*) AS row FROM deliveries x WHERE driver_id = $1 ORDER BY created_at DESC NULLS LAST LIMIT 8
+      `, [driverId])
+      await client.end()
+      const safe = (o: any) => JSON.parse(JSON.stringify(o, (_,v) => typeof v === 'bigint' ? Number(v) : v))
+      return new Response(JSON.stringify(safe({
+        driver: (drv.rows[0] as any) ?? null,
+        rides_tables_found: ridesTbl.rows,
+        rides: recentRides.rows,
+        deliveries: (recentDeliveries.rows as any[]).map(d => d.row),
+      }), null, 2), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
     // ──────────────── ACTION: seed_paloma_orders ────────────────
     if (action === 'inspect_active_order') {
       const o = await client.queryObject(`

@@ -14,6 +14,7 @@ import '../../config/supabase_config.dart';
 import '../../core/legal/legal_constants.dart';
 import '../../core/legal/legal_documents.dart';
 import '../../services/organizer_service.dart';
+import '../../utils/geo_utils.dart';
 
 /// Simplified Organizer Platform Agreement screen.
 ///
@@ -93,11 +94,7 @@ class _OrganizerAgreementScreenState extends State<OrganizerAgreementScreen> {
         // Simple lat-based detection: US/MX border is ~32° latitude
         // Mexico: roughly 14°N to 32.5°N
         // US: roughly 24.5°N (Key West) to 49°N
-        if (position.latitude < 32.5 && position.latitude > 14.0) {
-          _detectedCountry = 'MX';
-        } else {
-          _detectedCountry = 'US';
-        }
+        _detectedCountry = GeoUtils.countryCode(position.latitude, position.longitude);
       }
     } catch (_) {
       // Fallback: use device locale

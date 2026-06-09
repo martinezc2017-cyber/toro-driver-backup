@@ -284,8 +284,10 @@ class DriverQRPointsService extends ChangeNotifier {
         if (config != null) {
           _qrMaxLevel = (config['qr_max_level'] as num?)?.toInt() ?? 30;
           // Load actual platform/driver percentages from pricing_config
-          _basePlatformPercent = (config['platform_commission'] as num?)?.toDouble() ?? 20.4;
-          _baseDriverPercent = (config['driver_commission'] as num?)?.toDouble() ?? 57.0;
+          // Canonical: pricing_config rows always carry these fields after Phase 1.
+          // If null we still default to 0 (no hardcoded splits leak into accounting).
+          _basePlatformPercent = (config['platform_commission'] as num?)?.toDouble() ?? 0;
+          _baseDriverPercent = (config['driver_commission'] as num?)?.toDouble() ?? 0;
           // QR tier breakpoints and reductions use hardcoded defaults
           // since pricing_config doesn't have per-tier columns
           _qrTier1Max = 6;

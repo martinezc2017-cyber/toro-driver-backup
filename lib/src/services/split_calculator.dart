@@ -28,6 +28,9 @@ class SplitConfig {
   final double insurancePercent;
   final double taxPercent;
 
+  /// Currency decimal places. MX/MXN = 0 (whole pesos). US/USD = 2.
+  final int currencyDecimals;
+
   // QR Commission Reduction Tiers (replaces old bonus % system)
   // Each tier reduces platform commission by 1% (configurable)
   final int qrMaxLevel; // max QR scans per week (30 for MX)
@@ -46,6 +49,7 @@ class SplitConfig {
     required this.driverPercent,
     required this.insurancePercent,
     required this.taxPercent,
+    this.currencyDecimals = 0,
     this.qrMaxLevel = 30,
     this.qrTier1Max = 6,
     this.qrTier1CommissionReduction = 1.0,
@@ -100,12 +104,15 @@ class SplitConfig {
   }
 
   factory SplitConfig.fromJson(Map<String, dynamic> json) {
+    final countryCode = (json['country_code'] as String?)?.toUpperCase() ?? 'MX';
+    final decimalsFromJson = (json['currency_decimals'] as num?)?.toInt();
     return SplitConfig(
       platformFeePercent:
           ((json['platform_fee_percent'] ?? json['platform_commission']) as num?)?.toDouble() ?? 0,
       driverPercent: (json['driver_commission'] as num?)?.toDouble() ?? 0,
       insurancePercent: (json['insurance_percent'] as num?)?.toDouble() ?? 0,
       taxPercent: (json['tax_percent'] as num?)?.toDouble() ?? 0,
+      currencyDecimals: decimalsFromJson ?? (countryCode == 'MX' ? 0 : 2),
       qrMaxLevel: (json['qr_max_level'] as num?)?.toInt() ?? 30,
       qrTier1Max: (json['qr_tier_1_max'] as num?)?.toInt() ?? 6,
       qrTier1CommissionReduction: (json['qr_tier_1_bonus'] as num?)?.toDouble() ?? 1.0,
@@ -204,11 +211,12 @@ class SplitCalculator {
 
   const SplitCalculator(this.config);
 
-  /// Calculate the complete split breakdown
+  /// Calculate the complete split breakdown.
   ///
-  /// QR tiers reduce platform commission:
-  ///   More QR scans → lower platform % → driver earns more
-  ///   Tax (IVA) stays fixed at configured rate
+  /// CANONICAL: the platform/driver split DOES NOT depend on the driver's QR
+  /// tier at fare time — both rider and driver must agree on the same numbers.
+  /// QR commission reduction is emitted as `qrCreditOwed` and paid out as a
+  /// post-trip credit from a platform pool (see `driver_qr_credits` table).
   SplitBreakdown calculate({
     required double grossAmount,
     double tipAmount = 0,
@@ -218,18 +226,17 @@ class SplitCalculator {
     tipAmount = math.max(0, tipAmount);
     driverQRLevel = driverQRLevel.clamp(0, config.qrMaxLevel);
 
-    // QR tiers reduce platform commission
-    final effectivePlatformPercent =
-        config.getEffectivePlatformPercent(driverQRLevel: driverQRLevel);
+    // QR tier is informational ONLY — we record what credit the driver will be
+    // paid post-trip, but we DO NOT change the live split.
     final qrReduction = config.getQRCommissionReduction(driverQRLevel);
     final qrTier = config.getQRTier(driverQRLevel);
 
-    final platformFee = _round(grossAmount * (effectivePlatformPercent / 100));
-    final insuranceFee = _round(grossAmount * (config.insurancePercent / 100));
-    final taxFee = _round(grossAmount * (config.taxPercent / 100));
-    final driverBase = _round(
-      grossAmount - platformFee - insuranceFee - taxFee,
-    );
+    final roundedGross = _round(grossAmount);
+    final platformFee = _round(roundedGross * (config.platformFeePercent / 100));
+    final insuranceFee = _round(roundedGross * (config.insurancePercent / 100));
+    final taxFee = _round(roundedGross * (config.taxPercent / 100));
+    // Driver absorbs the residue so sum(parts) == roundedGross EXACTLY. No .01 loss.
+    final driverBase = roundedGross - platformFee - insuranceFee - taxFee;
     final effectiveDriverPercent = grossAmount > 0
         ? (driverBase / grossAmount) * 100
         : config.driverPercent;
@@ -242,7 +249,7 @@ class SplitCalculator {
       driverQRLevel: driverQRLevel,
       driverQRTier: qrTier,
       platformFee: platformFee,
-      platformPercent: effectivePlatformPercent,
+      platformPercent: config.platformFeePercent,
       insuranceFee: insuranceFee,
       taxFee: taxFee,
       driverBase: driverBase,
@@ -254,7 +261,9 @@ class SplitCalculator {
   }
 
   double _round(double value) {
-    return double.parse(value.toStringAsFixed(2));
+    // Round to the currency's decimal places (0 for MXN, 2 for USD).
+    // Keeps every monetary value at the canonical precision.
+    return double.parse(value.toStringAsFixed(config.currencyDecimals));
   }
 
   /// Calculate breakdown from driver's earnings (reverse calculation)

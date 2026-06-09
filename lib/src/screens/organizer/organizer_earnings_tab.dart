@@ -4,6 +4,7 @@ import '../../providers/auth_provider.dart';
 import '../../services/organizer_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/haptic_service.dart';
+import '../../utils/money_format.dart';
 
 /// Earnings tab for the organizer home screen.
 ///
@@ -264,7 +265,7 @@ class _OrganizerEarningsTabState extends State<OrganizerEarningsTab> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  '\$${_totalCommission.toStringAsFixed(2)}',
+                  formatMoney(_totalCommission, country: 'MX'),
                   style: const TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 28,
@@ -466,7 +467,7 @@ class _OrganizerEarningsTabState extends State<OrganizerEarningsTab> {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      'Total: \$${totalAmount.toStringAsFixed(2)}',
+                      'Total: ${formatMoney(totalAmount, country: 'MX')}',
                       style: const TextStyle(
                         color: AppColors.textTertiary,
                         fontSize: 11,
@@ -490,7 +491,7 @@ class _OrganizerEarningsTabState extends State<OrganizerEarningsTab> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '+\$${commission.toStringAsFixed(2)}',
+                '+${formatMoney(commission, country: 'MX')}',
                 style: const TextStyle(
                   color: AppColors.success,
                   fontSize: 16,

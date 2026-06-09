@@ -55,9 +55,12 @@ class StripeConfig {
     }
   }
 
-  /// Detect provider from coordinates (Mexico or USA)
+  /// Detect provider from coordinates (Mexico or USA).
+  /// KEEP IN SYNC with rider app `UnifiedPricingService._detectCountryImpl`
+  /// (toro-rider-web/lib/core/services/unified_pricing_service.dart).
+  /// Border bounds must match across apps or a single trip will be classified
+  /// differently by rider vs driver, causing pricing/currency mismatch.
   static StripeProvider detectProviderFromLocation(double lat, double lng) {
-    // Mexico bounds (approximate)
     const mexicoLatMin = 14.5;
     const mexicoLatMax = 32.7;
     const mexicoLngMin = -118.4;
@@ -65,9 +68,12 @@ class StripeConfig {
 
     if (lat >= mexicoLatMin && lat <= mexicoLatMax &&
         lng >= mexicoLngMin && lng <= mexicoLngMax) {
-      // More precise check for border areas
-      if (lat < 31.5 && lng < -97.0) return StripeProvider.mx;
-      if (lat < 32.5 && lng < -114.0) return StripeProvider.mx;
+      // Border refinement — must match rider app exactly.
+      // Texas/NM/AZ southern band (below 31.8°, west of -97°)
+      if (lat < 31.8 && lng < -97.0) return StripeProvider.mx;
+      // Baja California (Tijuana ~32.5, Mexicali ~32.67)
+      if (lat < 32.72 && lng < -114.7) return StripeProvider.mx;
+      // Central/Southern Mexico (below 25°)
       if (lat < 25.0) return StripeProvider.mx;
     }
 

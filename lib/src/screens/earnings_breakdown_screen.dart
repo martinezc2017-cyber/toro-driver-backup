@@ -6,6 +6,7 @@ import '../models/driver_model.dart';
 import '../services/statement_export_service.dart';
 import '../services/cash_account_service.dart';
 import '../utils/app_theme.dart';
+import '../utils/money_format.dart';
 
 /// Uber/Lyft style earnings breakdown screen
 class EarningsBreakdownScreen extends ConsumerStatefulWidget {
@@ -271,7 +272,7 @@ class _EarningsBreakdownScreenState extends ConsumerState<EarningsBreakdownScree
                   const SizedBox(height: 10),
                   // Total earnings
                   Text(
-                    '\$${totalEarnings.toStringAsFixed(2)}',
+                    formatMoney(totalEarnings, country: _countryCode),
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 48,
@@ -398,7 +399,7 @@ class _EarningsBreakdownScreenState extends ConsumerState<EarningsBreakdownScree
               _buildStatRow('Viajes Completados', '${_summary['total_trips'] ?? 0}', Icons.directions_car),
               if (_countryCode != 'MX')
                 _buildStatRow('Horas Online', '${(_summary['total_hours'] ?? 0).toStringAsFixed(1)} hrs', Icons.access_time),
-              _buildStatRow('Millas Recorridas', '${(_summary['total_miles'] ?? 0).toStringAsFixed(1)} mi', Icons.straighten),
+              _buildStatRow(_countryCode == 'MX' ? 'Km Recorridos' : 'Millas Recorridas', formatDistanceFromMiles((_summary['total_miles'] as num?)?.toDouble() ?? 0, country: _countryCode), Icons.straighten),
             ],
           ),
           const SizedBox(height: 16),
@@ -409,18 +410,18 @@ class _EarningsBreakdownScreenState extends ConsumerState<EarningsBreakdownScree
             [
               _buildStatRow(
                 'Por Hora',
-                '\$${(_summary['avg_per_hour'] ?? 0).toStringAsFixed(2)}',
+                formatMoney((_summary['avg_per_hour'] as num?)?.toDouble() ?? 0, country: _countryCode),
                 Icons.schedule,
                 highlight: true,
               ),
               _buildStatRow(
                 'Por Viaje',
-                '\$${(_summary['avg_per_trip'] ?? 0).toStringAsFixed(2)}',
+                formatMoney((_summary['avg_per_trip'] as num?)?.toDouble() ?? 0, country: _countryCode),
                 Icons.local_taxi,
               ),
               _buildStatRow(
                 'Por Milla',
-                '\$${(_summary['avg_per_mile'] ?? 0).toStringAsFixed(2)}',
+                formatMoney((_summary['avg_per_mile'] as num?)?.toDouble() ?? 0, country: _countryCode),
                 Icons.speed,
               ),
               _buildStatRow(
@@ -521,7 +522,7 @@ class _EarningsBreakdownScreenState extends ConsumerState<EarningsBreakdownScree
                   ),
                   // Earnings
                   Text(
-                    '\$${earnings.toStringAsFixed(2)}',
+                    formatMoney(earnings, country: _countryCode),
                     style: TextStyle(
                       color: earnings > 0 ? AppTheme.success : AppTheme.textMuted,
                       fontSize: 20,
@@ -540,7 +541,7 @@ class _EarningsBreakdownScreenState extends ConsumerState<EarningsBreakdownScree
                   const SizedBox(width: 16),
                   _buildMiniStat(
                     Icons.trending_up,
-                    hours > 0 ? '\$${(earnings / hours).toStringAsFixed(2)}/hr' : '-',
+                    hours > 0 ? '${formatMoney(earnings / hours, country: _countryCode)}/hr' : '-',
                   ),
                 ],
               ),
@@ -676,7 +677,7 @@ class _EarningsBreakdownScreenState extends ConsumerState<EarningsBreakdownScree
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '\$${earnings.toStringAsFixed(2)}',
+                formatMoney(earnings, country: _countryCode),
                 style: const TextStyle(
                   color: AppTheme.success,
                   fontWeight: FontWeight.bold,
@@ -685,7 +686,7 @@ class _EarningsBreakdownScreenState extends ConsumerState<EarningsBreakdownScree
               ),
               if (tip > 0)
                 Text(
-                  '+\$${tip.toStringAsFixed(2)} tip',
+                  '+${formatMoney(tip, country: _countryCode)} tip',
                   style: const TextStyle(color: AppTheme.primary, fontSize: 11),
                 ),
             ],
@@ -731,7 +732,9 @@ class _EarningsBreakdownScreenState extends ConsumerState<EarningsBreakdownScree
     IconData? icon,
   }) {
     final amount = (value as num?)?.toDouble() ?? 0;
-    final displayValue = negative ? '-\$${amount.abs().toStringAsFixed(2)}' : '\$${amount.toStringAsFixed(2)}';
+    final displayValue = negative
+        ? '-${formatMoney(amount.abs(), country: _countryCode)}'
+        : formatMoney(amount, country: _countryCode);
     final displayColor = color ?? (negative ? AppTheme.error : AppTheme.textMuted);
 
     return Padding(
@@ -869,7 +872,7 @@ class _EarningsBreakdownScreenState extends ConsumerState<EarningsBreakdownScree
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    '\$${cashOwed.toStringAsFixed(2)}',
+                    formatMoney(cashOwed, country: _countryCode),
                     style: TextStyle(
                       color: isSuspended ? AppTheme.error : AppTheme.warning,
                       fontWeight: FontWeight.bold,
@@ -1029,7 +1032,7 @@ class _EarningsBreakdownScreenState extends ConsumerState<EarningsBreakdownScree
           ),
           const SizedBox(height: 16),
           Text(
-            '\$${payoutAmount.toStringAsFixed(2)}',
+            formatMoney(payoutAmount, country: _countryCode),
             style: const TextStyle(
               color: Colors.white,
               fontSize: 36,

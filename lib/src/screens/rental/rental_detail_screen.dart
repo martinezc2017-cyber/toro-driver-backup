@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/haptic_service.dart';
+import '../../utils/money_format.dart';
 import '../../services/rental_vehicle_service.dart';
 
 /// Vehicle detail screen - Professional Turo-style with photo gallery,
@@ -332,7 +333,7 @@ class _RentalDetailScreenState extends State<RentalDetailScreen> {
                         if (perKm > 0)
                           _priceRow(
                             'Por Km Extra',
-                            '\$${perKm.toStringAsFixed(2)} $currency',
+                            '${formatMoney(perKm, country: currency == 'MXN' ? 'MX' : 'US')} $currency',
                           ),
                         if (deposit > 0) ...[
                           Divider(

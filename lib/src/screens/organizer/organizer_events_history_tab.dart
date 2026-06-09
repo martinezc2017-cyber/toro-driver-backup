@@ -12,6 +12,7 @@ import '../../config/supabase_config.dart';
 import '../../providers/auth_provider.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/haptic_service.dart';
+import '../../utils/money_format.dart';
 
 /// PANTALLA DE HISTORIAL DE EVENTOS - ORGANIZER
 /// Muestra todos los eventos completados con tracking completo
@@ -114,7 +115,8 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
 
   String _formatCurrency(double amount, String? currency) {
     final cur = currency ?? 'MXN';
-    return '\$${amount.toStringAsFixed(2)} $cur';
+    final country = cur == 'MXN' ? 'MX' : 'US';
+    return '${formatMoney(amount, country: country)} $cur';
   }
 
   Future<void> _downloadEventReport(Map<String, dynamic> event) async {

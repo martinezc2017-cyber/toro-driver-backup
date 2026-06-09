@@ -21,6 +21,7 @@ import '../../services/tourism_event_service.dart';
 import '../../services/tourism_invitation_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/haptic_service.dart';
+import '../../utils/money_format.dart';
 import '../../widgets/scrollable_time_picker.dart';
 import '../tourism/tourism_chat_screen.dart';
 import '../../widgets/tourism_chat_widget.dart';
@@ -3470,7 +3471,7 @@ Enviado desde TORO
                     ),
                     const Spacer(),
                     Text(
-                      '\$${pricePerKm.toStringAsFixed(2)}/km',
+                      '${formatMoney(pricePerKm, country: 'MX')}/km',
                       style: const TextStyle(color: AppColors.primary, fontSize: 16, fontWeight: FontWeight.w800),
                     ),
                     const SizedBox(width: 6),
@@ -3857,7 +3858,7 @@ Enviado desde TORO
                           Text('tourism_agreed_price'.tr(),
                             style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w500)),
                           const Spacer(),
-                          Text('\$${pricePerKm.toStringAsFixed(2)}/km',
+                          Text('${formatMoney(pricePerKm, country: 'MX')}/km',
                             style: const TextStyle(color: AppColors.primary, fontSize: 16, fontWeight: FontWeight.w800)),
                           const SizedBox(width: 6),
                           const Icon(Icons.edit, color: AppColors.primary, size: 14),
@@ -4088,7 +4089,7 @@ Enviado desde TORO
         _eventService.notifyEventPassengers(
           eventId: widget.eventId,
           title: 'tourism_price_updated'.tr(),
-          body: 'El precio del viaje cambió a \$${value.toStringAsFixed(2)}/km',
+          body: 'El precio del viaje cambió a ${formatMoney(value, country: 'MX')}/km',
           type: 'tourism_event_updated',
           extraData: {'change': 'price_per_km', 'new_value': value},
         );
@@ -7079,7 +7080,7 @@ Enviado desde TORO
                       const SizedBox(height: 14),
                       _buildFinancialRow(
                         'Precio por km',
-                        '\$${pricePerKm.toStringAsFixed(2)} MXN',
+                        '${formatMoney(pricePerKm, country: 'MX')} MXN',
                         icon: Icons.price_change_outlined,
                         iconColor: AppColors.textTertiary,
                       ),

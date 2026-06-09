@@ -20,7 +20,15 @@ class SupabaseConfig {
   // 4. Copia el Client ID aquí
   // 5. Configura el mismo Client ID en Supabase Dashboard > Auth > Providers > Google
   // ==========================================================================
-  static const String googleWebClientId = '1001566261860-gnvofimah96kqd7pte0v59brr3cc3dj9.apps.googleusercontent.com';
+  //
+  // 2026-06-09 (fix): Revertido al client_id de "My First Project"
+  // (732187337384-...). El commit e02030f del 26-mar-2026 cambió esto a
+  // toro-admin (1001566261860-...) "para unificar OAuth", PERO nunca se
+  // actualizó Supabase Dashboard al mismo client_id. Resultado: cada
+  // signInWithIdToken fallaba por audience mismatch y la app caía al
+  // OAuth web que muestra "supabase.co". Con este valor, audience del
+  // idToken nativo coincide con lo que Supabase espera → sign-in sin web.
+  static const String googleWebClientId = '732187337384-3tg9j5qq6al4jjkcnt89t3p6b9d49qe6.apps.googleusercontent.com';
 
   // Puerto para OAuth callback en Windows Desktop
   static const int desktopAuthPort = 5001;

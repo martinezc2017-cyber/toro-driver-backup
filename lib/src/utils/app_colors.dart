@@ -14,7 +14,7 @@ class AppColors {
   static const Color primaryLight = Color(0xFF60A5FA);
   static const Color primaryBright = Color(0xFF60A5FA);
   static const Color primaryPale = Color(0xFF93C5FD);
-  static const Color primaryCyan = Color(0xFF00D4FF);
+  static const Color primaryCyan = Color(0xFF22D3EE); // admin cyan
   static const Color primaryDark = Color(0xFF1D4ED8);
 
   // Success - Elegant Green (matches Rider)
@@ -90,7 +90,7 @@ class AppColors {
   static const Color magenta = Color(0xFFEC4899);
 
   // Neon Cyan (avatar glow, community card border)
-  static const Color neonCyan = Color(0xFF00FFFF);
+  static const Color neonCyan = Color(0xFF22D3EE); // admin cyan (was harsh 0xFF00FFFF)
 
   // BLACK ROSE Premium tier
   static const Color blackRose = Color(0xFFD4A574);       // Rose gold principal

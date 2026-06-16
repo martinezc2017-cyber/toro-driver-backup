@@ -83,24 +83,31 @@ class _ProfileScreenState extends State<ProfileScreen>
             return SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-              child: Column(
-                children: [
-                  _buildAvatar(driver),
-                  const SizedBox(height: 16),
-                  _buildNameSection(driver),
-                  const SizedBox(height: 10),
-                  _buildRatingBadge(
-                    rating: driver?.rating,
-                    totalRides: driver?.totalRides ?? 0,
+              // Tablet: center content at a comfortable max width instead of
+              // stretching the phone layout across the whole screen.
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 600),
+                  child: Column(
+                    children: [
+                      _buildAvatar(driver),
+                      const SizedBox(height: 16),
+                      _buildNameSection(driver),
+                      const SizedBox(height: 10),
+                      _buildRatingBadge(
+                        rating: driver?.rating,
+                        totalRides: driver?.totalRides ?? 0,
+                      ),
+                      const SizedBox(height: 24),
+                      _buildStatsCard(driver),
+                      const SizedBox(height: 20),
+                      _buildCommunityCard(driver),
+                      const SizedBox(height: 20),
+                      _buildMenuCard(),
+                      const SizedBox(height: 80),
+                    ],
                   ),
-                  const SizedBox(height: 24),
-                  _buildStatsCard(driver),
-                  const SizedBox(height: 20),
-                  _buildCommunityCard(driver),
-                  const SizedBox(height: 20),
-                  _buildMenuCard(),
-                  const SizedBox(height: 80),
-                ],
+                ),
               ),
             );
           },
@@ -765,8 +772,10 @@ class _ProfileScreenState extends State<ProfileScreen>
                   ],
                 ),
                 const SizedBox(height: 12),
-                GridView.count(
-                  crossAxisCount: 4,
+                GridView.extent(
+                  // Responsive: constant ~100px tile -> ~4 cols on phone, more on
+                  // tablet (no giant stretched cards), with room for bigger icons.
+                  maxCrossAxisExtent: 100,
                   mainAxisSpacing: 8,
                   crossAxisSpacing: 8,
                   childAspectRatio: 0.85,
@@ -998,7 +1007,7 @@ class _ProfileMenuButtonState extends State<_ProfileMenuButton> {
                 children: [
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 100),
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(11),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: _isPressed
@@ -1012,14 +1021,14 @@ class _ProfileMenuButtonState extends State<_ProfileMenuButton> {
                     child: Icon(
                       widget.icon,
                       color: _isPressed ? AppColors.neonCyan : widget.color.withValues(alpha: 0.8),
-                      size: 16,
+                      size: 24,
                     ),
                   ),
                   const SizedBox(height: 6),
                   Text(
                     widget.label,
                     style: TextStyle(
-                      fontSize: 10,
+                      fontSize: 12,
                       fontWeight: _isPressed ? FontWeight.w700 : FontWeight.w500,
                       color: _isPressed ? AppColors.neonCyan : AppColors.textSecondary,
                       letterSpacing: 0.2,

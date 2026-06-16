@@ -930,14 +930,17 @@ class _HomeScreenState extends State<HomeScreen>
             systemNavigationBarIconBrightness: Brightness.light,
           ),
           child: Scaffold(
-            backgroundColor: AppColors.background,
+            backgroundColor: Colors.black,
             // Bug report button moved to profile menu (it was covering UI here).
             // Search for `report_bug` action in the profile/settings to invoke it.
             body: Stack(
               children: [
-                _buildBody(),
-                // Floating galaxy particles
+                // Pure-black galaxy background BEHIND the content (solo por fuera,
+                // matches the rider home). Stars must sit behind _buildBody so they
+                // don't get painted on top of the cards.
+                const Positioned.fill(child: ColoredBox(color: Colors.black)),
                 ..._buildFloatingParticles(),
+                _buildBody(),
                 // Floating navbar overlay
                 if (!(_selectedNavIndex == 1 || _isTourismMode || _isOrganizer))
                   Positioned(
@@ -1142,11 +1145,8 @@ class _HomeScreenState extends State<HomeScreen>
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              AppColors.primary.withValues(alpha: 0.12),
-              AppColors.success.withValues(alpha: 0.08),
-            ],
+          gradient: const LinearGradient(
+            colors: [Color(0xFF10202B), Color(0xFF0C0C12)],
           ),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
@@ -2499,8 +2499,8 @@ class _HomeScreenState extends State<HomeScreen>
         ? qrLevel / _tierMaxQRs[currentTier + 1]
         : 1.0;
 
-    const panelBlue = Color(0xFF1E88E5);
-    const panelSecondary = Color(0xFF00BCD4);
+    const panelBlue = Color(0xFF3B82F6); // admin blue
+    const panelSecondary = Color(0xFF22D3EE); // admin cyan
 
     return Container(
       decoration: BoxDecoration(
@@ -2509,9 +2509,9 @@ class _HomeScreenState extends State<HomeScreen>
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            panelBlue.withValues(alpha: 0.40),
-            panelSecondary.withValues(alpha: 0.30),
-            AppColors.card.withValues(alpha: 0.85),
+            panelBlue.withValues(alpha: 0.28),
+            panelSecondary.withValues(alpha: 0.20),
+            AppColors.card,
           ],
         ),
         border: Border.all(
@@ -3015,17 +3015,17 @@ class _HomeScreenState extends State<HomeScreen>
             color: AppColors.card,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: const Color(0xFFFF9500).withValues(alpha: 0.3),
+              color: const Color(0xFF22D3EE).withValues(alpha: 0.3),
               width: 1.5,
             ),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFFFF9500).withValues(alpha: 0.15),
+                color: const Color(0xFF22D3EE).withValues(alpha: 0.15),
                 blurRadius: 12,
                 spreadRadius: 0,
               ),
               BoxShadow(
-                color: const Color(0xFFFF6B00).withValues(alpha: 0.1),
+                color: const Color(0xFF22D3EE).withValues(alpha: 0.1),
                 blurRadius: 20,
                 spreadRadius: -4,
               ),
@@ -3281,12 +3281,12 @@ class _HomeScreenState extends State<HomeScreen>
         color: AppColors.card,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: const Color(0xFF8B5CF6).withValues(alpha: 0.25),
+          color: const Color(0xFF3B82F6).withValues(alpha: 0.25),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF8B5CF6).withValues(alpha: 0.08),
+            color: const Color(0xFF3B82F6).withValues(alpha: 0.08),
             blurRadius: 20,
             spreadRadius: -4,
           ),
@@ -3309,12 +3309,12 @@ class _HomeScreenState extends State<HomeScreen>
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF8B5CF6).withValues(alpha: 0.15),
+                      color: const Color(0xFF3B82F6).withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: const Icon(
                       Icons.car_rental_rounded,
-                      color: Color(0xFF8B5CF6),
+                      color: Color(0xFF3B82F6),
                       size: 20,
                     ),
                   ),

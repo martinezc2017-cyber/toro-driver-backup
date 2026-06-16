@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../config/supabase_config.dart';
 import '../services/stripe_connect_service.dart';
 
 /// Recordatorio en el home del chofer: si todavía NO conectó su Stripe Connect
@@ -50,15 +51,27 @@ class _DriverConnectBannerState extends State<DriverConnectBanner> {
   Future<void> _activate() async {
     setState(() => _busy = true);
     try {
-      final url = await StripeConnectService.instance.createConnectAccount(
+      // Email robusto: usa el de la cuenta (auth) si el del perfil viene vacio.
+      // Stripe rechaza email vacio con "Invalid email address" -> el edge da 500
+      // -> createConnectAccount retorna null -> el banner fallaba justo aqui.
+      final authEmail = SupabaseConfig.client.auth.currentUser?.email ?? '';
+      final email = widget.email.trim().isNotEmpty ? widget.email.trim() : authEmail;
+
+      String? url = await StripeConnectService.instance.createConnectAccount(
         driverId: widget.driverId,
-        email: widget.email,
+        email: email,
         provider: widget.provider,
       );
+      // Fallback: si la cuenta ya existia y create no regreso link, pide solo el link.
+      url ??= await StripeConnectService.instance
+          .getOnboardingLink(widget.driverId, provider: widget.provider);
+
       if (url == null) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('No se pudo abrir el registro de Stripe. Intenta de nuevo.'),
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(email.isEmpty
+                ? 'Tu perfil no tiene correo — agrega uno para conectar Stripe.'
+                : 'No se pudo abrir el registro de Stripe. Intenta de nuevo.'),
           ));
         }
         return;

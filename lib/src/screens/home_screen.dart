@@ -49,6 +49,7 @@ import 'rides_screen.dart';
 import 'profile_screen.dart';
 import 'navigation_map_screen.dart';
 import 'marketplace_active_delivery_screen.dart';
+import '../widgets/driver_connect_banner.dart';
 import 'tourism/vehicle_request_screen.dart';
 import 'organizer/organizer_home_screen.dart';
 import 'cash_balance_screen.dart';
@@ -1060,6 +1061,21 @@ class _HomeScreenState extends State<HomeScreen>
                         children: [
                           // Profile completion banner for new drivers
                           _buildProfileCompletionBanner(),
+                          // Recordatorio Stripe Connect ("conecta tu banco") — mismo
+                          // patron que el banner del vendedor: aparece si el chofer
+                          // aun NO puede recibir payouts; 1 toque -> onboarding. Sin
+                          // esto su dinero queda atrapado (le paso a Carlos).
+                          Consumer<DriverProvider>(
+                            builder: (_, dp, __) {
+                              final d = dp.driver;
+                              if (d == null) return const SizedBox.shrink();
+                              return DriverConnectBanner(
+                                driverId: d.id,
+                                email: d.email,
+                                provider: d.countryCode == 'MX' ? 'mx' : 'us',
+                              );
+                            },
+                          ),
                           if (_cashOwed > 0 || _cashAccountStatus != 'active')
                             _buildCashOwedBanner(),
                           // Banner de viaje activo (antes era codigo muerto, nunca

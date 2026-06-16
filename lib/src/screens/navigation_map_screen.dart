@@ -2347,19 +2347,19 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
     String? statusSubtitle;
     if (isGoingToPickup) {
       statusLabel = 'En camino al pickup';
-      statusColor = const Color(0xFF2196F3);
+      statusColor = const Color(0xFF22D3EE); // admin cyan
       statusIcon = Icons.directions_car;
       if (_navState.isNavigating) {
         statusSubtitle = 'ETA: ${_navState.formattedETA}';
       }
     } else if (isWaiting) {
       statusLabel = 'Esperando pasajero';
-      statusColor = const Color(0xFF78909C);  // Blue-gray
+      statusColor = const Color(0xFF3B82F6);  // admin blue
       statusIcon = Icons.place;
       statusSubtitle = 'En el punto de recogida';
     } else if (isInProgress) {
       statusLabel = 'Viaje en curso';
-      statusColor = const Color(0xFF42A5F5);  // Light blue
+      statusColor = const Color(0xFF22D3EE);  // admin cyan
       statusIcon = Icons.navigation;
     } else {
       statusLabel = '';
@@ -2373,7 +2373,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E1E1E),
+        color: const Color(0xFF0C0C12), // admin surface
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
@@ -2536,7 +2536,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                               child: Container(
                                 padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF424242),  // Dark gray
+                                  color: const Color(0xFF12121A),  // admin surfaceHi
                                   shape: BoxShape.circle,
                                   border: Border.all(color: Colors.white24),
                                 ),
@@ -2550,7 +2550,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                             child: Container(
                               padding: const EdgeInsets.all(10),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF1565C0),  // Darker blue
+                                color: const Color(0xFF3B82F6),  // admin blue
                                 shape: BoxShape.circle,
                                 border: Border.all(color: Colors.white24),
                               ),
@@ -2638,13 +2638,13 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
                       color: ride.paymentMethod == PaymentMethod.cash
-                          ? Colors.green.withOpacity(0.15)
-                          : Colors.blue.withOpacity(0.15),
+                          ? const Color(0xFF22D3EE).withOpacity(0.15)
+                          : const Color(0xFF3B82F6).withOpacity(0.15),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
                         color: ride.paymentMethod == PaymentMethod.cash
-                            ? Colors.green.withOpacity(0.5)
-                            : Colors.blue.withOpacity(0.5),
+                            ? const Color(0xFF22D3EE).withOpacity(0.5)
+                            : const Color(0xFF3B82F6).withOpacity(0.5),
                       ),
                     ),
                     child: Row(
@@ -2655,8 +2655,8 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                               ? Icons.payments_outlined
                               : Icons.check_circle,
                           color: ride.paymentMethod == PaymentMethod.cash
-                              ? Colors.green
-                              : Colors.blue,
+                              ? const Color(0xFF22D3EE)
+                              : const Color(0xFF3B82F6),
                           size: 16,
                         ),
                         const SizedBox(width: 6),
@@ -2669,8 +2669,8 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                             fontSize: 16,
                             fontWeight: FontWeight.w900,
                             color: ride.paymentMethod == PaymentMethod.cash
-                                ? Colors.green
-                                : Colors.blue,
+                                ? const Color(0xFF22D3EE)
+                                : const Color(0xFF3B82F6),
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -2680,8 +2680,8 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                               : 'YA PAGADO',
                           style: TextStyle(
                             color: ride.paymentMethod == PaymentMethod.cash
-                                ? Colors.green.withOpacity(0.9)
-                                : Colors.blue.withOpacity(0.9),
+                                ? const Color(0xFF22D3EE).withOpacity(0.9)
+                                : const Color(0xFF3B82F6).withOpacity(0.9),
                             fontSize: 10.5,
                             fontWeight: FontWeight.w700,
                             letterSpacing: 0.5,
@@ -2706,7 +2706,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                 _buildBottomAction(
                   icon: Icons.navigation,
                   label: 'Navegar',
-                  color: const Color(0xFF1E88E5),  // Blue
+                  color: const Color(0xFF22D3EE),  // admin cyan
                   onTap: _launchExternalNav,
                 ),
                 const SizedBox(width: 8),
@@ -2714,7 +2714,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                 _buildBottomAction(
                   icon: Icons.flag_rounded,
                   label: 'Reportar',
-                  color: const Color(0xFFFF9800),  // Orange
+                  color: const Color(0xFF3B82F6),  // admin blue
                   onTap: () {
                     Navigator.push(
                       context,
@@ -2738,7 +2738,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                 _buildBottomAction(
                   icon: Icons.close,
                   label: 'Cancelar',
-                  color: const Color(0xFF757575),  // Gray
+                  color: const Color(0xFFEF4444),  // admin red
                   onTap: _handleCancelRide,
                 ),
               ],
@@ -2807,17 +2807,17 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
       case RideStatus.accepted:
       case RideStatus.pending:
         label = '📍  DESLIZA → LLEGUÉ';
-        color = const Color(0xFF1E88E5);  // Blue
+        color = const Color(0xFF22D3EE);  // admin cyan
         onConfirm = _handleArriveAtPickup;
         break;
       case RideStatus.arrivedAtPickup:
         label = '▶  DESLIZA → INICIAR VIAJE';
-        color = const Color(0xFF42A5F5);  // Light blue
+        color = const Color(0xFF22D3EE);  // admin cyan
         onConfirm = _handleStartRide;
         break;
       case RideStatus.inProgress:
         label = '🏁  DESLIZA → FINALIZAR';
-        color = const Color(0xFF1565C0);  // Darker blue
+        color = const Color(0xFF22D3EE);  // admin cyan
         onConfirm = _handleCompleteRide;
         break;
       default:

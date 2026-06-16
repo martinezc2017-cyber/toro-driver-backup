@@ -305,12 +305,18 @@ class NavigationUI extends StatelessWidget {
         // Left margin 70px to avoid overlap with back button (16px left + 46px width + 8px gap)
         margin: const EdgeInsets.fromLTRB(70, 8, 12, 0),
         decoration: BoxDecoration(
-          // 85% opacidad - se ve ligeramente a través pero texto legible
-          color: const Color(0xD91A73E8),
+          // dark matte (negro/azul opaco) + cyan glow — admin palette
+          color: const Color(0xF20C141A),
           borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0x14FFFFFF)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withAlpha(60),
+              color: const Color(0x4022D3EE),
+              blurRadius: 16,
+              spreadRadius: -2,
+            ),
+            BoxShadow(
+              color: Colors.black.withAlpha(90),
               blurRadius: 10,
               offset: const Offset(0, 3),
             ),
@@ -331,7 +337,7 @@ class NavigationUI extends StatelessWidget {
                   exitRef: state.exitRef,
                   size: 56,
                   color: Colors.white,
-                  backgroundColor: const Color(0xFF1565C0),
+                  backgroundColor: const Color(0xFF0E2A33), // dark cyan
                   animate: state.distanceToNextManeuver < 300,
                   distanceToManeuver: state.distanceToNextManeuver,
                 ),
@@ -375,7 +381,7 @@ class NavigationUI extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: const Color(0xD91565C0), // 85% opacidad
+                color: const Color(0xCC0C141A), // dark opaco
                 borderRadius: const BorderRadius.only(
                   bottomLeft: Radius.circular(12),
                   bottomRight: Radius.circular(12),
@@ -420,7 +426,7 @@ class NavigationUI extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: const Color(0xD90D47A1), // 85% opacidad
+                color: const Color(0xCC0C141A), // dark opaco
                 borderRadius: (state.nextInstruction == null)
                     ? const BorderRadius.only(
                         bottomLeft: Radius.circular(12),
@@ -1137,9 +1143,15 @@ class NextManeuverCompact extends StatelessWidget {
         margin: const EdgeInsets.fromLTRB(16, 50, 16, 0),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: const Color(0xFF1A73E8),
+          color: const Color(0xF20C141A),
           borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0x14FFFFFF)),
           boxShadow: [
+            BoxShadow(
+              color: const Color(0x4022D3EE),
+              blurRadius: 12,
+              spreadRadius: -2,
+            ),
             BoxShadow(
               color: Colors.black.withAlpha(77),
               blurRadius: 8,

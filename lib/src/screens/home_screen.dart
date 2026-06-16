@@ -124,9 +124,10 @@ class _HomeScreenState extends State<HomeScreen>
   // Floating particles
   late AnimationController _particleController;
   static final _rng = math.Random(42);
-  static final _particleData = List.generate(20, (_) => [
+  static const int _maxStars = 60;
+  static final _particleData = List.generate(_maxStars, (_) => [
     _rng.nextDouble(), _rng.nextDouble(), // x, y fractions
-    _rng.nextDouble() * 2.0 + 1.0, // size
+    _rng.nextDouble() * 2.5 + 1.5, // base size (1.5-4)
     _rng.nextDouble(), // phase
   ]);
 
@@ -974,31 +975,46 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   List<Widget> _buildFloatingParticles() {
-    return List.generate(20, (i) {
+    // Responsive galaxy matching the rider home: stars scale to the REAL screen
+    // size (was a hardcoded 380x850 phone box), denser + brighter + glow.
+    final screen = MediaQuery.of(context).size;
+    final w = screen.width;
+    final h = screen.height;
+    final count = (w * h / 14000).round().clamp(30, _maxStars);
+    final shortest = w < h ? w : h;
+    final sizeBoost = (shortest / 380).clamp(1.0, 1.9);
+    return List.generate(count, (i) {
       final xFrac = _particleData[i][0];
       final yFrac = _particleData[i][1];
-      final size = _particleData[i][2];
+      final starSize = _particleData[i][2] * sizeBoost;
       final phase = _particleData[i][3];
 
       return Positioned(
-        left: xFrac * 380,
-        top: yFrac * 850,
+        left: xFrac * w,
+        top: yFrac * h,
         child: AnimatedBuilder(
           animation: _particleController,
           builder: (context, child) {
             final dx = math.sin((_particleController.value + phase) * 2 * math.pi) * 8;
             final dy = math.cos((_particleController.value + phase * 1.3) * 2 * math.pi) * 10;
-            final opacity = 0.18 + (math.sin(
+            final opacity = 0.55 + (math.sin(
               (_particleController.value + phase * 0.7) * 2 * math.pi,
-            ) * 0.14);
+            ) * 0.35);
             return Transform.translate(
               offset: Offset(dx, dy),
               child: Container(
-                width: size,
-                height: size,
+                width: starSize,
+                height: starSize,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: Colors.white.withValues(alpha: opacity),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.white.withValues(alpha: opacity * 0.6),
+                      blurRadius: starSize * 2.2,
+                      spreadRadius: 0.4,
+                    ),
+                  ],
                 ),
               ),
             );

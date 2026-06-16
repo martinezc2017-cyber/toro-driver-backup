@@ -13,6 +13,7 @@ import '../models/driver_model.dart';
 import '../utils/app_colors.dart';
 import '../utils/haptic_service.dart';
 import '../widgets/futuristic_widgets.dart';
+import '../widgets/galaxy_background.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -67,8 +68,9 @@ class _ProfileScreenState extends State<ProfileScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
+      backgroundColor: Colors.black,
+      body: GalaxyBackground(
+        child: SafeArea(
         child: Consumer<DriverProvider>(
           builder: (context, driverProvider, child) {
             final driver = driverProvider.driver;
@@ -112,6 +114,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             );
           },
         ),
+      ),
       ),
     );
   }

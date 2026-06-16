@@ -129,6 +129,13 @@ class _MarketplaceConfirmScreenState extends State<MarketplaceConfirmScreen> {
             );
       if (!mounted) return;
       if (ok) {
+        // CAPTURA del cobro con tarjeta al confirmar la ENTREGA (auth -> capture).
+        // El PI se creo con capture_method:manual en el checkout; aqui entra el
+        // dinero de verdad. Idempotente server-side (mp_capture_<order>); no-op
+        // para cash/wallet. Sin esto, la auth caduca en 7 dias y NUNCA se cobra.
+        if (!_isPickup) {
+          await _service.captureMarketplacePayment(widget.orderId);
+        }
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(_isPickup ? 'Recogida confirmada' : 'Entrega confirmada'),
           backgroundColor: Colors.green,

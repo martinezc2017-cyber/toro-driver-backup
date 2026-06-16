@@ -314,6 +314,22 @@ class DeliveryService {
     return res == true;
   }
 
+  /// Captures the manual-capture card PaymentIntent for a DELIVERED marketplace
+  /// order — when the buyer's money actually moves. Idempotent server-side
+  /// (key mp_capture per order), so a double-call is safe. No-op for cash/wallet
+  /// (no card PI). MUST run on delivery confirmation, or the 7-day auth expires
+  /// and the money is never collected.
+  Future<void> captureMarketplacePayment(String orderId) async {
+    try {
+      await _client.functions.invoke(
+        'stripe-marketplace-capture',
+        body: {'order_id': orderId},
+      );
+    } catch (_) {
+      // non-fatal: capture is idempotent and can be retried (or admin-triggered)
+    }
+  }
+
   /// Uploads a proof photo to the marketplace-proofs bucket and returns its URL.
   Future<String?> uploadProofPhoto({
     required String orderId,

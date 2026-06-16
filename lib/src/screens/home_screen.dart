@@ -48,6 +48,7 @@ import 'earnings_screen.dart';
 import 'rides_screen.dart';
 import 'profile_screen.dart';
 import 'navigation_map_screen.dart';
+import 'marketplace_active_delivery_screen.dart';
 import 'tourism/vehicle_request_screen.dart';
 import 'organizer/organizer_home_screen.dart';
 import 'cash_balance_screen.dart';
@@ -1061,6 +1062,11 @@ class _HomeScreenState extends State<HomeScreen>
                           _buildProfileCompletionBanner(),
                           if (_cashOwed > 0 || _cashAccountStatus != 'active')
                             _buildCashOwedBanner(),
+                          // Banner de viaje activo (antes era codigo muerto, nunca
+                          // se llamaba) -> toca para retomar. Marketplace va a su
+                          // pantalla dedicada; el resto al mapa.
+                          if (rideProvider.hasActiveRide && rideProvider.activeRide != null)
+                            _buildActiveRideBanner(rideProvider.activeRide!),
                           _buildIncomingRides(),
                           _buildEarningsCard(),
                           const SizedBox(height: 12),
@@ -1202,8 +1208,15 @@ class _HomeScreenState extends State<HomeScreen>
 
     return GestureDetector(
       onTap: () {
-        // Go to NavigationMapScreen (tab Mapa)
-        setState(() => _selectedNavIndex = 1);
+        // Marketplace usa su PROPIA pantalla activa (recoger -> entregar con
+        // OTP+foto+GPS), no el mapa de rides. El resto va al mapa (tab 1).
+        if (ride.type == RideType.marketplace) {
+          Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => MarketplaceActiveDeliveryScreen(deliveryId: ride.id),
+          ));
+        } else {
+          setState(() => _selectedNavIndex = 1);
+        }
       },
       child: Container(
         margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
@@ -3540,7 +3553,14 @@ class _HomeScreenState extends State<HomeScreen>
         return FireGlowBottomNavBar(
           currentIndex: _selectedNavIndex,
           onTap: (index) {
-            // Always go to NavigationMapScreen (the good Mapbox map) for index 1
+            // Marketplace active delivery -> su pantalla dedicada (no el mapa de rides).
+            final active = rideProvider.activeRide;
+            if (index == 1 && active != null && active.type == RideType.marketplace) {
+              Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => MarketplaceActiveDeliveryScreen(deliveryId: active.id),
+              ));
+              return;
+            }
             setState(() => _selectedNavIndex = index);
           },
           items: [

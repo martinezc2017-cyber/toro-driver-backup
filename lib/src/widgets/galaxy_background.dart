@@ -95,7 +95,7 @@ class _GalaxyBackgroundState extends State<GalaxyBackground>
                 ),
               );
             }),
-            if (widget.child != null) widget.child!,
+            if (widget.child != null) Positioned.fill(child: widget.child!),
           ],
         );
       },

@@ -9,6 +9,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 
 // Config
 import 'src/config/supabase_config.dart';
+import 'src/widgets/galaxy_background.dart';
 import 'src/services/payment_service.dart';
 import 'src/services/mapbox_navigation_service.dart';
 import 'src/services/update_service.dart';
@@ -219,6 +220,9 @@ class ToroDriverApp extends StatelessWidget {
         navigatorKey: InAppBannerService.navigatorKey,
         title: 'Toro Driver',
         debugShowCheckedModeBanner: false,
+        // Galaxy background behind EVERY screen (scaffolds are transparent).
+        builder: (context, child) =>
+            GalaxyBackground(child: child ?? const SizedBox.shrink()),
         // Futuristic Dark Theme - Uber Style
         theme: AppTheme.darkTheme,
         darkTheme: AppTheme.darkTheme,
@@ -271,7 +275,7 @@ class ToroDriverApp extends StatelessWidget {
 
   Widget _buildLogoutScreen(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         child: Center(
           child: Padding(

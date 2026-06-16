@@ -1255,14 +1255,14 @@ class _HomeScreenState extends State<HomeScreen>
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [Color(0xFF10B981), Color(0xFF059669)],
+            colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF10B981).withOpacity(0.4),
+              color: const Color(0xFF3B82F6).withOpacity(0.4),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),

@@ -17,10 +17,10 @@ class AppColors {
   static const Color primaryCyan = Color(0xFF22D3EE); // admin cyan
   static const Color primaryDark = Color(0xFF1D4ED8);
 
-  // Success - Elegant Green (matches Rider)
-  static const Color success = Color(0xFF4CAF50);
-  static const Color successLight = Color(0xFF66BB6A);
-  static const Color successDark = Color(0xFF388E3C);
+  // Success - aligned to admin palette: cyan (was green; admin uses cyan for positive)
+  static const Color success = Color(0xFF22D3EE);
+  static const Color successLight = Color(0xFF67E8F9);
+  static const Color successDark = Color(0xFF0E7490);
 
   // Error/Danger - Elegant Red (matches Rider)
   static const Color error = Color(0xFFE53935);

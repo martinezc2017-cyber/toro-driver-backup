@@ -14,8 +14,14 @@ class StripeConfig {
   // USA Stripe Account
   static const String publishableKeyUS = 'pk_test_51SjZ6ZJkPkRlUpHxaozvdbpgbP8lRScfj5dLpcKv0AuUrjpcv73TnXrGk4Pq6NJzFU0vepYKxXiF0hHZBXXlPnWy009dN2qG0E';
 
-  // Mexico Stripe Account
-  static const String publishableKeyMX = 'pk_test_51SvLIZJL6dZ5MsYqvDAUIhO74kK7r93XLcYSlTLP5oupLb6lwhLe4XppoSOUWuhkNenCvcdo6xQ7DBkLO3yWRpVT000m01MebB';
+  // Mexico Stripe Account — MUST match STRIPE_MX_SECRET_KEY (the account that runs
+  // charges, vendor + driver Connect, and where PALOMA's money lands). That account is
+  // 51Ti6y0... (object fragment JjHJ2LZ4e2). It was baked as 51TgufO — a STALE account
+  // the apps kept while the server moved to Ti6y0 — causing "No such payment_intent"
+  // and driver Connect onboarding/payouts drifting to the wrong platform.
+  // TODO(single-source): fetch this from get-stripe-config at runtime so it can never
+  // drift from the server account again (no hardcoded key in any app).
+  static const String publishableKeyMX = 'pk_test_51Ti6y0JjHJ2LZ4e2BXcAfNfud1ZYhSkhLDT5JM9PUAMY6Svda8IiGUwS3FhoDyy5nSKn4cHcDlktiBqWz4ovMB0X00QZLD93rY';
 
   static const String merchantId = 'merchant.com.toro.driver';
 

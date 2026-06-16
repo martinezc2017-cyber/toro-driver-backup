@@ -45,21 +45,25 @@ class StripeConnectService {
       final accountId = data['account_id'] as String?;
 
       if (accountId != null) {
-        // Guardar el account_id en driver_stripe_accounts
-        await supabase.from('driver_stripe_accounts').upsert({
+        // Guardar el account_id en driver_stripe_accounts_mx (la tabla real;
+        // 'driver_stripe_accounts' no existe -> el upsert tiraba y este metodo
+        // retornaba null aunque la cuenta SI se creo). Sin columna 'provider';
+        // unique en driver_id.
+        await supabase.from('driver_stripe_accounts_mx').upsert({
           'driver_id': driverId,
           'stripe_account_id': accountId,
-          'provider': provider,
           'is_active': true,
-        }, onConflict: 'driver_id, provider');
+        }, onConflict: 'driver_id');
 
-        // También actualizar stripe_account_id en drivers si es la cuenta principal
-        if (provider == 'us') {
-          await supabase
-              .from('drivers')
-              .update({'stripe_account_id': accountId})
-              .eq('id', driverId);
-        }
+        // Sync drivers.stripe_account_id for BOTH providers. stripe-process-split reads the
+        // payout account from drivers.stripe_account_id; gating this to 'us' left MX drivers'
+        // accounts ONLY in driver_stripe_accounts_mx, so their payout transfers found no
+        // account ('no_stripe_account') and the money stayed stuck in TORO's balance. Mirror
+        // it always so MX driver payouts actually land.
+        await supabase
+            .from('drivers')
+            .update({'stripe_account_id': accountId})
+            .eq('id', driverId);
 
         AppLogger.log('STRIPE CONNECT -> Account created: $accountId ($provider)');
       }
@@ -105,12 +109,12 @@ class StripeConnectService {
     try {
       final supabase = SupabaseConfig.client;
 
-      // Obtener stripe_account_id de driver_stripe_accounts
+      // Obtener stripe_account_id de driver_stripe_accounts_mx (tabla real,
+      // col account_status, sin 'provider', unique en driver_id).
       final account = await supabase
-          .from('driver_stripe_accounts')
-          .select('stripe_account_id, status')
+          .from('driver_stripe_accounts_mx')
+          .select('stripe_account_id, account_status')
           .eq('driver_id', driverId)
-          .eq('provider', provider)
           .maybeSingle();
 
       if (account == null) {
@@ -180,13 +184,12 @@ class StripeConnectService {
       status = 'incomplete';
     }
 
-    // Actualizar en driver_stripe_accounts
-    await supabase.from('driver_stripe_accounts').upsert({
+    // Actualizar en driver_stripe_accounts_mx (col account_status, sin provider)
+    await supabase.from('driver_stripe_accounts_mx').upsert({
       'driver_id': driverId,
       'stripe_account_id': accountId,
-      'provider': provider,
-      'status': status,
-    }, onConflict: 'driver_id, provider');
+      'account_status': status,
+    }, onConflict: 'driver_id');
 
     // También actualizar en drivers si es US
     if (provider == 'us') {
@@ -249,18 +252,25 @@ class StripeConnectService {
     try {
       final supabase = SupabaseConfig.client;
 
-      final response = await supabase.functions.invoke(
-        'stripe-connect-balance',
-        body: {'driver_id': driverId, 'provider': provider},
+      // Rewire: TORO mantiene el balance canónico en drivers.available_balance
+      // (recalculado desde driver_earnings card-net − payouts). Antes invocaba
+      // 'stripe-connect-balance' que NO existe. Lee la columna directo.
+      final row = await supabase
+          .from('drivers')
+          .select('available_balance, pending_balance, country_code')
+          .eq('id', driverId)
+          .maybeSingle();
+
+      if (row == null) return null;
+
+      // Columnas en pesos → modelo espera centavos.
+      final availablePesos = (row['available_balance'] as num?)?.toDouble() ?? 0;
+      final pendingPesos = (row['pending_balance'] as num?)?.toDouble() ?? 0;
+      return DriverBalance(
+        availableCents: (availablePesos * 100).round(),
+        pendingCents: (pendingPesos * 100).round(),
+        currency: (row['country_code'] == 'MX') ? 'mxn' : 'usd',
       );
-
-      if (response.status != 200) {
-        AppLogger.log('STRIPE CONNECT -> Error getting balance: ${response.data}');
-        return null;
-      }
-
-      final data = response.data as Map<String, dynamic>;
-      return DriverBalance.fromJson(data);
     } catch (e) {
       AppLogger.log('STRIPE CONNECT -> Error getting balance: $e');
       return null;
@@ -273,16 +283,16 @@ class StripeConnectService {
       final supabase = SupabaseConfig.client;
 
       final response = await supabase
-          .from('driver_stripe_accounts')
+          .from('driver_stripe_accounts_mx')
           .select()
           .eq('driver_id', driverId)
           .eq('is_active', true);
 
       return (response as List).map((data) {
         return ConnectedAccount(
-          provider: data['provider'] as String,
+          provider: 'mx', // table is MX-specific (no 'provider' column)
           stripeAccountId: data['stripe_account_id'] as String,
-          status: data['status'] as String? ?? 'unknown',
+          status: data['account_status'] as String? ?? 'unknown',
           isDefault: data['is_default'] as bool? ?? false,
         );
       }).toList();
@@ -329,14 +339,15 @@ class StripeConnectService {
         );
       }
 
-      // Solicitar payout via Edge Function
+      // Rewire: fn canónica 'stripe-instant-payout' (deriva moneda de
+      // drivers.country_code, ignora currency/provider). Espera amount en PESOS,
+      // el cliente tiene centavos → dividir. Antes invocaba 'stripe-connect-payout'
+      // que NO existe.
       final response = await supabase.functions.invoke(
-        'stripe-connect-payout',
+        'stripe-instant-payout',
         body: {
           'driver_id': driverId,
-          'amount': amountCents,
-          'currency': currency,
-          'provider': provider,
+          'amount': amountCents / 100.0,
         },
       );
 
@@ -369,25 +380,31 @@ class StripeConnectService {
     try {
       final supabase = SupabaseConfig.client;
 
-      final response = await supabase.functions.invoke(
-        'stripe-connect-payout-history',
-        body: {
-          'driver_id': driverId,
-          'limit': limit,
-          'provider': provider,
-        },
-      );
+      // Rewire: TORO mantiene driver_payouts canónica (escrita por
+      // stripe-instant-payout / stripe-weekly-payout y sincronizada por
+      // stripe-payout-webhook). Antes invocaba 'stripe-connect-payout-history'
+      // que NO existe. Query directo.
+      final rows = await supabase
+          .from('driver_payouts')
+          .select('id, amount, status, created_at, stripe_payout_id, metadata')
+          .eq('driver_id', driverId)
+          .order('created_at', ascending: false)
+          .limit(limit);
 
-      if (response.status != 200) {
-        return [];
-      }
-
-      final data = response.data as Map<String, dynamic>;
-      final payouts = data['payouts'] as List<dynamic>? ?? [];
-
-      return payouts
-          .map((json) => PayoutRecord.fromJson(json as Map<String, dynamic>))
-          .toList();
+      return (rows as List).map((data) {
+        final amountPesos = (data['amount'] as num?)?.toDouble() ?? 0;
+        final createdAt = DateTime.tryParse(data['created_at']?.toString() ?? '') ?? DateTime.now();
+        final meta = data['metadata'] as Map<String, dynamic>?;
+        final arrivalStr = meta?['arrival_date']?.toString();
+        return PayoutRecord(
+          id: (data['stripe_payout_id'] ?? data['id'] ?? '').toString(),
+          amountCents: (amountPesos * 100).round(),
+          currency: (meta?['currency'] ?? 'mxn').toString(),
+          status: (data['status'] ?? 'unknown').toString(),
+          createdAt: createdAt,
+          arrivalDate: arrivalStr != null ? DateTime.tryParse(arrivalStr) : null,
+        );
+      }).toList();
     } catch (e) {
       AppLogger.log('STRIPE CONNECT -> Error getting payout history: $e');
       return [];

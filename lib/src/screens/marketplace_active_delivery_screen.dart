@@ -300,6 +300,18 @@ class _State extends State<MarketplaceActiveDeliveryScreen> {
       final vendorName = (o['vendor']?['business_name'] as String?)
           ?? vendor?['business_name']?.toString();
       final buyerName = o['buyer_name']?.toString();
+      // El chofer LLEGÓ a recoger -> avisar al vendedor (con el PIN en el push)
+      // para que entregue el paquete y dé el código. Solo en la etapa de recogida.
+      if (mode == 'pickup') {
+        await _service.notifyVendorDriverArrived(orderId);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Avisamos a la tienda que llegaste — pídeles el código de recogida'),
+            backgroundColor: Color(0xFFF97316),
+            duration: Duration(seconds: 3),
+          ));
+        }
+      }
       if (_isBundled && mounted) {
         // Quick info banner so driver knows which package they're confirming
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(

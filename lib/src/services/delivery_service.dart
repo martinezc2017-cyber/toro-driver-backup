@@ -261,6 +261,15 @@ class DeliveryService {
     return (res is Map) ? Map<String, dynamic>.from(res) : <String, dynamic>{};
   }
 
+  /// El chofer LLEGÓ a recoger -> avisa al vendedor (con el PIN de recogida en el
+  /// cuerpo del push) para que entregue el paquete y dé el código. RPC SECURITY
+  /// DEFINER: busca el vendor.user_id + pickup_otp y manda la notificación.
+  Future<void> notifyVendorDriverArrived(String orderId) async {
+    try {
+      await _client.rpc('marketplace_notify_driver_arrived', params: {'p_order_id': orderId});
+    } catch (_) { /* no fatal: el chofer igual puede confirmar con el OTP */ }
+  }
+
   /// Releases a marketplace delivery back to the dispatch pool with a recorded
   /// reason. Only valid before pickup — once driver has taken possession of
   /// the goods this raises an error and becomes a support case.

@@ -210,17 +210,22 @@ class StripeConnectService {
 
   /// Abrir el link de onboarding en el navegador
   Future<bool> openOnboardingLink(String url) async {
-    try {
-      final uri = Uri.parse(url);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-        return true;
+    final uri = Uri.parse(url);
+    // canLaunchUrl es POCO FIABLE en Android 11+ (visibilidad de paquetes):
+    // devuelve false aunque SI haya navegador -> el link "no salia". Lanzar
+    // directo con modos de respaldo (externo -> default -> in-app webview).
+    for (final mode in const [
+      LaunchMode.externalApplication,
+      LaunchMode.platformDefault,
+      LaunchMode.inAppWebView,
+    ]) {
+      try {
+        if (await launchUrl(uri, mode: mode)) return true;
+      } catch (e) {
+        AppLogger.log('STRIPE CONNECT -> open URL ($mode) fallo: $e');
       }
-      return false;
-    } catch (e) {
-      AppLogger.log('STRIPE CONNECT -> Error opening URL: $e');
-      return false;
     }
+    return false;
   }
 
   /// Obtener link del dashboard de Stripe para el driver

@@ -30,14 +30,29 @@ class DriverConnectBanner extends StatefulWidget {
   State<DriverConnectBanner> createState() => _DriverConnectBannerState();
 }
 
-class _DriverConnectBannerState extends State<DriverConnectBanner> {
+class _DriverConnectBannerState extends State<DriverConnectBanner> with WidgetsBindingObserver {
   StripeAccountStatus? _status;
   bool _busy = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _load();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // El usuario sale al navegador a hacer el KYC de Stripe y vuelve -> la app
+    // se REANUDA. Re-consultamos el estado para que el banner se actualice SOLO,
+    // sin que el usuario tenga que cerrar/reabrir la app.
+    if (state == AppLifecycleState.resumed) _load();
   }
 
   Future<void> _load() async {
@@ -86,9 +101,14 @@ class _DriverConnectBannerState extends State<DriverConnectBanner> {
   @override
   Widget build(BuildContext context) {
     final s = _status;
-    // Solo se muestra mientras NO pueda recibir pagos. Cuando Stripe lo activa
-    // (charges+payouts) el estado pasa a active y el banner desaparece solo.
-    if (s == null || s == StripeAccountStatus.active) return const SizedBox.shrink();
+    // Mostrar SOLO si el chofer aun NO conectó (cuenta no creada o incompleta).
+    // Si ya envió sus datos (pending), ya está activa, o aún cargando/error -> NO
+    // molestar. Asi el banner desaparece SOLO en cuanto conecta — incluido al
+    // volver del navegador, por el refresh en didChangeAppLifecycleState.
+    final needsConnect = s == StripeAccountStatus.notCreated ||
+        s == StripeAccountStatus.incomplete ||
+        s == StripeAccountStatus.notFound;
+    if (!needsConnect) return const SizedBox.shrink();
 
     return Container(
       margin: widget.margin,

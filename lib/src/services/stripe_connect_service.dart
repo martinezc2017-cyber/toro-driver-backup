@@ -170,13 +170,15 @@ class StripeConnectService {
     }
 
     final data = response.data as Map<String, dynamic>;
-    final chargesEnabled = data['charges_enabled'] as bool? ?? false;
     final payoutsEnabled = data['payouts_enabled'] as bool? ?? false;
     final detailsSubmitted = data['details_submitted'] as bool? ?? false;
 
-    // Actualizar estado en la base de datos
+    // El chofer/vendedor RECIBE payouts (no cobra a clientes). Por eso "listo" =
+    // payouts_enabled. Exigir charges_enabled era un bug: una cuenta de solo-
+    // transferencias tiene charges_enabled=false SIEMPRE -> nunca quedaba 'active'.
+    final ready = payoutsEnabled;
     String status;
-    if (chargesEnabled && payoutsEnabled) {
+    if (ready) {
       status = 'active';
     } else if (detailsSubmitted) {
       status = 'pending';
@@ -199,7 +201,7 @@ class StripeConnectService {
           .eq('id', driverId);
     }
 
-    if (chargesEnabled && payoutsEnabled) {
+    if (ready) {
       return StripeAccountStatus.active;
     } else if (detailsSubmitted) {
       return StripeAccountStatus.pendingVerification;

@@ -1240,15 +1240,10 @@ class _HomeScreenState extends State<HomeScreen>
 
     return GestureDetector(
       onTap: () {
-        // Marketplace usa su PROPIA pantalla activa (recoger -> entregar con
-        // OTP+foto+GPS), no el mapa de rides. El resto va al mapa (tab 1).
-        if (ride.type == RideType.marketplace) {
-          Navigator.of(context).push(MaterialPageRoute(
-            builder: (_) => MarketplaceActiveDeliveryScreen(deliveryId: ride.id),
-          ));
-        } else {
-          setState(() => _selectedNavIndex = 1);
-        }
+        // TODOS los tipos (incluido marketplace) usan el MISMO mapa de
+        // navegación (tab 1). El marketplace confirma recoger/entregar con
+        // OTP+foto+GPS dentro del propio mapa (NavigationMapScreen).
+        setState(() => _selectedNavIndex = 1);
       },
       child: Container(
         margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
@@ -3585,14 +3580,7 @@ class _HomeScreenState extends State<HomeScreen>
         return FireGlowBottomNavBar(
           currentIndex: _selectedNavIndex,
           onTap: (index) {
-            // Marketplace active delivery -> su pantalla dedicada (no el mapa de rides).
-            final active = rideProvider.activeRide;
-            if (index == 1 && active != null && active.type == RideType.marketplace) {
-              Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => MarketplaceActiveDeliveryScreen(deliveryId: active.id),
-              ));
-              return;
-            }
+            // Marketplace usa el mismo mapa de navegación (tab 1) que el resto.
             setState(() => _selectedNavIndex = index);
           },
           items: [

@@ -774,13 +774,21 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
       } catch (e) {
         debugPrint('marketplace capture (non-fatal): $e');
       }
-      // confirm_delivery RPC already sets status='delivered' on marketplace_orders
-      // and the sync trigger updates deliveries.status. Skip the regular completion
-      // path because the marketplace order is already 'delivered'.
+      // confirm_delivery RPC ya puso marketplace_orders.status='delivered', pero NO
+      // hay sync de regreso a deliveries (se queda en in_progress) -> marcamos la
+      // entrega como completada para que el viaje activo se limpie y no quede fantasma.
+      try {
+        await Supabase.instance.client.from('deliveries').update({
+          'status': 'completed',
+          'delivered_at': DateTime.now().toUtc().toIso8601String(),
+        }).eq('id', ride.id);
+      } catch (_) {/* la fila ya está terminal o RLS -> no es fatal */}
       _waitTimer?.cancel();
       _waitSeconds = 0;
       _clearRoute();
-      if (mounted) Navigator.of(context).pop();
+      // Volver a la pestaña HOME. NO usar Navigator.pop(): el mapa es el cuerpo del
+      // tab 1 (no una ruta empujada); un pop dejaría el home vacío -> fondo galaxia.
+      if (widget.onBack != null) widget.onBack!();
       return;
     }
 
@@ -2406,9 +2414,9 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
-                color: statusColor.withOpacity(0.15),
+                color: const Color(0xFF16161F),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: statusColor.withOpacity(0.4)),
+                border: Border.all(color: statusColor.withOpacity(0.35)),
               ),
               child: Row(
                 children: [
@@ -2564,7 +2572,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                         isGoingToPickup
                             ? (ride.pickupLocation.address ?? 'Pickup')
                             : (ride.dropoffLocation.address ?? 'Destino'),
-                        style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 12),
+                        style: TextStyle(color: Colors.white.withOpacity(0.88), fontSize: 13.5),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -2579,9 +2587,9 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: statusColor.withOpacity(0.1),
+                color: const Color(0xFF16161F),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: statusColor.withOpacity(0.3)),
+                border: Border.all(color: Colors.white.withOpacity(0.06)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2637,14 +2645,12 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: ride.paymentMethod == PaymentMethod.cash
-                          ? const Color(0xFF22D3EE).withOpacity(0.15)
-                          : const Color(0xFF3B82F6).withOpacity(0.15),
+                      color: const Color(0xFF1C1C28),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
                         color: ride.paymentMethod == PaymentMethod.cash
-                            ? const Color(0xFF22D3EE).withOpacity(0.5)
-                            : const Color(0xFF3B82F6).withOpacity(0.5),
+                            ? const Color(0xFF22D3EE).withOpacity(0.45)
+                            : const Color(0xFF3B82F6).withOpacity(0.45),
                       ),
                     ),
                     child: Row(
@@ -2780,9 +2786,9 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.12),
+            color: const Color(0xFF16161F),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: color.withOpacity(0.35)),
+            border: Border.all(color: color.withOpacity(0.45)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -3074,9 +3080,9 @@ class _SlideToConfirmButtonState extends State<_SlideToConfirmButton>
         return Container(
           height: 60,
           decoration: BoxDecoration(
-            color: widget.color.withOpacity(0.2),
+            color: const Color(0xFF16161F),
             borderRadius: BorderRadius.circular(30),
-            border: Border.all(color: widget.color.withOpacity(0.5), width: 1.5),
+            border: Border.all(color: widget.color.withOpacity(0.55), width: 1.5),
           ),
           child: Stack(
             children: [

@@ -123,14 +123,9 @@ class _State extends State<MarketplaceDeliveryAcceptScreen> {
           content: Text('Entrega aceptada'),
           backgroundColor: _green,
         ));
-        // Navigate to active delivery flow
-        if (mounted) {
-          Navigator.of(context).pushReplacement(MaterialPageRoute(
-            builder: (_) => MarketplaceActiveDeliveryScreen(
-              deliveryId: widget.deliveryId,
-            ),
-          ));
-        }
+        // Volver al home: el viaje activo se navega en el MISMO mapa (tab 1),
+        // igual que cualquier otro viaje (NavigationMapScreen).
+        if (mounted) Navigator.of(context).maybePop();
       } else {
         _err('No se pudo aceptar');
       }

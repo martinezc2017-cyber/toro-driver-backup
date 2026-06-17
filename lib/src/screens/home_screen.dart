@@ -48,7 +48,6 @@ import 'earnings_screen.dart';
 import 'rides_screen.dart';
 import 'profile_screen.dart';
 import 'navigation_map_screen.dart';
-import 'marketplace_active_delivery_screen.dart';
 import '../widgets/driver_connect_banner.dart';
 import 'tourism/vehicle_request_screen.dart';
 import 'organizer/organizer_home_screen.dart';

@@ -8,7 +8,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
 import '../config/supabase_config.dart';
 import '../services/delivery_service.dart';
-import 'marketplace_active_delivery_screen.dart';
 
 class MarketplaceDeliveryAcceptScreen extends StatefulWidget {
   final String deliveryId;

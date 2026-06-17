@@ -317,27 +317,27 @@ class _ProfileScreenState extends State<ProfileScreen>
     final label = isNew ? 'NEW' : _getRatingLabel(displayRating);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            AppColors.star,
-            AppColors.star.withValues(alpha: 0.8),
-          ],
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF12313A), Color(0xFF0C1418)],
         ),
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.primaryCyan.withValues(alpha: 0.55)),
         boxShadow: [
           BoxShadow(
-            color: AppColors.star.withValues(alpha: 0.4),
+            color: AppColors.primaryCyan.withValues(alpha: 0.22),
             blurRadius: 15,
-            offset: const Offset(0, 5),
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.star_rounded, color: AppColors.textPrimary, size: 22),
+          const Icon(Icons.star_rounded, color: Color(0xFF67E8F9), size: 22),
           const SizedBox(width: 8),
           Text(
             displayRating.toStringAsFixed(2),
@@ -351,13 +351,14 @@ class _ProfileScreenState extends State<ProfileScreen>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: AppColors.textPrimary.withValues(alpha: 0.25),
+              color: AppColors.primaryCyan.withValues(alpha: 0.18),
               borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.primaryCyan.withValues(alpha: 0.4)),
             ),
             child: Text(
               label,
               style: const TextStyle(
-                color: AppColors.textPrimary,
+                color: Color(0xFF67E8F9),
                 fontSize: 11,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 1,
@@ -481,7 +482,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           label,
           style: TextStyle(
             fontSize: 11,
-            color: AppColors.textTertiary,
+            color: AppColors.textSecondary,
             fontWeight: FontWeight.w500,
             letterSpacing: 0.5,
           ),
@@ -510,7 +511,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           label,
           style: TextStyle(
             fontSize: 11,
-            color: AppColors.textTertiary,
+            color: AppColors.textSecondary,
             fontWeight: FontWeight.w500,
             letterSpacing: 0.5,
           ),
@@ -698,8 +699,8 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   Widget _buildMenuCard() {
-    // All items use neon blue glow except logout (red)
-    const neonBlue = AppColors.primary;
+    // All items use cyan glow except logout (red)
+    const neonBlue = AppColors.primaryCyan;
     const neonRed = AppColors.error;
 
     final menuItems = [
@@ -998,12 +999,36 @@ class _ProfileMenuButtonState extends State<_ProfileMenuButton> {
               margin: const EdgeInsets.all(1.5),
               padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
               decoration: BoxDecoration(
-                color: _isPressed ? AppColors.cardHover : AppColors.card,
+                // Raised 3D tile: light top → dark bottom gradient + drop shadow
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: _isPressed
+                      ? const [Color(0xFF2A2E3A), Color(0xFF181B22), Color(0xFF101218)]
+                      : const [Color(0xFF20232D), Color(0xFF131519), Color(0xFF0B0C10)],
+                ),
                 borderRadius: BorderRadius.circular(11),
                 border: Border.all(
-                  color: _isPressed ? AppColors.neonCyan : AppColors.border,
-                  width: _isPressed ? 1 : 0.5,
+                  color: _isPressed ? AppColors.neonCyan : widget.color.withValues(alpha: 0.20),
+                  width: _isPressed ? 1 : 0.8,
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.55),
+                    blurRadius: 8,
+                    offset: const Offset(0, 5),
+                  ),
+                  BoxShadow(
+                    color: widget.color.withValues(alpha: _isPressed ? 0.22 : 0.10),
+                    blurRadius: 12,
+                    spreadRadius: -3,
+                  ),
+                  BoxShadow(
+                    color: Colors.white.withValues(alpha: 0.05),
+                    blurRadius: 1,
+                    offset: const Offset(0, -1),
+                  ),
+                ],
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -1013,27 +1038,43 @@ class _ProfileMenuButtonState extends State<_ProfileMenuButton> {
                     padding: const EdgeInsets.all(11),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: _isPressed
-                          ? AppColors.neonCyan.withValues(alpha: 0.2)
-                          : widget.color.withValues(alpha: 0.1),
-                      border: Border.all(
-                        color: _isPressed ? AppColors.neonCyan : AppColors.border,
-                        width: _isPressed ? 1.5 : 0.5,
+                      gradient: RadialGradient(
+                        colors: [
+                          widget.color.withValues(alpha: _isPressed ? 0.40 : 0.30),
+                          widget.color.withValues(alpha: 0.06),
+                        ],
                       ),
+                      border: Border.all(
+                        color: widget.color.withValues(alpha: _isPressed ? 0.9 : 0.55),
+                        width: _isPressed ? 1.5 : 1,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: widget.color.withValues(alpha: _isPressed ? 0.5 : 0.30),
+                          blurRadius: 11,
+                          spreadRadius: -2,
+                        ),
+                      ],
                     ),
                     child: Icon(
                       widget.icon,
-                      color: _isPressed ? AppColors.neonCyan : widget.color.withValues(alpha: 0.8),
+                      // bright/clear icon (was dim 0.8 alpha)
+                      color: widget.color == AppColors.error
+                          ? const Color(0xFFFF6B6B)
+                          : const Color(0xFF67E8F9),
                       size: 24,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 8),
                   Text(
                     widget.label,
                     style: TextStyle(
                       fontSize: 12,
-                      fontWeight: _isPressed ? FontWeight.w700 : FontWeight.w500,
-                      color: _isPressed ? AppColors.neonCyan : AppColors.textSecondary,
+                      fontWeight: _isPressed ? FontWeight.w700 : FontWeight.w600,
+                      // WHITE labels (was gray textSecondary)
+                      color: widget.color == AppColors.error
+                          ? const Color(0xFFFF6B6B)
+                          : AppColors.textPrimary,
                       letterSpacing: 0.2,
                     ),
                     textAlign: TextAlign.center,

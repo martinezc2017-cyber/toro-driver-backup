@@ -19,8 +19,8 @@ class MexicoDocumentsService {
     MexicoDocumentType(
       type: 'rfcConstancia',
       displayName: 'Constancia RFC',
-      description: 'Constancia de situación fiscal del SAT',
-      isRequired: true,
+      description: 'Constancia de situación fiscal del SAT (opcional)',
+      isRequired: false, // fiscal — no bloquea para manejar (igual que Uber/Didi)
       hasExpiry: false,
       hasFrontBack: false,
     ),
@@ -91,14 +91,23 @@ class MexicoDocumentsService {
       isRequired: true,
       hasExpiry: true,
       hasFrontBack: true,
-      requiredInStates: ['JAL', 'NL', 'GTO', 'QRO'], // Non-CDMX states
+      // Licencia básica obligatoria en TODO el país EXCEPTO CDMX (allá la
+      // reemplaza la Licencia E1 de SEMOVI).
+      excludedInStates: ['CDMX'],
     ),
   ];
 
-  /// Get required documents for a specific state
+  /// Documentos requeridos para un estado. Núcleo nacional (requiredInStates
+  /// == null) aplica en todos; los de SEMOVI solo en CDMX; la licencia básica
+  /// en todos menos CDMX. Si el estado es desconocido, devuelve solo el núcleo
+  /// nacional (NUNCA la lista pesada de CDMX por default).
   List<MexicoDocumentType> getRequiredDocuments(String stateCode) {
     return allDocumentTypes.where((doc) {
       if (!doc.isRequired) return false;
+      if (doc.excludedInStates != null &&
+          doc.excludedInStates!.contains(stateCode)) {
+        return false;
+      }
       if (doc.requiredInStates == null) return true;
       return doc.requiredInStates!.contains(stateCode);
     }).toList();
@@ -259,6 +268,7 @@ class MexicoDocumentType {
   final bool hasExpiry;
   final bool hasFrontBack;
   final List<String>? requiredInStates;
+  final List<String>? excludedInStates;
 
   const MexicoDocumentType({
     required this.type,
@@ -268,6 +278,7 @@ class MexicoDocumentType {
     required this.hasExpiry,
     required this.hasFrontBack,
     this.requiredInStates,
+    this.excludedInStates,
   });
 }
 

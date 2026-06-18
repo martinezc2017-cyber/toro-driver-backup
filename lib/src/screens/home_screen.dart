@@ -83,6 +83,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   // Mode toggle: Driver (normal rides) vs Tourism (events/rentals)
   bool _isTourismMode = false;
+  bool _togglingOnline = false; // pulso/debounce del switch online
 
   // Collapsible section states
   bool _showDailyEarnings = true;
@@ -1728,6 +1729,9 @@ class _HomeScreenState extends State<HomeScreen>
                 behavior: HitTestBehavior.opaque,
                 onTap: () async {
                   HapticService.lightImpact();
+                  if (_togglingOnline) return; // debounce: ignora multi-tap
+                  setState(() => _togglingOnline = true);
+                  try {
 
                   // Check if driver can go online
                   final driver = driverProvider.driver;
@@ -1905,8 +1909,11 @@ class _HomeScreenState extends State<HomeScreen>
                       );
                     }
                   }
+                  } finally {
+                    if (mounted) setState(() => _togglingOnline = false);
+                  }
                 },
-                child: _LuxuryToggle(isOnline: isOnline),
+                child: _LuxuryToggle(isOnline: isOnline, busy: _togglingOnline),
               ),
               // Trial mode badge
               if (driverProvider.driver?.isTrialMode == true) ...[
@@ -3623,8 +3630,9 @@ class _HomeScreenState extends State<HomeScreen>
 /// Luxury Online/Offline Toggle
 class _LuxuryToggle extends StatelessWidget {
   final bool isOnline;
+  final bool busy;
 
-  const _LuxuryToggle({required this.isOnline});
+  const _LuxuryToggle({required this.isOnline, this.busy = false});
 
   @override
   Widget build(BuildContext context) {
@@ -3647,18 +3655,29 @@ class _LuxuryToggle extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          AnimatedContainer(
-            duration: AppTheme.durationFast,
-            width: 7,
-            height: 7,
-            decoration: BoxDecoration(
-              color: isOnline ? AppColors.success : AppColors.textTertiary,
-              shape: BoxShape.circle,
-            ),
-          ),
+          busy
+              ? const SizedBox(
+                  width: 7,
+                  height: 7,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 1.6,
+                    color: AppColors.success,
+                  ),
+                )
+              : AnimatedContainer(
+                  duration: AppTheme.durationFast,
+                  width: 7,
+                  height: 7,
+                  decoration: BoxDecoration(
+                    color: isOnline ? AppColors.success : AppColors.textTertiary,
+                    shape: BoxShape.circle,
+                  ),
+                ),
           const SizedBox(width: 6),
           Text(
-            isOnline ? 'status_online'.tr() : 'status_offline'.tr(),
+            busy
+                ? 'Conectando…'
+                : (isOnline ? 'status_online'.tr() : 'status_offline'.tr()),
             style: TextStyle(
               color: isOnline ? AppColors.success : AppColors.textSecondary,
               fontSize: 12,

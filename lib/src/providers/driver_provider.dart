@@ -181,6 +181,16 @@ class DriverProvider with ChangeNotifier {
 
           _driver = driver;
 
+          // PRESENCIA EN VIVO: mantén el latido GPS corriendo SIEMPRE que esté
+          // online — incluido cuando el app abre ya-online (sin tocar el
+          // switch). Antes solo arrancaba en el toggle → al reabrir el app
+          // quedaba online sin latido y el admin lo veía stale.
+          if (driver.isOnline) {
+            if (_heartbeatTimer == null) _startHeartbeat();
+          } else {
+            _stopHeartbeat();
+          }
+
           // CRITICAL: Auto-disconnect if driver is online but can no longer go online
           // This happens when admin disapproves, documents expire, account suspended, etc.
           if (wasOnline && driver.isOnline && !driver.canGoOnline) {
@@ -266,6 +276,27 @@ class DriverProvider with ChangeNotifier {
       _error = 'Tu cuenta fue rechazada. Contacta a soporte.';
       notifyListeners();
       throw Exception(_error);
+    }
+
+    // LA APROBACIÓN DEL ADMIN MANDA: si el chofer YA puede operar
+    // (canGoOnline = docs legales firmados + admin_approved + can_receive_rides
+    // + onboarding 'approved', o modo trial), NO re-validar licencia/seguro/
+    // placa campo por campo. Eso bloqueaba a choferes YA APROBADOS por detalles
+    // como "licencia sin número" aunque la imagen esté subida. canGoOnline es
+    // la MISMA verdad que usa el admin y el resto del app.
+    if (driver.canGoOnline) {
+      try {
+        await _driverService.updateOnlineStatus(_driver!.id, true);
+        _driver = _driver!.copyWith(isOnline: true);
+        _error = null;
+        _startHeartbeat(); // presencia EN VIVO mientras esté online
+        notifyListeners();
+        return;
+      } catch (e) {
+        _error = 'Error al ponerse online: $e';
+        notifyListeners();
+        throw Exception(_error);
+      }
     }
 
     // 2. Verificar documentos firmados

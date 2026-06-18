@@ -43,13 +43,54 @@ class _MexicoDocumentsScreenState extends State<MexicoDocumentsScreen> {
       // Get driver info
       final driverResponse = await SupabaseConfig.client
           .from('drivers')
-          .select('id, state_code')
+          .select('id, state_code, current_lat, current_lng, country_code')
           .eq('user_id', user.id)
           .maybeSingle();
 
       if (driverResponse != null) {
         _driverId = driverResponse['id'];
-        _driverStateCode = driverResponse['state_code'] ?? 'CDMX';
+        String? stateCode = (driverResponse['state_code'] as String?)?.trim();
+
+        // Sin estado guardado → resolverlo POR UBICACIÓN (GPS), con el mismo
+        // RPC del pricing nacional. Así solo se piden los documentos del estado
+        // REAL donde está el chofer — nunca la lista pesada de CDMX por default.
+        if (stateCode == null || stateCode.isEmpty) {
+          final lat = (driverResponse['current_lat'] as num?)?.toDouble();
+          final lng = (driverResponse['current_lng'] as num?)?.toDouble();
+          if (lat != null && lng != null) {
+            try {
+              final resolved = await SupabaseConfig.client.rpc(
+                'resolve_state_for_pricing',
+                params: {
+                  'p_lat': lat,
+                  'p_lng': lng,
+                  'p_country': driverResponse['country_code'] ?? 'MX',
+                },
+              );
+              // El RPC devuelve una tabla (country_code, state_code, currency).
+              String? resolvedState;
+              if (resolved is List && resolved.isNotEmpty) {
+                resolvedState = resolved.first['state_code']?.toString();
+              } else if (resolved is Map) {
+                resolvedState = resolved['state_code']?.toString();
+              }
+              if (resolvedState != null && resolvedState.trim().isNotEmpty) {
+                stateCode = resolvedState.trim();
+                // Persistir para próximas veces (y para el admin).
+                await SupabaseConfig.client
+                    .from('drivers')
+                    .update({'state_code': stateCode})
+                    .eq('id', _driverId!);
+              }
+            } catch (_) {
+              // sin GPS resoluble → cae al núcleo nacional abajo
+            }
+          }
+        }
+
+        // Si sigue sin resolverse, usa 'MX' (núcleo nacional) — NUNCA CDMX.
+        _driverStateCode =
+            (stateCode == null || stateCode.isEmpty) ? 'MX' : stateCode;
 
         // Get required documents for state
         _requiredDocuments = _documentsService.getRequiredDocuments(_driverStateCode);

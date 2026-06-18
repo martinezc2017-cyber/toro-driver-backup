@@ -376,6 +376,10 @@ class _ProfileScreenState extends State<ProfileScreen>
     final stateRank = driver?.stateRank;
     final usaRank = driver?.usaRank;
     final driverState = driver?.state ?? '';
+    // País dinámico: el ranking "nacional" decía USA hardcodeado aunque el
+    // chofer fuera de México.
+    final nationalRankLabel =
+        driver?.countryCode == 'MX' ? 'Ranking México' : 'usa_rank'.tr();
 
     // Always show rating (5.0 default for new drivers)
     final displayRating = rating ?? 5.0;
@@ -444,7 +448,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                       ),
                     ),
                     _buildStatDivider(),
-                    Expanded(child: _buildStatItemWithFlag(usaRank != null ? '#$usaRank' : '-', 'usa_rank'.tr(), AppColors.warning)),
+                    Expanded(child: _buildStatItemWithFlag(usaRank != null ? '#$usaRank' : '-', nationalRankLabel, AppColors.warning)),
                   ],
                 ),
               ],

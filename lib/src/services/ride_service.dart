@@ -118,11 +118,27 @@ class RideService {
     try {
       final profile = await _client
           .from('profiles')
-          .select('full_name, avatar_url, rating, phone')
+          .select('full_name, avatar_url, rating, phone, email')
           .eq('id', userId)
           .maybeSingle();
       if (profile != null) {
-        json['passenger_name'] = profile['full_name'];
+        // Cadena de fallback del nombre: full_name -> user_name del viaje ->
+        // prefijo del email -> 'Pasajero'. Antes, si full_name venía VACÍO, el
+        // panel del chofer mostraba el nombre del rider EN BLANCO.
+        final fullName = (profile['full_name'] as String?)?.trim();
+        final userName = (json['user_name'] as String?)?.trim();
+        final email = (profile['email'] as String?)?.trim();
+        String riderName;
+        if (fullName != null && fullName.isNotEmpty) {
+          riderName = fullName;
+        } else if (userName != null && userName.isNotEmpty) {
+          riderName = userName;
+        } else if (email != null && email.contains('@')) {
+          riderName = email.split('@').first;
+        } else {
+          riderName = 'Pasajero';
+        }
+        json['passenger_name'] = riderName;
         json['passenger_image_url'] = profile['avatar_url'];
         json['passenger_rating'] = profile['rating'];
         final phone = profile['phone'] as String?;

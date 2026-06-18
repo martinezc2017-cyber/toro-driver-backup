@@ -268,11 +268,14 @@ class StatePricingService {
     // Fetch de Supabase
     AppLogger.log('STATE_PRICING_DRV -> Fetching: $stateCode / ${bookingType.value}');
 
+    // pricing_config tiene UNA fila por (country_code, state_code) — NO por
+    // booking_type (esa columna no existe; los tipos viven en columnas ride_*/
+    // carpool_*/trip_*_multiplier de la misma fila). Filtrar por booking_type
+    // tronaba con 42703 "column booking_type does not exist" al finalizar.
     final response = await SupabaseConfig.client
         .from('pricing_config')
         .select()
         .eq('state_code', stateCode.toUpperCase())
-        .eq('booking_type', bookingType.value)
         .eq('is_active', true)
         .maybeSingle();
 

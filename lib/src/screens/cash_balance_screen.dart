@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../providers/driver_provider.dart';
 import '../services/cash_account_service.dart';
+import '../services/stripe_connect_service.dart';
 import '../utils/app_colors.dart';
 import '../utils/money_format.dart';
 
@@ -26,7 +27,9 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
   List<Map<String, dynamic>> _ledger = [];
   List<Map<String, dynamic>> _deposits = [];
   List<Map<String, dynamic>> _statements = [];
+  DriverBalance? _stripeBalance;
   bool _isLoading = true;
+  final StripeConnectService _stripeConnect = StripeConnectService.instance;
 
   // Deposit form
   final _depositAmountController = TextEditingController();
@@ -56,21 +59,29 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
 
     setState(() => _isLoading = true);
 
-    final results = await Future.wait([
+    // Determinar provider Stripe por país del driver (MX o US).
+    final provider = (driver.countryCode.toUpperCase() == 'MX') ? 'mx' : 'us';
+
+    final results = await Future.wait<dynamic>([
       _service.getCashAccount(driver.id),
       _service.getLedgerSummary(driver.id),
       _service.getCashLedger(driver.id, limit: 50),
       _service.getDepositHistory(driver.id, limit: 20),
       _service.getWeeklyStatements(driver.id, limit: 10),
+      // CANONICAL: balance Stripe Connect del driver (fuente real de
+      // "available" y "pending"). Sin esto, la UI usa solo el cash_account
+      // de DB que no refleja lo que Stripe realmente le va a pagar.
+      _stripeConnect.getBalance(driver.id, provider: provider),
     ]);
 
     if (mounted) {
       setState(() {
         _account = results[0] as Map<String, dynamic>?;
         _summary = results[1] as Map<String, dynamic>;
-        _ledger = results[2] as List<Map<String, dynamic>>;
-        _deposits = results[3] as List<Map<String, dynamic>>;
-        _statements = results[4] as List<Map<String, dynamic>>;
+        _ledger = (results[2] as List).cast<Map<String, dynamic>>();
+        _deposits = (results[3] as List).cast<Map<String, dynamic>>();
+        _statements = (results[4] as List).cast<Map<String, dynamic>>();
+        _stripeBalance = results[5] as DriverBalance?;
         _isLoading = false;
       });
     }
@@ -79,7 +90,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         backgroundColor: AppColors.surface,
         title: const Text(
@@ -193,6 +204,84 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
           ),
 
           const SizedBox(height: 20),
+
+          // Balance Stripe Connect (fuente real: lo que TORO te va a pagar).
+          // Available = listo para retirar. Pending = cobrado pero en hold
+          // 2-7 días por Stripe.
+          if (_stripeBalance != null) ...[
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E293B),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF334155)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.account_balance, color: Color(0xFF60A5FA), size: 18),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'BALANCE STRIPE',
+                        style: TextStyle(
+                          color: Color(0xFF94A3B8),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Disponible',
+                                style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11)),
+                            const SizedBox(height: 2),
+                            Text(
+                              formatMoney(_stripeBalance!.availableCents / 100, country: countryCode),
+                              style: const TextStyle(
+                                color: Color(0xFF10B981),
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(width: 1, height: 36, color: const Color(0xFF334155)),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Pendiente',
+                                style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11)),
+                            const SizedBox(height: 2),
+                            Text(
+                              formatMoney(_stripeBalance!.pendingCents / 100, country: countryCode),
+                              style: const TextStyle(
+                                color: Color(0xFFF59E0B),
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+          ],
 
           // Stats row
           Row(

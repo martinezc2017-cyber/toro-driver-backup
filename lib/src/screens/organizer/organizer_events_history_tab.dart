@@ -13,6 +13,7 @@ import '../../providers/auth_provider.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/haptic_service.dart';
 import '../../utils/money_format.dart';
+import '../../widgets/organizer_connect_banner.dart';
 
 /// PANTALLA DE HISTORIAL DE EVENTOS - ORGANIZER
 /// Muestra todos los eventos completados con tracking completo
@@ -30,6 +31,7 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
   List<Map<String, dynamic>> _allEvents = [];
   List<Map<String, dynamic>> _filteredEvents = [];
   String _filterStatus = 'all';
+  String? _organizerId;
 
   @override
   void initState() {
@@ -67,6 +69,7 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
           .maybeSingle();
 
       final organizerId = profile?['id'] ?? userId;
+      _organizerId = organizerId?.toString();
 
       final response = await SupabaseConfig.client
           .from('tourism_events')
@@ -219,7 +222,7 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         backgroundColor: AppColors.surface,
         elevation: 0,
@@ -239,11 +242,19 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
           ),
         ],
       ),
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator(color: AppColors.primary))
-          : _error != null
-              ? _buildErrorState()
-              : _buildContent(),
+      body: Column(
+        children: [
+          if (_organizerId != null)
+            OrganizerConnectBanner(organizerId: _organizerId!),
+          Expanded(
+            child: _isLoading
+                ? Center(child: CircularProgressIndicator(color: AppColors.primary))
+                : _error != null
+                    ? _buildErrorState()
+                    : _buildContent(),
+          ),
+        ],
+      ),
     );
   }
 
@@ -767,7 +778,7 @@ class _EventDetailsScreen extends StatelessWidget {
     final itinerary = event['itinerary'] as List<dynamic>? ?? [];
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         backgroundColor: AppColors.surface,
         elevation: 0,

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:easy_localization/easy_localization.dart';
+import '../../config/supabase_config.dart';
 import '../../services/organizer_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/haptic_service.dart';
+import '../../widgets/organizer_connect_banner.dart';
 
 /// Vehicles tab for the organizer home screen.
 ///
@@ -25,11 +27,28 @@ class _OrganizerVehiclesTabState extends State<OrganizerVehiclesTab> {
   String? _error;
   List<Map<String, dynamic>> _vehicles = [];
   String? _currentStateFilter;
+  String? _organizerId;
 
   @override
   void initState() {
     super.initState();
+    _loadOrganizerId();
     _loadVehicles();
+  }
+
+  Future<void> _loadOrganizerId() async {
+    try {
+      final userId = SupabaseConfig.client.auth.currentUser?.id;
+      if (userId == null) return;
+      final resp = await SupabaseConfig.client
+          .from('organizers')
+          .select('id')
+          .eq('user_id', userId)
+          .maybeSingle();
+      if (resp != null && mounted) {
+        setState(() => _organizerId = resp['id']?.toString());
+      }
+    } catch (_) {}
   }
 
   @override
@@ -75,7 +94,7 @@ class _OrganizerVehiclesTabState extends State<OrganizerVehiclesTab> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         backgroundColor: AppColors.surface,
         elevation: 0,
@@ -91,6 +110,9 @@ class _OrganizerVehiclesTabState extends State<OrganizerVehiclesTab> {
       ),
       body: Column(
         children: [
+          // Stripe Connect banner
+          if (_organizerId != null)
+            OrganizerConnectBanner(organizerId: _organizerId!),
           // Filter bar
           _buildFilterBar(),
           // Invite banner

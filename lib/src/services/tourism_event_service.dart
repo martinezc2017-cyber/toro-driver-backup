@@ -1567,23 +1567,35 @@ class TourismEventService {
     try {
       final response = await _client
           .from('tourism_join_requests')
-          .select('''
-            *,
-            profile:profiles!tourism_join_requests_user_id_fkey(
-              id,
-              full_name,
-              phone,
-              email,
-              avatar_url
-            )
-          ''')
+          // user_id FK -> auth.users (NOT public.profiles); the named-FK embed
+          // 400s and fell through to the name-less fallback ('Sin nombre').
+          // Side-fetch profiles by user_id (== profiles.id) instead.
+          .select('*')
           .eq('event_id', eventId)
           .order('created_at', ascending: false);
 
+      final rows = (response as List)
+          .map((r) => Map<String, dynamic>.from(r as Map))
+          .toList();
+      final userIds = rows
+          .map((r) => r['user_id'] as String?)
+          .whereType<String>()
+          .toSet()
+          .toList();
+      final pmap = <String, Map<String, dynamic>>{};
+      if (userIds.isNotEmpty) {
+        final profs = await _client
+            .from('profiles')
+            .select('id, full_name, phone, email, avatar_url')
+            .inFilter('id', userIds);
+        for (final p in (profs as List)) {
+          pmap[p['id'] as String] = Map<String, dynamic>.from(p);
+        }
+      }
+
       final results = <Map<String, dynamic>>[];
-      for (final row in response as List) {
-        final request = Map<String, dynamic>.from(row as Map);
-        final profile = request.remove('profile') as Map<String, dynamic>?;
+      for (final request in rows) {
+        final profile = pmap[request['user_id']];
 
         // Enrich with profile data
         request['passenger_name'] = profile?['full_name'] ??
@@ -1846,14 +1858,19 @@ class TourismEventService {
   /// Returns a map with avg ratings, total reviews, and top improvement tags.
   Future<Map<String, dynamic>> getMyAverageRatings(String driverId) async {
     try {
-      // Get all events assigned to this driver
+      // Get all events assigned to this driver.
+      // NOTE: tourism_events has NO avg_*/total_reviews columns — those
+      // aggregates are computed here from the per-review rows in
+      // tourism_event_reviews (the old code read phantom columns -> all 0).
       final events = await _client
           .from('tourism_events')
-          .select('id, avg_overall_rating, avg_driver_rating, avg_organizer_rating, total_reviews')
+          .select('id')
           .eq('driver_id', driverId);
 
-      final eventList = List<Map<String, dynamic>>.from(events);
-      if (eventList.isEmpty) {
+      final eventIds = List<Map<String, dynamic>>.from(events)
+          .map((e) => e['id'] as String)
+          .toList();
+      if (eventIds.isEmpty) {
         return {
           'avg_overall': 0.0,
           'avg_driver': 0.0,
@@ -1863,46 +1880,32 @@ class TourismEventService {
         };
       }
 
+      final reviewRows = List<Map<String, dynamic>>.from(await _client
+          .from('tourism_event_reviews')
+          .select('event_id, overall_rating, driver_rating, improvement_tags')
+          .inFilter('event_id', eventIds));
+
       double sumOverall = 0;
       double sumDriver = 0;
-      int totalReviews = 0;
-      int eventsWithReviews = 0;
-
-      for (final e in eventList) {
-        final reviews = (e['total_reviews'] as num?)?.toInt() ?? 0;
-        if (reviews > 0) {
-          eventsWithReviews++;
-          totalReviews += reviews;
-          sumOverall += (e['avg_overall_rating'] as num?)?.toDouble() ?? 0;
-          sumDriver += (e['avg_driver_rating'] as num?)?.toDouble() ?? 0;
-        }
-      }
-
-      final avgOverall = eventsWithReviews > 0 ? sumOverall / eventsWithReviews : 0.0;
-      final avgDriver = eventsWithReviews > 0 ? sumDriver / eventsWithReviews : 0.0;
-
-      // Get aggregated improvement tags across all events
-      final eventIds = eventList.map((e) => e['id'] as String).toList();
+      final int totalReviews = reviewRows.length;
+      final Set<String> eventsRated = {};
       final Map<String, int> tagCounts = {};
-
-      try {
-        final reviews = await _client
-            .from('tourism_event_reviews')
-            .select('improvement_tags')
-            .inFilter('event_id', eventIds);
-
-        for (final r in List<Map<String, dynamic>>.from(reviews)) {
-          final tags = r['improvement_tags'];
-          if (tags is List) {
-            for (final t in tags) {
-              final tag = t.toString();
-              tagCounts[tag] = (tagCounts[tag] ?? 0) + 1;
-            }
+      for (final r in reviewRows) {
+        sumOverall += (r['overall_rating'] as num?)?.toDouble() ?? 0;
+        sumDriver += (r['driver_rating'] as num?)?.toDouble() ?? 0;
+        final eid = r['event_id'] as String?;
+        if (eid != null) eventsRated.add(eid);
+        final tags = r['improvement_tags'];
+        if (tags is List) {
+          for (final t in tags) {
+            final tag = t.toString();
+            tagCounts[tag] = (tagCounts[tag] ?? 0) + 1;
           }
         }
-      } catch (_) {
-        // Non-critical: tags aggregation failed
       }
+
+      final avgOverall = totalReviews > 0 ? sumOverall / totalReviews : 0.0;
+      final avgDriver = totalReviews > 0 ? sumDriver / totalReviews : 0.0;
 
       final sortedTags = tagCounts.entries.toList()
         ..sort((a, b) => b.value.compareTo(a.value));
@@ -1911,8 +1914,8 @@ class TourismEventService {
         'avg_overall': avgOverall,
         'avg_driver': avgDriver,
         'total_reviews': totalReviews,
-        'total_events': eventList.length,
-        'events_with_reviews': eventsWithReviews,
+        'total_events': eventIds.length,
+        'events_with_reviews': eventsRated.length,
         'improvement_tags': sortedTags
             .take(10)
             .map((e) => {'tag': e.key, 'count': e.value})
@@ -2286,15 +2289,52 @@ class TourismEventService {
     int limit = 5,
   }) async {
     try {
-      final response = await _client
+      // tourism_events has NO rating aggregate columns, and the names were wrong
+      // (title/start_date -> event_name/event_date). Pull the driver's events
+      // with real columns, then aggregate ratings from tourism_event_reviews.
+      final events = List<Map<String, dynamic>>.from(await _client
           .from('tourism_events')
-          .select('id, title, start_date, avg_overall_rating, avg_driver_rating, total_reviews')
+          .select('id, event_name, event_date')
           .eq('driver_id', driverId)
-          .gt('total_reviews', 0)
-          .order('start_date', ascending: false)
-          .limit(limit);
+          .order('event_date', ascending: false));
+      if (events.isEmpty) return [];
 
-      return List<Map<String, dynamic>>.from(response);
+      final eventIds = events.map((e) => e['id'] as String).toList();
+      final reviews = List<Map<String, dynamic>>.from(await _client
+          .from('tourism_event_reviews')
+          .select('event_id, overall_rating, driver_rating')
+          .inFilter('event_id', eventIds));
+
+      final Map<String, List<Map<String, dynamic>>> byEvent = {};
+      for (final r in reviews) {
+        final eid = r['event_id'] as String?;
+        if (eid == null) continue;
+        (byEvent[eid] ??= []).add(r);
+      }
+
+      final result = <Map<String, dynamic>>[];
+      for (final e in events) {
+        final eid = e['id'] as String;
+        final rs = byEvent[eid];
+        if (rs == null || rs.isEmpty) continue; // only events with reviews
+        double sumO = 0, sumD = 0;
+        for (final r in rs) {
+          sumO += (r['overall_rating'] as num?)?.toDouble() ?? 0;
+          sumD += (r['driver_rating'] as num?)?.toDouble() ?? 0;
+        }
+        result.add({
+          'id': eid,
+          'event_name': e['event_name'],
+          'title': e['event_name'], // compat alias
+          'event_date': e['event_date'],
+          'start_date': e['event_date'], // compat alias
+          'avg_overall_rating': sumO / rs.length,
+          'avg_driver_rating': sumD / rs.length,
+          'total_reviews': rs.length,
+        });
+        if (result.length >= limit) break;
+      }
+      return result;
     } catch (e) {
       debugPrint('getRecentEventRatings error: $e');
       return [];
@@ -2640,11 +2680,38 @@ class TourismEventService {
 
       final result = await _client
           .from('trip_requests')
-          .select('*, rider:profiles!rider_id(full_name, avatar_url)')
+          // rider_id FK -> auth.users (NOT public.profiles); embedding
+          // rider:profiles!rider_id 400s, the catch returns [] and drivers saw
+          // ZERO trip requests (whole Trip Wizard feed dead). Side-fetch below.
+          .select('*')
           .eq('status', 'open')
           .eq('country_code', countryCode)
           .order('created_at', ascending: false)
           .limit(50);
+
+      final rows =
+          (result as List).map((r) => Map<String, dynamic>.from(r)).toList();
+
+      // Side-fetch rider profiles (rider_id == profiles.id) -> attach as 'rider'.
+      final riderIds = rows
+          .map((r) => r['rider_id'] as String?)
+          .whereType<String>()
+          .toSet()
+          .toList();
+      if (riderIds.isNotEmpty) {
+        final profs = await _client
+            .from('profiles')
+            .select('id, full_name, avatar_url')
+            .inFilter('id', riderIds);
+        final pmap = <String, Map<String, dynamic>>{};
+        for (final p in (profs as List)) {
+          pmap[p['id'] as String] = Map<String, dynamic>.from(p);
+        }
+        for (final r in rows) {
+          final rid = r['rider_id'] as String?;
+          if (rid != null && pmap.containsKey(rid)) r['rider'] = pmap[rid];
+        }
+      }
 
       // Filter out requests this driver already bid on
       final myOffers = await _client
@@ -2655,10 +2722,7 @@ class TourismEventService {
           .map((o) => o['trip_request_id'] as String)
           .toSet();
 
-      return (result as List)
-          .where((r) => !bidRequestIds.contains(r['id']))
-          .map((r) => Map<String, dynamic>.from(r))
-          .toList();
+      return rows.where((r) => !bidRequestIds.contains(r['id'])).toList();
     } catch (e) {
       debugPrint('[TRIP_WIZARD] Error loading open trip requests: $e');
       return [];

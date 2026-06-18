@@ -275,7 +275,7 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
         systemNavigationBarIconBrightness: Brightness.light,
       ),
       child: Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: Colors.transparent,
         body: SafeArea(
           child: Column(
             children: [

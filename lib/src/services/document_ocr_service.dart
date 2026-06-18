@@ -77,6 +77,31 @@ class DocumentOcrService {
     }
   }
 
+  /// Extract data from INE (Mexican voter ID / credencial para votar)
+  /// Reads the CURP directly off the document (NOT typed by the user)
+  Future<IneData?> extractFromIne(XFile image) async {
+    if (!isAvailable) {
+      // DocumentOCR: ML Kit not available on this platform');
+      return null;
+    }
+
+    try {
+      final inputImage = InputImage.fromFilePath(image.path);
+      final recognizedText = await _textRecognizer.processImage(inputImage);
+
+      if (recognizedText.text.isEmpty) {
+        // DocumentOCR: No text found in INE image');
+        return null;
+      }
+
+      // DocumentOCR INE: Extracted ${recognizedText.text.length} characters');
+      return _parseIne(recognizedText.text);
+    } catch (e) {
+      // DocumentOCR INE Error: $e');
+      return null;
+    }
+  }
+
   /// Extract from File directly
   Future<InsuranceCardData?> extractFromFile(File file) async {
     return extractFromImage(XFile(file.path));
@@ -85,6 +110,11 @@ class DocumentOcrService {
   /// Extract license from File directly
   Future<DriverLicenseData?> extractLicenseFromFile(File file) async {
     return extractFromLicense(XFile(file.path));
+  }
+
+  /// Extract INE from File directly
+  Future<IneData?> extractIneFromFile(File file) async {
+    return extractFromIne(XFile(file.path));
   }
 
   /// Parse extracted text to find insurance fields
@@ -120,6 +150,32 @@ class DocumentOcrService {
       licenseClass: _extractLicenseClass(upperText),
       rawText: text,
     );
+  }
+
+  /// Parse INE (credencial para votar) text
+  IneData _parseIne(String text) {
+    final upperText = text.toUpperCase();
+    final lines = text.split('\n');
+
+    return IneData(
+      curp: _extractCurp(upperText),
+      fullName: _extractLicenseName(lines),
+      rawText: text,
+    );
+  }
+
+  // ==========================================================================
+  // INE PARSING
+  // ==========================================================================
+
+  /// Extract CURP from INE text.
+  /// CURP is a strict 18-char format: 4 letters + 6 digits (birth date) +
+  /// H/M (sex) + 5 letters (state + consonants) + 2 alphanumeric (homoclave).
+  /// The strict format makes regex extraction reliable.
+  String? _extractCurp(String text) {
+    final curpRegex = RegExp(r'\b([A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]{2})\b');
+    final match = curpRegex.firstMatch(text);
+    return match?.group(1);
   }
 
   // ==========================================================================
@@ -616,4 +672,27 @@ class DriverLicenseData {
   @override
   String toString() =>
       'DriverLicenseData(license: $licenseNumber, name: $fullName, expiry: $expiryDate)';
+}
+
+/// Data extracted from an INE (Mexican voter ID / credencial para votar)
+class IneData {
+  final String? curp;
+  final String? fullName;
+  final String rawText;
+
+  IneData({
+    this.curp,
+    this.fullName,
+    required this.rawText,
+  });
+
+  bool get hasAnyData => curp != null || fullName != null;
+
+  Map<String, dynamic> toJson() => {
+    'curp': curp,
+    'full_name': fullName,
+  };
+
+  @override
+  String toString() => 'IneData(curp: $curp, name: $fullName)';
 }

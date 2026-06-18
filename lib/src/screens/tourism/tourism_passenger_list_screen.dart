@@ -320,7 +320,7 @@ class _TourismPassengerListScreenState extends State<TourismPassengerListScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       appBar: _buildAppBar(),
       body: _isLoading
           ? const Center(

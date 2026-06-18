@@ -560,18 +560,20 @@ class PaymentService {
     }
   }
 
-  // Request payout
+  // Request payout — usa la fn canónica desplegada stripe-instant-payout.
+  // (Antes invocaba 'process-driver-payout' que NO existe → todo retiro fallaba.)
+  // El banco se captura en el onboarding de Stripe Connect, no aquí, así que
+  // bankAccountId ya no se manda.
   Future<Map<String, dynamic>> requestPayout({
     required String driverId,
     required double amount,
-    required String bankAccountId,
+    String? bankAccountId,
   }) async {
     final response = await _client.functions.invoke(
-      'process-driver-payout',
+      'stripe-instant-payout',
       body: {
         'driver_id': driverId,
         'amount': amount,
-        'bank_account_id': bankAccountId,
       },
     );
 
@@ -593,20 +595,22 @@ class PaymentService {
     return List<Map<String, dynamic>>.from(response);
   }
 
-  // Add bank account for payouts
+  // Add bank account for payouts.
+  // Stripe NO permite capturar cuentas bancarias crudas (number/routing) desde
+  // el cliente por PCI; se hace en el hosted onboarding de Connect. Esta función
+  // redirige a ese flujo y devuelve {url} para abrir en webview/navegador.
+  // (Antes invocaba 'add-bank-account' que NO existe.)
   Future<Map<String, dynamic>> addBankAccount({
     required String driverId,
-    required String accountNumber,
-    required String routingNumber,
-    required String accountHolderName,
+    String? accountNumber,
+    String? routingNumber,
+    String? accountHolderName,
   }) async {
     final response = await _client.functions.invoke(
-      'add-bank-account',
+      'stripe-connect-onboarding',
       body: {
         'driver_id': driverId,
-        'account_number': accountNumber,
-        'routing_number': routingNumber,
-        'account_holder_name': accountHolderName,
+        'provider': 'mx',
       },
     );
 
@@ -649,11 +653,12 @@ class PaymentService {
         .eq('id', accountId);
   }
 
-  // Get Stripe Connect onboarding link
+  // Get Stripe Connect onboarding link — fn canónica desplegada.
+  // (Antes invocaba 'create-stripe-connect-link' que NO existe.)
   Future<String> getStripeOnboardingLink(String driverId) async {
     final response = await _client.functions.invoke(
-      'create-stripe-connect-link',
-      body: {'driver_id': driverId},
+      'stripe-connect-onboarding',
+      body: {'driver_id': driverId, 'provider': 'mx'},
     );
 
     if (response.status != 200) {

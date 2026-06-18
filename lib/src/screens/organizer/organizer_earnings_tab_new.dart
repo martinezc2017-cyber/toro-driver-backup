@@ -9,6 +9,7 @@ import '../../services/organizer_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/haptic_service.dart';
 import '../../utils/money_format.dart';
+import '../../widgets/organizer_connect_banner.dart';
 
 /// NEW Earnings tab - Sistema de Crédito Semanal
 /// Muestra: balance crédito, eventos, estados de cuenta, breakdown completo
@@ -58,6 +59,9 @@ class _OrganizerEarningsTabNewState extends State<OrganizerEarningsTabNew> {
   // Dynamic commission rate (loaded from pricing_config)
   double _commissionRate = 0.18; // Default fallback, overwritten by DB value
 
+  // Stripe Connect banner: organizer id
+  String? _organizerStripeId;
+
   @override
   void initState() {
     super.initState();
@@ -98,6 +102,8 @@ class _OrganizerEarningsTabNewState extends State<OrganizerEarningsTabNew> {
         });
         return;
       }
+
+      _organizerStripeId = organizerId.toString();
 
       // Load this organizer's commission rate
       await _loadCommissionRate(organizerId);
@@ -300,7 +306,7 @@ class _OrganizerEarningsTabNewState extends State<OrganizerEarningsTabNew> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         backgroundColor: AppColors.surface,
         elevation: 0,
@@ -314,17 +320,25 @@ class _OrganizerEarningsTabNewState extends State<OrganizerEarningsTabNew> {
         ),
         centerTitle: false,
       ),
-      body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: AppColors.primary),
-            )
-          : _error != null
-          ? _buildErrorState()
-          : RefreshIndicator(
-              color: AppColors.primary,
-              onRefresh: _loadData,
-              child: _buildContent(),
-            ),
+      body: Column(
+        children: [
+          if (_organizerStripeId != null)
+            OrganizerConnectBanner(organizerId: _organizerStripeId!),
+          Expanded(
+            child: _isLoading
+                ? const Center(
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  )
+                : _error != null
+                    ? _buildErrorState()
+                    : RefreshIndicator(
+                        color: AppColors.primary,
+                        onRefresh: _loadData,
+                        child: _buildContent(),
+                      ),
+          ),
+        ],
+      ),
     );
   }
 

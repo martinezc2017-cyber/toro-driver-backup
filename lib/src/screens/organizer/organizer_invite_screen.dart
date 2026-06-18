@@ -15,6 +15,7 @@ import '../../services/tourism_event_service.dart';
 import '../../services/tourism_invitation_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/haptic_service.dart';
+import '../../widgets/organizer_connect_banner.dart';
 import '../../widgets/travel_card_widget.dart';
 
 /// Compact invite screen: KPI bar, travel card with QR, share actions,
@@ -796,8 +797,9 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
 
   @override
   Widget build(BuildContext context) {
+    final organizerId = _event?['organizer_id'] as String?;
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         backgroundColor: AppColors.surface,
         elevation: 0,
@@ -815,11 +817,16 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
         ),
         centerTitle: true,
       ),
-      body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: AppColors.primary),
-            )
-          : Stack(
+      body: Column(
+        children: [
+          if (organizerId != null)
+            OrganizerConnectBanner(organizerId: organizerId),
+          Expanded(
+            child: _isLoading
+                ? const Center(
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  )
+                : Stack(
               children: [
                 // ── Main content ──
                 RefreshIndicator(
@@ -868,6 +875,9 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
                 _buildEarTab(),
               ],
             ),
+          ),
+        ],
+      ),
     );
   }
 

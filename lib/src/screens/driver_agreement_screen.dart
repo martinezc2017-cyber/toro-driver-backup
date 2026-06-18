@@ -4,6 +4,8 @@ import 'dart:io' show Platform;
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
+import 'package:device_info_plus/device_info_plus.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:uuid/uuid.dart';
 import 'package:provider/provider.dart';
@@ -11,6 +13,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import '../utils/app_colors.dart';
 import '../utils/haptic_service.dart';
 import '../config/supabase_config.dart';
+import '../core/legal/legal_documents.dart';
 import '../providers/location_provider.dart';
 
 class DriverAgreementScreen extends StatefulWidget {
@@ -44,7 +47,7 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         backgroundColor: AppColors.surface,
         elevation: 0,
@@ -52,9 +55,9 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
           icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Driver Agreement',
-          style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
+        title: Text(
+          'driver_agreement_title'.tr(),
+          style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
         ),
         centerTitle: true,
       ),
@@ -105,18 +108,18 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
             children: [
               Icon(Icons.info_outline, color: AppColors.primary, size: 18),
               const SizedBox(width: 8),
-              const Text(
-                'Key Points',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+              Text(
+                'driver_agreement_screen_key_points'.tr(),
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
               ),
             ],
           ),
           const SizedBox(height: 10),
-          _buildBulletPoint('You are an independent contractor, not an employee'),
-          _buildBulletPoint('100% of tips go directly to you'),
-          _buildBulletPoint('Platform fee applies to each completed trip'),
-          _buildBulletPoint('Keep documents current to stay active'),
-          _buildBulletPoint('Periodic settlement of service fees to your bank account'),
+          _buildBulletPoint('driver_agreement_screen_bullet1'.tr()),
+          _buildBulletPoint('driver_agreement_screen_bullet2'.tr()),
+          _buildBulletPoint('driver_agreement_screen_bullet3'.tr()),
+          _buildBulletPoint('driver_agreement_screen_bullet4'.tr()),
+          _buildBulletPoint('driver_agreement_screen_bullet5'.tr()),
         ],
       ),
     );
@@ -167,10 +170,10 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
                 children: [
                   Icon(Icons.description, color: AppColors.primary, size: 20),
                   const SizedBox(width: 10),
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'INDEPENDENT CONTRACTOR AGREEMENT',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                      'driver_agreement_screen_section_header'.tr(),
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
                     ),
                   ),
                   Icon(
@@ -189,7 +192,7 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(14),
                 child: Text(
-                  _fullContractText,
+                  _buildContractText(context),
                   style: TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 11,
@@ -207,7 +210,7 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
             Container(
               padding: const EdgeInsets.all(10),
               child: Text(
-                'Tap to read full agreement',
+                'driver_agreement_screen_tap_to_read'.tr(),
                 style: TextStyle(color: AppColors.primary, fontSize: 11),
               ),
             ),
@@ -234,9 +237,9 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
                   children: [
                     Icon(Icons.draw, color: AppColors.primary, size: 18),
                     const SizedBox(width: 8),
-                    const Text(
-                      'Your Signature',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13),
+                    Text(
+                      'driver_agreement_screen_your_signature'.tr(),
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13),
                     ),
                   ],
                 ),
@@ -251,7 +254,7 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
                       color: AppColors.error.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
                     ),
-                    child: Text('Clear', style: TextStyle(color: AppColors.error, fontSize: 11)),
+                    child: Text('driver_agreement_clear'.tr(), style: TextStyle(color: AppColors.error, fontSize: 11)),
                   ),
                 ),
               ],
@@ -273,7 +276,7 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
                 if (_signaturePoints.isEmpty)
                   Center(
                     child: Text(
-                      'Draw your signature here',
+                      'driver_agreement_screen_draw_here'.tr(),
                       style: TextStyle(color: AppColors.textSecondary.withValues(alpha: 0.5), fontSize: 12),
                     ),
                   ),
@@ -341,7 +344,7 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                'I have read and agree to the Independent Contractor Agreement',
+                'driver_agreement_screen_checkbox'.tr(),
                 style: TextStyle(
                   color: _hasAgreed ? Colors.white : AppColors.textSecondary,
                   fontSize: 12,
@@ -381,7 +384,7 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
               Icon(Icons.check_circle, color: canSubmit ? Colors.white : AppColors.textSecondary, size: 20),
               const SizedBox(width: 8),
               Text(
-                'Sign & Accept Agreement',
+                'driver_agreement_screen_submit'.tr(),
                 style: TextStyle(
                   color: canSubmit ? Colors.white : AppColors.textSecondary,
                   fontSize: 14,
@@ -409,14 +412,21 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
     return null;
   }
 
-  /// Get device info for legal audit
-  String _getDeviceInfo() {
+  /// Get device info for legal audit (includes device model + OS version)
+  Future<String> _getDeviceInfo() async {
     if (kIsWeb) {
       return 'Web Browser';
     }
     try {
-      if (Platform.isAndroid) return 'Android';
-      if (Platform.isIOS) return 'iOS';
+      final deviceInfo = DeviceInfoPlugin();
+      if (Platform.isAndroid) {
+        final android = await deviceInfo.androidInfo;
+        return 'Android ${android.version.release} - ${android.brand} ${android.model}';
+      }
+      if (Platform.isIOS) {
+        final ios = await deviceInfo.iosInfo;
+        return 'iOS ${ios.systemVersion} - ${ios.utsname.machine}';
+      }
       if (Platform.isWindows) return 'Windows';
       if (Platform.isMacOS) return 'macOS';
       if (Platform.isLinux) return 'Linux';
@@ -474,6 +484,9 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
     final locationProvider = context.read<LocationProvider>();
     final scaffoldMessenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
+    // Capture the ACTUAL displayed contract text synchronously (needs context)
+    // so the audit hash matches exactly what the driver saw and signed.
+    final displayedContract = _buildContractText(context);
 
     try {
       final user = SupabaseConfig.client.auth.currentUser;
@@ -488,9 +501,9 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
 
       final ipAddress = await ipFuture;
       final location = await locationFuture;
-      final deviceInfo = _getDeviceInfo();
-      final userAgent = kIsWeb ? 'Flutter Web' : 'Flutter Mobile - ${_getDeviceInfo()}';
-      final documentHash = _generateDocumentHash(_fullContractText);
+      final deviceInfo = await _getDeviceInfo();
+      final userAgent = kIsWeb ? 'Flutter Web' : 'Flutter Mobile - $deviceInfo';
+      final documentHash = _generateDocumentHash(displayedContract);
       final timezone = _getTimezone();
 
       // First get driver by user_id
@@ -528,11 +541,11 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
 
         scaffoldMessenger.showSnackBar(
           SnackBar(
-            content: const Row(
+            content: Row(
               children: [
-                Icon(Icons.check_circle, color: Colors.white, size: 18),
-                SizedBox(width: 8),
-                Text('Agreement signed successfully!'),
+                const Icon(Icons.check_circle, color: Colors.white, size: 18),
+                const SizedBox(width: 8),
+                Text('driver_agreement_screen_success'.tr()),
               ],
             ),
             backgroundColor: AppColors.success,
@@ -598,66 +611,21 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
     }
   }
 
-  String get _fullContractText => '''
-INDEPENDENT CONTRACTOR AGREEMENT
-TORO RIDESHARE LLC
-
-Effective Date: ${DateTime.now().toString().split(' ')[0]}
-
-1. PARTIES
-This Agreement is between TORO Rideshare LLC ("Company") and you ("Contractor" or "Driver").
-
-2. INDEPENDENT CONTRACTOR STATUS
-You are an INDEPENDENT CONTRACTOR, NOT an employee. You:
-• Choose your own hours and schedule
-• Can work for other platforms
-• Provide your own vehicle
-• Are responsible for your own taxes
-• May decline ride requests
-
-3. VEHICLE & INSURANCE
-You agree to:
-• Maintain valid driver's license
-• Keep current vehicle insurance (minimum state requirements)
-• Maintain vehicle in safe condition
-• Meet vehicle age requirements
-
-4. COMPENSATION
-• Earn per completed trip (distance + time + demand)
-• Tips are 100% yours
-• Platform fee deducted from gross fares
-• Periodic settlement of service fees via direct deposit
-
-5. TAXES
-• You receive IRS Form 1099-NEC for payments over \$600/year
-• You are responsible for:
-  - Federal income tax
-  - State income tax
-  - Self-employment tax
-  - Quarterly estimated payments
-
-6. CONDUCT
-You agree to:
-• Maintain professional conduct
-• Follow traffic laws
-• Never drive under influence
-• Not discriminate against riders
-
-7. ACCOUNT REVIEW
-Platform may review your account for:
-• Safety violations endangering passengers or public
-• Document expiration or failure to maintain required documentation
-• Fraudulent activity or material breach of terms
-• Failed background check
-Deactivation decisions include human review and appeal process.
-
-8. CANCELLATIONS
-• Cancellation policies apply per platform terms
-• Rider cancellation fees apply per policy
-• You may decline service requests without penalty
-
-By signing below, you acknowledge reading and agreeing to all terms.
-''';
+  /// The displayed full contract is the approved, language-aware
+  /// MEXICO OPERATIONS ADDENDUM (commercial marketplace framing).
+  /// Every line containing a date header ("Effective Date" / "Fecha Efectiva")
+  /// is stripped so NO dates appear in the displayed contract.
+  String _buildContractText(BuildContext context) {
+    final lang = context.locale.languageCode;
+    final addendum = LegalDocuments.getMexicoAddendum(lang);
+    final filtered = addendum
+        .split('\n')
+        .where((line) =>
+            !line.contains('Effective Date') &&
+            !line.contains('Fecha Efectiva'))
+        .join('\n');
+    return filtered;
+  }
 }
 
 class SignaturePainter extends CustomPainter {

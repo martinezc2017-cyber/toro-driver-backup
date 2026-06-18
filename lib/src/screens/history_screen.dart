@@ -85,7 +85,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
       try {
         statsResponse = await SupabaseConfig.client
             .from('drivers')
-            .select('rating, total_online_hours')
+            // total_online_hours does NOT exist on drivers (real column is
+            // total_hours) — the bad name made this whole stats query fail and
+            // onlineHours render as 0.
+            .select('rating, total_hours')
             .eq('id', driverId)
             .maybeSingle();
       } catch (_) {
@@ -144,7 +147,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
         totalEarnings: completedTrips.fold(0, (sum, t) => sum + t.fare),
         totalMiles: completedTrips.fold(0, (sum, t) => sum + t.distance),
         totalMinutes: completedTrips.fold(0, (sum, t) => sum + t.duration),
-        onlineHours: (statsResponse?['total_online_hours'] as num?)?.toDouble() ?? 0,
+        onlineHours: (statsResponse?['total_hours'] as num?)?.toDouble() ?? 0,
         avgRating: (statsResponse?['rating'] as num?)?.toDouble() ?? 5.0,
       );
 
@@ -302,7 +305,7 @@ ${_trips.take(5).map((t) => '- ${t.pickupAddress} → ${t.dropoffAddress}: ${for
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         backgroundColor: AppColors.surface,
         elevation: 0,
@@ -449,8 +452,20 @@ ${_trips.take(5).map((t) => '- ${t.pickupAddress} → ${t.dropoffAddress}: ${for
   }
 
   Widget _buildTripItem(TripHistory trip) {
+    // 3-way status (not binary): cancelled / completed / in-progress. The old
+    // binary made pending/accepted/in_progress trips look completed (green check).
     final isCancelled = trip.status == 'cancelled';
-    final statusColor = isCancelled ? AppColors.error : AppColors.success;
+    final isDone = trip.status == 'completed' || trip.status == 'delivered';
+    final statusColor = isCancelled
+        ? AppColors.error
+        : isDone
+            ? AppColors.success
+            : AppColors.warning;
+    final statusIcon = isCancelled
+        ? Icons.cancel
+        : isDone
+            ? Icons.check_circle
+            : Icons.schedule;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -469,7 +484,7 @@ ${_trips.take(5).map((t) => '- ${t.pickupAddress} → ${t.dropoffAddress}: ${for
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(
-            isCancelled ? Icons.cancel : Icons.check_circle,
+            statusIcon,
             color: statusColor,
             size: 18,
           ),

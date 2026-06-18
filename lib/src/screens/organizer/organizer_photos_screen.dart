@@ -7,11 +7,13 @@ import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../services/tourism_messaging_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/haptic_service.dart';
+import '../../widgets/organizer_connect_banner.dart';
 
 /// Photos Gallery Screen for organizers to view, upload, share, and manage
 /// event photos from the tourism event chat.
@@ -40,12 +42,27 @@ class _OrganizerPhotosScreenState extends State<OrganizerPhotosScreen> {
   bool _isLoading = true;
   bool _isUploading = false;
   String? _error;
+  String? _organizerId;
 
   @override
   void initState() {
     super.initState();
+    _loadOrganizerId();
     _loadPhotos();
     _subscribeToNewPhotos();
+  }
+
+  Future<void> _loadOrganizerId() async {
+    try {
+      final resp = await Supabase.instance.client
+          .from('tourism_events')
+          .select('organizer_id')
+          .eq('id', widget.eventId)
+          .maybeSingle();
+      if (resp != null && mounted) {
+        setState(() => _organizerId = resp['organizer_id']?.toString());
+      }
+    } catch (_) {}
   }
 
   @override
@@ -527,20 +544,28 @@ class _OrganizerPhotosScreenState extends State<OrganizerPhotosScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       appBar: _buildAppBar(),
-      body: _isLoading
-          ? _buildLoadingState()
-          : _error != null
-              ? _buildErrorState()
-              : _photos.isEmpty
-                  ? _buildEmptyState()
-                  : RefreshIndicator(
-                      color: AppColors.primary,
-                      backgroundColor: AppColors.surface,
-                      onRefresh: _loadPhotos,
-                      child: _buildPhotoGrid(),
-                    ),
+      body: Column(
+        children: [
+          if (_organizerId != null)
+            OrganizerConnectBanner(organizerId: _organizerId!),
+          Expanded(
+            child: _isLoading
+                ? _buildLoadingState()
+                : _error != null
+                    ? _buildErrorState()
+                    : _photos.isEmpty
+                        ? _buildEmptyState()
+                        : RefreshIndicator(
+                            color: AppColors.primary,
+                            backgroundColor: AppColors.surface,
+                            onRefresh: _loadPhotos,
+                            child: _buildPhotoGrid(),
+                          ),
+          ),
+        ],
+      ),
       floatingActionButton: _buildUploadFAB(),
     );
   }

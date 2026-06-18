@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../services/tourism_event_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/haptic_service.dart';
+import '../../widgets/organizer_connect_banner.dart';
 import '../../widgets/scrollable_time_picker.dart';
 
 /// Screen for editing an existing tourism event.
@@ -264,7 +265,7 @@ class _OrganizerEditEventScreenState extends State<OrganizerEditEventScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         backgroundColor: AppColors.surface,
         elevation: 0,
@@ -282,7 +283,15 @@ class _OrganizerEditEventScreenState extends State<OrganizerEditEventScreen> {
         ),
         centerTitle: true,
       ),
-      body: _buildBody(),
+      body: Column(
+        children: [
+          if (_event?['organizer_id'] != null)
+            OrganizerConnectBanner(
+              organizerId: _event!['organizer_id'].toString(),
+            ),
+          Expanded(child: _buildBody()),
+        ],
+      ),
     );
   }
 

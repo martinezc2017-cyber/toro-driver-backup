@@ -64,7 +64,6 @@ import 'features/splash/toro_splash_screen.dart';
 // Driver credential
 import 'src/screens/driver_credential_screen.dart';
 // Mexico screens
-import 'src/screens/mexico_documents_screen.dart';
 import 'src/screens/mexico_tax_screen.dart';
 import 'src/screens/mexico_invoices_screen.dart';
 // Organizer screens
@@ -259,7 +258,9 @@ class ToroDriverApp extends StatelessWidget {
           // Driver credential
           '/driver-credential': (context) => const DriverCredentialScreen(),
           // Mexico routes
-          '/mexico-documents': (context) => const MexicoDocumentsScreen(),
+          // MX docs (INE/RFC/CURP) merged into the unified DocumentsScreen
+          // (Fiscal MX tab). Route kept as an alias so existing deep links work.
+          '/mexico-documents': (context) => const DocumentsScreen(),
           '/mexico-tax': (context) => const MexicoTaxScreen(),
           '/mexico-invoices': (context) => const MexicoInvoicesScreen(),
           // Organizer routes

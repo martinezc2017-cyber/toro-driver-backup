@@ -5,6 +5,7 @@ import '../../services/organizer_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/haptic_service.dart';
 import '../../utils/money_format.dart';
+import '../../widgets/organizer_connect_banner.dart';
 
 /// Earnings tab for the organizer home screen.
 ///
@@ -30,6 +31,7 @@ class _OrganizerEarningsTabState extends State<OrganizerEarningsTab> {
   double _totalCommission = 0;
   int _totalReservations = 0;
   List<Map<String, dynamic>> _reservations = [];
+  String? _organizerId;
 
   @override
   void initState() {
@@ -71,6 +73,7 @@ class _OrganizerEarningsTabState extends State<OrganizerEarningsTab> {
       final profile =
           await _organizerService.getOrganizerProfile(userId);
       final organizerId = profile?['id']?.toString() ?? userId;
+      _organizerId = organizerId;
 
       final result = await _organizerService.getEarnings(
         organizerId,
@@ -107,7 +110,7 @@ class _OrganizerEarningsTabState extends State<OrganizerEarningsTab> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         backgroundColor: AppColors.surface,
         elevation: 0,
@@ -140,18 +143,26 @@ class _OrganizerEarningsTabState extends State<OrganizerEarningsTab> {
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: AppColors.primary),
-            )
-          : _error != null
-              ? _buildErrorState()
-              : RefreshIndicator(
-                  color: AppColors.primary,
-                  backgroundColor: AppColors.surface,
-                  onRefresh: _loadEarnings,
-                  child: _buildContent(),
-                ),
+      body: Column(
+        children: [
+          if (_organizerId != null)
+            OrganizerConnectBanner(organizerId: _organizerId!),
+          Expanded(
+            child: _isLoading
+                ? const Center(
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  )
+                : _error != null
+                    ? _buildErrorState()
+                    : RefreshIndicator(
+                        color: AppColors.primary,
+                        backgroundColor: AppColors.surface,
+                        onRefresh: _loadEarnings,
+                        child: _buildContent(),
+                      ),
+          ),
+        ],
+      ),
     );
   }
 

@@ -7,6 +7,7 @@ import '../../providers/driver_provider.dart';
 import '../../services/tourism_event_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/haptic_service.dart';
+import '../../widgets/organizer_connect_banner.dart';
 import '../profile_screen.dart';
 import '../tourism/vehicle_request_screen.dart';
 import 'organizer_vehicles_tab.dart';
@@ -44,6 +45,9 @@ class _OrganizerHomeScreenState extends State<OrganizerHomeScreen> {
   bool _bannerDismissed = false;
   RealtimeChannel? _bidChannel;
   Timer? _refreshTimer;
+
+  // Stripe Connect banner: organizer id (loaded once)
+  String? _organizerId;
 
   @override
   void initState() {
@@ -88,11 +92,16 @@ class _OrganizerHomeScreenState extends State<OrganizerHomeScreen> {
 
       final organizerId = orgData['id'] as String;
       final count = await TourismEventService().getOrganizerPendingBidCount(organizerId);
-      if (mounted && count != _activeBidCount) {
-        setState(() {
-          _activeBidCount = count;
-          if (count > 0) _bannerDismissed = false;
-        });
+      if (mounted) {
+        final needsSet =
+            count != _activeBidCount || _organizerId != organizerId;
+        if (needsSet) {
+          setState(() {
+            _activeBidCount = count;
+            _organizerId = organizerId;
+            if (count > 0) _bannerDismissed = false;
+          });
+        }
       }
     } catch (_) {}
   }
@@ -124,10 +133,13 @@ class _OrganizerHomeScreenState extends State<OrganizerHomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       appBar: widget.onSwitchToDriverMode != null ? _buildAppBar() : null,
       body: Column(
         children: [
+          // Stripe Connect onboarding banner (auto-hidden when active)
+          if (_organizerId != null)
+            OrganizerConnectBanner(organizerId: _organizerId!),
           // Persistent bid notification banner (taps go to Pujas tab)
           if (_activeBidCount > 0 && !_bannerDismissed && _currentIndex != 1)
             _buildBidBanner(),

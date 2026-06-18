@@ -428,7 +428,7 @@ class _JoinRequestsScreenState extends State<JoinRequestsScreen> {
         systemNavigationBarIconBrightness: Brightness.light,
       ),
       child: Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: Colors.transparent,
         body: SafeArea(
           child: Column(
             children: [

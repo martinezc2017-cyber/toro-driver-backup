@@ -27,7 +27,7 @@ class _AccountStatusScreenState extends State<AccountStatusScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         backgroundColor: AppColors.surface,
         title: Text('account_status_title'.tr(), style: const TextStyle(color: AppColors.textPrimary)),

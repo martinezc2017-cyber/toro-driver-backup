@@ -168,13 +168,13 @@ class _PermissionsGateScreenState extends State<PermissionsGateScreen>
 
     if (_checking) {
       // Don't show spinner — it looks like a loop. Just show dark screen briefly.
-      return Scaffold(backgroundColor: AppColors.background);
+      return Scaffold(backgroundColor: Colors.transparent);
     }
 
     final allOk = _locationGranted && _notificationGranted && _gpsEnabled;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),

@@ -22,6 +22,7 @@ import '../../services/tourism_invitation_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/haptic_service.dart';
 import '../../utils/money_format.dart';
+import '../../widgets/organizer_connect_banner.dart';
 import '../../widgets/scrollable_time_picker.dart';
 import '../tourism/tourism_chat_screen.dart';
 import '../../widgets/tourism_chat_widget.dart';
@@ -1050,26 +1051,35 @@ Enviado desde TORO
 
   @override
   Widget build(BuildContext context) {
+    final organizerId = _event?['organizer_id'] as String?;
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: AppColors.primary),
-            )
-          : _error != null
-              ? _buildErrorState()
-              : RefreshIndicator(
-                  color: AppColors.primary,
-                  backgroundColor: AppColors.surface,
-                  onRefresh: _loadData,
-                  child: CustomScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    slivers: [
-                      _buildSliverAppBar(),
-                      SliverToBoxAdapter(child: _buildContent()),
-                    ],
-                  ),
-                ),
+      backgroundColor: Colors.transparent,
+      body: Column(
+        children: [
+          if (organizerId != null)
+            OrganizerConnectBanner(organizerId: organizerId),
+          Expanded(
+            child: _isLoading
+                ? const Center(
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  )
+                : _error != null
+                    ? _buildErrorState()
+                    : RefreshIndicator(
+                        color: AppColors.primary,
+                        backgroundColor: AppColors.surface,
+                        onRefresh: _loadData,
+                        child: CustomScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          slivers: [
+                            _buildSliverAppBar(),
+                            SliverToBoxAdapter(child: _buildContent()),
+                          ],
+                        ),
+                      ),
+          ),
+        ],
+      ),
       bottomNavigationBar: _buildBottomNavigation(),
     );
   }
@@ -7628,7 +7638,7 @@ class _EventLiveMapScreenState extends State<_EventLiveMapScreen> {
     final gpsCount = _locations.where((l) => l['lat'] != null).length;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       body: Stack(
         children: [
           // Map - takes full screen

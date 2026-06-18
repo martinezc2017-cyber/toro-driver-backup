@@ -224,7 +224,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
         }
 
         return Scaffold(
-          backgroundColor: AppColors.background,
+          backgroundColor: Colors.transparent,
           appBar: _buildAppBar(activeRide),
           body: Column(
             children: [
@@ -256,7 +256,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
 
   Widget _buildNoActiveRide() {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         backgroundColor: AppColors.surface,
         title: const Text('Messages', style: TextStyle(color: AppColors.textPrimary)),

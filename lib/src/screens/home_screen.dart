@@ -2809,7 +2809,7 @@ class _HomeScreenState extends State<HomeScreen>
                     SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Riders escanean tu QR → ambos ganan puntos → tu comisión baja',
+                        'Riders escanean tu QR → ambos ganan puntos → baja el % que te cobra TORO (ganas más)',
                         style: TextStyle(color: Colors.white60, fontSize: 11),
                       ),
                     ),
@@ -2889,7 +2889,7 @@ class _HomeScreenState extends State<HomeScreen>
             ),
             const SizedBox(height: 8),
             Text(
-              'Riders escanean → ambos ganan puntos → tu comisión baja',
+              'Riders escanean → ambos ganan puntos → baja el % TORO (ganas más)',
               style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
               textAlign: TextAlign.center,
             ),
@@ -2982,7 +2982,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   Future<void> _shareDriverQR(String code, String link) async {
     final message = 'Únete a TORO y escanea mi QR. '
-        'Ambos ganamos puntos para bajar comisiones.\n'
+        'Ambos ganan puntos: baja el % que te cobra TORO y ganas más.\n'
         'Código: $code\n$link';
     await Clipboard.setData(ClipboardData(text: link));
     await Share.share(message, subject: 'TORO Driver - Mi código QR');

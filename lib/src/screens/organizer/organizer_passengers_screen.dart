@@ -7,6 +7,7 @@ import '../../providers/auth_provider.dart';
 import '../../services/tourism_invitation_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/haptic_service.dart';
+import '../../widgets/organizer_connect_banner.dart';
 import 'organizer_invite_screen.dart';
 
 /// Passenger List Screen for event organizers.
@@ -42,6 +43,7 @@ class _OrganizerPassengersScreenState extends State<OrganizerPassengersScreen> {
   String? _error;
   String _searchQuery = '';
   String? _statusFilter;
+  String? _organizerId;
 
   RealtimeChannel? _invitationsChannel;
   Timer? _refreshTimer;
@@ -49,12 +51,26 @@ class _OrganizerPassengersScreenState extends State<OrganizerPassengersScreen> {
   @override
   void initState() {
     super.initState();
+    _loadOrganizerId();
     _loadData();
     _subscribeToUpdates();
     // Refresh stats every 30 seconds
     _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       _loadStats();
     });
+  }
+
+  Future<void> _loadOrganizerId() async {
+    try {
+      final resp = await Supabase.instance.client
+          .from('tourism_events')
+          .select('organizer_id')
+          .eq('id', widget.eventId)
+          .maybeSingle();
+      if (resp != null && mounted) {
+        setState(() => _organizerId = resp['organizer_id']?.toString());
+      }
+    } catch (_) {}
   }
 
   @override
@@ -337,20 +353,28 @@ class _OrganizerPassengersScreenState extends State<OrganizerPassengersScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       appBar: _buildAppBar(),
-      body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: AppColors.primary),
-            )
-          : _error != null
-              ? _buildErrorState()
-              : RefreshIndicator(
-                  color: AppColors.primary,
-                  backgroundColor: AppColors.surface,
-                  onRefresh: _loadData,
-                  child: _buildContent(),
-                ),
+      body: Column(
+        children: [
+          if (_organizerId != null)
+            OrganizerConnectBanner(organizerId: _organizerId!),
+          Expanded(
+            child: _isLoading
+                ? const Center(
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  )
+                : _error != null
+                    ? _buildErrorState()
+                    : RefreshIndicator(
+                        color: AppColors.primary,
+                        backgroundColor: AppColors.surface,
+                        onRefresh: _loadData,
+                        child: _buildContent(),
+                      ),
+          ),
+        ],
+      ),
     );
   }
 

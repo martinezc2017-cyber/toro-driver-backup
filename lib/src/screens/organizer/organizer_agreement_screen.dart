@@ -15,6 +15,7 @@ import '../../core/legal/legal_constants.dart';
 import '../../core/legal/legal_documents.dart';
 import '../../services/organizer_service.dart';
 import '../../utils/geo_utils.dart';
+import '../../widgets/organizer_connect_banner.dart';
 
 /// Simplified Organizer Platform Agreement screen.
 ///
@@ -113,7 +114,7 @@ class _OrganizerAgreementScreenState extends State<OrganizerAgreementScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         backgroundColor: AppColors.surface,
         elevation: 0,
@@ -133,6 +134,9 @@ class _OrganizerAgreementScreenState extends State<OrganizerAgreementScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Stripe Connect banner — appears after agreement signed
+            // so the next thing the organizer sees is "activate payouts".
+            OrganizerConnectBanner(organizerId: widget.organizerId),
             const SizedBox(height: 8),
             _buildHeader(),
             const SizedBox(height: 20),

@@ -78,7 +78,7 @@ class _AccountScreenState extends State<AccountScreen> {
         final isLoading = driverProvider.isLoading;
 
         return Scaffold(
-          backgroundColor: AppColors.background,
+          backgroundColor: Colors.transparent,
           appBar: AppBar(
             backgroundColor: AppColors.surface,
             elevation: 0,

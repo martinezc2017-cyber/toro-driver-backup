@@ -1225,7 +1225,7 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
         systemNavigationBarIconBrightness: Brightness.light,
       ),
       child: Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: Colors.transparent,
         body: _isLoading
             ? _buildLoadingState()
             : SafeArea(

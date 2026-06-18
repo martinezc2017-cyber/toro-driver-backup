@@ -261,7 +261,9 @@ serve(async (req) => {
       .eq('is_online', true)
       .eq('can_receive_rides', true)
       .eq('country_code', zoneCountry)
-      .not('fcm_token', 'is', null)
+    // fcm_token NO se exige en el query: un chofer sin token de push igual debe
+    // recibir la notificacion IN-APP (el push FCM ya va guardado por-chofer mas
+    // abajo). Antes esto excluia a choferes de prueba (emulador/iOS) sin token.
     // Stacked offers: narrow to ONE driver. Skip the zone radius dance below.
     if (preferred_driver_id) {
       query = query.eq('id', preferred_driver_id)
@@ -269,7 +271,11 @@ serve(async (req) => {
 
     // state_code filter only for rides; marketplace skips it (drivers from
     // any state in the country can pick up if they're physically nearby).
-    if (zoneState && !isMarketplace) {
+    // ALSO skip when zoneState is bogus (== country_code — known rider data bug
+    // donde state_code se guarda como 'MX' en vez de 'BC'). El radio haversine de
+    // abajo ya garantiza cercania fisica, asi que pais + radio basta; el match
+    // estricto de estado escondia choferes cercanos cuando el state_code venia mal.
+    if (zoneState && zoneState !== zoneCountry && !isMarketplace) {
       query = query.or(`state_code.eq.${zoneState},operating_state.eq.${zoneState}`)
     }
 

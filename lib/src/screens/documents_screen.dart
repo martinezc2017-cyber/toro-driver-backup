@@ -4,6 +4,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:image_picker/image_picker.dart';
 import '../utils/app_colors.dart';
 import '../services/document_service.dart';
+import '../services/mexico_documents_service.dart';
 import '../config/supabase_config.dart';
 
 class DocumentsScreen extends StatefulWidget {
@@ -17,23 +18,36 @@ class _DocumentsScreenState extends State<DocumentsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final DocumentService _documentService = DocumentService.instance;
+  final MexicoDocumentsService _mexicoService = MexicoDocumentsService();
   final ImagePicker _imagePicker = ImagePicker();
 
   bool _isLoading = true;
   CompleteDocumentStatus? _completeStatus;
   String? _vehicleId;
+  String? _driverId;
 
   List<DocumentItem> _personalDocs = [];
   List<DocumentItem> _vehicleDocs = [];
 
-  int get _totalDocs => _personalDocs.length + _vehicleDocs.length;
-  int get _approvedDocs => _personalDocs.where((d) => d.status == DocumentStatus.approved).length +
-                           _vehicleDocs.where((d) => d.status == DocumentStatus.approved).length;
+  // Fiscal MX (INE / RFC / CURP and any other state-required Mexican docs).
+  // Reuses MexicoDocumentsService + DocumentService.uploadIneImage (OCR -> CURP)
+  // so the merged tab behaves exactly like the old standalone MX screen.
+  List<MexicoDocument> _mexicoDocs = [];
+  List<MexicoDocumentType> _requiredMexicoDocs = [];
+  String _driverStateCode = 'CDMX';
+  String? _driverCurp;
+  String? _driverRfc;
+
+  int get _totalDocs => _personalDocs.length + _vehicleDocs.length + _requiredMexicoDocs.length;
+  int get _approvedDocs =>
+      _personalDocs.where((d) => d.status == DocumentStatus.approved).length +
+      _vehicleDocs.where((d) => d.status == DocumentStatus.approved).length +
+      _mexicoDocs.where((d) => d.isApproved).length;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _loadDocuments();
   }
 
@@ -55,6 +69,32 @@ class _DocumentsScreenState extends State<DocumentsScreen>
 
       _completeStatus = await _documentService.getCompleteStatus(user.id);
       _vehicleId = await _documentService.getDriverVehicleId(user.id);
+
+      // Resolve the real drivers.id (+ state / RFC / CURP) for the Fiscal MX tab.
+      // The MX document service keys off drivers.id, not the auth user id.
+      try {
+        final driverRow = await SupabaseConfig.client
+            .from('drivers')
+            .select('id, state_code, rfc, curp')
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+        if (driverRow != null) {
+          _driverId = driverRow['id'] as String?;
+          _driverStateCode = (driverRow['state_code'] as String?) ?? 'CDMX';
+          _driverRfc = driverRow['rfc'] as String?;
+          _driverCurp = driverRow['curp'] as String?;
+
+          _requiredMexicoDocs = _mexicoService.getRequiredDocuments(_driverStateCode);
+          if (_driverId != null) {
+            _mexicoDocs = await _mexicoService.getDriverDocuments(_driverId!);
+          }
+        }
+      } catch (_) {
+        // Non-fatal: keep the rest of the screen working if MX load fails.
+        _requiredMexicoDocs = [];
+        _mexicoDocs = [];
+      }
 
       final driverDocs = _completeStatus!.driverDocs;
       final vehicleDocs = _completeStatus!.vehicleDocs;
@@ -136,7 +176,13 @@ class _DocumentsScreenState extends State<DocumentsScreen>
             'Toca para agregar',
             Icons.add_circle_outline,
             DocumentStatus.missing,
-            onTap: () => Navigator.pushNamed(context, '/add-vehicle').then((_) => _loadDocuments()),
+            // After the register-vehicle flow returns, reload so the freshly
+            // set drivers.current_vehicle_id (and its docs) show without a
+            // restart. Awaited explicitly so the reload always runs on return.
+            onTap: () async {
+              await Navigator.pushNamed(context, '/add-vehicle');
+              if (mounted) await _loadDocuments();
+            },
           ),
         ];
       }
@@ -158,6 +204,11 @@ class _DocumentsScreenState extends State<DocumentsScreen>
     if (!driverDocs.hasLicense) return DocumentStatus.missing;
     if (driverDocs.isLicenseExpired) return DocumentStatus.rejected;
     if (driverDocs.isLicenseExpiringSoon) return DocumentStatus.expiring;
+    // Imagen subida pero el OCR aun no capturo el numero -> Pendiente (en revision),
+    // no auto-aprobada: una imagen sin leer no debe contar como verificada.
+    if (driverDocs.licenseNumber == null || driverDocs.licenseNumber!.isEmpty) {
+      return DocumentStatus.pending;
+    }
     return DocumentStatus.approved;
   }
 
@@ -457,10 +508,537 @@ class _DocumentsScreenState extends State<DocumentsScreen>
     }
   }
 
+  // ==========================================================================
+  // FISCAL MX TAB (INE / RFC / CURP + state-required Mexican documents)
+  // Reuses MexicoDocumentsService and the INE OCR path so the merged tab
+  // behaves exactly like the old standalone "Documentos México" screen.
+  // ==========================================================================
+
+  MexicoDocument? _getMexicoDocument(String type) {
+    try {
+      return _mexicoDocs.firstWhere((d) => d.documentType == type);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Widget _buildMexicoTab() {
+    if (_requiredMexicoDocs.isEmpty) {
+      // No driver row resolved / no MX docs required for this state.
+      return RefreshIndicator(
+        onRefresh: _loadDocuments,
+        color: AppColors.primary,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+          children: [
+            Icon(Icons.flag_outlined, color: AppColors.textSecondary, size: 40),
+            const SizedBox(height: 12),
+            Text(
+              'mx_documents_title'.tr(),
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              _driverStateCode,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final approved = _mexicoDocs.where((d) => d.isApproved).length;
+    final total = _requiredMexicoDocs.length;
+    final progress = total > 0 ? approved / total : 0.0;
+
+    return RefreshIndicator(
+      onRefresh: _loadDocuments,
+      color: AppColors.primary,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        children: [
+          // State + required count
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.card,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.location_on, color: AppColors.primary, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  'mx_state'.tr(namedArgs: {'state': _driverStateCode}),
+                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                ),
+                const Spacer(),
+                Text(
+                  '$total ${'mx_docs_required'.tr()}',
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Progress bar
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.card,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('mx_docs_progress'.tr(), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                    Text('${(progress * 100).toInt()}%', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    backgroundColor: AppColors.border,
+                    valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                    minHeight: 6,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  progress == 1.0
+                      ? 'mx_docs_complete'.tr()
+                      : 'mx_docs_pending'.tr(namedArgs: {'count': '${total - approved}'}),
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // RFC / CURP read-only summary (from drivers.rfc / drivers.curp).
+          // CURP is auto-extracted by OCR when the INE is uploaded.
+          _buildFiscalInfoCard(),
+          const SizedBox(height: 12),
+
+          // Required MX document cards
+          ..._requiredMexicoDocs.map((docType) => _buildMexicoDocumentCard(docType)),
+          const SizedBox(height: 80),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFiscalInfoCard() {
+    final rfc = (_driverRfc != null && _driverRfc!.isNotEmpty) ? _driverRfc! : 'doc_not_registered'.tr();
+    final curp = (_driverCurp != null && _driverCurp!.isNotEmpty) ? _driverCurp! : 'doc_not_registered'.tr();
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildFiscalRow(Icons.description, 'RFC', rfc),
+          const SizedBox(height: 8),
+          _buildFiscalRow(Icons.badge, 'CURP', curp),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFiscalRow(IconData icon, String label, String value) {
+    return Row(
+      children: [
+        Icon(icon, color: AppColors.primary, size: 18),
+        const SizedBox(width: 10),
+        SizedBox(
+          width: 48,
+          child: Text(label, style: const TextStyle(color: AppColors.textPrimary, fontSize: 12, fontWeight: FontWeight.w600)),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            textAlign: TextAlign.right,
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMexicoDocumentCard(MexicoDocumentType docType) {
+    final doc = _getMexicoDocument(docType.type);
+
+    Color statusColor;
+    IconData statusIcon;
+    String statusText;
+
+    if (doc == null) {
+      statusColor = AppColors.error;
+      statusIcon = Icons.cancel;
+      statusText = 'mx_status_missing'.tr();
+    } else if (doc.isExpired) {
+      statusColor = AppColors.error;
+      statusIcon = Icons.error;
+      statusText = 'mx_status_expired'.tr();
+    } else if (doc.isRejected) {
+      statusColor = AppColors.error;
+      statusIcon = Icons.block;
+      statusText = 'mx_status_rejected'.tr();
+    } else if (doc.isPending) {
+      statusColor = AppColors.warning;
+      statusIcon = Icons.hourglass_empty;
+      statusText = 'mx_status_pending'.tr();
+    } else if (doc.isExpiringSoon) {
+      statusColor = AppColors.star;
+      statusIcon = Icons.warning;
+      statusText = 'mx_status_expiring'.tr();
+    } else {
+      statusColor = AppColors.success;
+      statusIcon = Icons.check_circle;
+      statusText = 'mx_status_approved'.tr();
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.3)),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        leading: Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: statusColor.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(_getMexicoDocIcon(docType.type), color: statusColor, size: 18),
+        ),
+        title: Text(
+          docType.displayName,
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.textPrimary),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(docType.description, style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
+            if (doc != null && doc.expiryDate != null)
+              Text(
+                'mx_expires'.tr(namedArgs: {'date': DateFormat('dd/MM/yyyy').format(doc.expiryDate!)}),
+                style: TextStyle(color: doc.isExpiringSoon ? AppColors.warning : AppColors.textSecondary, fontSize: 10),
+              ),
+          ],
+        ),
+        trailing: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: statusColor.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(statusIcon, color: statusColor, size: 12),
+              const SizedBox(width: 4),
+              Text(statusText, style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.w600)),
+            ],
+          ),
+        ),
+        onTap: () => _showMexicoUploadDialog(docType),
+      ),
+    );
+  }
+
+  IconData _getMexicoDocIcon(String type) {
+    switch (type) {
+      case 'ine':
+        return Icons.badge;
+      case 'rfcConstancia':
+        return Icons.description;
+      case 'licenciaE1':
+      case 'driverLicense':
+        return Icons.credit_card;
+      case 'tarjeton':
+        return Icons.card_membership;
+      case 'constanciaSemovi':
+      case 'constanciaVehicular':
+        return Icons.verified;
+      case 'seguroERT':
+        return Icons.shield;
+      case 'comprobanteDomicilio':
+        return Icons.home;
+      case 'cartaNoAntecedentes':
+        return Icons.security;
+      default:
+        return Icons.folder;
+    }
+  }
+
+  void _showMexicoUploadDialog(MexicoDocumentType docType) {
+    DateTime? expiryDate;
+    String? documentNumber;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setSheetState) => Padding(
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 20,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 32,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Icon(_getMexicoDocIcon(docType.type), color: AppColors.primary, size: 32),
+              const SizedBox(height: 12),
+              Text(
+                docType.displayName,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                docType.description,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+              ),
+              const SizedBox(height: 20),
+
+              // Document number input (INE / RFC)
+              if (docType.type == 'ine' || docType.type == 'rfcConstancia') ...[
+                TextField(
+                  decoration: InputDecoration(
+                    labelText: docType.type == 'rfcConstancia' ? 'RFC' : 'mx_doc_number'.tr(),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    filled: true,
+                    fillColor: AppColors.card,
+                  ),
+                  onChanged: (value) => documentNumber = value,
+                ),
+                const SizedBox(height: 12),
+              ],
+
+              // Expiry date picker
+              if (docType.hasExpiry)
+                GestureDetector(
+                  onTap: () async {
+                    final date = await showDatePicker(
+                      context: context,
+                      initialDate: DateTime.now().add(const Duration(days: 365)),
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime.now().add(const Duration(days: 365 * 10)),
+                    );
+                    if (date != null) {
+                      setSheetState(() => expiryDate = date);
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.card,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.calendar_today, color: AppColors.primary, size: 18),
+                        const SizedBox(width: 12),
+                        Text(
+                          expiryDate != null
+                              ? DateFormat('dd/MM/yyyy').format(expiryDate!)
+                              : 'mx_select_expiry'.tr(),
+                          style: TextStyle(color: expiryDate != null ? AppColors.textPrimary : AppColors.textSecondary),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _pickAndUploadMexico(docType, ImageSource.camera, documentNumber, expiryDate),
+                      icon: const Icon(Icons.camera_alt, size: 18),
+                      label: Text('mx_camera'.tr()),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.primary,
+                        side: BorderSide(color: AppColors.primary),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => _pickAndUploadMexico(docType, ImageSource.gallery, documentNumber, expiryDate),
+                      icon: const Icon(Icons.photo_library, size: 18),
+                      label: Text('mx_gallery'.tr()),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickAndUploadMexico(
+    MexicoDocumentType docType,
+    ImageSource source,
+    String? documentNumber,
+    DateTime? expiryDate,
+  ) async {
+    Navigator.pop(context);
+
+    if (_driverId == null) return;
+
+    try {
+      final XFile? pickedFile = await _imagePicker.pickImage(
+        source: source,
+        maxWidth: 1920,
+        maxHeight: 1920,
+        imageQuality: 85,
+      );
+
+      if (pickedFile == null) return;
+
+      final file = File(pickedFile.path);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
+                const SizedBox(width: 12),
+                Text('mx_uploading'.tr()),
+              ],
+            ),
+            duration: const Duration(seconds: 30),
+          ),
+        );
+      }
+
+      // Pick back file if needed
+      File? backFile;
+      if (docType.hasFrontBack) {
+        if (!mounted) return;
+        final shouldUploadBack = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text('mx_back_photo'.tr()),
+            content: Text('mx_upload_back_question'.tr()),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: Text('mx_skip'.tr()),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: Text('mx_upload'.tr()),
+              ),
+            ],
+          ),
+        );
+
+        if (shouldUploadBack == true) {
+          final backXFile = await _imagePicker.pickImage(
+            source: source,
+            maxWidth: 1920,
+            maxHeight: 1920,
+            imageQuality: 85,
+          );
+          if (backXFile != null) {
+            backFile = File(backXFile.path);
+          }
+        }
+      }
+
+      await _mexicoService.uploadDocument(
+        driverId: _driverId!,
+        documentType: docType.type,
+        frontFile: file,
+        backFile: backFile,
+        documentNumber: documentNumber,
+        expiryDate: expiryDate,
+      );
+
+      // INE: also persist to drivers.ine_image_url + auto-OCR the CURP into
+      // drivers.curp (read from the real document, never typed by the user).
+      if (docType.type == 'ine') {
+        await DocumentService.instance.uploadIneImage(_driverId!, file);
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('mx_doc_uploaded'.tr()),
+            backgroundColor: AppColors.success,
+          ),
+        );
+        await _loadDocuments();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         backgroundColor: AppColors.surface,
         elevation: 0,
@@ -519,9 +1097,11 @@ class _DocumentsScreenState extends State<DocumentsScreen>
               indicatorSize: TabBarIndicatorSize.tab,
               dividerColor: Colors.transparent,
               labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+              isScrollable: false,
               tabs: [
                 Tab(text: 'documents_personal'.tr()),
                 Tab(text: 'documents_vehicle'.tr()),
+                const Tab(text: 'Fiscal MX'),
               ],
             ),
           ),
@@ -533,6 +1113,7 @@ class _DocumentsScreenState extends State<DocumentsScreen>
                     children: [
                       _buildDocumentList(_personalDocs),
                       _buildDocumentList(_vehicleDocs),
+                      _buildMexicoTab(),
                     ],
                   ),
           ),
@@ -551,7 +1132,11 @@ class _DocumentsScreenState extends State<DocumentsScreen>
     final total = docs.length;
     final progress = total > 0 ? approved / total : 0.0;
 
-    return ListView(
+    return RefreshIndicator(
+      onRefresh: _loadDocuments,
+      color: AppColors.primary,
+      child: ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 16),
       children: [
         // Simple progress bar
@@ -601,6 +1186,7 @@ class _DocumentsScreenState extends State<DocumentsScreen>
         ...docs.map((doc) => _buildDocumentCard(doc)),
         const SizedBox(height: 80),
       ],
+      ),
     );
   }
 

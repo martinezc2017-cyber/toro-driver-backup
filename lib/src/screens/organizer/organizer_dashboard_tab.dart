@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/haptic_service.dart';
+import '../../widgets/organizer_connect_banner.dart';
 import 'bus_location_map_screen.dart';
 
 /// Dashboard tab for the organizer home screen.
@@ -25,6 +26,7 @@ class _OrganizerDashboardTabState extends State<OrganizerDashboardTab> {
   int _acceptedPassengers = 0;
   int _pendingInvitations = 0;
   List<Map<String, dynamic>> _recentEvents = [];
+  String? _organizerId;
 
   @override
   void initState() {
@@ -64,6 +66,7 @@ class _OrganizerDashboardTabState extends State<OrganizerDashboardTab> {
       }
 
       final organizerId = organizerResponse['id'];
+      _organizerId = organizerId as String;
 
       // Load events for this organizer
       final eventsResponse = await _client
@@ -132,19 +135,27 @@ class _OrganizerDashboardTabState extends State<OrganizerDashboardTab> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: AppColors.primary),
-            )
-          : _error != null
-              ? _buildErrorState()
-              : RefreshIndicator(
-                  color: AppColors.primary,
-                  backgroundColor: AppColors.surface,
-                  onRefresh: _loadData,
-                  child: _buildContent(),
-                ),
+      backgroundColor: Colors.transparent,
+      body: Column(
+        children: [
+          if (_organizerId != null)
+            OrganizerConnectBanner(organizerId: _organizerId!),
+          Expanded(
+            child: _isLoading
+                ? const Center(
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  )
+                : _error != null
+                    ? _buildErrorState()
+                    : RefreshIndicator(
+                        color: AppColors.primary,
+                        backgroundColor: AppColors.surface,
+                        onRefresh: _loadData,
+                        child: _buildContent(),
+                      ),
+          ),
+        ],
+      ),
     );
   }
 

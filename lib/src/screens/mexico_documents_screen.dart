@@ -4,6 +4,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:image_picker/image_picker.dart';
 import '../utils/app_colors.dart';
 import '../services/mexico_documents_service.dart';
+import '../services/document_service.dart';
 import '../config/supabase_config.dart';
 
 class MexicoDocumentsScreen extends StatefulWidget {
@@ -77,7 +78,7 @@ class _MexicoDocumentsScreenState extends State<MexicoDocumentsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         backgroundColor: AppColors.surface,
         elevation: 0,
@@ -575,6 +576,12 @@ class _MexicoDocumentsScreenState extends State<MexicoDocumentsScreen> {
         documentNumber: documentNumber,
         expiryDate: expiryDate,
       );
+
+      // INE: also persist to drivers.ine_image_url + auto-OCR the CURP into
+      // drivers.curp (read from the real document, never typed by the user).
+      if (docType.type == 'ine') {
+        await DocumentService.instance.uploadIneImage(_driverId!, file);
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();

@@ -9,7 +9,9 @@ import '../providers/driver_provider.dart';
 import '../providers/cash_account_provider.dart';
 import '../utils/app_colors.dart';
 import '../utils/money_format.dart';
+import '../utils/money_logger.dart';
 import '../services/driver_qr_points_service.dart';
+import '../services/stripe_connect_service.dart';
 import 'qr_points_screen.dart';
 
 class EarningsScreen extends StatefulWidget {
@@ -21,6 +23,7 @@ class EarningsScreen extends StatefulWidget {
 
 class _EarningsScreenState extends State<EarningsScreen> {
   DateTime _selectedWeekStart = _getWeekStart(DateTime.now());
+  DriverBalance? _stripeBalance;
 
   static DateTime _getWeekStart(DateTime date) {
     return DateTime(date.year, date.month, date.day)
@@ -34,11 +37,17 @@ class _EarningsScreenState extends State<EarningsScreen> {
   }
 
   void _loadData() async {
-    final driverId = context.read<DriverProvider>().driver?.id;
-    if (driverId != null) {
-      context.read<EarningsProvider>().initialize(driverId);
-      context.read<EarningsProvider>().loadTransactions(driverId);
-      context.read<CashAccountProvider>().initialize(driverId);
+    final driver = context.read<DriverProvider>().driver;
+    if (driver != null) {
+      context.read<EarningsProvider>().initialize(driver.id);
+      context.read<EarningsProvider>().loadTransactions(driver.id);
+      context.read<CashAccountProvider>().initialize(driver.id);
+      // CANONICAL: Stripe balance = lo que TORO le va a depositar al driver.
+      // Available = ya disponible para retiro. Pending = en hold 2-7 días.
+      final provider = (driver.countryCode.toUpperCase() == 'MX') ? 'mx' : 'us';
+      final bal = await StripeConnectService.instance
+          .getBalance(driver.id, provider: provider);
+      if (mounted) setState(() => _stripeBalance = bal);
     }
   }
 
@@ -64,9 +73,9 @@ class _EarningsScreenState extends State<EarningsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        backgroundColor: AppColors.background,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
         title: Row(
@@ -103,6 +112,15 @@ class _EarningsScreenState extends State<EarningsScreen> {
           final netFare = total - tips - summary.weekQRBoost - summary.weekPeakHoursBonus -
                           summary.weekPromotions - summary.weekExtraBonus - summary.weekDamageFee;
 
+          // Audit: log what this screen renders so it can be matched vs admin/rider/vendor.
+          MoneyLogger.snapshot('driver_earnings', {
+            'WEEK_EARNINGS': total,
+            'TIPS': tips,
+            'NET_FARE': netFare,
+            'STRIPE_AVAIL': (_stripeBalance?.availableCents ?? 0) / 100,
+            'STRIPE_PENDING': (_stripeBalance?.pendingCents ?? 0) / 100,
+          }, context: {'country': countryCode, 'week': _selectedWeekStart.toIso8601String()});
+
           return RefreshIndicator(
             onRefresh: () async {
               final id = context.read<DriverProvider>().driver?.id;
@@ -114,14 +132,83 @@ class _EarningsScreenState extends State<EarningsScreen> {
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               children: [
-                // Total
+                // Total ganado esta semana
                 Center(
                   child: Text(
                     formatMoney(total, country: countryCode),
                     style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold),
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
+
+                // CANONICAL: Balance Stripe Connect del driver.
+                // Available = listo para retirar AHORA.
+                // Pending = cobrado pero en hold de Stripe (2-7 días).
+                if (_stripeBalance != null) ...[
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.divider),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Row(
+                                children: [
+                                  Icon(Icons.account_balance, size: 14, color: AppColors.success),
+                                  SizedBox(width: 6),
+                                  Text('Disponible Stripe',
+                                      style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                formatMoney(_stripeBalance!.availableCents / 100, country: countryCode),
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.success,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(width: 1, height: 36, color: AppColors.divider),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Row(
+                                children: [
+                                  Icon(Icons.schedule, size: 14, color: AppColors.warning),
+                                  SizedBox(width: 6),
+                                  Text('Pendiente',
+                                      style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                formatMoney(_stripeBalance!.pendingCents / 100, country: countryCode),
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.warning,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
 
                 // Chart
                 SizedBox(

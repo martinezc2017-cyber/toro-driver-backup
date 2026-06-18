@@ -174,7 +174,7 @@ class _MyRatingsScreenState extends State<MyRatingsScreen>
         systemNavigationBarIconBrightness: Brightness.light,
       ),
       child: Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: Colors.transparent,
         body: SafeArea(
           child: Column(
             children: [

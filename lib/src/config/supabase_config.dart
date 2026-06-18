@@ -143,7 +143,7 @@ class SupabaseConfig {
   static const String deliveryMessagesTable = 'delivery_messages';
   static const String earningsReportTable = 'driver_earnings_report';
   static const String bankAccountsTable = 'bank_accounts';
-  static const String stripeAccountsTable = 'driver_stripe_accounts';
+  static const String stripeAccountsTable = 'driver_stripe_accounts_mx';
   static const String payoutsTable = 'payouts';
 
   // Storage buckets

@@ -192,7 +192,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
         if (driver.role == 'organizer') {
           return PermissionsGateScreen(
             child: Scaffold(
-              backgroundColor: AppColors.background,
+              backgroundColor: Colors.transparent,
               body: OrganizerHomeScreen(onSwitchToDriverMode: null),
             ),
           );
@@ -293,7 +293,7 @@ class _SafeTourismWrapperState extends State<_SafeTourismWrapper> {
   Widget build(BuildContext context) {
     if (!_checked) {
       return Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: Colors.transparent,
         body: Center(
           child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 3),
         ),

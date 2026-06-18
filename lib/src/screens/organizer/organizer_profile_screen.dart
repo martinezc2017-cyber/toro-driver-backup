@@ -5,6 +5,7 @@ import '../../services/organizer_service.dart';
 import '../../config/supabase_config.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/haptic_service.dart';
+import '../../widgets/organizer_connect_banner.dart';
 import '../../widgets/travel_card_widget.dart';
 
 /// Screen for organizers to view and edit their company profile.
@@ -311,7 +312,7 @@ class _OrganizerProfileScreenState extends State<OrganizerProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         backgroundColor: AppColors.surface,
         elevation: 0,
@@ -367,7 +368,14 @@ class _OrganizerProfileScreenState extends State<OrganizerProfileScreen> {
                     ],
                   ),
                 )
-              : SingleChildScrollView(
+              : Column(
+                children: [
+                  if (_profile?['id'] != null)
+                    OrganizerConnectBanner(
+                      organizerId: _profile!['id'].toString(),
+                    ),
+                  Expanded(
+                    child: SingleChildScrollView(
                   padding: const EdgeInsets.all(16),
                   child: Form(
                     key: _formKey,
@@ -630,6 +638,9 @@ class _OrganizerProfileScreenState extends State<OrganizerProfileScreen> {
                     ),
                   ),
                 ),
+                  ),
+                ],
+              ),
     );
   }
 

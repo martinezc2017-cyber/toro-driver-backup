@@ -23,6 +23,7 @@ import '../../widgets/scrollable_time_picker.dart';
 import '../../services/tourism_event_service.dart';
 import '../../services/organizer_service.dart';
 import '../../core/logging/app_logger.dart';
+import '../../widgets/organizer_connect_banner.dart';
 import 'organizer_bidding_screen.dart';
 
 /// Event Stop Model - Represents a stop in the event itinerary
@@ -587,6 +588,15 @@ class _OrganizerCreateEventSimpleScreenState
       return;
     }
 
+    // Stripe Connect guard: organizer must have charges_enabled to publish
+    // an event that will collect passenger payments.
+    final canProceed = await OrganizerConnectGuard.require(
+      context: context,
+      organizerId: _organizerId!,
+      actionLabel: 'crear evento',
+    );
+    if (!canProceed) return;
+
     // Validate itinerary for route service type
     if (_serviceType == 'route' && _stops.length < 2) {
       _showError('Agrega al menos 2 paradas (origen y destino)');
@@ -970,7 +980,7 @@ class _OrganizerCreateEventSimpleScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         backgroundColor: AppColors.surface,
         elevation: 0,
@@ -993,6 +1003,9 @@ class _OrganizerCreateEventSimpleScreenState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // Stripe Connect banner (auto-hidden when active)
+              if (_organizerId != null)
+                OrganizerConnectBanner(organizerId: _organizerId!),
               // Section 1: Credencial del Organizador (TOP - persists independently)
               _buildSectionHeader(
                 icon: Icons.badge,

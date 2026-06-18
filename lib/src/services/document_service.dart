@@ -88,6 +88,47 @@ class DocumentService {
     }
   }
 
+  /// Upload driver's INE (credencial para votar) image with automatic OCR.
+  /// Extracts the CURP directly off the document image (NOT typed by the user)
+  /// and persists it to drivers.curp. The image always uploads even if OCR
+  /// finds nothing.
+  Future<String?> uploadIneImage(String driverId, File file) async {
+    try {
+      final url = await _uploadFile(driverId, 'ine', file);
+
+      final updateData = <String, dynamic>{
+        'ine_image_url': url,
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+
+      // Run OCR to auto-extract the CURP from the INE
+      if (_ocrService.isAvailable) {
+        AppLogger.log('DocumentService: Running OCR on INE...');
+        final ocrData = await _ocrService.extractIneFromFile(file);
+
+        if (ocrData != null && ocrData.hasAnyData) {
+          AppLogger.log('DocumentService: OCR extracted - CURP: ${ocrData.curp}, Name: ${ocrData.fullName}');
+
+          if (ocrData.curp != null) {
+            updateData['curp'] = ocrData.curp;
+          }
+          // Store raw OCR text for admin review
+          updateData['ine_ocr_raw'] = ocrData.rawText;
+        }
+      }
+
+      await _client
+          .from(SupabaseConfig.driversTable)
+          .update(updateData)
+          .eq('id', driverId);
+
+      return url;
+    } catch (e) {
+      AppLogger.log('DocumentService: Error uploading INE: $e');
+      return null;
+    }
+  }
+
   /// Update driver's license info
   Future<bool> updateLicenseInfo({
     required String driverId,
@@ -525,7 +566,12 @@ class DriverDocumentStatus {
     );
   }
 
-  bool get hasLicense => licenseNumber != null && licenseNumber!.isNotEmpty;
+  // Una licencia cuenta como SUBIDA si tenemos la IMAGEN, aunque el OCR no haya
+  // podido extraer el numero (comun en licencias MX / web). El numero lo completa
+  // el OCR/admin despues; la sola imagen subida debe sacar el estado de "Faltante".
+  bool get hasLicense =>
+      (licenseNumber != null && licenseNumber!.isNotEmpty) ||
+      (licenseImageUrl != null && licenseImageUrl!.isNotEmpty);
   bool get hasLicenseImage => licenseImageUrl != null;
   bool get hasProfilePhoto => profileImageUrl != null;
 

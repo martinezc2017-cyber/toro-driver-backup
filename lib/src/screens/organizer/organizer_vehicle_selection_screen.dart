@@ -4,6 +4,7 @@ import '../../services/organizer_service.dart';
 import '../../services/tourism_event_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/haptic_service.dart';
+import '../../widgets/organizer_connect_banner.dart';
 
 /// Screen for organizers to select and request a vehicle for a tourism event.
 ///
@@ -164,9 +165,10 @@ class _OrganizerVehicleSelectionScreenState
   @override
   Widget build(BuildContext context) {
     final eventName = _event?['event_name'] ?? 'Evento';
+    final organizerId = _event?['organizer_id'] as String?;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         backgroundColor: AppColors.surface,
         elevation: 0,
@@ -186,6 +188,9 @@ class _OrganizerVehicleSelectionScreenState
       ),
       body: Column(
         children: [
+          // Stripe Connect banner (auto-hidden when active)
+          if (organizerId != null)
+            OrganizerConnectBanner(organizerId: organizerId),
           // Event header
           _buildEventHeader(eventName),
           // Filter bar

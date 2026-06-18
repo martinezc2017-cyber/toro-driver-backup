@@ -6,6 +6,7 @@ import '../../services/tourism_event_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/haptic_service.dart';
 import '../../utils/money_format.dart';
+import '../../widgets/organizer_connect_banner.dart';
 
 /// Screen for organizers to manage bidding process for tourism events.
 ///
@@ -169,6 +170,18 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
     if (bidId == null) {
       _showError('Datos de puja incompletos');
       return;
+    }
+
+    // Stripe Connect guard: organizer must have Connect account active
+    // to receive passenger payments before accepting a winning bid.
+    final organizerId = _event?['organizer_id'] as String?;
+    if (organizerId != null) {
+      final canProceed = await OrganizerConnectGuard.require(
+        context: context,
+        organizerId: organizerId,
+        actionLabel: 'cobrar reservas',
+      );
+      if (!canProceed) return;
     }
 
     // Confirm selection
@@ -532,9 +545,10 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
   @override
   Widget build(BuildContext context) {
     final eventName = _event?['event_name'] ?? 'Evento';
+    final organizerId = _event?['organizer_id'] as String?;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         backgroundColor: AppColors.surface,
         elevation: 0,
@@ -554,6 +568,9 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
       ),
       body: Column(
         children: [
+          // Stripe Connect banner (auto-hidden when active)
+          if (organizerId != null)
+            OrganizerConnectBanner(organizerId: organizerId),
           // Event header
           _buildEventHeader(eventName),
           // Tab bar

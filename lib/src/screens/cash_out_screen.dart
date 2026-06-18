@@ -6,6 +6,7 @@ import '../utils/app_theme.dart';
 import '../utils/money_format.dart';
 import '../providers/riverpod_providers.dart';
 import '../models/driver_model.dart';
+import '../services/stripe_connect_service.dart';
 /// Instant Cash Out Screen - Like Uber/Lyft instant pay
 class CashOutScreen extends ConsumerStatefulWidget {
   final String driverId;
@@ -43,21 +44,31 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
     try {
       final driverService = ref.read(driverServiceProvider);
 
-      // Get financial stats
+      // Get financial stats (DB) + payment methods + driver in parallel
       final stats = await driverService.getFinancialStats(widget.driverId);
-
-      // Get payment methods
       final accounts = await driverService.getBankAccounts(widget.driverId);
       final cards = await driverService.getDebitCards(widget.driverId);
-
-      // Read driver country
       final driver = await driverService.getDriver(widget.driverId);
+
+      // CANONICAL: Stripe Connect balance es la verdad de cuánto puede retirar.
+      // El driverService.getFinancialStats es agregación de DB; Stripe API es
+      // lo que el banco realmente le va a transferir.
+      final stripeProvider = ((driver?.countryCode ?? 'US').toUpperCase() == 'MX') ? 'mx' : 'us';
+      final stripeBalance = await StripeConnectService.instance
+          .getBalance(widget.driverId, provider: stripeProvider);
+
+      // Si Stripe responde, esa es la verdad. Si no, DB stats como fallback.
+      final canonicalAvailable = stripeBalance != null
+          ? stripeBalance.availableCents / 100.0
+          : (stats['available_balance'] as num?)?.toDouble() ?? 0;
+      final canonicalPending = stripeBalance != null
+          ? stripeBalance.pendingCents / 100.0
+          : (stats['pending_balance'] as num?)?.toDouble() ?? 0;
 
       setState(() {
         _countryCode = driver?.countryCode ?? 'US';
-        _availableBalance =
-            (stats['available_balance'] as num?)?.toDouble() ?? 0;
-        _pendingBalance = (stats['pending_balance'] as num?)?.toDouble() ?? 0;
+        _availableBalance = canonicalAvailable;
+        _pendingBalance = canonicalPending;
         _bankAccounts = accounts;
         _debitCards = cards;
         _selectedAmount = _availableBalance;

@@ -104,21 +104,27 @@ class MexicoCfdiService {
     }
   }
 
-  /// Cancel an invoice
+  /// Cancel an invoice — usa generate-cfdi con action:'cancel' (fn canónica
+  /// desplegada). Antes invocaba 'cancel-cfdi' que NO existe → cancelación
+  /// siempre fallaba silenciosa.
   Future<bool> cancelInvoice({
     required String invoiceId,
     required String motivo,
   }) async {
     try {
       final response = await _client.functions.invoke(
-        'cancel-cfdi',
+        'generate-cfdi',
         body: {
-          'invoice_id': invoiceId,
+          'cfdi_id': invoiceId,
+          'action': 'cancel',
           'motivo': motivo,
         },
       );
-
-      return response.status == 200;
+      final data = response.data;
+      return response.status == 200 &&
+          data is Map &&
+          data['success'] == true &&
+          data['acuse'] != null;
     } catch (e) {
       return false;
     }

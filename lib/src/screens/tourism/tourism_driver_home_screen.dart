@@ -738,7 +738,7 @@ class _TourismDriverHomeScreenState extends State<TourismDriverHomeScreen>
         systemNavigationBarIconBrightness: Brightness.light,
       ),
       child: Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: Colors.transparent,
         body: _isLoading
             ? const Center(
                 child: CircularProgressIndicator(color: AppColors.primary),

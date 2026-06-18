@@ -15,6 +15,7 @@ import 'organizer_event_dashboard_screen.dart';
 import 'organizer_create_event_simple_screen.dart';
 import 'package:toro_driver/src/screens/organizer/organizer_bidding_screen.dart';
 import '../tourism/tourism_driver_home_screen.dart';
+import '../../widgets/organizer_connect_banner.dart';
 
 /// Professional Events Management Tab for Organizers
 class OrganizerEventsTab extends StatefulWidget {
@@ -174,10 +175,13 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
     }).isNotEmpty;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         child: Column(
           children: [
+            // Stripe Connect banner (auto-hidden when active)
+            if (_organizerId != null)
+              OrganizerConnectBanner(organizerId: _organizerId!),
             // Header compacto
             _buildHeader(),
             // Tab bar only when there are events

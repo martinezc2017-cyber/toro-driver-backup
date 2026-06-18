@@ -15,6 +15,7 @@ import '../../services/tourism_event_service.dart';
 import '../../services/tourism_messaging_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/haptic_service.dart';
+import '../../widgets/organizer_connect_banner.dart';
 import '../../core/logging/app_logger.dart';
 
 /// Live itinerary screen for organizers.
@@ -1121,20 +1122,29 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
 
   @override
   Widget build(BuildContext context) {
+    final organizerId = _event?['organizer_id'] as String?;
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       appBar: _buildAppBar(),
-      body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: AppColors.primary))
-          : _error != null
-              ? _buildErrorState()
-              : RefreshIndicator(
-                  color: AppColors.primary,
-                  backgroundColor: AppColors.surface,
-                  onRefresh: _loadData,
-                  child: _buildContent(),
-                ),
+      body: Column(
+        children: [
+          if (organizerId != null)
+            OrganizerConnectBanner(organizerId: organizerId),
+          Expanded(
+            child: _isLoading
+                ? const Center(
+                    child: CircularProgressIndicator(color: AppColors.primary))
+                : _error != null
+                    ? _buildErrorState()
+                    : RefreshIndicator(
+                        color: AppColors.primary,
+                        backgroundColor: AppColors.surface,
+                        onRefresh: _loadData,
+                        child: _buildContent(),
+                      ),
+          ),
+        ],
+      ),
       floatingActionButton: _buildFAB(),
     );
   }

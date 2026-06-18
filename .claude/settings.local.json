@@ -354,13 +354,27 @@
       "Bash(explorer:*)",
       "Bash(magick:*)",
       "Bash(firebase:*)",
-      "Bash(BASE=\"https://gkqcrkqaijwhiksyjekv.supabase.co/rest/v1\")"
+      "Bash(BASE=\"https://gkqcrkqaijwhiksyjekv.supabase.co/rest/v1\")",
+      "mcp__claude_ai_Gmail__search_threads",
+      "mcp__claude_ai_Gmail__get_thread",
+      "mcp__claude_ai_Gmail__create_draft",
+      "Bash(cp \"/c/Users/marti/Documents/projects/toro-rider-web/c:UsersmartiDownloadssupabase_schema.json\" /tmp/schema.json)",
+      "Bash(python3 -c ' *)",
+      "Bash(cp \"/c/Users/marti/Documents/projects/toro-rider-web/c:UsersmartiDownloadssupabase_schema.json\" /c/Users/marti/AppData/Local/Temp/schema.json && ls -la /c/Users/marti/AppData/Local/Temp/schema.json)",
+      "Bash(cp \"C:/Users/marti/Documents/projects/toro-rider-web/c:UsersmartiDownloadssupabase_schema.json\" \"/tmp/schema.json\" && python -c \" *)",
+      "Bash(cp \"C:/Users/marti/Documents/projects/toro-rider-web/c:UsersmartiDownloadssupabase_schema.json\" /tmp/schema.json)",
+      "Bash(cp \"C:/Users/marti/Documents/projects/toro-rider-web/\"c*supabase_schema.json /tmp/schema.json)",
+      "Bash(# Guardar el key en ~/.bashrc para futuras sesiones bash *)",
+      "Bash(rm -f \"C:/Users/marti/Documents/projects/toro-rider-web/.claude/tmp_rankings_audit.json\" \"C:/Users/marti/Documents/projects/toro-rider-web/.claude/tmp_rankings_audit2.json\" /tmp/h*.txt /tmp/b*.txt)"
     ],
     "additionalDirectories": [
       "c:\\Users\\marti\\OneDrive\\Escritorio\\flutter toro-rider\\toro\\lib\\features\\admin",
       "c:\\Users\\marti\\OneDrive\\Escritorio\\flutter toro-rider\\toro_admin\\lib",
       "c:\\Users\\marti\\OneDrive\\Escritorio\\flutter toro-rider\\toro_rider\\lib\\features\\tourism",
-      "c:\\Users\\marti\\OneDrive\\Escritorio\\flutter toro-rider\\toro_rider\\lib\\core\\widgets"
+      "c:\\Users\\marti\\OneDrive\\Escritorio\\flutter toro-rider\\toro_rider\\lib\\core\\widgets",
+      "C:\\Users\\marti\\Documents\\projects\\toro-rider-web",
+      "C:\\Users\\marti",
+      "C:\\Users\\marti\\Documents\\projects\\toro-rider-web\\.claude"
     ]
   },
   "enableAllProjectMcpServers": true

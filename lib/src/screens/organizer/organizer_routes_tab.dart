@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import '../../config/supabase_config.dart';
 import '../../services/bus_route_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/haptic_service.dart';
 import '../../utils/money_format.dart';
+import '../../widgets/organizer_connect_banner.dart';
 
 /// Routes tab for the organizer home screen.
 ///
@@ -23,11 +25,28 @@ class _OrganizerRoutesTabState extends State<OrganizerRoutesTab> {
   bool _isLoading = true;
   String? _error;
   List<Map<String, dynamic>> _routes = [];
+  String? _organizerId;
 
   @override
   void initState() {
     super.initState();
+    _loadOrganizerId();
     _loadRoutes();
+  }
+
+  Future<void> _loadOrganizerId() async {
+    try {
+      final userId = SupabaseConfig.client.auth.currentUser?.id;
+      if (userId == null) return;
+      final resp = await SupabaseConfig.client
+          .from('organizers')
+          .select('id')
+          .eq('user_id', userId)
+          .maybeSingle();
+      if (resp != null && mounted) {
+        setState(() => _organizerId = resp['id']?.toString());
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadRoutes() async {
@@ -58,7 +77,7 @@ class _OrganizerRoutesTabState extends State<OrganizerRoutesTab> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         backgroundColor: AppColors.surface,
         elevation: 0,
@@ -81,26 +100,34 @@ class _OrganizerRoutesTabState extends State<OrganizerRoutesTab> {
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: AppColors.primary),
-            )
-          : _error != null
-              ? _buildErrorState()
-              : _routes.isEmpty
-                  ? _buildEmptyState()
-                  : RefreshIndicator(
-                      color: AppColors.primary,
-                      backgroundColor: AppColors.surface,
-                      onRefresh: _loadRoutes,
-                      child: ListView.builder(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.all(16),
-                        itemCount: _routes.length,
-                        itemBuilder: (context, index) =>
-                            _buildRouteCard(_routes[index]),
-                      ),
-                    ),
+      body: Column(
+        children: [
+          if (_organizerId != null)
+            OrganizerConnectBanner(organizerId: _organizerId!),
+          Expanded(
+            child: _isLoading
+                ? const Center(
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  )
+                : _error != null
+                    ? _buildErrorState()
+                    : _routes.isEmpty
+                        ? _buildEmptyState()
+                        : RefreshIndicator(
+                            color: AppColors.primary,
+                            backgroundColor: AppColors.surface,
+                            onRefresh: _loadRoutes,
+                            child: ListView.builder(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              padding: const EdgeInsets.all(16),
+                              itemCount: _routes.length,
+                              itemBuilder: (context, index) =>
+                                  _buildRouteCard(_routes[index]),
+                            ),
+                          ),
+          ),
+        ],
+      ),
     );
   }
 

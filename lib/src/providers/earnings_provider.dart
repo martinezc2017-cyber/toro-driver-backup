@@ -1,9 +1,15 @@
 import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/payment_service.dart';
 import '../models/earning_model.dart';
 
 class EarningsProvider with ChangeNotifier {
   final PaymentService _paymentService = PaymentService();
+
+  // REALTIME: refresca las ganancias en cuanto un viaje del chofer se completa,
+  // en vez del poll lento que tardaba ~10 min en reflejar el dinero en el home.
+  RealtimeChannel? _channel;
+  String? _subscribedDriverId;
 
   EarningsSummary? _summary;
   List<EarningModel> _transactions = [];
@@ -45,6 +51,43 @@ class EarningsProvider with ChangeNotifier {
 
     _isLoading = false;
     notifyListeners();
+    _subscribeRealtime(driverId);
+  }
+
+  /// Suscripción realtime: cuando un viaje de ESTE chofer pasa a completed/
+  /// delivered, recarga las ganancias al instante (home "Hoy", semana, etc.).
+  void _subscribeRealtime(String driverId) {
+    if (_subscribedDriverId == driverId && _channel != null) return;
+    _channel?.unsubscribe();
+    _subscribedDriverId = driverId;
+    _channel = Supabase.instance.client
+        .channel('earnings_$driverId')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'deliveries',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'driver_id',
+            value: driverId,
+          ),
+          callback: (payload) {
+            final status = payload.newRecord['status']?.toString();
+            if (status == 'completed' || status == 'delivered') {
+              // Recarga summary/breakdown sin re-suscribir (guard arriba).
+              _loadSummary(driverId).then((_) {
+                _loadWeeklyBreakdown(driverId).then((_) => notifyListeners());
+              });
+            }
+          },
+        )
+        .subscribe();
+  }
+
+  @override
+  void dispose() {
+    _channel?.unsubscribe();
+    super.dispose();
   }
 
   // Load earnings summary

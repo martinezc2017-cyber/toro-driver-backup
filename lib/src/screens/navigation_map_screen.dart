@@ -541,6 +541,20 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
 
     setState(() => _isLoadingRoute = true);
 
+    // POSICIÓN FRESCA antes de rutear: _currentLat/_currentLng arrancan en un
+    // DEFAULT de Phoenix (33.4484, -112.0740). Si la nav inicia antes del primer
+    // fix del GPS, rutea DESDE Phoenix → ruta de cientos de km y la línea de
+    // guía queda FUERA DE PANTALLA ("no aparece"). Tomamos un fix real primero.
+    try {
+      final pos = await geo.Geolocator.getCurrentPosition(
+        desiredAccuracy: geo.LocationAccuracy.high,
+      ).timeout(const Duration(seconds: 8));
+      _currentLat = pos.latitude;
+      _currentLng = pos.longitude;
+    } catch (_) {
+      // sin fix nuevo: usa el último conocido (mejor que el default Phoenix)
+    }
+
     final success = await _navigationService.startNavigation(
       originLat: _currentLat,
       originLng: _currentLng,

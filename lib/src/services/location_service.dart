@@ -339,6 +339,39 @@ class LocationService {
       }
     }
 
+    // LOCAL PRIMERO: estado desde NUESTRA DB (RPC resolve_state_for_pricing,
+    // bounding-box). NO depende del geocoder del dispositivo (que da null
+    // offline/en emulador) ni de Mapbox. Misma fuente que el pricing.
+    try {
+      final res = await _client.rpc('resolve_state_for_pricing', params: {
+        'p_lat': lat,
+        'p_lng': lng,
+        'p_country': 'MX',
+      });
+      String? sc;
+      if (res is List && res.isNotEmpty) {
+        sc = (res.first['state_code'] as String?)?.trim();
+      }
+      if (sc != null && sc.isNotEmpty && sc != 'DEFAULT') {
+        _cachedStateCode = sc;
+        _cachedStatePosition = Position(
+          latitude: lat,
+          longitude: lng,
+          timestamp: DateTime.now(),
+          accuracy: 0,
+          altitude: 0,
+          altitudeAccuracy: 0,
+          heading: 0,
+          headingAccuracy: 0,
+          speed: 0,
+          speedAccuracy: 0,
+        );
+        return sc;
+      }
+    } catch (e) {
+      debugPrint('getStateCode -> RPC local fallo, uso geocoder: $e');
+    }
+
     try {
       final placemarks = await placemarkFromCoordinates(lat, lng);
 

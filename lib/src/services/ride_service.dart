@@ -455,7 +455,43 @@ class RideService {
         ride.pickupLocation.longitude,
       );
     }
-    if (stateCode == null) {
+    // FALLBACK 1: RPC canónico resolve_state_for_pricing (server-side, NO depende
+    // del reverse-geocode del cliente que a veces da null y BLOQUEABA finalizar).
+    if ((stateCode == null || stateCode.isEmpty) &&
+        ride.pickupLocation.latitude != 0) {
+      try {
+        final res = await _client.rpc('resolve_state_for_pricing', params: {
+          'p_lat': ride.pickupLocation.latitude,
+          'p_lng': ride.pickupLocation.longitude,
+          'p_country': 'MX',
+        });
+        if (res is List && res.isNotEmpty) {
+          final sc = (res.first['state_code'] as String?)?.trim();
+          if (sc != null && sc.isNotEmpty && sc != 'DEFAULT') stateCode = sc;
+        }
+      } catch (e) {
+        debugPrint('completeRide -> resolve_state_for_pricing fallback failed: $e');
+      }
+    }
+    // FALLBACK 2: el estado del propio chofer (lo tiene en drivers.state_code,
+    // resuelto por GPS al registrarse). Última red de seguridad.
+    if (stateCode == null || stateCode.isEmpty) {
+      try {
+        final uid = _client.auth.currentUser?.id;
+        if (uid != null) {
+          final d = await _client
+              .from('drivers')
+              .select('state_code')
+              .eq('user_id', uid)
+              .maybeSingle();
+          final sc = (d?['state_code'] as String?)?.trim();
+          if (sc != null && sc.isNotEmpty && sc != 'DEFAULT') stateCode = sc;
+        }
+      } catch (e) {
+        debugPrint('completeRide -> driver state_code fallback failed: $e');
+      }
+    }
+    if (stateCode == null || stateCode.isEmpty) {
       throw Exception('No se pudo determinar el estado desde las coordenadas — verifica tu conexión a internet');
     }
 

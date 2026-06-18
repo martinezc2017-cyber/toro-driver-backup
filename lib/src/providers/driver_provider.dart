@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show ChangeNotifier, debugPrint;
+import 'package:geolocator/geolocator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/driver_service.dart';
 import '../services/notification_service.dart';
@@ -241,6 +242,7 @@ class DriverProvider with ChangeNotifier {
 
     // Si va a OFFLINE, permitir siempre
     if (!online) {
+      _stopHeartbeat();
       try {
         await _driverService.updateOnlineStatus(_driver!.id, false);
       } catch (e) {
@@ -342,11 +344,60 @@ class DriverProvider with ChangeNotifier {
       await _driverService.updateOnlineStatus(_driver!.id, true);
       _driver = _driver!.copyWith(isOnline: true);
       _error = null;
+      _startHeartbeat(); // presencia EN VIVO mientras esté online
       notifyListeners();
     } catch (e) {
       _error = 'Error al ponerse online: $e';
       notifyListeners();
       throw Exception(_error);
+    }
+  }
+
+  // ===========================================================================
+  // HEARTBEAT — mantiene la presencia FRESCA mientras el chofer está online.
+  // Cada 30s estampa location_updated_at → admin/dispatch/marketplace lo ven
+  // online en tiempo real. Sin esto el conteo "online" siempre quedaba en 0
+  // (el admin exige GPS < 5 min). Para TODOS los sectores (presencia unificada).
+  // ===========================================================================
+  Timer? _heartbeatTimer;
+
+  void _startHeartbeat() {
+    _heartbeatTimer?.cancel();
+    _sendHeartbeat(); // inmediato
+    _heartbeatTimer =
+        Timer.periodic(const Duration(seconds: 30), (_) => _sendHeartbeat());
+  }
+
+  void _stopHeartbeat() {
+    _heartbeatTimer?.cancel();
+    _heartbeatTimer = null;
+  }
+
+  Future<void> _sendHeartbeat() async {
+    final d = _driver;
+    if (d == null || !d.isOnline) {
+      _stopHeartbeat();
+      return;
+    }
+    final nowIso = DateTime.now().toUtc().toIso8601String();
+    try {
+      // GPS REAL → conecta con el mapa en vivo, el conteo online y el dispatch.
+      final pos = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      ).timeout(const Duration(seconds: 12));
+      await Supabase.instance.client.from('drivers').update({
+        'current_lat': pos.latitude,
+        'current_lng': pos.longitude,
+        'location_updated_at': nowIso,
+      }).eq('id', d.id);
+    } catch (e) {
+      debugPrint('Heartbeat GPS error: $e');
+      // Respaldo: al menos mantener la presencia (prueba de vida)
+      try {
+        await Supabase.instance.client.from('drivers').update({
+          'location_updated_at': nowIso,
+        }).eq('id', d.id);
+      } catch (_) {}
     }
   }
 

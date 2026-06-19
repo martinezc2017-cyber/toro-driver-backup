@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart' as riverpod;
 import 'package:easy_localization/easy_localization.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
@@ -13,6 +14,7 @@ import '../utils/money_logger.dart';
 import '../services/driver_qr_points_service.dart';
 import '../services/stripe_connect_service.dart';
 import 'qr_points_screen.dart';
+import 'cash_out_screen.dart';
 
 class EarningsScreen extends StatefulWidget {
   const EarningsScreen({super.key});
@@ -205,6 +207,39 @@ class _EarningsScreenState extends State<EarningsScreen> {
                           ),
                         ),
                       ],
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  // RETIRAR — abre el flujo de cash-out (saldo, banco/tarjeta).
+                  // Si el onboarding de Stripe no está completo, esa pantalla
+                  // guía a terminarlo; aquí solo conectamos la entrada.
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        final id = context.read<DriverProvider>().driver?.id;
+                        if (id == null) return;
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            // CashOutScreen usa riverpod (ref) y la app NO tiene
+                            // ProviderScope global -> lo envolvemos aquí para que
+                            // no truene al abrirlo.
+                            builder: (_) => riverpod.ProviderScope(
+                              child: CashOutScreen(driverId: id),
+                            ),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.account_balance_wallet, size: 18),
+                      label: const Text('Retirar a mi banco'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.success,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),

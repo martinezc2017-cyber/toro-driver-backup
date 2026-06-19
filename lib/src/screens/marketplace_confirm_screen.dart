@@ -12,6 +12,7 @@ class MarketplaceConfirmScreen extends StatefulWidget {
   final String mode; // 'pickup' or 'delivery'
   final String? vendorBusinessName;
   final String? buyerName;
+  final String? address; // direccion real (recogida o entrega)
 
   const MarketplaceConfirmScreen({
     super.key,
@@ -19,6 +20,7 @@ class MarketplaceConfirmScreen extends StatefulWidget {
     required this.mode,
     this.vendorBusinessName,
     this.buyerName,
+    this.address,
   });
 
   @override
@@ -200,6 +202,12 @@ class _MarketplaceConfirmScreenState extends State<MarketplaceConfirmScreen> {
                           if (widget.buyerName != null && !_isPickup)
                             Text(widget.buyerName!,
                                 style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                          if (widget.address != null && widget.address!.trim().isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Text(widget.address!,
+                                  style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                            ),
                         ],
                       ),
                     ),

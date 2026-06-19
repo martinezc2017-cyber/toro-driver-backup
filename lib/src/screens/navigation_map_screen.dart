@@ -5,6 +5,7 @@
 
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
@@ -63,6 +64,12 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
   PointAnnotationManager? _riderMarkerManager;
   String? _lastMarkerRideId; // Track which ride's marker is shown
   String? _lastRiderMarkerId; // Track rider marker state
+  // Pin bitmaps (rendered once) + nombres reales del lugar para marketplace.
+  Uint8List? _pinStoreImg;   // pin tienda/recogida (ambar)
+  Uint8List? _pinClientImg;  // pin cliente/destino (rojo)
+  String? _mktVendorName;    // nombre del vendedor (ej. PALOMA)
+  String? _mktBuyerName;     // nombre del comprador
+  String? _mktNamesRideId;   // ride id para el que ya buscamos nombres
 
   // Asistencia de navegación
   List<ParkingPlace> _nearbyParkings = [];
@@ -504,8 +511,15 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
     double targetLng;
     String targetName;
 
-    if (ride.status == RideStatus.accepted ||
-        ride.status == RideStatus.pending) {
+    // En MARKETPLACE la fase de recogida abarca accepted/pending Y arrivedAtPickup
+    // (el chofer sigue EN/yendo al vendedor "Recoge el paquete" hasta que desliza
+    // "RECOGÍ"). Solo en inProgress va al cliente. En viaje de pasajero, arrivedAtPickup
+    // ya apunta al destino (el chofer está estacionado esperando al rider).
+    final isMarket = ride.type == RideType.marketplace;
+    final goingToPickup = ride.status == RideStatus.accepted ||
+        ride.status == RideStatus.pending ||
+        (isMarket && ride.status == RideStatus.arrivedAtPickup);
+    if (goingToPickup) {
       targetType = 'pickup';
       targetLat = ride.pickupLocation.latitude;
       targetLng = ride.pickupLocation.longitude;
@@ -673,7 +687,26 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
             timer.cancel();
           }
         });
-        if (!_isMuted) {
+        if (ride.type == RideType.marketplace) {
+          // Avisar al VENDEDOR que el chofer llegó (le manda push con su PIN de
+          // recogida para que entregue el paquete y dé el código). NO cambia el
+          // estado del pedido: sigue en driver_assigned hasta que el chofer mete
+          // el OTP en "RECOGÍ EL PAQUETE" (marketplace_confirm_pickup).
+          final orderId = await _fetchMarketplaceOrderIdByDeliveryId(ride.id);
+          if (orderId != null) {
+            try {
+              await Supabase.instance.client.rpc(
+                'marketplace_notify_driver_arrived',
+                params: {'p_order_id': orderId},
+              );
+            } catch (e) {
+              debugPrint('notify vendor arrived (non-fatal): $e');
+            }
+          }
+          if (!_isMuted) {
+            _tts.speak('Llegaste a la tienda. Pídele el código de recogida al vendedor.');
+          }
+        } else if (!_isMuted) {
           _tts.speak('Has llegado al punto de recogida. Esperando al pasajero.');
         }
       }
@@ -706,7 +739,12 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
         }
         final confirmed = await Navigator.push<bool>(
           context,
-          MaterialPageRoute(builder: (_) => MarketplaceConfirmScreen(orderId: orderId, mode: 'pickup')),
+          MaterialPageRoute(builder: (_) => MarketplaceConfirmScreen(
+            orderId: orderId,
+            mode: 'pickup',
+            vendorBusinessName: _mktVendorName,
+            address: ride.pickupLocation.address,
+          )),
         );
         if (confirmed != true) return; // driver canceled or RPC rejected
       }
@@ -773,7 +811,12 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
       }
       final confirmed = await Navigator.push<bool>(
         context,
-        MaterialPageRoute(builder: (_) => MarketplaceConfirmScreen(orderId: orderId, mode: 'delivery')),
+        MaterialPageRoute(builder: (_) => MarketplaceConfirmScreen(
+          orderId: orderId,
+          mode: 'delivery',
+          buyerName: _mktBuyerName,
+          address: ride.dropoffLocation.address,
+        )),
       );
       if (confirmed != true) return;
       // ── CAPTURA del cobro con TARJETA al entregar (auth → capture). El PI se
@@ -1553,10 +1596,13 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
   Future<void> _updateDestinationMarker(RideModel ride) async {
     if (_destinationMarkerManager == null) return;
 
+    // Misma lógica que la ruta: en marketplace la recogida abarca arrivedAtPickup.
+    final isMarket = ride.type == RideType.marketplace;
     final isPickup = ride.status == RideStatus.accepted ||
-        ride.status == RideStatus.pending;
+        ride.status == RideStatus.pending ||
+        (isMarket && ride.status == RideStatus.arrivedAtPickup);
     final isDropoff = ride.status == RideStatus.inProgress ||
-        ride.status == RideStatus.arrivedAtPickup;
+        (!isMarket && ride.status == RideStatus.arrivedAtPickup);
 
     if (!isPickup && !isDropoff) {
       await _destinationMarkerManager!.deleteAll();
@@ -1579,19 +1625,112 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
     final lng = isPickup
         ? ride.pickupLocation.longitude
         : ride.dropoffLocation.longitude;
-    // Pin icon: 📍 for pickup (cyan), 🏁 for destination (red)
-    final icon = isPickup ? '📍' : '🏁';
-    final color = isPickup ? 0xFF00BCD4 : 0xFFFF1744; // cyan / rojo
 
+    // Nombre REAL del lugar. Marketplace: vendedor (ej. PALOMA) / comprador.
+    // Viaje normal: la dirección.
+    if (isMarket && _mktNamesRideId != ride.id) {
+      _mktNamesRideId = ride.id;
+      await _loadMarketplaceNames(ride.id);
+    }
+    final label = isMarket
+        ? (isPickup ? (_mktVendorName ?? 'Tienda') : (_mktBuyerName ?? 'Cliente'))
+        : (isPickup
+            ? (ride.pickupLocation.address ?? 'Recogida')
+            : (ride.dropoffLocation.address ?? 'Destino'));
+
+    // Pin de IMAGEN nítido (no emoji): teardrop con ícono. Ámbar=recogida, rojo=destino.
+    final pinColor = isPickup ? const Color(0xFFFFB300) : const Color(0xFFEF4444);
+    final glyph = isPickup ? Icons.storefront : Icons.location_on;
+    Uint8List? pin = isPickup ? _pinStoreImg : _pinClientImg;
+    if (pin == null) {
+      pin = await _renderPin(pinColor, glyph);
+      if (isPickup) { _pinStoreImg = pin; } else { _pinClientImg = pin; }
+    }
+
+    // El pin se ancla por su PUNTA (abajo) en la coordenada exacta.
     await _destinationMarkerManager!.create(PointAnnotationOptions(
       geometry: Point(coordinates: Position(lng, lat)),
-      textField: icon,
-      textSize: 32,
-      textColor: color,
-      textHaloColor: 0xFFFFFFFF,
-      textHaloWidth: 3,
-      textOffset: [0.0, 0.0],
+      image: pin,
+      iconSize: 1.0,
+      iconAnchor: IconAnchor.BOTTOM,
     ));
+    // Etiqueta con el nombre, anclada ARRIBA del punto -> cae justo DEBAJO de la
+    // punta del pin (que crece hacia arriba), así no se encima con el ícono.
+    await _destinationMarkerManager!.create(PointAnnotationOptions(
+      geometry: Point(coordinates: Position(lng, lat)),
+      textField: label.length > 24 ? '${label.substring(0, 22)}…' : label,
+      textSize: 14,
+      textColor: 0xFFFFFFFF,
+      textHaloColor: 0xFF000000,
+      textHaloWidth: 2.5,
+      textAnchor: TextAnchor.TOP,
+      textOffset: [0.0, 0.7],
+    ));
+  }
+
+  /// Busca el nombre del vendedor + comprador para etiquetar los pines del
+  /// mapa en una entrega de marketplace (mejor que "Tienda"/"Cliente").
+  Future<void> _loadMarketplaceNames(String deliveryId) async {
+    try {
+      final order = await Supabase.instance.client
+          .from('marketplace_orders')
+          .select('buyer_name, vendor_id')
+          .eq('delivery_id', deliveryId)
+          .maybeSingle();
+      if (order == null) return;
+      _mktBuyerName = (order['buyer_name'] as String?)?.trim();
+      final vid = order['vendor_id'];
+      if (vid != null) {
+        final v = await Supabase.instance.client
+            .from('vendors')
+            .select('business_name')
+            .eq('id', vid)
+            .maybeSingle();
+        _mktVendorName = (v?['business_name'] as String?)?.trim();
+      }
+    } catch (_) {/* no fatal: cae a "Tienda"/"Cliente" */}
+  }
+
+  /// Dibuja un pin de mapa (teardrop) con un ícono dentro y borde blanco,
+  /// y lo devuelve como PNG para usar como marcador de imagen en Mapbox.
+  Future<Uint8List> _renderPin(Color color, IconData glyph) async {
+    const double w = 92, h = 120;
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    final cx = w / 2;
+    final r = w / 2 - 3;       // radio del círculo superior
+    final cy = r + 3;          // centro del círculo
+    final fill = Paint()..color = color..isAntiAlias = true;
+    final white = Paint()..color = Colors.white..isAntiAlias = true;
+    // Punta (triángulo) hacia abajo
+    final tail = Path()
+      ..moveTo(cx - r * 0.66, cy + r * 0.5)
+      ..lineTo(cx, h - 2)
+      ..lineTo(cx + r * 0.66, cy + r * 0.5)
+      ..close();
+    canvas.drawPath(tail, fill);
+    // Círculo de color + borde blanco
+    canvas.drawCircle(Offset(cx, cy), r, fill);
+    canvas.drawCircle(Offset(cx, cy), r,
+        Paint()..color = Colors.white..style = PaintingStyle.stroke..strokeWidth = 4..isAntiAlias = true);
+    // Disco blanco interior para el ícono
+    canvas.drawCircle(Offset(cx, cy), r * 0.6, white);
+    // Ícono al centro
+    final tp = TextPainter(textDirection: TextDirection.ltr);
+    tp.text = TextSpan(
+      text: String.fromCharCode(glyph.codePoint),
+      style: TextStyle(
+        fontSize: r * 0.86,
+        fontFamily: glyph.fontFamily,
+        package: glyph.fontPackage,
+        color: color,
+      ),
+    );
+    tp.layout();
+    tp.paint(canvas, Offset(cx - tp.width / 2, cy - tp.height / 2));
+    final img = await recorder.endRecording().toImage(w.ceil(), h.ceil());
+    final bd = await img.toByteData(format: ui.ImageByteFormat.png);
+    return bd!.buffer.asUint8List();
   }
 
   /// Muestra el marcador del rider en tiempo real (solo durante pickup)
@@ -2392,6 +2531,9 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
         ride.status == RideStatus.pending;
     final isWaiting = ride.status == RideStatus.arrivedAtPickup;
     final isInProgress = ride.status == RideStatus.inProgress;
+    // Marketplace = entrega de pedido (recoger en tienda -> entregar al cliente),
+    // NO un viaje de pasajero. Cambia TODO el lenguaje del panel.
+    final isMarket = ride.type == RideType.marketplace;
 
     // Status config
     String statusLabel;
@@ -2399,21 +2541,23 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
     IconData statusIcon;
     String? statusSubtitle;
     if (isGoingToPickup) {
-      statusLabel = 'En camino al pickup';
+      statusLabel = isMarket ? 'En camino a la tienda' : 'En camino al pickup';
       statusColor = const Color(0xFF22D3EE); // admin cyan
-      statusIcon = Icons.directions_car;
+      statusIcon = isMarket ? Icons.storefront : Icons.directions_car;
       if (_navState.isNavigating) {
         statusSubtitle = 'ETA: ${_navState.formattedETA}';
+      } else if (isMarket) {
+        statusSubtitle = 'Recoge el pedido con el vendedor';
       }
     } else if (isWaiting) {
-      statusLabel = 'Esperando pasajero';
+      statusLabel = isMarket ? 'Recoge el paquete' : 'Esperando pasajero';
       statusColor = const Color(0xFF3B82F6);  // admin blue
-      statusIcon = Icons.place;
-      statusSubtitle = 'En el punto de recogida';
+      statusIcon = isMarket ? Icons.shopping_bag : Icons.place;
+      statusSubtitle = isMarket ? 'Pide el código al vendedor' : 'En el punto de recogida';
     } else if (isInProgress) {
-      statusLabel = 'Viaje en curso';
+      statusLabel = isMarket ? 'Entregando al cliente' : 'Viaje en curso';
       statusColor = const Color(0xFF22D3EE);  // admin cyan
-      statusIcon = Icons.navigation;
+      statusIcon = isMarket ? Icons.delivery_dining : Icons.navigation;
     } else {
       statusLabel = '';
       statusColor = Colors.white;
@@ -2545,7 +2689,14 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                         children: [
                           Flexible(
                             child: Text(
-                              ride.displayName,
+                              // En marketplace durante la recogida el "quién" es el
+                              // VENDEDOR (PALOMA), no el comprador. Tras recoger pasa
+                              // a ser el comprador.
+                              isMarket
+                                  ? ((isGoingToPickup || isWaiting)
+                                      ? (_mktVendorName ?? 'Tienda')
+                                      : (_mktBuyerName ?? ride.displayName))
+                                  : ride.displayName,
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 16,
@@ -2555,7 +2706,8 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          if (ride.passengerRating > 0) ...[
+                          if (ride.passengerRating > 0 &&
+                              !(isMarket && (isGoingToPickup || isWaiting))) ...[
                             const SizedBox(width: 8),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -2614,8 +2766,10 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        isGoingToPickup
-                            ? (ride.pickupLocation.address ?? 'Pickup')
+                        // Mostrar la dirección del LEG actual. En marketplace la
+                        // recogida abarca arrivedAtPickup -> dirección del vendedor.
+                        (isGoingToPickup || (isMarket && isWaiting))
+                            ? (ride.pickupLocation.address ?? 'Recogida')
                             : (ride.dropoffLocation.address ?? 'Destino'),
                         style: TextStyle(color: Colors.white.withOpacity(0.88), fontSize: 13.5),
                         maxLines: 1,
@@ -2726,9 +2880,17 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                         ),
                         const SizedBox(width: 8),
                         Text(
+                          // Marketplace con tarjeta/wallet: el cliente YA pagó todo
+                          // en la app (subtotal+envío+propina). El chofer NO cobra
+                          // nada. Solo en efectivo cobra, y cobra el TOTAL del
+                          // pedido al entregar (no solo el envío).
                           ride.paymentMethod == PaymentMethod.cash
-                              ? 'COBRAR EN EFECTIVO'
-                              : 'YA PAGADO',
+                              ? (ride.type == RideType.marketplace
+                                  ? 'COBRA EL TOTAL AL ENTREGAR'
+                                  : 'COBRAR EN EFECTIVO')
+                              : (ride.type == RideType.marketplace
+                                  ? 'PAGADO EN LA APP'
+                                  : 'YA PAGADO'),
                           style: TextStyle(
                             color: ride.paymentMethod == PaymentMethod.cash
                                 ? const Color(0xFF22D3EE).withOpacity(0.9)
@@ -2854,20 +3016,23 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
     Color color;
     VoidCallback? onConfirm;
 
+    final isMarket = ride.type == RideType.marketplace;
     switch (ride.status) {
       case RideStatus.accepted:
       case RideStatus.pending:
-        label = '📍  DESLIZA → LLEGUÉ';
+        label = isMarket ? '🏪  DESLIZA → LLEGUÉ A LA TIENDA' : '📍  DESLIZA → LLEGUÉ';
         color = const Color(0xFF22D3EE);  // admin cyan
         onConfirm = _handleArriveAtPickup;
         break;
       case RideStatus.arrivedAtPickup:
-        label = '▶  DESLIZA → INICIAR VIAJE';
+        // Marketplace: al deslizar pide el CÓDIGO DE RECOGIDA al vendedor (OTP+foto+GPS).
+        label = isMarket ? '📦  DESLIZA → RECOGÍ EL PAQUETE' : '▶  DESLIZA → INICIAR VIAJE';
         color = const Color(0xFF22D3EE);  // admin cyan
         onConfirm = _handleStartRide;
         break;
       case RideStatus.inProgress:
-        label = '🏁  DESLIZA → FINALIZAR';
+        // Marketplace: al deslizar pide el CÓDIGO DE ENTREGA al comprador (OTP+foto+GPS).
+        label = isMarket ? '🔑  DESLIZA → ENTREGAR (PIDE EL CÓDIGO)' : '🏁  DESLIZA → FINALIZAR';
         color = const Color(0xFF22D3EE);  // admin cyan
         onConfirm = _handleCompleteRide;
         break;

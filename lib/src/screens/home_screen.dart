@@ -1273,8 +1273,10 @@ class _HomeScreenState extends State<HomeScreen>
                 color: Colors.white.withOpacity(0.2),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
-                Icons.navigation_rounded,
+              child: Icon(
+                ride.type == RideType.marketplace
+                    ? Icons.shopping_bag
+                    : Icons.navigation_rounded,
                 color: Colors.white,
                 size: 28,
               ),
@@ -1285,9 +1287,9 @@ class _HomeScreenState extends State<HomeScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'VIAJE ACTIVO',
-                    style: TextStyle(
+                  Text(
+                    ride.type == RideType.marketplace ? 'ENTREGA ACTIVA' : 'VIAJE ACTIVO',
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 12,
                       fontWeight: FontWeight.w600,

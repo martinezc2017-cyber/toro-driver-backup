@@ -415,9 +415,15 @@ class DriverProvider with ChangeNotifier {
       await sb.from('driver_sessions').insert({
         'driver_id': d.id,
         'user_id': sb.auth.currentUser?.id,
+        // session_token es NOT NULL en la tabla -> generamos uno unico por sesion
+        'session_token': '${d.id}_${DateTime.now().microsecondsSinceEpoch}',
         'is_active': true,
         'started_at': nowIso,
         'last_activity_at': nowIso,
+        'device_platform': 'android',
+        if (d.currentLat != null) 'login_latitude': d.currentLat,
+        if (d.currentLng != null) 'login_longitude': d.currentLng,
+        if (d.stateCode != null) 'login_state': d.stateCode,
       });
     } catch (e) {
       debugPrint('session start error: $e');
@@ -431,9 +437,11 @@ class DriverProvider with ChangeNotifier {
     final d = _driver;
     if (d == null) return;
     try {
+      final endIso = DateTime.now().toUtc().toIso8601String();
       await Supabase.instance.client.from('driver_sessions').update({
         'is_active': false,
-        'ended_at': DateTime.now().toUtc().toIso8601String(),
+        'ended_at': endIso,
+        'logged_out_at': endIso,
         'logout_reason': 'offline',
       }).eq('driver_id', d.id).eq('is_active', true);
     } catch (e) {

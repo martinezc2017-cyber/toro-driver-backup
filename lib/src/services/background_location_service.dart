@@ -84,6 +84,8 @@ void onStart(ServiceInstance service) async {
   String? riderName;
   String? supabaseUrl;
   String? supabaseKey;
+  String? driverId; // modo "online idle": heartbeat de presencia sin viaje
+  int tick = 0;     // para throttlear el heartbeat idle a ~30s
 
   // Listen for data from main app
   service.on('setData').listen((event) {
@@ -93,6 +95,7 @@ void onStart(ServiceInstance service) async {
       riderName = event['riderName'] as String?;
       supabaseUrl = event['supabaseUrl'] as String?;
       supabaseKey = event['supabaseKey'] as String?;
+      driverId = event['driverId'] as String?;
 
       AppLogger.log('BACKGROUND_LOCATION -> Data received: deliveryId=$deliveryId, rider=$riderName');
     }
@@ -118,7 +121,12 @@ void onStart(ServiceInstance service) async {
 
   // GPS tracking timer - send every 5 seconds (driver needs faster updates)
   Timer.periodic(const Duration(seconds: 5), (timer) async {
-    if (deliveryId == null) return;
+    tick++;
+    final idle = deliveryId == null && driverId != null;
+    if (deliveryId == null && driverId == null) return;
+    // En modo idle (solo presencia, sin viaje) heartbeat cada ~30s para no
+    // drenar bateria; en viaje activo sigue cada 5s.
+    if (idle && tick % 6 != 1) return;
 
     // Initialize Supabase if needed
     if (supabase == null && supabaseUrl != null && supabaseKey != null) {
@@ -140,13 +148,24 @@ void onStart(ServiceInstance service) async {
         timeLimit: const Duration(seconds: 10),
       );
 
-      // Update database - driver GPS columns
-      final table = tableName ?? 'deliveries';
-      await supabase!.from(table).update({
-        'driver_lat': position.latitude,
-        'driver_lng': position.longitude,
-        'driver_gps_updated_at': DateTime.now().toIso8601String(),
-      }).eq('id', deliveryId!);
+      // Update database
+      if (deliveryId != null) {
+        // VIAJE ACTIVO: comparte ubicacion con el pasajero (columnas de la fila)
+        final table = tableName ?? 'deliveries';
+        await supabase!.from(table).update({
+          'driver_lat': position.latitude,
+          'driver_lng': position.longitude,
+          'driver_gps_updated_at': DateTime.now().toIso8601String(),
+        }).eq('id', deliveryId!);
+      } else {
+        // ONLINE IDLE: heartbeat de presencia -> drivers (lo que ve el admin/
+        // dispatch). Sobrevive el segundo plano gracias al foreground service.
+        await supabase!.from('drivers').update({
+          'current_lat': position.latitude,
+          'current_lng': position.longitude,
+          'location_updated_at': DateTime.now().toIso8601String(),
+        }).eq('id', driverId!);
+      }
 
       AppLogger.log('BACKGROUND_LOCATION -> GPS sent: ${position.latitude}, ${position.longitude}');
 
@@ -170,8 +189,8 @@ void onStart(ServiceInstance service) async {
         final flnp = FlutterLocalNotificationsPlugin();
         await flnp.show(
           notificationId,
-          'TORO Driver - Viaje activo',
-          notificationContent,
+          idle ? 'TORO Driver — En Línea' : 'TORO Driver - Viaje activo',
+          idle ? 'Disponible para viajes' : notificationContent,
           const NotificationDetails(android: androidDetails),
         );
       }
@@ -250,6 +269,40 @@ class BackgroundLocationController {
       AppLogger.log('BACKGROUND_LOCATION -> Tracking started for $deliveryId');
     } else {
       AppLogger.log('BACKGROUND_LOCATION -> Failed to start service');
+    }
+  }
+
+  /// Inicia el HEARTBEAT DE PRESENCIA en segundo plano (sin viaje). Mantiene al
+  /// chofer "online" aunque el app este minimizado o la pantalla apagada: el
+  /// foreground service NO lo mata Android (a diferencia del Timer en el app,
+  /// que se pausa en background y por eso el chofer "desaparecia" del admin).
+  /// Llamar al ponerse EN LINEA.
+  Future<void> startOnlineHeartbeat({
+    required String driverId,
+    required String supabaseUrl,
+    required String supabaseKey,
+  }) async {
+    final data = {
+      'driverId': driverId,
+      'supabaseUrl': supabaseUrl,
+      'supabaseKey': supabaseKey,
+    };
+    if (_isRunning) {
+      _service.invoke('setData', data); // ya corre (p.ej. tras un viaje) -> idle
+      return;
+    }
+    final permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      AppLogger.log('BACKGROUND_LOCATION -> sin permiso (heartbeat)');
+      return;
+    }
+    final started = await _service.startService();
+    if (started) {
+      _isRunning = true;
+      await Future.delayed(const Duration(milliseconds: 500));
+      _service.invoke('setData', data);
+      AppLogger.log('BACKGROUND_LOCATION -> heartbeat online iniciado: $driverId');
     }
   }
 

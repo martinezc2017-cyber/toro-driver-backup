@@ -5,6 +5,8 @@ import 'package:geolocator/geolocator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/driver_service.dart';
 import '../services/notification_service.dart';
+import '../services/background_location_service.dart';
+import '../config/supabase_config.dart';
 import '../models/driver_model.dart';
 import '../utils/money_format.dart' show setUserCountry;
 
@@ -397,11 +399,25 @@ class DriverProvider with ChangeNotifier {
     _sendHeartbeat(); // inmediato
     _heartbeatTimer =
         Timer.periodic(const Duration(seconds: 30), (_) => _sendHeartbeat());
+    // FOREGROUND SERVICE: mantiene el heartbeat vivo en SEGUNDO PLANO. El Timer
+    // de arriba se PAUSA cuando Android manda el app a background -> el chofer
+    // "desaparecia" del admin al cerrar/minimizar la pantalla. El service sigue
+    // estampando location_updated_at aunque el app este en segundo plano.
+    final d = _driver;
+    if (d != null) {
+      BackgroundLocationController().startOnlineHeartbeat(
+        driverId: d.id,
+        supabaseUrl: SupabaseConfig.supabaseUrl,
+        supabaseKey: SupabaseConfig.supabaseAnonKey,
+      );
+    }
   }
 
   void _stopHeartbeat() {
     _heartbeatTimer?.cancel();
     _heartbeatTimer = null;
+    // Para el foreground service (quita la notificacion "En Linea").
+    BackgroundLocationController().stopTracking();
   }
 
   Future<void> _sendHeartbeat() async {

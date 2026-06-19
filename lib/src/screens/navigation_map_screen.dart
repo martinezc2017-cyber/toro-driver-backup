@@ -1280,6 +1280,33 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
       return;
     }
 
+    // RUTA CORTA: el "vanish" (gap 5m + fade 20m) se COME la ruta entera cuando el
+    // tramo restante es corto o tiene pocos puntos -> mainStartIdx >= length-1 y no
+    // se dibuja NINGÚN segmento. Resultado: el chofer se queda SIN línea de guía
+    // justo al acercarse al pickup/rider (banner muestra "41 m" pero el mapa no
+    // pinta nada). Si la ruta total < ~80m o tiene pocos puntos, trázala completa.
+    double totalLen = 0;
+    for (int i = 0; i < _fullRouteCoords.length - 1; i++) {
+      final a = _fullRouteCoords[i];
+      final b = _fullRouteCoords[i + 1];
+      totalLen += _quickDistance(a[1], a[0], b[1], b[0]);
+    }
+    if (_fullRouteCoords.length < 6 || totalLen < 80) {
+      final points = _fullRouteCoords
+          .sublist(closestIdx) // desde el punto más cercano al puck hacia el destino
+          .map((c) => Position(c[0], c[1]))
+          .toList();
+      if (points.length >= 2) {
+        await _routeLineManager!.create(PolylineAnnotationOptions(
+          geometry: LineString(coordinates: points),
+          lineColor: 0xFF4285F4,
+          lineWidth: 10.0,
+          lineOpacity: 1.0,
+        ));
+      }
+      return;
+    }
+
     // === GAP de 5m desde el puck ===
     int gapEndIdx = closestIdx;
     double gapDist = 0.0;

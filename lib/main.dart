@@ -36,7 +36,7 @@ import 'src/providers/cash_account_provider.dart';
 
 // Screens
 import 'src/screens/home_screen.dart';
-import 'src/screens/navigation_screen.dart';
+import 'src/screens/navigation_map_screen.dart';
 import 'src/screens/profile_screen.dart';
 import 'src/screens/history_screen.dart';
 import 'src/screens/settings_screen.dart';
@@ -235,7 +235,11 @@ class ToroDriverApp extends StatelessWidget {
           '/home': (context) => const HomeScreen(),
           '/login': (context) => const LoginScreen(),
           '/terms': (context) => const TermsAcceptanceScreen(),
-          '/navigation': (context) => const NavigationScreen(),
+          // La ruta /navigation usa la navegacion REAL (NavigationMapScreen, la
+          // misma del tab 1) en vez del stub vacio. La usan marketplace/rides.
+          '/navigation': (context) => NavigationMapScreen(
+                onBack: () => Navigator.of(context).maybePop(),
+              ),
           '/profile': (context) => const ProfileScreen(),
           '/history': (context) => const HistoryScreen(),
           '/settings': (context) => const SettingsScreen(),

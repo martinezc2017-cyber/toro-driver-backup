@@ -393,10 +393,58 @@ class DriverProvider with ChangeNotifier {
   // (el admin exige GPS < 5 min). Para TODOS los sectores (presencia unificada).
   // ===========================================================================
   Timer? _heartbeatTimer;
+  bool _sessionActive = false; // guarda 1 sola sesion por periodo online
+
+  // Graba la sesion: started_at al ponerse online, ended_at al offline.
+  // Asi el admin puede saber QUIEN se conecto al ultimo, hace cuanto, y cuanto
+  // lleva online/offline (antes driver_sessions estaba vacia = sin historial).
+  Future<void> _recordSessionStart() async {
+    if (_sessionActive) return;
+    final d = _driver;
+    if (d == null) return;
+    _sessionActive = true;
+    final nowIso = DateTime.now().toUtc().toIso8601String();
+    try {
+      final sb = Supabase.instance.client;
+      // cierra sesiones colgadas previas del chofer
+      await sb.from('driver_sessions').update({
+        'is_active': false,
+        'ended_at': nowIso,
+        'logout_reason': 'stale',
+      }).eq('driver_id', d.id).eq('is_active', true);
+      await sb.from('driver_sessions').insert({
+        'driver_id': d.id,
+        'user_id': sb.auth.currentUser?.id,
+        'is_active': true,
+        'started_at': nowIso,
+        'last_activity_at': nowIso,
+      });
+    } catch (e) {
+      debugPrint('session start error: $e');
+      _sessionActive = false;
+    }
+  }
+
+  Future<void> _recordSessionEnd() async {
+    if (!_sessionActive) return;
+    _sessionActive = false;
+    final d = _driver;
+    if (d == null) return;
+    try {
+      await Supabase.instance.client.from('driver_sessions').update({
+        'is_active': false,
+        'ended_at': DateTime.now().toUtc().toIso8601String(),
+        'logout_reason': 'offline',
+      }).eq('driver_id', d.id).eq('is_active', true);
+    } catch (e) {
+      debugPrint('session end error: $e');
+    }
+  }
 
   void _startHeartbeat() {
     _heartbeatTimer?.cancel();
     _sendHeartbeat(); // inmediato
+    _recordSessionStart(); // historial de presencia
     _heartbeatTimer =
         Timer.periodic(const Duration(seconds: 30), (_) => _sendHeartbeat());
     // FOREGROUND SERVICE: mantiene el heartbeat vivo en SEGUNDO PLANO. El Timer
@@ -416,6 +464,7 @@ class DriverProvider with ChangeNotifier {
   void _stopHeartbeat() {
     _heartbeatTimer?.cancel();
     _heartbeatTimer = null;
+    _recordSessionEnd(); // cierra la sesion (ended_at)
     // Para el foreground service (quita la notificacion "En Linea").
     BackgroundLocationController().stopTracking();
   }

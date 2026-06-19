@@ -28,7 +28,15 @@ class RideService {
         },
       );
 
-      var rides = (response as List).map((json) => RideModel.fromJson(json)).toList();
+      // Parseo RESILIENTE: si UNA fila truena no debe vaciar TODA la tabla.
+      var rides = <RideModel>[];
+      for (final json in (response as List)) {
+        try {
+          rides.add(RideModel.fromJson(json as Map<String, dynamic>));
+        } catch (e) {
+          debugPrint('RIDES_QUERY: skip bad row (rpc): $e');
+        }
+      }
 
       // Filter out rejected rides for this driver
       if (driverId != null) {
@@ -66,18 +74,24 @@ class RideService {
     // === 3. Combine and parse all rides ===
     final rides = <RideModel>[];
 
-    // Process deliveries (rides and packages)
+    // Process deliveries (rides, packages Y marketplace) — resiliente por fila.
     for (final json in (deliveriesResponse as List)) {
-      final ride = await _parseAndCalculateSplit(json as Map<String, dynamic>);
-      rides.add(ride);
+      try {
+        rides.add(await _parseAndCalculateSplit(json as Map<String, dynamic>));
+      } catch (e) {
+        debugPrint('RIDES_QUERY: skip bad delivery row: $e');
+      }
     }
 
-    // Process carpools - add service_type for proper parsing
+    // Process carpools - add service_type for proper parsing — resiliente por fila.
     for (final json in carpoolsResponse) {
-      final carpoolJson = Map<String, dynamic>.from(json as Map);
-      carpoolJson['service_type'] = 'carpool'; // Ensure it's recognized as carpool
-      final ride = await _parseAndCalculateSplit(carpoolJson);
-      rides.add(ride);
+      try {
+        final carpoolJson = Map<String, dynamic>.from(json as Map);
+        carpoolJson['service_type'] = 'carpool'; // Ensure it's recognized as carpool
+        rides.add(await _parseAndCalculateSplit(carpoolJson));
+      } catch (e) {
+        debugPrint('RIDES_QUERY: skip bad carpool row: $e');
+      }
     }
 
     // Filter out rejected rides for this driver

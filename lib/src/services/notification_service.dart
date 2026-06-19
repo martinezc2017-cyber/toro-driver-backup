@@ -14,6 +14,7 @@ import '../config/supabase_config.dart';
 import '../utils/money_format.dart';
 import 'in_app_banner_service.dart';
 import '../screens/marketplace_delivery_accept_screen.dart';
+import '../screens/ride_offer_screen.dart';
 
 /// Top-level background message handler (must be top-level function)
 @pragma('vm:entry-point')
@@ -631,6 +632,13 @@ class NotificationService {
             onTap: () => _navigateFromNotification(data),
           );
 
+          // Un NUEVO VIAJE no se debe quedar solo como banner que se va: con la
+          // app abierta lo abrimos como oferta PERSISTENTE de una vez (el chofer
+          // la ve sin tener que tocar la notificacion antes de que desaparezca).
+          if (type == 'new_ride') {
+            _navigateFromNotification(data);
+          }
+
           // Also show system notification (for notification shade)
           final channelId = _channelFromData(message.data);
           _showLocalNotification(
@@ -958,7 +966,11 @@ class NotificationService {
     } catch (e) {
       debugPrint('🔔 _routeByServiceType lookup failed: $e');
     }
-    navigator.pushNamed('/rides');
+    // Ride / paquete / carpool: oferta persistente full-screen (antes solo /rides
+    // que dependia de la lista flaky). Se abre el viaje directo desde el push.
+    navigator.push(MaterialPageRoute(
+      builder: (_) => RideOfferScreen(rideId: rideId),
+    ));
   }
 
   // Dispose

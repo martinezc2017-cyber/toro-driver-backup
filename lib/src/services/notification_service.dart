@@ -14,7 +14,6 @@ import '../config/supabase_config.dart';
 import '../utils/money_format.dart';
 import 'in_app_banner_service.dart';
 import '../screens/marketplace_delivery_accept_screen.dart';
-import '../screens/ride_offer_screen.dart';
 
 /// Top-level background message handler (must be top-level function)
 @pragma('vm:entry-point')
@@ -623,21 +622,19 @@ class NotificationService {
               message.data['notification_type'] as String? ?? '';
           final data = Map<String, dynamic>.from(message.data);
 
-          // Show in-app banner overlay
+          // Show in-app banner overlay. Un NUEVO VIAJE persiste 30s (la ventana
+          // de la oferta) en vez de irse a los 4s — era el banner que "estaba
+          // desconectado/se iba". Tocarlo lleva a los viajes.
           InAppBannerService.instance.show(
             title: title,
             body: body,
             type: type,
             data: data,
             onTap: () => _navigateFromNotification(data),
+            duration: type == 'new_ride'
+                ? const Duration(seconds: 30)
+                : const Duration(seconds: 4),
           );
-
-          // Un NUEVO VIAJE no se debe quedar solo como banner que se va: con la
-          // app abierta lo abrimos como oferta PERSISTENTE de una vez (el chofer
-          // la ve sin tener que tocar la notificacion antes de que desaparezca).
-          if (type == 'new_ride') {
-            _navigateFromNotification(data);
-          }
 
           // Also show system notification (for notification shade)
           final channelId = _channelFromData(message.data);
@@ -966,11 +963,9 @@ class NotificationService {
     } catch (e) {
       debugPrint('🔔 _routeByServiceType lookup failed: $e');
     }
-    // Ride / paquete / carpool: oferta persistente full-screen (antes solo /rides
-    // que dependia de la lista flaky). Se abre el viaje directo desde el push.
-    navigator.push(MaterialPageRoute(
-      builder: (_) => RideOfferScreen(rideId: rideId),
-    ));
+    // Ride / paquete / carpool: a la lista de viajes (el banner persistente ya
+    // avisa; el parseo resiliente hace que la lista muestre los disponibles).
+    navigator.pushNamed('/rides');
   }
 
   // Dispose

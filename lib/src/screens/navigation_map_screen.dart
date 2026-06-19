@@ -312,8 +312,8 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
       _currentBearing = heading;
     }
 
-    // Speed-based pitch: < 10 km/h = flat (0°), >= 10 km/h = navigation (45°)
-    final newPitch = speed >= _speedThresholdForPitch ? 45.0 : 0.0;
+    // En navegacion siempre inclinado (45°); fuera de nav, plano cuando va lento.
+    final newPitch = (_navigationService.isNavigating || speed >= _speedThresholdForPitch) ? 45.0 : 0.0;
     if (newPitch != _currentPitch) {
       debugPrint('🎥 PITCH: ${_currentPitch.toStringAsFixed(0)}° → ${newPitch.toStringAsFixed(0)}° (${(speed*3.6).toStringAsFixed(1)} km/h)');
       _currentPitch = newPitch;
@@ -566,6 +566,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
     if (mounted) setState(() => _isLoadingRoute = false);
 
     if (success && _navigationService.currentRoute != null) {
+      _currentPitch = 45.0; // arranca inclinado (el boton de centrar lo respeta)
       _drawRoute(_navigationService.currentRoute!);
 
       // Start periodic arrival check for pickup (covers stationary GPS gaps)
@@ -1868,8 +1869,11 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                     bearing: ride != null
                         ? FollowPuckViewportStateBearingCourse()
                         : FollowPuckViewportStateBearingConstant(0),
-                    // Speed-based pitch: < 10 km/h = flat (0°), >= 10 km/h = navigation (45°)
-                    pitch: ride != null ? _currentPitch : 0.0,
+                    // Navegacion 3D inclinada (45°) SIEMPRE que haya viaje activo.
+                    // Antes el pitch dependia de la velocidad (<10 km/h = plano) y
+                    // con la tablet/auto detenido se quedaba plano -> "no se activa
+                    // la inclinada". En viaje siempre inclinado, como Google/Waze.
+                    pitch: ride != null ? 45.0 : 0.0,
                   ),
                   styleUri: 'mapbox://styles/mapbox/navigation-night-v1',
                   onMapCreated: _onMapCreated,

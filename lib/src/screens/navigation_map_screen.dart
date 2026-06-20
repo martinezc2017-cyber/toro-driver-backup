@@ -65,7 +65,9 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
   String? _lastMarkerRideId; // Track which ride's marker is shown
   String? _lastRiderMarkerId; // Track rider marker state
   // Pin bitmaps (rendered once) + nombres reales del lugar para marketplace.
-  Uint8List? _pinStoreImg;   // pin tienda/recogida (ambar)
+  Uint8List? _pinStoreImg;   // pin recogida MARKETPLACE (tienda, ambar)
+  Uint8List? _pinRiderImg;   // pin recogida VIAJE/carpool (pasajero, ambar)
+  Uint8List? _pinPackageImg; // pin recogida PAQUETE (caja, ambar)
   Uint8List? _pinClientImg;  // pin cliente/destino (rojo)
   String? _mktVendorName;    // nombre del vendedor (ej. PALOMA)
   String? _mktBuyerName;     // nombre del comprador
@@ -120,6 +122,11 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
 
   // Periodic arrival check timer (covers case when GPS stream stops due to distanceFilter)
   Timer? _arrivalCheckTimer;
+
+  // Badge de mensajes no leídos en el botón de chat del pasajero.
+  int _unreadMessages = 0;
+  RealtimeChannel? _unreadChannel;
+  String? _unreadRideId;
 
   // Idempotency guard: prevents double-firing of lifecycle handlers
   // (double-tap, listener re-entry, button-spam, etc.)
@@ -749,6 +756,15 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
         if (confirmed != true) return; // driver canceled or RPC rejected
       }
 
+      // EFECTIVO: pedir el PIN de recogida (anti-fantasma). Se valida en el
+      // SERVIDOR (verify_pickup_otp) — un emulador no lo evade y cada intento
+      // (OK/falla) queda en forensic_events.
+      if (ride.type != RideType.marketplace &&
+          ride.paymentMethod == PaymentMethod.cash) {
+        final ok = await _verifyCashPickupPin(ride);
+        if (ok != true) return;
+      }
+
       final success = await rideProvider.startRide();
       if (success) {
         _waitTimer?.cancel();
@@ -759,6 +775,63 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
       }
     } finally {
       _isProcessingLifecycle = false;
+    }
+  }
+
+  /// Pide el PIN de recogida al chofer y lo valida en el SERVIDOR. Devuelve true
+  /// solo si coincide. El intento queda logueado (forensic_events) por el RPC.
+  Future<bool?> _verifyCashPickupPin(RideModel ride) async {
+    final ctrl = TextEditingController();
+    final entered = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF0D0E13),
+        title: const Text('Código de abordaje', style: TextStyle(color: Colors.white)),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          const Text(
+            'Pídele al pasajero su código de 4 dígitos para iniciar el viaje.',
+            style: TextStyle(color: Colors.white70, fontSize: 13),
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: ctrl,
+            keyboardType: TextInputType.number,
+            maxLength: 4,
+            autofocus: true,
+            style: const TextStyle(color: Colors.white, fontSize: 26, letterSpacing: 10, fontWeight: FontWeight.bold),
+            textAlign: TextAlign.center,
+            decoration: const InputDecoration(hintText: '••••', counterText: ''),
+          ),
+        ]),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF22D3EE)),
+            onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
+            child: const Text('Verificar'),
+          ),
+        ],
+      ),
+    );
+    if (entered == null || entered.isEmpty) return null;
+    try {
+      final res = await Supabase.instance.client.rpc('verify_pickup_otp', params: {
+        'p_delivery_id': ride.id,
+        'p_otp': entered,
+        'p_lat': _currentLat,
+        'p_lng': _currentLng,
+      });
+      final ok = res == true;
+      if (!ok && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Código incorrecto. Pídeselo de nuevo al pasajero.'),
+          backgroundColor: Color(0xFFEF4444),
+        ));
+      }
+      return ok;
+    } catch (e) {
+      debugPrint('verify_pickup_otp error: $e');
+      return true; // si falla la red, no castigar al chofer bloqueándolo
     }
   }
 
@@ -1312,15 +1385,22 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
       }
     }
 
-    // Si estamos muy lejos (> 500m), mostrar ruta completa
+    // Puck lejos de la ruta (>500m): antes dibujaba la ruta COMPLETA desde el
+    // origen -> la línea "empezaba muy largo/lejos" del chofer. Ahora arranca EN
+    // el puck y conecta al punto más cercano de la ruta hacia adelante.
     if (minDist > 500) {
-      final points = _fullRouteCoords.map((c) => Position(c[0], c[1])).toList();
-      await _routeLineManager!.create(PolylineAnnotationOptions(
-        geometry: LineString(coordinates: points),
-        lineColor: 0xFF4285F4,
-        lineWidth: 10.0,
-        lineOpacity: 0.9,
-      ));
+      final points = <Position>[Position(_currentLng, _currentLat)];
+      points.addAll(
+        _fullRouteCoords.sublist(closestIdx).map((c) => Position(c[0], c[1])),
+      );
+      if (points.length >= 2) {
+        await _routeLineManager!.create(PolylineAnnotationOptions(
+          geometry: LineString(coordinates: points),
+          lineColor: 0xFF4285F4,
+          lineWidth: 10.0,
+          lineOpacity: 0.9,
+        ));
+      }
       return;
     }
 
@@ -1639,12 +1719,19 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
             : (ride.dropoffLocation.address ?? 'Destino'));
 
     // Pin de IMAGEN nítido (no emoji): teardrop con ícono. Ámbar=recogida, rojo=destino.
+    // El glyph depende del SERVICIO (antes: siempre 'storefront' en la recogida,
+    // hacia ver un viaje normal como pedido de tienda). Mercado=tienda,
+    // paquete=caja, viaje/carpool=pasajero. El destino siempre es ubicacion.
     final pinColor = isPickup ? const Color(0xFFFFB300) : const Color(0xFFEF4444);
-    final glyph = isPickup ? Icons.storefront : Icons.location_on;
-    Uint8List? pin = isPickup ? _pinStoreImg : _pinClientImg;
-    if (pin == null) {
-      pin = await _renderPin(pinColor, glyph);
-      if (isPickup) { _pinStoreImg = pin; } else { _pinClientImg = pin; }
+    Uint8List? pin;
+    if (!isPickup) {
+      pin = _pinClientImg ??= await _renderPin(pinColor, Icons.location_on);
+    } else if (isMarket) {
+      pin = _pinStoreImg ??= await _renderPin(pinColor, Icons.storefront);
+    } else if (ride.type == RideType.package) {
+      pin = _pinPackageImg ??= await _renderPin(pinColor, Icons.inventory_2);
+    } else {
+      pin = _pinRiderImg ??= await _renderPin(pinColor, Icons.person_pin_circle);
     }
 
     // El pin se ancla por su PUNTA (abajo) en la coordenada exacta.
@@ -1938,37 +2025,31 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
     _waitTimer?.cancel();
     _gpsUpdateTimer?.cancel();
     _arrivalCheckTimer?.cancel();
+    if (_unreadChannel != null) {
+      Supabase.instance.client.removeChannel(_unreadChannel!);
+    }
     _tts.stop();
     WakelockPlus.disable();
     super.dispose();
   }
 
-  /// Recentrar cámara en el conductor
-  void _centerOnDriver() async {
-    if (_map == null) return;
-
+  /// Recentrar cámara en el conductor (suave). Quitar el modo libre hace que el
+  /// rebuild re-aplique FollowPuckViewportState y Mapbox anime el regreso al puck.
+  void _centerOnDriver() {
+    if (!mounted) return;
     _returnToCenterTimer?.cancel();
-    setState(() => _isFreeCameraMode = false);
-
-    await _map!.setCamera(CameraOptions(
-      center: Point(coordinates: Position(_currentLng, _currentLat)),
-      zoom: _currentZoom,
-      bearing: _currentBearing,
-      pitch: _currentPitch,
-    ));
+    if (_isFreeCameraMode) setState(() => _isFreeCameraMode = false);
   }
 
-  /// Cuando el usuario interactúa con el mapa
+  /// Cuando el usuario toca/arrastra el mapa -> cámara libre + auto-recentrar.
   void _onUserCameraMove() {
     if (!_isFreeCameraMode) {
       setState(() => _isFreeCameraMode = true);
     }
-
-    // Cancelar timer anterior
+    // Reinicia el contador en cada toque/movimiento: recentra 6s DESPUÉS de que
+    // dejas de mover (automático, no agresivo).
     _returnToCenterTimer?.cancel();
-
-    // Auto-recentrar después de 10 segundos de inactividad
-    _returnToCenterTimer = Timer(const Duration(seconds: 10), () {
+    _returnToCenterTimer = Timer(const Duration(seconds: 6), () {
       if (mounted && _isFreeCameraMode) {
         _centerOnDriver();
       }
@@ -1991,6 +2072,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
               _checkAndStartNavigation(ride);
               // Update rider marker on every rebuild (rider location may change)
               _updateRiderMarker(ride);
+              if (ride != null) _setupUnreadBadge(ride);
             }
           });
         }
@@ -2001,22 +2083,29 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
             children: [
               // Mapa de navegación - ocupa toda la pantalla
               Positioned.fill(
-                child: MapWidget(
-                  key: const ValueKey('nav_map'),
-                  viewport: FollowPuckViewportState(
-                    zoom: 17.0,
-                    bearing: ride != null
-                        ? FollowPuckViewportStateBearingCourse()
-                        : FollowPuckViewportStateBearingConstant(0),
-                    // Navegacion 3D inclinada (45°) SIEMPRE que haya viaje activo.
-                    // Antes el pitch dependia de la velocidad (<10 km/h = plano) y
-                    // con la tablet/auto detenido se quedaba plano -> "no se activa
-                    // la inclinada". En viaje siempre inclinado, como Google/Waze.
-                    pitch: ride != null ? 45.0 : 0.0,
+                child: Listener(
+                  // Cuando tocas/arrastras el mapa -> camara LIBRE (IdleViewportState)
+                  // para que puedas explorar y ver el punto final. Antes el
+                  // FollowPuck te regresaba "a webo" en cada update de GPS. A los
+                  // 6s sin tocar, recentra solo y suave en el chofer (automatico).
+                  onPointerDown: (_) => _onUserCameraMove(),
+                  onPointerMove: (_) => _onUserCameraMove(),
+                  child: MapWidget(
+                    key: const ValueKey('nav_map'),
+                    viewport: _isFreeCameraMode
+                        ? const IdleViewportState()
+                        : FollowPuckViewportState(
+                            zoom: 17.0,
+                            bearing: ride != null
+                                ? FollowPuckViewportStateBearingCourse()
+                                : FollowPuckViewportStateBearingConstant(0),
+                            // Navegacion 3D inclinada (45°) SIEMPRE con viaje activo.
+                            pitch: ride != null ? 45.0 : 0.0,
+                          ),
+                    styleUri: 'mapbox://styles/mapbox/navigation-night-v1',
+                    onMapCreated: _onMapCreated,
+                    androidHostingMode: AndroidPlatformViewHostingMode.VD,
                   ),
-                  styleUri: 'mapbox://styles/mapbox/navigation-night-v1',
-                  onMapCreated: _onMapCreated,
-                  androidHostingMode: AndroidPlatformViewHostingMode.VD,
                 ),
               ),
 
@@ -2752,14 +2841,39 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                           // Chat button - SIEMPRE VISIBLE
                           GestureDetector(
                             onTap: () => _openChatWithPassenger(ride),
-                            child: Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF3B82F6),  // admin blue
-                                shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white24),
-                              ),
-                              child: const Icon(Icons.chat_bubble, size: 20, color: Colors.white),
+                            child: Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF3B82F6),  // admin blue
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: Colors.white24),
+                                  ),
+                                  child: const Icon(Icons.chat_bubble, size: 20, color: Colors.white),
+                                ),
+                                // Badge de mensajes no leídos del pasajero.
+                                if (_unreadMessages > 0)
+                                  Positioned(
+                                    right: -3,
+                                    top: -3,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(3),
+                                      constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFEF4444),
+                                        shape: BoxShape.circle,
+                                        border: Border.all(color: Colors.white, width: 1.5),
+                                      ),
+                                      child: Text(
+                                        _unreadMessages > 9 ? '9+' : '$_unreadMessages',
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold, height: 1.0),
+                                      ),
+                                    ),
+                                  ),
+                              ],
                             ),
                           ),
                         ],
@@ -3064,6 +3178,16 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
     final driverId = driverProvider.driver?.id;
     if (driverId == null) return;
 
+    // Limpiar badge + marcar leídos al abrir el chat.
+    if (_unreadMessages > 0 && mounted) setState(() => _unreadMessages = 0);
+    Supabase.instance.client
+        .from('ride_messages')
+        .update({'read_at': DateTime.now().toUtc().toIso8601String()})
+        .eq('delivery_id', ride.id)
+        .neq('sender_id', driverId)
+        .isFilter('read_at', null)
+        .then((_) {}, onError: (_) {});
+
     RideChatPopup.show(
       context,
       deliveryId: ride.id,
@@ -3072,6 +3196,43 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
       otherName: ride.passengerName,
       otherImageUrl: ride.passengerImageUrl,
     );
+  }
+
+  /// Cuenta no leídos del pasajero y escucha nuevos para el badge del botón.
+  void _setupUnreadBadge(RideModel ride) {
+    final driverId = Provider.of<DriverProvider>(context, listen: false).driver?.id;
+    if (driverId == null || _unreadRideId == ride.id) return;
+    _unreadRideId = ride.id;
+    // Conteo inicial de no leídos.
+    Supabase.instance.client
+        .from('ride_messages')
+        .select('id')
+        .eq('delivery_id', ride.id)
+        .neq('sender_id', driverId)
+        .isFilter('read_at', null)
+        .then((rows) {
+      if (mounted) setState(() => _unreadMessages = (rows as List).length);
+    }, onError: (_) {});
+    // Realtime: mensaje nuevo del pasajero -> +1 (canal propio, no choca con el popup).
+    if (_unreadChannel != null) {
+      Supabase.instance.client.removeChannel(_unreadChannel!);
+    }
+    _unreadChannel = Supabase.instance.client.channel('drv_unread_${ride.id}')
+      ..onPostgresChanges(
+        event: PostgresChangeEvent.insert,
+        schema: 'public',
+        table: 'ride_messages',
+        filter: PostgresChangeFilter(
+          type: PostgresChangeFilterType.eq,
+          column: 'delivery_id',
+          value: ride.id,
+        ),
+        callback: (payload) {
+          if (payload.newRecord['sender_type'] == 'rider' && mounted) {
+            setState(() => _unreadMessages += 1);
+          }
+        },
+      ).subscribe();
   }
 
   /// Wait timer for pre-navigation panel

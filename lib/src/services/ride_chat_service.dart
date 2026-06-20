@@ -48,10 +48,49 @@ class RideChatService {
       });
 
       debugPrint('CHAT -> Message sent');
+      // PUSH a la contraparte: el insert NO notifica solo. Sin esto el rider solo
+      // veia el mensaje con el chat abierto. Best-effort, no bloquea el envio.
+      _notifyOtherParty(
+        deliveryId: deliveryId,
+        senderType: senderType,
+        message: message,
+      );
       return true;
     } catch (e) {
       debugPrint('CHAT -> Error sending message: $e');
       return false;
+    }
+  }
+
+  /// Notifica (push) a la contraparte del viaje cuando llega un mensaje nuevo.
+  Future<void> _notifyOtherParty({
+    required String deliveryId,
+    required String senderType,
+    required String message,
+  }) async {
+    try {
+      final d = await _client
+          .from('deliveries')
+          .select('driver_id, user_id')
+          .eq('id', deliveryId)
+          .maybeSingle();
+      if (d == null) return;
+      final fromRider = senderType == 'rider';
+      final recipientId = fromRider ? d['driver_id'] : d['user_id'];
+      if (recipientId == null) return;
+      final preview =
+          message.length > 120 ? '${message.substring(0, 120)}…' : message;
+      await _client.functions.invoke('send-notification', body: {
+        'userId': recipientId,
+        'title': fromRider ? 'Mensaje de tu pasajero' : 'Mensaje de tu conductor',
+        'body': preview,
+        'type': 'ride_chat',
+        'app': fromRider ? 'driver' : 'rider',
+        'data': {'type': 'ride_chat', 'delivery_id': deliveryId},
+      });
+      debugPrint('CHAT -> push enviado a $recipientId');
+    } catch (e) {
+      debugPrint('CHAT -> notify failed (no-fatal): $e');
     }
   }
 

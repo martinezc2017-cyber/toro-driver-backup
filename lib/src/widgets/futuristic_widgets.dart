@@ -1187,7 +1187,7 @@ class _FireGlowButtonState extends State<FireGlowButton>
     final inactiveColor = const Color(0xFFB0B0B0);
     final selectedBg = (widget.hasActiveGlow
         ? AppColors.success
-        : const Color(0xFF2563EB)).withValues(alpha: 0.30);
+        : AppColors.primaryCyan).withValues(alpha: 0.30);
 
     final showGlow = widget.hasActiveGlow && !widget.isSelected;
 
@@ -1320,26 +1320,21 @@ class _FireGlowBottomNavBarState extends State<FireGlowBottomNavBar>
             gradient: LinearGradient(
               begin: Alignment(beginX, -1),
               end: Alignment(endX, 1),
+              // Admin cyan->azul (era rainbow). Fluye, sin colores fuera de paleta.
               colors: const [
-                Color(0xFFFF0000),
-                Color(0xFFFF7300),
-                Color(0xFFFFFF00),
-                Color(0xFF48FF00),
-                Color(0xFF00FFD5),
-                Color(0xFF002BFF),
-                Color(0xFFFF00C8),
-                Color(0xFFFF0000),
+                Color(0xFF3B82F6),
+                Color(0xFF22D3EE),
+                Color(0xFF67E8F9),
+                Color(0xFF3B82F6),
+                Color(0xFF1D4ED8),
+                Color(0xFF22D3EE),
+                Color(0xFF3B82F6),
               ],
               tileMode: TileMode.repeated,
             ),
             boxShadow: [
               BoxShadow(
-                color: HSLColor.fromAHSL(
-                  0.5,
-                  (value * 360) % 360,
-                  1.0,
-                  0.5,
-                ).toColor(),
+                color: const Color(0xFF22D3EE).withValues(alpha: 0.45),
                 blurRadius: 8,
                 spreadRadius: 0,
               ),

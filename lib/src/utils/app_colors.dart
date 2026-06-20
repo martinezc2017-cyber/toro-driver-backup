@@ -9,8 +9,8 @@ class AppColors {
   // NEON COLOR PALETTE - Same as Rider Web
   // ═══════════════════════════════════════════════════════════════════════════
 
-  // Primary Blue (matches Rider)
-  static const Color primary = Color(0xFF2563EB);
+  // Primary Blue — admin Toro blue (was 0xFF2563EB)
+  static const Color primary = Color(0xFF3B82F6);
   static const Color primaryLight = Color(0xFF60A5FA);
   static const Color primaryBright = Color(0xFF60A5FA);
   static const Color primaryPale = Color(0xFF93C5FD);
@@ -22,10 +22,10 @@ class AppColors {
   static const Color successLight = Color(0xFF67E8F9);
   static const Color successDark = Color(0xFF0E7490);
 
-  // Error/Danger - Elegant Red (matches Rider)
-  static const Color error = Color(0xFFE53935);
-  static const Color errorLight = Color(0xFFEF5350);
-  static const Color errorDark = Color(0xFFC62828);
+  // Error/Danger — admin red (was 0xFFE53935)
+  static const Color error = Color(0xFFEF4444);
+  static const Color errorLight = Color(0xFFF87171);
+  static const Color errorDark = Color(0xFFDC2626);
 
   // Warning - Amber (matches Rider)
   static const Color warning = Color(0xFFFBBF24);
@@ -41,18 +41,18 @@ class AppColors {
   // DARK THEME BASE COLORS
   // ═══════════════════════════════════════════════════════════════════════════
 
-  // Backgrounds (matches Rider)
-  static const Color background = Color(0xFF0A0A0A);
-  static const Color surface = Color(0xFF0D0D0D);
-  static const Color card = Color(0xFF161616);
-  static const Color cardSecondary = Color(0xFF1E1E1E);
-  static const Color cardHover = Color(0xFF222222);
-  static const Color cardTertiary = Color(0xFF2A2A2A);
+  // Backgrounds — alineados al admin (OLED cockpit void). app_themes.dart
+  static const Color background = Color(0xFF060709);     // admin _bgPrimary
+  static const Color surface = Color(0xFF0D0E13);        // admin _bgCard
+  static const Color card = Color(0xFF0D0E13);           // admin _bgCard
+  static const Color cardSecondary = Color(0xFF15151C);  // admin _bgCardLight
+  static const Color cardHover = Color(0xFF1A1A22);
+  static const Color cardTertiary = Color(0xFF22232C);
 
   // Borders (matches Rider)
   static const Color border = Color(0xFF2A2A2A);
   static const Color borderSubtle = Color(0xFF1F1F1F);
-  static const Color borderFocus = Color(0xFF2563EB);
+  static const Color borderFocus = Color(0xFF3B82F6);
   static const Color divider = Color(0xFF2A2A2A);
 
   // Text Colors (matches Rider)
@@ -105,16 +105,12 @@ class AppColors {
   // NEON GRADIENTS - Animated flowing effect
   // ═══════════════════════════════════════════════════════════════════════════
 
-  // Primary gradient for buttons (matches Rider)
+  // Primary gradient for buttons — admin cyan->blue limpio (era rainbow azul)
   static const LinearGradient primaryGradient = LinearGradient(
     colors: [
-      Color(0xFF2563EB),
-      Color(0xFF60A5FA),
-      Color(0xFF60A5FA),
-      Color(0xFF93C5FD),
       Color(0xFF3B82F6),
-      Color(0xFF2563EB),
-      Color(0xFF60A5FA),
+      Color(0xFF22D3EE),
+      Color(0xFF3B82F6),
     ],
   );
 
@@ -125,15 +121,14 @@ class AppColors {
     end: Alignment.bottomRight,
   );
 
-  // Success gradient
+  // Success gradient — admin cyan (era VERDE; admin no usa verde)
   static const LinearGradient successGradient = LinearGradient(
     colors: [
-      Color(0xFF388E3C),
-      Color(0xFF4CAF50),
-      Color(0xFF66BB6A),
-      Color(0xFFA5D6A7),
-      Color(0xFF4CAF50),
-      Color(0xFF388E3C),
+      Color(0xFF0891B2),
+      Color(0xFF22D3EE),
+      Color(0xFF67E8F9),
+      Color(0xFF22D3EE),
+      Color(0xFF0891B2),
     ],
   );
 

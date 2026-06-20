@@ -1262,7 +1262,20 @@ class _AnimatedEmptyStateState extends State<_AnimatedEmptyState>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 24),
+
+                  // Infografía "Colectivo": explica de que va (Programa -> Coincide
+                  // -> Aborda y baja) para que la gente entienda la funcion.
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Image.asset(
+                      'assets/images/colectivo_explainer.png',
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                    ),
+                  ),
+
+                  const SizedBox(height: 28),
 
                   // Title with i18n
                   Text(
@@ -1287,6 +1300,34 @@ class _AnimatedEmptyStateState extends State<_AnimatedEmptyState>
                       height: 1.5,
                     ),
                     textAlign: TextAlign.center,
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Rol de TORO: el conductor define su ruta y su precio; TORO
+                  // solo ayuda a abordar pasajeros (modelo intermediario).
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF22D3EE).withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFF22D3EE).withOpacity(0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.info_outline_rounded,
+                            color: Color(0xFF22D3EE), size: 18),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'organizer.colectivo_role'.tr(),
+                            style: const TextStyle(
+                                color: Colors.white, fontSize: 13, height: 1.4),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
 
                   const SizedBox(height: 40),

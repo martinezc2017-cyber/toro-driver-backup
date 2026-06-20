@@ -997,6 +997,7 @@
 
   "organizer.first_trip_title": "Create Your First Trip",
   "organizer.first_trip_subtitle": "Organize events and rent transportation for groups easily and safely",
+  "organizer.colectivo_role": "The driver sets their route and price. TORO only helps board passengers.",
   "organizer.examples": "EXAMPLES",
   "organizer.example_bus": "Daily corporate shuttle",
   "organizer.example_beach": "Beach trip with friends",

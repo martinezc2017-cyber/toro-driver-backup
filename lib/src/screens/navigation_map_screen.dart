@@ -49,6 +49,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
   double _currentLng = -112.0740;
   double _currentBearing = 0;
   StreamSubscription<geo.Position>? _gpsStream;
+  bool _mockDetected = false; // GPS falso detectado (candado #4)
   // Variable removida: _navUpdateTimer no se usaba
 
   // Navegación
@@ -282,6 +283,14 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
   void _onGpsUpdate(geo.Position pos) {
     // PATCH: Evitar NaN/heading basura
     if (!pos.latitude.isFinite || !pos.longitude.isFinite) return;
+
+    // CANDADO #4: GPS FALSO (mock location / emulador). Lo registra UNA vez en
+    // fraud_signals + forense, y marca bandera para bloquear iniciar/cerrar viaje.
+    if (pos.isMocked && !_mockDetected) {
+      _mockDetected = true;
+      _logMockSignal(pos);
+      if (mounted) setState(() {});
+    }
     final heading = (pos.heading.isFinite && pos.heading >= 0) ? pos.heading : _lastUpdateBearing;
     final speed = (pos.speed.isFinite && pos.speed >= 0) ? pos.speed : _currentSpeed;
 
@@ -735,6 +744,14 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
         return;
       }
 
+      // CANDADO #4: GPS falso -> no se puede iniciar (ya quedó en fraud_signals).
+      if (_mockDetected) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('GPS falso detectado. Desactiva la ubicación simulada para continuar.'),
+          backgroundColor: Color(0xFFEF4444)));
+        return;
+      }
+
       // Marketplace deliveries require OTP + photo + GPS to confirm pickup before start
       if (ride.type == RideType.marketplace) {
         final orderId = await _fetchMarketplaceOrderIdByDeliveryId(ride.id);
@@ -775,6 +792,102 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
       }
     } finally {
       _isProcessingLifecycle = false;
+    }
+  }
+
+  /// Handshake de feria (candado #2): el chofer captura con cuánto paga el cliente,
+  /// el app calcula el cambio y confirma. Loguea efectivo_declarado + confirmado.
+  Future<bool?> _confirmCashFeria(RideModel ride, double total, String cc) async {
+    final ctrl = TextEditingController();
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setSt) {
+        final paid = double.tryParse(ctrl.text) ?? 0;
+        final change = paid - total;
+        return AlertDialog(
+          backgroundColor: const Color(0xFF0D0E13),
+          title: const Text('Cobro en efectivo', style: TextStyle(color: Colors.white)),
+          content: Column(mainAxisSize: MainAxisSize.min, children: [
+            Text('Total: ${formatMoney(total, country: cc)}',
+                style: const TextStyle(color: Color(0xFF22D3EE), fontSize: 19, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            const Text('¿Con cuánto paga el cliente?', style: TextStyle(color: Colors.white70, fontSize: 13)),
+            const SizedBox(height: 6),
+            TextField(
+              controller: ctrl,
+              keyboardType: TextInputType.number,
+              autofocus: true,
+              style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+              decoration: const InputDecoration(prefixText: '\$ ', prefixStyle: TextStyle(color: Colors.white54, fontSize: 22)),
+              onChanged: (_) => setSt(() {}),
+            ),
+            const SizedBox(height: 12),
+            if (paid > 0)
+              Text(
+                change >= 0
+                    ? 'Devuélvele de cambio: ${formatMoney(change, country: cc)}'
+                    : 'Falta: ${formatMoney(-change, country: cc)}',
+                style: TextStyle(
+                    color: change >= 0 ? const Color(0xFF22D3EE) : const Color(0xFFEF4444),
+                    fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+          ]),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF22D3EE)),
+              onPressed: paid >= total ? () => Navigator.pop(ctx, true) : null,
+              child: const Text('Confirmar recibido'),
+            ),
+          ],
+        );
+      }),
+    );
+    if (result != true) return false;
+    final paid = double.tryParse(ctrl.text) ?? total;
+    final change = paid - total;
+    try {
+      final c = Supabase.instance.client;
+      await c.rpc('log_forensic_event', params: {
+        'p_event_type': 'efectivo_declarado',
+        'p_delivery_id': ride.id, 'p_actor_role': 'driver',
+        'p_lat': _currentLat, 'p_lng': _currentLng,
+        'p_metadata': {'monto': paid, 'total': total},
+      });
+      await c.rpc('log_forensic_event', params: {
+        'p_event_type': 'efectivo_confirmado',
+        'p_delivery_id': ride.id, 'p_actor_role': 'driver',
+        'p_lat': _currentLat, 'p_lng': _currentLng,
+        'p_metadata': {'recibido': total, 'pago_con': paid, 'cambio': change},
+      });
+    } catch (_) {/* el cierre no se bloquea por el log */}
+    return true;
+  }
+
+  /// Registra GPS falso (mock location) en fraud_signals + forense (candado #4).
+  Future<void> _logMockSignal(geo.Position pos) async {
+    final ride = context.read<RideProvider>().activeRide;
+    final driverId = context.read<DriverProvider>().driver?.id;
+    try {
+      await Supabase.instance.client.rpc('log_fraud_signal', params: {
+        'p_signal': 'mock_location',
+        'p_reference': ride?.id ?? driverId ?? '',
+        'p_details': {'driver_id': driverId, 'ride_id': ride?.id, 'lat': pos.latitude, 'lng': pos.longitude},
+      });
+      if (ride != null) {
+        await Supabase.instance.client.rpc('log_forensic_event', params: {
+          'p_event_type': 'mock_location_detectado',
+          'p_delivery_id': ride.id,
+          'p_actor_role': 'driver',
+          'p_lat': pos.latitude,
+          'p_lng': pos.longitude,
+          'p_metadata': {'driver_id': driverId},
+        });
+      }
+      debugPrint('🚨 MOCK LOCATION detectado y registrado');
+    } catch (e) {
+      debugPrint('mock signal error: $e');
     }
   }
 
@@ -923,31 +1036,18 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
       return;
     }
 
-    // Cash payment confirmation
+    // Cash payment confirmation — HANDSHAKE DE FERIA (candado #2)
     if (rideProvider.isCashPayment) {
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          backgroundColor: const Color(0xFF1E1E1E),
-          title: const Text('Confirmar pago en efectivo',
-              style: TextStyle(color: Colors.white)),
-          content: Text(
-            '¿Recibiste ${formatMoney(rideProvider.cashAmountToCollect, country: context.read<DriverProvider>().driver?.countryCode ?? 'US')} en efectivo?',
-            style: const TextStyle(color: Colors.white70),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('NO'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-              child: const Text('SÍ, RECIBIDO'),
-            ),
-          ],
-        ),
-      );
+      // CANDADO #4: GPS falso -> no se puede cerrar el viaje.
+      if (_mockDetected) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('GPS falso detectado. No puedes cerrar el viaje.'),
+          backgroundColor: Color(0xFFEF4444)));
+        return;
+      }
+      final cc = context.read<DriverProvider>().driver?.countryCode ?? 'US';
+      final total = rideProvider.cashAmountToCollect;
+      final confirmed = await _confirmCashFeria(ride, total, cc);
       if (confirmed != true) return;
       final success = await rideProvider.completeRideWithCashConfirmation(driverId: driverId);
       if (!success) {

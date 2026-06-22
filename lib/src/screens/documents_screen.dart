@@ -133,59 +133,62 @@ class _DocumentsScreenState extends State<DocumentsScreen>
         ),
       ];
 
-      if (vehicleDocs != null) {
-        _vehicleDocs = [
-          DocumentItem(
-            'doc_vehicle_insurance'.tr(),
-            vehicleDocs.insurancePolicy ?? 'doc_not_registered'.tr(),
-            _buildExpiryText(vehicleDocs.insuranceExpiry),
-            Icons.shield,
-            _mapInsuranceStatus(vehicleDocs),
-            onTap: () => _showUploadDialog(DocumentUploadType.insurance),
-          ),
-          DocumentItem(
-            'doc_rideshare_endorsement'.tr(),
-            vehicleDocs.endorsementId ?? 'doc_not_registered'.tr(),
-            _buildExpiryText(vehicleDocs.endorsementExpiry),
-            Icons.verified,
-            vehicleDocs.hasEndorsement ? DocumentStatus.approved : DocumentStatus.missing,
-            onTap: () => _showUploadDialog(DocumentUploadType.endorsement),
-          ),
-          DocumentItem(
-            'doc_vehicle_registration'.tr(),
-            vehicleDocs.hasRegistration ? 'doc_uploaded'.tr() : 'doc_not_uploaded'.tr(),
-            'doc_required'.tr(),
-            Icons.directions_car,
-            vehicleDocs.hasRegistration ? DocumentStatus.approved : DocumentStatus.missing,
-            onTap: () => _showUploadDialog(DocumentUploadType.registration),
-          ),
-          DocumentItem(
-            'doc_vehicle_photos'.tr(),
-            '${vehicleDocs.vehiclePhotosCount}/4 fotos',
-            'doc_exterior_interior'.tr(),
-            Icons.photo_camera,
-            vehicleDocs.hasAllPhotos ? DocumentStatus.approved : DocumentStatus.pending,
-            onTap: () => _showUploadDialog(DocumentUploadType.vehiclePhotos),
-          ),
-        ];
-      } else {
-        _vehicleDocs = [
-          DocumentItem(
-            'Registrar vehículo',
-            'Requerido para continuar',
-            'Toca para agregar',
-            Icons.add_circle_outline,
-            DocumentStatus.missing,
-            // After the register-vehicle flow returns, reload so the freshly
-            // set drivers.current_vehicle_id (and its docs) show without a
-            // restart. Awaited explicitly so the reload always runs on return.
-            onTap: () async {
-              await Navigator.pushNamed(context, '/add-vehicle');
-              if (mounted) await _loadDocuments();
-            },
-          ),
-        ];
+      // ===== Vehículo + Seguro (MX) — driver-based (tabla drivers) =====
+      // Seguro (póliza), Tarjeta de circulación y las 4 fotos por lado. Se
+      // muestran SIEMPRE (no dependen de registrar un vehículo aparte) y se
+      // suben a `drivers`, que es donde el admin (Documentos México) los lee.
+      DocumentStatus mapDoc(String s) {
+        switch (s) {
+          case 'approved':
+            return DocumentStatus.approved;
+          case 'expired':
+          case 'rejected':
+            return DocumentStatus.rejected;
+          case 'expiring':
+            return DocumentStatus.expiring;
+          case 'pending':
+            return DocumentStatus.pending;
+          default:
+            return DocumentStatus.missing;
+        }
       }
+      DocumentItem vehPhoto(String label, String hint, String? url, DocumentUploadType t) =>
+          DocumentItem(
+            label,
+            (url != null && url.isNotEmpty) ? 'Subida ✓' : 'No proporcionada',
+            hint,
+            Icons.photo_camera,
+            (url != null && url.isNotEmpty) ? DocumentStatus.approved : DocumentStatus.missing,
+            onTap: () => _showUploadDialog(t),
+          );
+      _vehicleDocs = [
+        DocumentItem(
+          'Seguro (póliza)',
+          driverDocs.hasInsurance ? 'Subido ✓' : 'No proporcionado',
+          driverDocs.insuranceProvider ?? 'Foto de la póliza vigente',
+          Icons.shield,
+          mapDoc(driverDocs.insuranceStatus),
+          onTap: () => _showUploadDialog(DocumentUploadType.insurancePolicy),
+        ),
+        DocumentItem(
+          'Tarjeta de circulación',
+          driverDocs.hasCirculationCard ? 'Subida ✓' : 'No proporcionada',
+          driverDocs.circulationCardPlate != null
+              ? 'Placa: ${driverDocs.circulationCardPlate}'
+              : 'Foto de la tarjeta de circulación',
+          Icons.directions_car,
+          mapDoc(driverDocs.circulationCardStatus),
+          onTap: () => _showUploadDialog(DocumentUploadType.circulationCard),
+        ),
+        vehPhoto('Foto del vehículo — Frente', 'Frente del auto',
+            driverDocs.vehiclePhotoFrontUrl, DocumentUploadType.vehFront),
+        vehPhoto('Foto del vehículo — Atrás', 'Parte trasera',
+            driverDocs.vehiclePhotoBackUrl, DocumentUploadType.vehBack),
+        vehPhoto('Foto del vehículo — Izquierda', 'Costado izquierdo',
+            driverDocs.vehiclePhotoLeftUrl, DocumentUploadType.vehLeft),
+        vehPhoto('Foto del vehículo — Derecha', 'Costado derecho',
+            driverDocs.vehiclePhotoRightUrl, DocumentUploadType.vehRight),
+      ];
 
       setState(() => _isLoading = false);
     } catch (e) {
@@ -346,6 +349,36 @@ class _DocumentsScreenState extends State<DocumentsScreen>
         description = '4 fotos del vehículo';
         icon = Icons.photo_camera;
         break;
+      case DocumentUploadType.insurancePolicy:
+        title = 'Seguro (póliza)';
+        description = 'Foto de la póliza de seguro vigente';
+        icon = Icons.shield;
+        break;
+      case DocumentUploadType.circulationCard:
+        title = 'Tarjeta de circulación';
+        description = 'Foto clara de la tarjeta de circulación';
+        icon = Icons.directions_car;
+        break;
+      case DocumentUploadType.vehFront:
+        title = 'Foto del vehículo — Frente';
+        description = 'Toma la foto del frente del auto';
+        icon = Icons.photo_camera;
+        break;
+      case DocumentUploadType.vehBack:
+        title = 'Foto del vehículo — Atrás';
+        description = 'Toma la foto de la parte trasera';
+        icon = Icons.photo_camera;
+        break;
+      case DocumentUploadType.vehLeft:
+        title = 'Foto del vehículo — Izquierda';
+        description = 'Toma la foto del costado izquierdo';
+        icon = Icons.photo_camera;
+        break;
+      case DocumentUploadType.vehRight:
+        title = 'Foto del vehículo — Derecha';
+        description = 'Toma la foto del costado derecho';
+        icon = Icons.photo_camera;
+        break;
     }
 
     showModalBottomSheet(
@@ -481,6 +514,37 @@ class _DocumentsScreenState extends State<DocumentsScreen>
           if (_vehicleId != null) {
             success = await _documentService.uploadVehiclePhotos(vehicleId: _vehicleId!, frontPhoto: file);
           }
+          break;
+        // ===== MX Fase 2: escriben a la tabla drivers =====
+        case DocumentUploadType.insurancePolicy:
+          success = await _documentService.uploadInsuranceImage(
+                  _driverId ?? user.id, file) !=
+              null;
+          break;
+        case DocumentUploadType.circulationCard:
+          success = await _documentService.uploadCirculationCard(
+                  _driverId ?? user.id, file) !=
+              null;
+          break;
+        case DocumentUploadType.vehFront:
+          success = await _documentService.uploadVehicleSidePhoto(
+                  _driverId ?? user.id, 'front', file) !=
+              null;
+          break;
+        case DocumentUploadType.vehBack:
+          success = await _documentService.uploadVehicleSidePhoto(
+                  _driverId ?? user.id, 'back', file) !=
+              null;
+          break;
+        case DocumentUploadType.vehLeft:
+          success = await _documentService.uploadVehicleSidePhoto(
+                  _driverId ?? user.id, 'left', file) !=
+              null;
+          break;
+        case DocumentUploadType.vehRight:
+          success = await _documentService.uploadVehicleSidePhoto(
+                  _driverId ?? user.id, 'right', file) !=
+              null;
           break;
       }
 
@@ -1422,4 +1486,18 @@ class DocumentItem {
 
 enum DocumentStatus { approved, pending, expiring, missing, rejected }
 
-enum DocumentUploadType { license, profilePhoto, insurance, endorsement, registration, vehiclePhotos }
+enum DocumentUploadType {
+  license,
+  profilePhoto,
+  insurance,
+  endorsement,
+  registration,
+  vehiclePhotos,
+  // MX Fase 2 (escriben a la tabla drivers):
+  insurancePolicy,
+  circulationCard,
+  vehFront,
+  vehBack,
+  vehLeft,
+  vehRight,
+}

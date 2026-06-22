@@ -30,7 +30,12 @@ class DocumentService {
             license_number, license_expiry, license_image_url,
             profile_image_url,
             agreement_signed, agreement_signed_at,
-            background_check_status, background_check_date
+            background_check_status, background_check_date,
+            insurance_image_url, insurance_policy, insurance_expiry, insurance_provider,
+            vehicle_plate,
+            vehicle_photo_front_url, vehicle_photo_back_url,
+            vehicle_photo_left_url, vehicle_photo_right_url,
+            circulation_card_url, circulation_card_plate, circulation_card_insurer, circulation_card_expiry
           ''')
           .eq('id', driverId)
           .maybeSingle();
@@ -125,6 +130,54 @@ class DocumentService {
       return url;
     } catch (e) {
       AppLogger.log('DocumentService: Error uploading INE: $e');
+      return null;
+    }
+  }
+
+  /// Sube la foto de la PÓLIZA de seguro -> drivers.insurance_image_url
+  Future<String?> uploadInsuranceImage(String driverId, File file) async {
+    try {
+      final url = await _uploadFile(driverId, 'insurance', file);
+      await _client.from(SupabaseConfig.driversTable).update({
+        'insurance_image_url': url,
+        'updated_at': DateTime.now().toIso8601String(),
+      }).eq('id', driverId);
+      return url;
+    } catch (e) {
+      AppLogger.log('DocumentService: Error uploading insurance: $e');
+      return null;
+    }
+  }
+
+  /// Sube una de las 4 fotos del vehículo. side = front|back|left|right
+  Future<String?> uploadVehicleSidePhoto(
+      String driverId, String side, File file) async {
+    const allowed = {'front', 'back', 'left', 'right'};
+    if (!allowed.contains(side)) return null;
+    try {
+      final url = await _uploadFile(driverId, 'vehicle_$side', file);
+      await _client.from(SupabaseConfig.driversTable).update({
+        'vehicle_photo_${side}_url': url,
+        'updated_at': DateTime.now().toIso8601String(),
+      }).eq('id', driverId);
+      return url;
+    } catch (e) {
+      AppLogger.log('DocumentService: Error uploading vehicle photo ($side): $e');
+      return null;
+    }
+  }
+
+  /// Sube la TARJETA DE CIRCULACIÓN -> drivers.circulation_card_url
+  Future<String?> uploadCirculationCard(String driverId, File file) async {
+    try {
+      final url = await _uploadFile(driverId, 'circulation_card', file);
+      await _client.from(SupabaseConfig.driversTable).update({
+        'circulation_card_url': url,
+        'updated_at': DateTime.now().toIso8601String(),
+      }).eq('id', driverId);
+      return url;
+    } catch (e) {
+      AppLogger.log('DocumentService: Error uploading circulation card: $e');
       return null;
     }
   }
@@ -533,6 +586,19 @@ class DriverDocumentStatus {
   final DateTime? agreementSignedAt;
   final String? backgroundCheckStatus;
   final DateTime? backgroundCheckDate;
+  // Seguro + vehículo (Fase 2)
+  final String? insuranceImageUrl;
+  final String? insurancePolicy;
+  final DateTime? insuranceExpiry;
+  final String? insuranceProvider;
+  final String? vehiclePlate;
+  final String? vehiclePhotoFrontUrl;
+  final String? vehiclePhotoBackUrl;
+  final String? vehiclePhotoLeftUrl;
+  final String? vehiclePhotoRightUrl;
+  final String? circulationCardUrl;
+  final String? circulationCardPlate;
+  final String? circulationCardInsurer;
 
   DriverDocumentStatus({
     this.licenseNumber,
@@ -543,6 +609,18 @@ class DriverDocumentStatus {
     this.agreementSignedAt,
     this.backgroundCheckStatus,
     this.backgroundCheckDate,
+    this.insuranceImageUrl,
+    this.insurancePolicy,
+    this.insuranceExpiry,
+    this.insuranceProvider,
+    this.vehiclePlate,
+    this.vehiclePhotoFrontUrl,
+    this.vehiclePhotoBackUrl,
+    this.vehiclePhotoLeftUrl,
+    this.vehiclePhotoRightUrl,
+    this.circulationCardUrl,
+    this.circulationCardPlate,
+    this.circulationCardInsurer,
   });
 
   factory DriverDocumentStatus.empty() => DriverDocumentStatus();
@@ -563,6 +641,20 @@ class DriverDocumentStatus {
       backgroundCheckDate: json['background_check_date'] != null
           ? DateTime.tryParse(json['background_check_date'])
           : null,
+      insuranceImageUrl: json['insurance_image_url'] as String?,
+      insurancePolicy: (json['insurance_policy'] ?? json['insurance_policy_number']) as String?,
+      insuranceExpiry: json['insurance_expiry'] != null
+          ? DateTime.tryParse(json['insurance_expiry'])
+          : null,
+      insuranceProvider: json['insurance_provider'] as String?,
+      vehiclePlate: json['vehicle_plate'] as String?,
+      vehiclePhotoFrontUrl: json['vehicle_photo_front_url'] as String?,
+      vehiclePhotoBackUrl: json['vehicle_photo_back_url'] as String?,
+      vehiclePhotoLeftUrl: json['vehicle_photo_left_url'] as String?,
+      vehiclePhotoRightUrl: json['vehicle_photo_right_url'] as String?,
+      circulationCardUrl: json['circulation_card_url'] as String?,
+      circulationCardPlate: json['circulation_card_plate'] as String?,
+      circulationCardInsurer: json['circulation_card_insurer'] as String?,
     );
   }
 
@@ -592,6 +684,37 @@ class DriverDocumentStatus {
     if (isLicenseExpiringSoon) return 'expiring';
     return 'approved';
   }
+
+  // ---- Seguro (póliza) ----
+  bool get hasInsurance =>
+      (insuranceImageUrl != null && insuranceImageUrl!.isNotEmpty) ||
+      (insurancePolicy != null && insurancePolicy!.isNotEmpty);
+  bool get isInsuranceExpired =>
+      insuranceExpiry != null && insuranceExpiry!.isBefore(DateTime.now());
+  String get insuranceStatus {
+    if (!hasInsurance) return 'missing';
+    if (isInsuranceExpired) return 'expired';
+    return 'approved';
+  }
+
+  // ---- 4 fotos del vehículo (frente/atrás/izq/der) ----
+  int get vehiclePhotosCount => [
+        vehiclePhotoFrontUrl,
+        vehiclePhotoBackUrl,
+        vehiclePhotoLeftUrl,
+        vehiclePhotoRightUrl,
+      ].where((u) => u != null && u.isNotEmpty).length;
+  bool get hasAllVehiclePhotos => vehiclePhotosCount == 4;
+  String get vehiclePhotosStatus {
+    if (vehiclePhotosCount == 0) return 'missing';
+    if (!hasAllVehiclePhotos) return 'pending';
+    return 'approved';
+  }
+
+  // ---- Tarjeta de circulación ----
+  bool get hasCirculationCard =>
+      circulationCardUrl != null && circulationCardUrl!.isNotEmpty;
+  String get circulationCardStatus => hasCirculationCard ? 'approved' : 'missing';
 }
 
 /// Status of vehicle documents

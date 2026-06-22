@@ -57,6 +57,9 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
   late final NavigationService _navigationService;
   late final PoiService _poiService;
   late final FlutterTts _tts;
+  String? _lastSpokenInstruction; // evita repetir la MISMA instrucción de voz
+  DateTime? _lastVoiceAt; // tope duro: no hablar más de 1 vez cada 3.5s
+  DateTime? _lastNavRebuild; // throttle de rebuilds (estabiliza el slide)
   NavigationState _navState = NavigationState.idle();
   bool _isMuted = false;
   PolylineAnnotationManager? _routeLineManager;
@@ -149,6 +152,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
   void _initTts() async {
     await _tts.setLanguage('es-ES');
     await _tts.setSpeechRate(0.5);
+    await _tts.awaitSpeakCompletion(true); // no encimar/queue -> sin "titititi"
   }
 
   void _initWakelock() async {
@@ -169,13 +173,39 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
 
   void _setupNavigationCallbacks() {
     _navigationService.onStateChanged = (state) {
-      if (mounted) {
-        setState(() => _navState = state);
+      if (!mounted) return;
+      // Guardamos SIEMPRE el último estado, pero limitamos los rebuilds a ~4/s.
+      // El GPS/dead-reckoning disparaba setState muchas veces por segundo ->
+      // rebuild constante que interrumpía el gesto del slide ("no deslizaba").
+      _navState = state;
+      final now = DateTime.now();
+      if (_lastNavRebuild != null &&
+          now.difference(_lastNavRebuild!).inMilliseconds < 250) {
+        return;
       }
+      _lastNavRebuild = now;
+      setState(() {});
     };
 
     _navigationService.onVoiceInstruction = (instruction) {
-      if (!_isMuted) _tts.speak(instruction);
+      if (_isMuted) return;
+      final now = DateTime.now();
+      // Misma instrucción: no repetir dentro de 8s.
+      if (instruction == _lastSpokenInstruction &&
+          _lastVoiceAt != null &&
+          now.difference(_lastVoiceAt!).inSeconds < 8) {
+        return;
+      }
+      // Tope DURO contra el spam: máximo una locución cada 3.5s, pase lo que pase.
+      if (_lastVoiceAt != null &&
+          now.difference(_lastVoiceAt!).inMilliseconds < 3500) {
+        return;
+      }
+      _lastSpokenInstruction = instruction;
+      _lastVoiceAt = now;
+      debugPrint('🔊 VOZ HABLA -> "$instruction"');
+      _tts.stop(); // interrumpe la anterior, no la encola
+      _tts.speak(instruction);
     };
 
     _navigationService.onArrival = () {
@@ -679,7 +709,11 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
   // ============================================================================
 
   Future<void> _handleArriveAtPickup() async {
-    if (_isProcessingLifecycle) return; // idempotency: ignore double-tap/re-entry
+    debugPrint('🟦 SLIDE -> _handleArriveAtPickup ENTRÓ (onConfirm disparó)');
+    if (_isProcessingLifecycle) {
+      debugPrint('🟦 SLIDE -> ignorado: _isProcessingLifecycle ya en true');
+      return; // idempotency: ignore double-tap/re-entry
+    }
     _isProcessingLifecycle = true;
     try {
       final rideProvider = context.read<RideProvider>();
@@ -691,7 +725,9 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
         debugPrint('⚠️ _handleArriveAtPickup ignored: status=${ride?.status}');
         return;
       }
+      debugPrint('🟦 SLIDE -> llamando arriveAtPickup() status_actual=${ride.status}');
       final success = await rideProvider.arriveAtPickup();
+      debugPrint('🟦 SLIDE -> arriveAtPickup RESULTADO success=$success');
       if (success) {
         // Start wait timer
         _waitSeconds = 0;
@@ -3652,6 +3688,53 @@ class _SlideToConfirmButtonState extends State<_SlideToConfirmButton>
                       size: 28,
                     ),
                   ),
+                ),
+              ),
+              // Capa de gesto sobre TODA la barra: antes solo el círculo chico
+              // recibía el arrastre ("no deja deslizar"). Esta capa (encima, solo
+              // horizontal) captura el drag en cualquier punto; el thumb es visual.
+              Positioned.fill(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onHorizontalDragStart: (_) =>
+                      debugPrint('👉 SLIDE -> drag START (gesto SÍ se recibe)'),
+                  onHorizontalDragUpdate: (details) {
+                    if (_confirmed) return;
+                    setState(() {
+                      _dragPosition =
+                          (_dragPosition + details.delta.dx).clamp(0.0, maxDrag);
+                    });
+                  },
+                  onHorizontalDragEnd: (details) {
+                    debugPrint(
+                        '👉 SLIDE -> drag END pos=${_dragPosition.toStringAsFixed(0)} '
+                        'max=${maxDrag.toStringAsFixed(0)} umbral=${(maxDrag * 0.85).toStringAsFixed(0)}');
+                    if (_confirmed) return;
+                    if (_dragPosition >= maxDrag * 0.85) {
+                      debugPrint('👉 SLIDE -> 85% alcanzado, llamando onConfirm()');
+                      setState(() {
+                        _confirmed = true;
+                        _dragPosition = maxDrag;
+                      });
+                      HapticFeedback.heavyImpact();
+                      widget.onConfirm?.call();
+                      Future.delayed(const Duration(milliseconds: 500), () {
+                        if (mounted) {
+                          setState(() {
+                            _confirmed = false;
+                            _dragPosition = 0;
+                          });
+                        }
+                      });
+                    } else {
+                      _resetAnimation = Tween<double>(
+                              begin: _dragPosition, end: 0)
+                          .animate(CurvedAnimation(
+                              parent: _resetController, curve: Curves.easeOut));
+                      _resetController.forward(from: 0);
+                    }
+                  },
+                  child: const SizedBox.expand(),
                 ),
               ),
             ],

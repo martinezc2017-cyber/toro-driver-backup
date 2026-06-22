@@ -23,6 +23,9 @@ class NavigationService {
   bool _isNavigating = false;
   double _lastLat = 0;
   double _lastLng = 0;
+  // Candado anti-jitter: última posición REALMENTE procesada (ruta/voz/maniobra).
+  double? _lastProcessedLat;
+  double? _lastProcessedLng;
 
   // Control de audio para evitar repeticiones
   String _lastSpokenInstruction = '';
@@ -170,6 +173,29 @@ class NavigationService {
   /// Actualiza la posición actual del usuario
   void updateLocation(double lat, double lng, double speed, double bearing) {
     if (!_isNavigating || _currentRoute == null) return;
+
+    // ===== CANDADO ANTI-JITTER (raíz del "nav/voz cambia cada segundo") =====
+    // El GPS estacionario brinca varios metros aunque el auto esté quieto. Eso
+    // hacía recalcular ruta + avanzar maniobra + re-anunciar cada segundo, y los
+    // rebuilds rompían el slide. Si estás casi detenido (poco movimiento Y baja
+    // velocidad), NO recalculamos nada: solo mantenemos el marcador.
+    if (_lastProcessedLat != null) {
+      final moved =
+          _haversine(lat, lng, _lastProcessedLat!, _lastProcessedLng!);
+      if (moved < 8 && speed < 1.5) {
+        // ignore: avoid_print
+        print('📍 NAV GPS moved=${moved.toStringAsFixed(1)}m '
+            'speed=${speed.toStringAsFixed(1)} -> IGNORADO (jitter, sin recalcular)');
+        _lastLat = lat;
+        _lastLng = lng;
+        return; // ignora el jitter: sin reroute, sin maniobra, sin voz
+      }
+      // ignore: avoid_print
+      print('📍 NAV GPS moved=${moved.toStringAsFixed(1)}m '
+          'speed=${speed.toStringAsFixed(1)} -> PROCESA (recalcula ruta/voz)');
+    }
+    _lastProcessedLat = lat;
+    _lastProcessedLng = lng;
 
     final now = DateTime.now();
 

@@ -69,11 +69,15 @@ workflows:
               | python3 -c "import sys,json;d=json.load(sys.stdin);print(d[0]['id'] if d else '')" 2>/dev/null)
           fi
           if [ -n "$APP_ID" ]; then
-            LATEST=$(app-store-connect get-latest-app-store-build-number "$APP_ID" 2>/dev/null)
-            echo "$LATEST" | grep -qE '^[0-9]+$' || LATEST=$(app-store-connect get-latest-testflight-build-number "$APP_ID" 2>/dev/null)
-            if echo "$LATEST" | grep -qE '^[0-9]+$'; then
-              echo "BUILD_NUMBER=$((LATEST + 1))" >> "$CM_ENV"
-              echo "==> Build number automatico: $((LATEST + 1)) (ASC tenia $LATEST)"
+            # MAX de TestFlight y App Store (el mas alto YA subido) + 1.
+            TF=$(app-store-connect get-latest-testflight-build-number "$APP_ID" 2>/dev/null)
+            AS=$(app-store-connect get-latest-app-store-build-number "$APP_ID" 2>/dev/null)
+            echo "$TF" | grep -qE '^[0-9]+$' || TF=0
+            echo "$AS" | grep -qE '^[0-9]+$' || AS=0
+            MAX=$TF; [ "$AS" -gt "$MAX" ] && MAX=$AS
+            if [ "$MAX" -gt 0 ]; then
+              echo "BUILD_NUMBER=$((MAX + 1))" >> "$CM_ENV"
+              echo "==> Build number automatico: $((MAX + 1)) (TestFlight=$TF, AppStore=$AS)"
             fi
           fi
           [ -z "$BUILD_NUMBER" ] && echo "==> Sin auto-incremento; se usa el del pubspec (no rompe el build)."

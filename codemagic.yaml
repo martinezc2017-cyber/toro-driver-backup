@@ -14,6 +14,7 @@ workflows:
         - apple_credentials
       vars:
         BUNDLE_ID: com.tororide.driver
+        APP_STORE_APP_ID: '6760872144'   # TORO Driver (App Store Connect) -> auto-incremento confiable del build number
 
     triggering:
       events:

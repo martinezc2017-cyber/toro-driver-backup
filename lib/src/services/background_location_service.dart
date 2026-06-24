@@ -203,6 +203,21 @@ void onStart(ServiceInstance service) async {
       });
     } catch (e) {
       AppLogger.log('BACKGROUND_LOCATION -> Error: $e');
+      // RESPALDO DE PRESENCIA: si el GPS falla en segundo plano (background
+      // lento, fix tardío), igual estampamos location_updated_at para que el
+      // chofer NO desaparezca del mapa del admin NI del "hay choferes cerca"
+      // del rider mientras siga online. Mismo criterio que el heartbeat de
+      // foreground (_sendHeartbeat). Conserva las últimas coords conocidas.
+      if (idle && driverId != null) {
+        try {
+          supabase ??= (supabaseUrl != null && supabaseKey != null)
+              ? SupabaseClient(supabaseUrl!, supabaseKey!)
+              : null;
+          await supabase?.from('drivers').update({
+            'location_updated_at': DateTime.now().toIso8601String(),
+          }).eq('id', driverId!);
+        } catch (_) {}
+      }
     }
   });
 

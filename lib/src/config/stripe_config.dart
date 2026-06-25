@@ -12,7 +12,7 @@ enum StripeProvider {
 
 class StripeConfig {
   // USA Stripe Account
-  static const String publishableKeyUS = 'pk_test_51SjZ6ZJkPkRlUpHxaozvdbpgbP8lRScfj5dLpcKv0AuUrjpcv73TnXrGk4Pq6NJzFU0vepYKxXiF0hHZBXXlPnWy009dN2qG0E';
+  static const String publishableKeyUS = 'pk_test_51TmEdSJ97USka5nvxRvOxhVVZojO1F52DTUcVFqJAxs6mkbb15r2yvUZqvEbEXbn0MpEJnEUgkXbvarqn3qsAvY400w1muDDLT';
 
   // Mexico Stripe Account — MUST match STRIPE_MX_SECRET_KEY (the account that runs
   // charges, vendor + driver Connect, and where PALOMA's money lands). That account is
@@ -21,7 +21,7 @@ class StripeConfig {
   // and driver Connect onboarding/payouts drifting to the wrong platform.
   // TODO(single-source): fetch this from get-stripe-config at runtime so it can never
   // drift from the server account again (no hardcoded key in any app).
-  static const String publishableKeyMX = 'pk_test_51Ti6y0JjHJ2LZ4e2BXcAfNfud1ZYhSkhLDT5JM9PUAMY6Svda8IiGUwS3FhoDyy5nSKn4cHcDlktiBqWz4ovMB0X00QZLD93rY';
+  static const String publishableKeyMX = 'pk_test_51TmEdSJ97USka5nvxRvOxhVVZojO1F52DTUcVFqJAxs6mkbb15r2yvUZqvEbEXbn0MpEJnEUgkXbvarqn3qsAvY400w1muDDLT';
 
   static const String merchantId = 'merchant.com.toro.driver';
 

@@ -6,8 +6,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
+import 'package:provider/provider.dart';
 import '../config/supabase_config.dart';
 import '../services/delivery_service.dart';
+import '../services/location_service.dart';
+import '../providers/driver_provider.dart';
 
 class MarketplaceDeliveryAcceptScreen extends StatefulWidget {
   final String deliveryId;
@@ -118,6 +121,24 @@ class _State extends State<MarketplaceDeliveryAcceptScreen> {
       final res = await _service.acceptMarketplaceDelivery(widget.deliveryId);
       if (!mounted) return;
       if (res['success'] == true) {
+        // FIX (2026-06-25): arrancar el GPS en vivo (servicio de fondo + stream)
+        // para que el COMPRADOR vea al chofer moverse en su mapa con ETA/distancia.
+        // Antes solo los viajes normales lo arrancaban (ride_provider) y las
+        // entregas de marketplace quedaban con driver_lat/lng viejo -> mapa congelado.
+        try {
+          final driverId = context.read<DriverProvider>().driver?.id;
+          if (driverId != null) {
+            final buyerName = (_ctx?['order'] as Map?)?['buyer_name']?.toString();
+            await LocationService().startRideTracking(
+              driverId: driverId,
+              rideId: widget.deliveryId,
+              riderName: buyerName,
+            );
+          }
+        } catch (e) {
+          debugPrint('marketplace accept: startRideTracking error: $e');
+        }
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Text('Entrega aceptada'),
           backgroundColor: _green,

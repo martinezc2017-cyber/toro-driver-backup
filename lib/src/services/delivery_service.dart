@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
 import '../models/package_delivery_model.dart';
@@ -257,6 +258,38 @@ class DeliveryService {
   Future<Map<String, dynamic>> acceptMarketplaceDelivery(String deliveryId) async {
     final res = await _client.rpc('driver_accept_marketplace_delivery', params: {
       'p_delivery_id': deliveryId,
+    });
+    return (res is Map) ? Map<String, dynamic>.from(res) : <String, dynamic>{};
+  }
+
+  /// Contactos (vendor/buyer/driver) de una orden — RPC protegida (solo el chofer
+  /// asignado o el comprador). El app muestra al que toca segun la fase.
+  Future<List<Map<String, dynamic>>> marketplaceContacts(String orderId) async {
+    try {
+      final res = await _client.rpc('marketplace_delivery_contacts', params: {'p_order_id': orderId});
+      return (res is List) ? List<Map<String, dynamic>>.from(res) : <Map<String, dynamic>>[];
+    } catch (e) {
+      debugPrint('marketplaceContacts error: $e');
+      return <Map<String, dynamic>>[];
+    }
+  }
+
+  /// Reporta no-show. p_by='driver' (el comprador no estaba) o 'buyer' (el chofer
+  /// no llego). Cancela + restock; como el cobro es al ENTREGAR, la autorizacion
+  /// no se captura y el comprador NO se cobra.
+  Future<Map<String, dynamic>> reportNoShow({
+    required String orderId,
+    required String by,
+    String? photoUrl,
+    double? lat,
+    double? lng,
+  }) async {
+    final res = await _client.rpc('marketplace_report_no_show', params: {
+      'p_order_id': orderId,
+      'p_by': by,
+      'p_photo_url': photoUrl,
+      'p_lat': lat,
+      'p_lng': lng,
     });
     return (res is Map) ? Map<String, dynamic>.from(res) : <String, dynamic>{};
   }

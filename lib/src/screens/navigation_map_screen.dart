@@ -740,10 +740,10 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
           }
         });
         if (ride.type == RideType.marketplace) {
-          // Avisar al VENDEDOR que el chofer llegó (le manda push con su PIN de
-          // recogida para que entregue el paquete y dé el código). NO cambia el
-          // estado del pedido: sigue en driver_assigned hasta que el chofer mete
-          // el OTP en "RECOGÍ EL PAQUETE" (marketplace_confirm_pickup).
+          // AL LLEGAR = pedir el código de recogida AQUÍ (antes, no en un paso
+          // aparte). Carlos: "cuando llegue, lanza el trigger". Avisa al vendedor
+          // (push con su PIN) y de UNA abre la confirmación (OTP+foto+GPS). Si el
+          // chofer cancela, queda el slide "RECOGÍ EL PAQUETE" como respaldo.
           final orderId = await _fetchMarketplaceOrderIdByDeliveryId(ride.id);
           if (orderId != null) {
             try {
@@ -754,9 +754,28 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
             } catch (e) {
               debugPrint('notify vendor arrived (non-fatal): $e');
             }
-          }
-          if (!_isMuted) {
-            _tts.speak('Llegaste a la tienda. Pídele el código de recogida al vendedor.');
+            if (mounted) {
+              final confirmed = await Navigator.push<bool>(
+                context,
+                MaterialPageRoute(builder: (_) => MarketplaceConfirmScreen(
+                  orderId: orderId,
+                  mode: 'pickup',
+                  vendorBusinessName: _mktVendorName,
+                  address: ride.pickupLocation.address,
+                )),
+              );
+              if (confirmed == true) {
+                // Código correcto -> recogido -> arrancar la entrega al cliente.
+                final started = await rideProvider.startRide();
+                if (started) {
+                  _waitTimer?.cancel();
+                  _waitSeconds = 0;
+                  if (!_isMuted) _tts.speak('Paquete recogido. Navegando al cliente.');
+                }
+              } else if (!_isMuted) {
+                _tts.speak('Cuando tengas el código del vendedor, desliza Recogí el paquete.');
+              }
+            }
           }
         } else if (!_isMuted) {
           _tts.speak('Has llegado al punto de recogida. Esperando al pasajero.');

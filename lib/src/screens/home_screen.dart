@@ -1622,8 +1622,18 @@ class _HomeScreenState extends State<HomeScreen>
     final docHash = sha256.convert(utf8.encode(disclaimerText)).toString();
     final now = DateTime.now().toIso8601String();
 
-    // trial_mode_accepted column doesn't exist in drivers table
-    // Trial consent is tracked in legal_consents table below
+    // PERSISTIR el trial en drivers (la columna SI existe). El comentario viejo
+    // decia que NO existia y por eso nunca se escribia -> trial_mode_accepted
+    // quedaba FALSE en la DB, canGoOnline=false, y el realtime FORZABA desconectar
+    // al chofer: se veia "Conectado y activo" un instante y lo botaba ("se
+    // desconecto el driver"). Ahora el trial PERSISTE y el chofer se queda online.
+    try {
+      await SupabaseConfig.client.from('drivers')
+          .update({'trial_mode_accepted': true})
+          .eq('id', driver.id);
+    } catch (e) {
+      debugPrint('persist trial_mode_accepted failed: $e');
+    }
 
     // Save detailed audit in legal_consents with EVERYTHING
     await SupabaseConfig.client.from('legal_consents').insert({

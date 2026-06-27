@@ -294,7 +294,7 @@ class LocationService {
         'driver_lng': position.longitude,
         'driver_bearing': position.heading,
         'driver_speed': position.speed,
-        'driver_location_updated_at': DateTime.now().toIso8601String(),
+        'driver_location_updated_at': DateTime.now().toUtc().toIso8601String(),
       }).eq('id', rideId);
     } catch (e) {
       // Columns might not exist - that's okay

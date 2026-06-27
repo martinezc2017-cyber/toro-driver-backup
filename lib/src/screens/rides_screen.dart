@@ -811,6 +811,20 @@ class _RidesScreenState extends State<RidesScreen>
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Builder(builder: (context) {
+                // CANCELADO: no se paga al chofer -> "Cancelado", sin +$ ni
+                // preview (fare*%). Antes caia al preview y mostraba un cobro falso.
+                if (ride.status == RideStatus.cancelled) {
+                  return Text(
+                    'Cancelado',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.error,
+                      fontSize: 13,
+                    ),
+                  );
+                }
+                // Preview (fare*%) SOLO para viajes sin earnings reales aun
+                // (disponibles); completados usan driverEarnings real.
                 final earnings = ride.driverEarnings > 0
                     ? ride.driverEarnings
                     : ride.fare * (_driverPercent / 100);

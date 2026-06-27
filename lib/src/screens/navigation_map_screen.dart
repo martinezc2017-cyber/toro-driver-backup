@@ -1462,7 +1462,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
             'driver_lng': _currentLng,
             'driver_bearing': _currentBearing,
             'driver_speed': _currentSpeed,
-            'driver_location_updated_at': now.toIso8601String(),
+            'driver_location_updated_at': now.toUtc().toIso8601String(),
           })
           .eq('id', ride.id)
           .eq('driver_id', driverId);

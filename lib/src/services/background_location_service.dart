@@ -155,7 +155,9 @@ void onStart(ServiceInstance service) async {
         await supabase!.from(table).update({
           'driver_lat': position.latitude,
           'driver_lng': position.longitude,
-          'driver_gps_updated_at': DateTime.now().toIso8601String(),
+          // Columna real en deliveries = driver_location_updated_at (driver_gps_updated_at
+          // no existe -> el update rebotaba). + UTC (antes local = 7h mal).
+          'driver_location_updated_at': DateTime.now().toUtc().toIso8601String(),
         }).eq('id', deliveryId!);
       } else {
         // ONLINE IDLE: heartbeat de presencia -> drivers (lo que ve el admin/
@@ -163,7 +165,7 @@ void onStart(ServiceInstance service) async {
         await supabase!.from('drivers').update({
           'current_lat': position.latitude,
           'current_lng': position.longitude,
-          'location_updated_at': DateTime.now().toIso8601String(),
+          'location_updated_at': DateTime.now().toUtc().toIso8601String(),
         }).eq('id', driverId!);
       }
 
@@ -214,7 +216,7 @@ void onStart(ServiceInstance service) async {
               ? SupabaseClient(supabaseUrl!, supabaseKey!)
               : null;
           await supabase?.from('drivers').update({
-            'location_updated_at': DateTime.now().toIso8601String(),
+            'location_updated_at': DateTime.now().toUtc().toIso8601String(),
           }).eq('id', driverId!);
         } catch (_) {}
       }

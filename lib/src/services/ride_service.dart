@@ -234,7 +234,7 @@ class RideService {
             .update({
               'driver_id': driverId,
               'status': 'confirmed',
-              'confirmed_at': DateTime.now().toIso8601String(),
+              'confirmed_at': DateTime.now().toUtc().toIso8601String(),
             })
             .eq('id', rideId)
             .inFilter('status', ['pending', 'matched', 'accepted']);
@@ -245,7 +245,7 @@ class RideService {
             .update({
               'driver_id': driverId,
               'status': statusToDatabase(RideStatus.accepted),
-              'accepted_at': DateTime.now().toIso8601String(),
+              'accepted_at': DateTime.now().toUtc().toIso8601String(),
             })
             .eq('id', rideId)
             .inFilter('status', ['pending', 'accepted', 'searching']);
@@ -381,7 +381,7 @@ class RideService {
             .from('ride_requests')
             .update({
               'status': status,
-              'responded_at': DateTime.now().toIso8601String(),
+              'responded_at': DateTime.now().toUtc().toIso8601String(),
             })
             .eq('id', existing['id']);
         debugPrint('✅ Ride response tracked (UPDATE): $status for $referenceId');
@@ -392,7 +392,7 @@ class RideService {
           'service_type': serviceType,
           'reference_id': referenceId,
           'status': status,
-          'responded_at': DateTime.now().toIso8601String(),
+          'responded_at': DateTime.now().toUtc().toIso8601String(),
         });
         debugPrint('✅ Ride response tracked (INSERT): $status for $referenceId');
       }
@@ -425,7 +425,7 @@ class RideService {
         .from(SupabaseConfig.packageDeliveriesTable)
         .update({
           'status': statusToDatabase(RideStatus.arrivedAtPickup), // 'picked_up'
-          'picked_up_at': DateTime.now().toIso8601String(),
+          'picked_up_at': DateTime.now().toUtc().toIso8601String(),
         })
         .eq('id', rideId)
         .select()
@@ -440,7 +440,7 @@ class RideService {
         .from(SupabaseConfig.packageDeliveriesTable)
         .update({
           'status': statusToDatabase(RideStatus.inProgress), // 'in_transit'
-          'started_at': DateTime.now().toIso8601String(),
+          'started_at': DateTime.now().toUtc().toIso8601String(),
         })
         .eq('id', rideId)
         .select()
@@ -706,17 +706,20 @@ class RideService {
     }
   }
 
-  // Cancel ride - RESETS to pending so other drivers can accept (Uber-style)
-  // Does NOT cancel the ride - just releases it back to the pool
+  // Cancela el viaje DE VERDAD (status=cancelled). Antes reseteaba a 'pending'
+  // (release to pool) y por eso el cancel del driver NO cancelaba el viaje.
+  // Para soltar al pool existe forceReleaseAllActiveRides aparte.
+  // El CHOFER cancela => LIBERA el viaje al pool (status=pending, sin chofer) para
+  // que OTRO chofer lo tome. NO se cancela ni se libera el PI (el viaje sigue). Si
+  // NINGUN chofer lo toma, auto-cancel-stale-rides lo cancela gratis + libera el hold.
   Future<RideModel> cancelRide(String rideId, String reason) async {
     final response = await _client
         .from(SupabaseConfig.packageDeliveriesTable)
         .update({
-          'status': 'pending',  // Reset to pending - NOT cancelled
-          'driver_id': null,    // Clear driver so others can accept
-          'accepted_at': null,  // Clear acceptance time
-          'started_at': null,   // Clear start time
-          // Note: We don't set cancelled_at because ride is not cancelled
+          'status': 'pending',  // de vuelta al pool - NO cancelado
+          'driver_id': null,    // libera al chofer para que otro acepte
+          'accepted_at': null,
+          'started_at': null,
         })
         .eq('id', rideId)
         .select()
@@ -1114,7 +1117,7 @@ class RideService {
       'rating': rating,
       'comment': comment,
       'rated_by': 'driver',
-      'created_at': DateTime.now().toIso8601String(),
+      'created_at': DateTime.now().toUtc().toIso8601String(),
     });
   }
 
@@ -1293,7 +1296,7 @@ class RideService {
         'destination_address': '456 Av. Destino, Monterrey, NL',
         'status': 'pending',
         'driver_id': null,
-        'created_at': DateTime.now().toIso8601String(),
+        'created_at': DateTime.now().toUtc().toIso8601String(),
       };
 
       final response = await _client

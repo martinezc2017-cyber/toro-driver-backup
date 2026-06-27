@@ -121,7 +121,7 @@ class DriverService {
         // Going online - create new session
         await _client.from('driver_sessions').insert({
           'driver_id': driverId,
-          'started_at': DateTime.now().toIso8601String(),
+          'started_at': DateTime.now().toUtc().toIso8601String(),
         });
       } else {
         // Going offline - end current session

@@ -85,7 +85,7 @@ class DeliveryService {
           .update({
             'driver_id': driverId,
             'status': 'accepted',
-            'accepted_at': DateTime.now().toIso8601String(),
+            'accepted_at': DateTime.now().toUtc().toIso8601String(),
           })
           .eq('id', ticketId)
           .eq('status', 'available')
@@ -97,7 +97,7 @@ class DeliveryService {
       await _client.from(SupabaseConfig.packageDeliveriesTable).update({
         'driver_id': driverId,
         'status': DeliveryStatus.accepted.name,
-        'accepted_at': DateTime.now().toIso8601String(),
+        'accepted_at': DateTime.now().toUtc().toIso8601String(),
       }).eq('id', ticket.deliveryId);
 
       return ticket;
@@ -109,8 +109,10 @@ class DeliveryService {
     final response = await _client
         .from(SupabaseConfig.packageDeliveriesTable)
         .update({
-          'status': DeliveryStatus.driverEnRoute.name,
-          'updated_at': DateTime.now().toIso8601String(),
+          // CHECK deliveries: pending/accepted/in_progress/completed/cancelled.
+          // En ruta a recoger = sigue driverAssigned para el rider.
+          'status': 'accepted',
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
         })
         .eq('id', deliveryId)
         .select()
@@ -124,9 +126,9 @@ class DeliveryService {
     final response = await _client
         .from(SupabaseConfig.packageDeliveriesTable)
         .update({
-          'status': DeliveryStatus.pickedUp.name,
-          'picked_up_at': DateTime.now().toIso8601String(),
-          'updated_at': DateTime.now().toIso8601String(),
+          'status': 'in_progress', // recogido: activo (el picked_up_at marca el sub-estado)
+          'picked_up_at': DateTime.now().toUtc().toIso8601String(),
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
         })
         .eq('id', deliveryId)
         .select()
@@ -140,8 +142,8 @@ class DeliveryService {
     final response = await _client
         .from(SupabaseConfig.packageDeliveriesTable)
         .update({
-          'status': DeliveryStatus.inTransit.name,
-          'updated_at': DateTime.now().toIso8601String(),
+          'status': 'in_progress', // en transito: activo (started_at marca el sub-estado)
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
         })
         .eq('id', deliveryId)
         .select()
@@ -168,21 +170,18 @@ class DeliveryService {
       final response = await _client
           .from(SupabaseConfig.packageDeliveriesTable)
           .update({
-            'status': DeliveryStatus.delivered.name,
-            'delivered_at': DateTime.now().toIso8601String(),
-            'payment_status': PaymentStatus.captured.name,
-            'updated_at': DateTime.now().toIso8601String(),
+            'status': 'completed', // CHECK: completed (no 'delivered')
+            'delivered_at': DateTime.now().toUtc().toIso8601String(),
+            'payment_status': 'paid', // CHECK: pending/paid/refunded (no 'captured')
+            'updated_at': DateTime.now().toUtc().toIso8601String(),
           })
           .eq('id', deliveryId)
           .eq('driver_id', driverId)
           .select()
           .single();
 
-      // Update ticket
-      await _client.from(SupabaseConfig.driverTicketsTable).update({
-        'status': 'completed',
-        'completed_at': DateTime.now().toIso8601String(),
-      }).eq('delivery_id', deliveryId);
+      // (Quitado el update a driver_tickets: esa tabla NO existe -> lanzaba
+      // excepcion DESPUES de completar y el chofer veia error aunque se entrego.)
 
       return PackageDeliveryModel.fromJson(response);
     }
@@ -413,9 +412,9 @@ class DeliveryService {
         .from(SupabaseConfig.packageDeliveriesTable)
         .update({
           'status': DeliveryStatus.cancelled.name,
-          'cancelled_at': DateTime.now().toIso8601String(),
+          'cancelled_at': DateTime.now().toUtc().toIso8601String(),
           'cancellation_reason': reason,
-          'updated_at': DateTime.now().toIso8601String(),
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
         })
         .eq('id', deliveryId)
         .select()
@@ -479,7 +478,7 @@ class DeliveryService {
       await _client.from(SupabaseConfig.driversTable).update({
         'current_lat': lat,
         'current_lng': lng,
-        'last_location_update': DateTime.now().toIso8601String(),
+        'last_location_update': DateTime.now().toUtc().toIso8601String(),
       }).eq('id', driverId);
 
       // Update active delivery location
@@ -488,7 +487,7 @@ class DeliveryService {
           .update({
             'driver_lat': lat,
             'driver_lng': lng,
-            'updated_at': DateTime.now().toIso8601String(),
+            'updated_at': DateTime.now().toUtc().toIso8601String(),
           })
           .eq('driver_id', driverId)
           .inFilter('status', [
@@ -604,7 +603,7 @@ class DeliveryService {
       'sender_type': isDriver ? 'driver' : 'rider',
       'sender_id': senderId,
       'message': message,
-      'created_at': DateTime.now().toIso8601String(),
+      'created_at': DateTime.now().toUtc().toIso8601String(),
     });
   }
 

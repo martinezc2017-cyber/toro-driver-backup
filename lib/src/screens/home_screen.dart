@@ -1045,7 +1045,7 @@ class _HomeScreenState extends State<HomeScreen>
       case 2:
         return const EarningsScreen();
       case 3:
-        return const RidesScreen();
+        return const RidesScreen(embedded: true);
       case 4:
         return const ProfileScreen();
       default:

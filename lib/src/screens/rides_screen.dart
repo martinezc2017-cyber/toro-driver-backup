@@ -16,7 +16,10 @@ import 'report_ride_screen.dart';
 import 'marketplace_delivery_accept_screen.dart';
 
 class RidesScreen extends StatefulWidget {
-  const RidesScreen({super.key});
+  /// Cuando es tab embebido en home_screen, no se muestra el botón de salida
+  /// (se navega por la barra inferior). Como ruta `/rides` standalone, sí.
+  final bool embedded;
+  const RidesScreen({super.key, this.embedded = false});
 
   @override
   State<RidesScreen> createState() => _RidesScreenState();
@@ -112,6 +115,21 @@ class _RidesScreenState extends State<RidesScreen>
           ),
           child: Row(
             children: [
+              if (!widget.embedded && Navigator.of(context).canPop())
+                GestureDetector(
+                  onTap: () {
+                    HapticService.lightImpact();
+                    Navigator.of(context).maybePop();
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: Icon(
+                      Icons.arrow_back_ios_new_rounded,
+                      color: AppColors.textSecondary,
+                      size: 18,
+                    ),
+                  ),
+                ),
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(

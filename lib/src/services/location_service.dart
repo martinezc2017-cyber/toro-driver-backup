@@ -107,11 +107,13 @@ class LocationService {
       // Update driver's location directly in drivers table (for admin visibility)
       // Only update columns that exist in the drivers table
       final detectedCountry = GeoUtils.countryCode(position.latitude, position.longitude);
+      final detectedState = GeoUtils.stateCode(position.latitude, position.longitude);
 
       await _client.from(SupabaseConfig.driversTable).update({
         'current_lat': position.latitude,
         'current_lng': position.longitude,
         'country_code': detectedCountry,
+        'state_code': detectedState,
         'updated_at': DateTime.now().toIso8601String(),
       }).eq('id', driverId);
 

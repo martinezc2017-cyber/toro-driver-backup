@@ -107,14 +107,14 @@ class AuthService {
       throw AuthException(body['error'] as String? ?? 'Signup failed');
     }
 
-    // If we got a session back, set it in the client
-    if (body['session'] != null) {
-      final sessionMap = body['session'] as Map<String, dynamic>;
-      final accessToken = sessionMap['access_token'] as String;
-      final refreshToken = sessionMap['refresh_token'] as String;
-      await _client.auth.setSession(refreshToken);
-      debugPrint('AUTH -> Edge signup success, session set');
-    }
+    // Sign in directly from the Flutter client instead of reusing the
+    // server-side session.  The edge function's signInWithPassword runs on the
+    // admin (service_role) client and its refresh token is not always accepted
+    // by the client-side GoTrue (causes AuthRetryableFetchException /
+    // unexpected_failure).  A direct signInWithPassword from the Flutter SDK
+    // creates a proper client-scoped session.
+    await _client.auth.signInWithPassword(email: email, password: password);
+    debugPrint('AUTH -> Edge signup success, signed in directly');
 
     // Enrich driver profile with GPS country code
     final user = _client.auth.currentUser;

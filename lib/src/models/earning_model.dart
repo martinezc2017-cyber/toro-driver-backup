@@ -63,6 +63,8 @@ class EarningsSummary {
   final double weekEarnings;
   final double monthEarnings;
   final double totalBalance;
+  final double availableForPayout;
+  final double pendingPayout;
 
   // Rides count
   final int todayRides;
@@ -102,6 +104,8 @@ class EarningsSummary {
     this.weekEarnings = 0.0,
     this.monthEarnings = 0.0,
     this.totalBalance = 0.0,
+    this.availableForPayout = 0.0,
+    this.pendingPayout = 0.0,
     this.todayRides = 0,
     this.weekRides = 0,
     this.monthRides = 0,
@@ -128,7 +132,7 @@ class EarningsSummary {
   // Computed properties
   double get weekOnlineHours => weekOnlineMinutes / 60;
   double get weekDrivingHours => weekDrivingMinutes / 60;
-  double get weekNetEarnings => weekEarnings + weekTips - weekPlatformFees;
+  double get weekNetEarnings => weekEarnings - weekPlatformFees;
   double get perTripAverage => weekRides > 0 ? weekEarnings / weekRides : 0;
   double get perHourAverage => weekOnlineHours > 0 ? weekEarnings / weekOnlineHours : 0;
   double get perMileAverage => weekTotalMiles > 0 ? weekEarnings / weekTotalMiles : 0;
@@ -140,6 +144,8 @@ class EarningsSummary {
       weekEarnings: (json['week_earnings'] as num?)?.toDouble() ?? 0.0,
       monthEarnings: (json['month_earnings'] as num?)?.toDouble() ?? 0.0,
       totalBalance: (json['total_balance'] as num?)?.toDouble() ?? 0.0,
+      availableForPayout: (json['available_for_payout'] as num?)?.toDouble() ?? 0.0,
+      pendingPayout: (json['pending_payout'] as num?)?.toDouble() ?? 0.0,
       todayRides: json['today_rides'] as int? ?? 0,
       weekRides: json['week_rides'] as int? ?? 0,
       monthRides: json['month_rides'] as int? ?? 0,

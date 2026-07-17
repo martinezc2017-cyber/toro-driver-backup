@@ -3008,14 +3008,14 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // EARNINGS CARD - Today's & Weekly Earnings Display (hideable)
+  // EARNINGS CARD - Withdrawable money display (hideable)
   // ═══════════════════════════════════════════════════════════════════════════
 
   Widget _buildEarningsCard() {
     return Consumer2<EarningsProvider, RideProvider>(
       builder: (context, earningsProvider, rideProvider, child) {
-        final todayEarnings = earningsProvider.todayEarnings;
-        final weeklyEarnings = earningsProvider.weeklyEarnings;
+        final availableBalance = earningsProvider.availableBalance;
+        final pendingPayout = earningsProvider.pendingPayout;
         final todayRides = rideProvider.todayRidesCount;
         final driverProv = context.read<DriverProvider>();
         final stats = driverProv.stats;
@@ -3063,7 +3063,7 @@ class _HomeScreenState extends State<HomeScreen>
               // Earnings row - both cards side by side
               Row(
                 children: [
-                  // Daily Earnings - tappable to hide
+                  // Available balance - tappable to hide
                   Expanded(
                     child: GestureDetector(
                       onTap: () => setState(
@@ -3087,7 +3087,7 @@ class _HomeScreenState extends State<HomeScreen>
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
-                                  'Hoy',
+                                  'Disponible',
                                   style: TextStyle(
                                     color: AppColors.textSecondary,
                                     fontSize: 10,
@@ -3105,7 +3105,7 @@ class _HomeScreenState extends State<HomeScreen>
                             const SizedBox(height: 2),
                             _showDailyEarnings
                                 ? Text(
-                                    formatMoney(todayEarnings, country: Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US'),
+                                    formatMoney(availableBalance, country: Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US'),
                                     style: TextStyle(
                                       color: const Color(0xFFFF9500),
                                       fontSize: 22,
@@ -3122,7 +3122,7 @@ class _HomeScreenState extends State<HomeScreen>
                     ),
                   ),
                   const SizedBox(width: 8),
-                  // Weekly Earnings - tappable to hide (deposited on Sunday)
+                  // Pending payout - tappable to hide
                   Expanded(
                     child: GestureDetector(
                       onTap: () => setState(
@@ -3146,7 +3146,7 @@ class _HomeScreenState extends State<HomeScreen>
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
-                                  'Semana',
+                                  'Pendiente',
                                   style: TextStyle(
                                     color: AppColors.textSecondary,
                                     fontSize: 10,
@@ -3164,7 +3164,7 @@ class _HomeScreenState extends State<HomeScreen>
                             const SizedBox(height: 2),
                             _showWeeklyEarnings
                                 ? Text(
-                                    formatMoney(weeklyEarnings, country: Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US'),
+                                    formatMoney(pendingPayout, country: Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US'),
                                     style: TextStyle(
                                       color: AppColors.success,
                                       fontSize: 22,

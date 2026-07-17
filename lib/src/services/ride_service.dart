@@ -435,13 +435,20 @@ class RideService {
   }
 
   // Start ride - uses deliveries table (unified)
-  Future<RideModel> startRide(String rideId) async {
+  // waitSeconds = espera del pasajero en el pickup (llegada -> inicio). Se
+  // persiste en total_wait_seconds para que calculate_delivery_final_fare cobre
+  // el wait_fee; sin esto la espera nunca se cobra en viajes de pasajero.
+  Future<RideModel> startRide(String rideId, {int? waitSeconds}) async {
+    final update = <String, dynamic>{
+      'status': statusToDatabase(RideStatus.inProgress), // 'in_progress' + started_at
+      'started_at': DateTime.now().toUtc().toIso8601String(),
+    };
+    if (waitSeconds != null && waitSeconds > 0) {
+      update['total_wait_seconds'] = waitSeconds;
+    }
     final response = await _client
         .from(SupabaseConfig.packageDeliveriesTable)
-        .update({
-          'status': statusToDatabase(RideStatus.inProgress), // 'in_transit'
-          'started_at': DateTime.now().toUtc().toIso8601String(),
-        })
+        .update(update)
         .eq('id', rideId)
         .select()
         .single();
@@ -712,6 +719,17 @@ class RideService {
   // El CHOFER cancela => LIBERA el viaje al pool (status=pending, sin chofer) para
   // que OTRO chofer lo tome. NO se cancela ni se libera el PI (el viaje sigue). Si
   // NINGUN chofer lo toma, auto-cancel-stale-rides lo cancela gratis + libera el hold.
+  // No-show de PASAJERO (estilo Uber): el chofer esperó pasado el umbral y el
+  // pasajero no llegó. Cierra el viaje y cobra no_show_fee + el wait fee
+  // acumulado (RPC server-side ride_report_no_show). Devuelve el desglose.
+  Future<Map<String, dynamic>> reportNoShow(String rideId, String driverId) async {
+    final res = await _client.rpc('ride_report_no_show', params: {
+      'p_delivery_id': rideId,
+      'p_driver_id': driverId,
+    });
+    return Map<String, dynamic>.from(res as Map);
+  }
+
   Future<RideModel> cancelRide(String rideId, String reason) async {
     final response = await _client
         .from(SupabaseConfig.packageDeliveriesTable)

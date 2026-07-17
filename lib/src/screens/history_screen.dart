@@ -113,13 +113,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
         final rawStatus = (t['status'] as String?) ?? 'completed';
         final status = rawStatus == 'delivered' ? 'completed' : rawStatus;
 
-        // Fare: driver_earnings (NET) for completed; cancellation_fee for cancelled.
+        // Fare = lo que GANA el chofer: driver_earnings (NET) si completó;
+        // cancellation_driver_share (su parte del no-show) si fue cancelado.
+        // NO cancellation_fee (ese es el TOTAL cobrado, no la parte del chofer).
+        // Fare = ganancia del chofer: driver_earnings (su parte real). NUNCA
+        // final_price (es la tarifa BRUTA calculada; mostraba $1200 cuando el
+        // viaje corrió largo) ni estimated. Sin driver_earnings -> 0.
         final isCancelled = status == 'cancelled';
         final fare = isCancelled
-            ? ((t['cancellation_fee'] as num?)?.toDouble() ?? 0)
-            : ((t['driver_earnings'] as num?)?.toDouble() ??
-               (t['final_price'] as num?)?.toDouble() ??
-               (t['estimated_price'] as num?)?.toDouble() ?? 0);
+            ? ((t['cancellation_driver_share'] as num?)?.toDouble() ?? 0)
+            : ((t['driver_earnings'] as num?)?.toDouble() ?? 0);
 
         // Date: prefer completed_at/delivered_at, else created_at.
         final dateStr = (t['completed_at'] as String?) ??
@@ -517,11 +520,13 @@ ${_trips.take(5).map((t) => '- ${t.pickupAddress} → ${t.dropoffAddress}: ${for
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Text(
-              isCancelled ? formatMoney(0, country: _countryCode) : formatMoney(trip.fare, country: _countryCode),
+              // Muestra lo que GANÓ el chofer (no-show le paga su parte aunque
+              // el viaje sea 'cancelled'); $0 solo si de verdad no ganó nada.
+              trip.fare > 0 ? formatMoney(trip.fare, country: _countryCode) : formatMoney(0, country: _countryCode),
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
-                color: isCancelled ? AppColors.textSecondary : AppColors.success,
+                color: trip.fare > 0 ? AppColors.success : AppColors.textSecondary,
               ),
             ),
             Text(

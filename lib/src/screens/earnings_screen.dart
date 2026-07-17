@@ -26,6 +26,7 @@ class EarningsScreen extends StatefulWidget {
 class _EarningsScreenState extends State<EarningsScreen> {
   DateTime _selectedWeekStart = _getWeekStart(DateTime.now());
   DriverBalance? _stripeBalance;
+  Map<String, dynamic>? _openPayout;
 
   static DateTime _getWeekStart(DateTime date) {
     return DateTime(date.year, date.month, date.day)
@@ -38,7 +39,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadData());
   }
 
-  void _loadData() async {
+  Future<void> _loadData() async {
     final driver = context.read<DriverProvider>().driver;
     if (driver != null) {
       context.read<EarningsProvider>().initialize(driver.id);
@@ -49,7 +50,13 @@ class _EarningsScreenState extends State<EarningsScreen> {
       final provider = (driver.countryCode.toUpperCase() == 'MX') ? 'mx' : 'us';
       final bal = await StripeConnectService.instance
           .getBalance(driver.id, provider: provider);
-      if (mounted) setState(() => _stripeBalance = bal);
+      final openPayout = await StripeConnectService.instance.getOpenPayout(driver.id);
+      if (mounted) {
+        setState(() {
+          _stripeBalance = bal;
+          _openPayout = openPayout;
+        });
+      }
     }
   }
 
@@ -129,6 +136,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
               if (id != null) {
                 await provider.refresh(id);
                 await context.read<CashAccountProvider>().refresh();
+                await _loadData();
               }
             },
             child: ListView(
@@ -136,9 +144,18 @@ class _EarningsScreenState extends State<EarningsScreen> {
               children: [
                 // Total ganado esta semana
                 Center(
-                  child: Text(
-                    formatMoney(total, country: countryCode),
-                    style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold),
+                  child: Column(
+                    children: [
+                      Text(
+                        formatMoney(total, country: countryCode),
+                        style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 2),
+                      const Text(
+                        'Ganado esta semana',
+                        style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -210,16 +227,20 @@ class _EarningsScreenState extends State<EarningsScreen> {
                     ),
                   ),
                   const SizedBox(height: 10),
+                  if (_openPayout != null) ...[
+                    _buildOpenPayoutNotice(countryCode),
+                    const SizedBox(height: 10),
+                  ],
                   // RETIRAR — abre el flujo de cash-out (saldo, banco/tarjeta).
                   // Si el onboarding de Stripe no está completo, esa pantalla
                   // guía a terminarlo; aquí solo conectamos la entrada.
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
-                      onPressed: () {
+                      onPressed: _openPayout == null ? () async {
                         final id = context.read<DriverProvider>().driver?.id;
                         if (id == null) return;
-                        Navigator.of(context).push(
+                        await Navigator.of(context).push(
                           MaterialPageRoute(
                             // CashOutScreen usa riverpod (ref) y la app NO tiene
                             // ProviderScope global -> lo envolvemos aquí para que
@@ -229,7 +250,10 @@ class _EarningsScreenState extends State<EarningsScreen> {
                             ),
                           ),
                         );
-                      },
+                        // Al volver del retiro, recargar para mostrar el saldo real
+                        // (el servidor ya bajó drivers.available_balance).
+                        if (mounted) _loadData();
+                      } : null,
                       icon: const Icon(Icons.account_balance_wallet, size: 18),
                       label: const Text('Retirar a mi banco'),
                       style: ElevatedButton.styleFrom(
@@ -329,6 +353,43 @@ class _EarningsScreenState extends State<EarningsScreen> {
   // ═══════════════════════════════════════════════════════════════════════════
   // CASH CONTROL SECTION
   // ═══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildOpenPayoutNotice(String countryCode) {
+    final amount = (_openPayout?['amount'] as num?)?.toDouble() ?? 0;
+    final status = (_openPayout?['status'] ?? 'processing').toString();
+    final stripeId = (_openPayout?['stripe_payout_id'] ?? '').toString();
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.warning.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.warning.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.schedule, size: 20, color: AppColors.warning),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Retiro en proceso',
+                  style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${formatMoney(amount, country: countryCode)} · $status${stripeId.isNotEmpty ? ' · ${stripeId.substring(0, 8)}...' : ''}',
+                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildQRTierBanner(BuildContext context) {
     final driver = context.read<DriverProvider>().driver;
@@ -677,7 +738,10 @@ class _EarningsScreenState extends State<EarningsScreen> {
 
   void _showPayNowDialog(double amountOwed) {
     final countryCode = context.read<DriverProvider>().driver?.countryCode ?? 'US';
-    String selectedMethod = 'transfer';
+    // Default = TARJETA (la única opción instantánea que SÍ funciona). SPEI y
+    // Depósito están "pendiente de configurar" (sin cuenta) -> caer ahí por
+    // defecto hacía ver el flujo roto.
+    String selectedMethod = 'card';
     bool _submitting = false;
 
     showDialog(
@@ -789,7 +853,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
               ),
               child: _submitting
                   ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Text('Enviar Solicitud', style: TextStyle(fontWeight: FontWeight.bold)),
+                  : Text(selectedMethod == 'card' ? 'Pagar' : 'Enviar Solicitud', style: const TextStyle(fontWeight: FontWeight.bold)),
             ),
           ],
         ),
@@ -841,6 +905,15 @@ class _EarningsScreenState extends State<EarningsScreen> {
       final clientSecret = data?['clientSecret'] as String?;
       if (clientSecret == null) {
         throw Exception(data?['error']?.toString() ?? 'No se pudo iniciar el pago');
+      }
+
+      // CRÍTICO: usar la pk de la MISMA cuenta donde el edge creó el PaymentIntent.
+      // Si la pk del SDK es de otra cuenta, el PaymentSheet truena con
+      // "No such payment_intent" (mismo patrón que marketplace).
+      final pubKey = data?['publishable_key'] as String?;
+      if (pubKey != null && pubKey.isNotEmpty && Stripe.publishableKey != pubKey) {
+        Stripe.publishableKey = pubKey;
+        await Stripe.instance.applySettings();
       }
 
       // 2) Stripe PaymentSheet (el SDK ya está inicializado en PaymentService.initialize)

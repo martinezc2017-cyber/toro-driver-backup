@@ -13,6 +13,7 @@ import 'package:geolocator/geolocator.dart' as geo;
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:provider/provider.dart';
+import '../services/pricing_config_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../providers/ride_provider.dart';
@@ -113,9 +114,21 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
   String? _lastCheckedRideId;  // Para evitar re-checks innecesarios
   RideStatus? _lastCheckedStatus;
 
-  // Wait timer at pickup
+  // Wait timer at pickup.
+  // _waitSeconds se DERIVA de picked_up_at (timestamp persistido), NO se cuenta
+  // desde 0 en memoria -> sobrevive cierre/reapertura de la app y nunca se
+  // reinicia. _waitAnchor = el instante de llegada (picked_up_at) anclado.
   Timer? _waitTimer;
   int _waitSeconds = 0;
+  DateTime? _waitAnchor;
+  // Tiempo MANEJANDO (viaje en curso), anclado a started_at -> se ve en vivo.
+  int _tripSeconds = 0;
+  DateTime? _tripAnchor;
+  // Ventana de espera GRATIS (segundos), leida de pricing_config (no hardcodear).
+  int _freeWaitSeconds = 180; // 3 min default; se sobreescribe desde la config
+  // Umbral para mostrar el boton "Pasajero no llego" (no_show_detection_minutes).
+  int _noShowSeconds = 420; // 7 min default; se sobreescribe desde la config
+  bool _waitConfigLoaded = false;
 
   // Route loading state (prevents panel flash during route fetch)
   bool _isLoadingRoute = false;
@@ -502,7 +515,86 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
   // CONEXIÓN CON RIDEPROVIDER
   // ============================================================================
 
+  // ── Contador de espera ANCLADO al timestamp persistido (picked_up_at) ──────
+  // En vez de contar desde 0 en memoria (se reiniciaba al cerrar la app), el
+  // tiempo de espera se calcula como now() - arrivedAt. Aplica a TODO flujo que
+  // lleve tiempo: al reabrir, retoma el valor exacto.
+  void _syncWaitTimer(RideModel? ride) {
+    // ESPERA: en el pickup (arrivedAtPickup) -> ancla a picked_up_at.
+    // MANEJANDO: viaje en curso (inProgress) -> ancla a started_at.
+    final waiting = ride != null &&
+        ride.status == RideStatus.arrivedAtPickup &&
+        ride.arrivedAt != null;
+    final driving = ride != null &&
+        ride.status == RideStatus.inProgress &&
+        ride.startedAt != null;
+    if (!waiting && !driving) {
+      _waitTimer?.cancel();
+      _waitTimer = null;
+      _waitAnchor = null;
+      _tripAnchor = null;
+      if ((_waitSeconds != 0 || _tripSeconds != 0) && mounted) {
+        setState(() {
+          _waitSeconds = 0;
+          _tripSeconds = 0;
+        });
+      }
+      return;
+    }
+    _waitAnchor = waiting ? ride.arrivedAt!.toUtc() : null;
+    _tripAnchor = driving ? ride.startedAt!.toUtc() : null;
+    // Carga la ventana gratis de pricing_config una sola vez (no hardcodear).
+    if (waiting && !_waitConfigLoaded) {
+      _waitConfigLoaded = true;
+      PricingConfigService.instance.getConfig().then((c) {
+        if (mounted) {
+          setState(() {
+            _freeWaitSeconds = c.waitTimeFreeMinutes * 60;
+            _noShowSeconds = c.noShowDetectionMinutes * 60;
+          });
+        }
+      }).catchError((_) {/* deja los defaults */});
+    }
+    // CRÍTICO: el setState por segundo lo maneja SOLO el Timer. NO llamar
+    // _recomputeWait() aquí en cada invocación: _syncWaitTimer corre desde el
+    // post-frame de _checkAndStartNavigation en CADA build -> un setState aquí
+    // = build->setState->build infinito (hilo principal saturado, pantalla negra).
+    // Por eso _recomputeWait() solo se llama UNA vez, al (re)crear el timer.
+    if (_waitTimer == null || !_waitTimer!.isActive) {
+      _waitTimer?.cancel();
+      _recomputeWait();
+      _waitTimer = Timer.periodic(const Duration(seconds: 1), (_) => _recomputeWait());
+    }
+  }
+
+  void _recomputeWait() {
+    if (!mounted) return;
+    final w = _waitAnchor;
+    final t = _tripAnchor;
+    final ws = w == null ? 0 : DateTime.now().toUtc().difference(w).inSeconds;
+    final ts = t == null ? 0 : DateTime.now().toUtc().difference(t).inSeconds;
+    setState(() {
+      _waitSeconds = ws < 0 ? 0 : ws;
+      _tripSeconds = ts < 0 ? 0 : ts;
+    });
+  }
+
+  /// Formato del cronómetro de espera: MM:SS normal, H:MM:SS si pasa de 1 hora
+  /// (antes 78 min se veía como "78:29"; ahora "1:18:29").
+  String _fmtWait(int s) {
+    final h = s ~/ 3600;
+    final m = (s % 3600) ~/ 60;
+    final sec = s % 60;
+    final mm = m.toString().padLeft(2, '0');
+    final ss = sec.toString().padLeft(2, '0');
+    return h > 0 ? '$h:$mm:$ss' : '$mm:$ss';
+  }
+
   void _checkAndStartNavigation(RideModel? ride) {
+    // El contador de espera se sincroniza SIEMPRE (aunque el status no cambie):
+    // garantiza que al reabrir la app retome el tiempo desde picked_up_at.
+    _syncWaitTimer(ride);
+
     // OPTIMIZACIÓN: Evitar re-checks si nada cambió
     if (ride?.id == _lastCheckedRideId && ride?.status == _lastCheckedStatus) {
       return;  // Ya verificamos este ride con este status
@@ -729,16 +821,9 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
       final success = await rideProvider.arriveAtPickup();
       debugPrint('🟦 SLIDE -> arriveAtPickup RESULTADO success=$success');
       if (success) {
-        // Start wait timer
-        _waitSeconds = 0;
-        _waitTimer?.cancel();
-        _waitTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-          if (mounted) {
-            setState(() => _waitSeconds++);
-          } else {
-            timer.cancel();
-          }
-        });
+        // Arranca el contador de espera ANCLADO a picked_up_at (lo acaba de
+        // poner arriveAtPickup). Asi sobrevive si la app se cierra/reabre.
+        _syncWaitTimer(rideProvider.activeRide);
         if (ride.type == RideType.marketplace) {
           // AL LLEGAR = pedir el código de recogida AQUÍ (antes, no en un paso
           // aparte). Carlos: "cuando llegue, lanza el trigger". Avisa al vendedor
@@ -1214,33 +1299,42 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                         ),
                         child: Column(
                           children: [
+                            // Desglose que CUADRA: tarifa − comisión − seguro/imp
+                            // (+ propina) = Tu parte. "Seguro + impuestos" = el
+                            // resto (tarifa − parte chofer − comisión) para que la
+                            // resta visible sume EXACTO a Tu parte.
                             _earningsRow(
-                              'Tarifa base',
+                              'Tarifa del viaje',
                               formatMoney(ride.fare, country: cc),
                               Icons.directions_car,
                             ),
-                            const Divider(color: Colors.white24, height: 16),
-                            _earningsRow(
-                              'Tu parte',
-                              formatMoney(baseEarnings, country: cc),
-                              Icons.account_balance_wallet,
-                              highlight: true,
-                            ),
-                            if (hasTip) ...[
-                              const Divider(color: Colors.white24, height: 16),
-                              _earningsRow(
-                                'Propina',
-                                '+${formatMoney(ride.tip, country: cc)}',
-                                Icons.star,
-                                color: Colors.amber,
-                              ),
-                            ],
                             const Divider(color: Colors.white24, height: 16),
                             _earningsRow(
                               'Comisión Toro',
                               '-${formatMoney(ride.platformFee, country: cc)}',
                               Icons.business,
                               color: Colors.white38,
+                            ),
+                            if (ride.fare - baseEarnings - ride.platformFee > 0.01)
+                              _earningsRow(
+                                'Seguro + impuestos',
+                                '-${formatMoney(ride.fare - baseEarnings - ride.platformFee, country: cc)}',
+                                Icons.verified_user,
+                                color: Colors.white38,
+                              ),
+                            if (hasTip)
+                              _earningsRow(
+                                'Propina',
+                                '+${formatMoney(ride.tip, country: cc)}',
+                                Icons.star,
+                                color: Colors.amber,
+                              ),
+                            const Divider(color: Colors.white24, height: 16),
+                            _earningsRow(
+                              'Tu parte',
+                              formatMoney(ride.driverEarnings, country: cc),
+                              Icons.account_balance_wallet,
+                              highlight: true,
                             ),
                           ],
                         ),
@@ -1378,6 +1472,91 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
       _waitSeconds = 0;
       _clearRoute();
       if (widget.onBack != null) widget.onBack!();
+    }
+  }
+
+  /// Botón "Pasajero no llegó" (no-show estilo Uber). Cobra al pasajero
+  /// no_show_fee + el tiempo de espera y cierra el viaje (server-side RPC).
+  Widget _buildNoShowButton(RideModel ride) {
+    const red = Color(0xFFEF4444);
+    return GestureDetector(
+      onTap: _handleNoShow,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: red.withOpacity(0.15),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: red.withOpacity(0.6)),
+        ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.person_off_rounded, color: red, size: 18),
+            SizedBox(width: 8),
+            Text(
+              'Pasajero no llegó · cobrar no-show',
+              style: TextStyle(
+                color: red,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleNoShow() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E1E),
+        title: const Text('¿El pasajero no llegó?',
+            style: TextStyle(color: Colors.white)),
+        content: const Text(
+          'Se cerrará el viaje y se cobrará al pasajero la tarifa de no-show '
+          'más el tiempo que esperaste. Tú cobras tu parte.',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('NO'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('SÍ, NO LLEGÓ'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final rideProvider = context.read<RideProvider>();
+    final res = await rideProvider.reportNoShow();
+    if (!mounted) return;
+
+    if (res != null && res['ok'] == true) {
+      _waitTimer?.cancel();
+      _waitSeconds = 0;
+      _clearRoute();
+      final total = (res['total'] as num?)?.toStringAsFixed(2) ?? '0';
+      final driverShare = (res['driver_share'] as num?)?.toStringAsFixed(2) ?? '0';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('No-show registrado · cobrado \$$total · tu parte \$$driverShare'),
+        backgroundColor: const Color(0xFF22D3EE),
+        duration: const Duration(seconds: 5),
+      ));
+      if (widget.onBack != null) widget.onBack!();
+    } else {
+      final err = res?['error']?.toString() ?? 'desconocido';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('No se pudo registrar el no-show: $err'),
+        backgroundColor: const Color(0xFFEF4444),
+      ));
     }
   }
 
@@ -2888,11 +3067,11 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                         border: Border.all(color: Colors.white24),
                       ),
                       child: Text(
-                        '${(_waitSeconds ~/ 60).toString().padLeft(2, '0')}:${(_waitSeconds % 60).toString().padLeft(2, '0')}',
+                        _fmtWait(_waitSeconds),
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: _waitSeconds <= 120 ? Colors.white : Colors.white70,
+                          color: _waitSeconds <= _freeWaitSeconds ? Colors.white : Colors.white70,
                           fontFamily: 'monospace',
                         ),
                       ),
@@ -3071,6 +3250,16 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                           scrollDirection: Axis.horizontal,
                           child: Row(
                             children: [
+                              // VIAJE EN CURSO: tiempo MANEJANDO + km RECORRIDOS en vivo
+                              // (lo que pidió Carlos). El tiempo corre desde started_at;
+                              // los km salen del odómetro real (actual_distance_km).
+                              if (isInProgress) ...[
+                                _buildTripDetailChip(Icons.timer, '${_fmtWait(_tripSeconds)} manejando'),
+                                const SizedBox(width: 6),
+                                _buildTripDetailChip(Icons.straighten,
+                                    '${(ride.actualDistanceKm ?? 0).toStringAsFixed(1)} km recorridos'),
+                                const SizedBox(width: 6),
+                              ],
                               if (_navState.isNavigating) ...[
                                 _buildTripDetailChip(Icons.access_time_filled, _navState.formattedETA),
                                 const SizedBox(width: 6),
@@ -3180,6 +3369,15 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
             // Slide to confirm action
             _buildSlideToConfirm(ride),
             const SizedBox(height: 10),
+
+            // No-show: aparece SOLO cuando el chofer ya esperó el umbral
+            // (no_show_detection_minutes) y el viaje sigue en espera. Cierra el
+            // viaje y cobra al pasajero (no_show_fee + espera). Distinto de
+            // "Cancelar" (que solo libera al pool, sin cobro).
+            if (isWaiting && _waitSeconds >= _noShowSeconds) ...[
+              _buildNoShowButton(ride),
+              const SizedBox(height: 10),
+            ],
 
             // Bottom action bar: Navigate + Report + Cancel
             Row(
@@ -3392,9 +3590,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
 
   /// Wait timer for pre-navigation panel
   Widget _buildWaitTimerCompact() {
-    final minutes = _waitSeconds ~/ 60;
-    final seconds = _waitSeconds % 60;
-    final isFreeTime = _waitSeconds <= 120;
+    final isFreeTime = _waitSeconds <= _freeWaitSeconds;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -3415,7 +3611,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
           ),
           const SizedBox(width: 8),
           Text(
-            'Esperando: ${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}',
+            'Esperando: ${_fmtWait(_waitSeconds)}',
             style: TextStyle(
               color: isFreeTime ? Colors.blue : Colors.red,
               fontSize: 14,

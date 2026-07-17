@@ -28,6 +28,13 @@ class PaymentService {
     return 0;
   }
 
+  double _getEarningsFromLedger(Map<String, dynamic> item) {
+    final net = (item['net_fare'] as num?)?.toDouble();
+    final amount = (item['amount'] as num?)?.toDouble() ?? 0;
+    final tips = (item['tip_amount'] as num?)?.toDouble() ?? 0;
+    return ((net != null && net > 0) ? net : amount) + tips;
+  }
+
   // Helper to get base fare from delivery
   double _getBaseFare(Map<String, dynamic> item) {
     return (item['base_fare'] as num?)?.toDouble() ??
@@ -148,6 +155,7 @@ class PaymentService {
 
     // Initialize all counters
     double todayEarnings = 0, weekEarnings = 0, monthEarnings = 0, totalBalance = 0;
+    double availableForPayout = 0, pendingPayout = 0;
     double todayTips = 0, weekTips = 0, monthTips = 0;
     int todayRides = 0, weekRides = 0, monthRides = 0;
 
@@ -173,31 +181,25 @@ class PaymentService {
     // may not live on driver_earnings — our helpers safely return 0 when
     // missing, so the math gracefully degrades to net_fare + tip.
 
-    // Helper to read net earnings from a driver_earnings row.
-    double netFromEarnings(Map<String, dynamic> row) {
-      // Prefer net_fare (admin canonical); fall back to amount.
-      final net = (row['net_fare'] as num?)?.toDouble();
-      if (net != null && net > 0) return net;
-      return (row['amount'] as num?)?.toDouble() ?? 0;
-    }
-
     try {
       // Get today's earnings rows.
       final todayResponse = await _client
           .from('driver_earnings')
           .select()
           .eq('driver_id', driverId)
+          .eq('status', 'completed')
           .gte('created_at', startOfDay.toIso8601String());
 
-      for (var item in (todayResponse as List)) {
-        final earnings = netFromEarnings(item);
+      for (var rawItem in (todayResponse as List)) {
+        final item = Map<String, dynamic>.from(rawItem as Map);
+        final earnings = _getEarningsFromLedger(item);
         final tips = (item['tip_amount'] as num?)?.toDouble() ?? 0;
         final itemQRBoost = _getQRBoost(item);
         final itemPeakHours = _getPeakHoursBonus(item);
         final itemDamageFee = _getDamageFee(item);
         final itemExtraBonus = _getExtraBonus(item);
 
-        final totalForToday = earnings + itemQRBoost + itemPeakHours + itemDamageFee + itemExtraBonus + tips;
+        final totalForToday = earnings + itemQRBoost + itemPeakHours + itemDamageFee + itemExtraBonus;
         todayEarnings += totalForToday;
         todayTips += tips;
       }
@@ -208,10 +210,12 @@ class PaymentService {
           .from('driver_earnings')
           .select()
           .eq('driver_id', driverId)
+          .eq('status', 'completed')
           .gte('created_at', startOfWeek.toIso8601String());
 
-      for (var item in (weekResponse as List)) {
-        final earnings = netFromEarnings(item);
+      for (var rawItem in (weekResponse as List)) {
+        final item = Map<String, dynamic>.from(rawItem as Map);
+        final earnings = _getEarningsFromLedger(item);
         final tips = (item['tip_amount'] as num?)?.toDouble() ?? 0;
 
         weekBaseFare += _getBaseFare(item);
@@ -229,7 +233,7 @@ class PaymentService {
         weekDamageFee += itemDamageFee;
         weekExtraBonus += itemExtraBonus;
 
-        final totalEarningsForTrip = earnings + itemQRBoost + itemPeakHours + itemDamageFee + itemExtraBonus + tips;
+        final totalEarningsForTrip = earnings + itemQRBoost + itemPeakHours + itemDamageFee + itemExtraBonus;
         weekEarnings += totalEarningsForTrip;
         weekTips += tips;
 
@@ -243,17 +247,19 @@ class PaymentService {
           .from('driver_earnings')
           .select()
           .eq('driver_id', driverId)
+          .eq('status', 'completed')
           .gte('created_at', startOfMonth.toIso8601String());
 
-      for (var item in (monthResponse as List)) {
-        final earnings = netFromEarnings(item);
+      for (var rawItem in (monthResponse as List)) {
+        final item = Map<String, dynamic>.from(rawItem as Map);
+        final earnings = _getEarningsFromLedger(item);
         final tips = (item['tip_amount'] as num?)?.toDouble() ?? 0;
         final itemQRBoost = _getQRBoost(item);
         final itemPeakHours = _getPeakHoursBonus(item);
         final itemDamageFee = _getDamageFee(item);
         final itemExtraBonus = _getExtraBonus(item);
 
-        final totalForMonth = earnings + itemQRBoost + itemPeakHours + itemDamageFee + itemExtraBonus + tips;
+        final totalForMonth = earnings + itemQRBoost + itemPeakHours + itemDamageFee + itemExtraBonus;
         monthEarnings += totalForMonth;
         monthTips += tips;
       }
@@ -263,24 +269,25 @@ class PaymentService {
       final totalResponse = await _client
           .from('driver_earnings')
           .select()
-          .eq('driver_id', driverId);
+          .eq('driver_id', driverId)
+          .eq('status', 'completed');
 
-      for (var item in (totalResponse as List)) {
-        final earnings = netFromEarnings(item);
-        final tips = (item['tip_amount'] as num?)?.toDouble() ?? 0;
+      for (var rawItem in (totalResponse as List)) {
+        final item = Map<String, dynamic>.from(rawItem as Map);
+        final earnings = _getEarningsFromLedger(item);
         final itemQRBoost = _getQRBoost(item);
         final itemPeakHours = _getPeakHoursBonus(item);
         final itemDamageFee = _getDamageFee(item);
         final itemExtraBonus = _getExtraBonus(item);
 
-        final totalForTrip = earnings + itemQRBoost + itemPeakHours + itemDamageFee + itemExtraBonus + tips;
+        final totalForTrip = earnings + itemQRBoost + itemPeakHours + itemDamageFee + itemExtraBonus;
         totalBalance += totalForTrip;
       }
 
       // Get driver stats from drivers table
       final driverStats = await _client
           .from('drivers')
-          .select('acceptance_rate, weekly_goal')
+          .select('acceptance_rate, weekly_goal, available_balance, pending_balance')
           .eq('id', driverId)
           .maybeSingle();
 
@@ -288,6 +295,8 @@ class PaymentService {
         final rateFromDb = (driverStats['acceptance_rate'] as num?)?.toDouble() ?? 0;
         acceptanceRate = rateFromDb > 0 ? rateFromDb * 100 : 95.0;
         weeklyGoal = (driverStats['weekly_goal'] as num?)?.toDouble() ?? 500.0;
+        availableForPayout = (driverStats['available_balance'] as num?)?.toDouble() ?? 0.0;
+        pendingPayout = (driverStats['pending_balance'] as num?)?.toDouble() ?? 0.0;
       }
 
       // Get online minutes from driver_sessions table (real tracking)
@@ -374,6 +383,8 @@ class PaymentService {
       weekEarnings: weekEarnings,
       monthEarnings: monthEarnings,
       totalBalance: totalBalance,
+      availableForPayout: availableForPayout,
+      pendingPayout: pendingPayout,
       todayRides: todayRides,
       weekRides: weekRides,
       monthRides: monthRides,
@@ -398,7 +409,7 @@ class PaymentService {
     );
   }
 
-  // Get earnings history - reads from deliveries table
+  // Get earnings history - reads from canonical driver_earnings ledger
   Future<List<EarningModel>> getEarningsHistory(
     String driverId, {
     int limit = 50,
@@ -407,49 +418,35 @@ class PaymentService {
     DateTime? endDate,
   }) async {
     try {
-      // Try with delivered_at first
       var query = _client
-          .from(SupabaseConfig.packageDeliveriesTable)
-          .select()
+          .from('driver_earnings')
+          .select('id, driver_id, ride_id, delivery_id, carpool_id, amount, net_fare, tip_amount, type, earning_type, description, created_at, completed_at')
           .eq('driver_id', driverId)
-          .inFilter('status', ['completed', 'delivered']);
+          .eq('status', 'completed');
 
       if (startDate != null) {
-        query = query.gte('delivered_at', startDate.toIso8601String());
+        query = query.gte('created_at', startDate.toIso8601String());
       }
       if (endDate != null) {
-        query = query.lte('delivered_at', endDate.toIso8601String());
+        query = query.lte('created_at', endDate.toIso8601String());
       }
 
-      var response = await query
-          .order('delivered_at', ascending: false)
+      final response = await query
+          .order('created_at', ascending: false)
           .range(offset, offset + limit - 1);
 
-      // If no results and no date filter, try ordering by completed_at
-      if ((response as List).isEmpty && startDate == null && endDate == null) {
-        response = await _client
-            .from(SupabaseConfig.packageDeliveriesTable)
-            .select()
-            .eq('driver_id', driverId)
-            .inFilter('status', ['completed', 'delivered'])
-            .order('completed_at', ascending: false)
-            .range(offset, offset + limit - 1);
-      }
-
-      return response.map((delivery) {
-        // driver_earnings already includes tip - DO NOT add tip separately
-        final amount = _getEarningsFromDelivery(delivery);
-        final serviceType = delivery['service_type'] as String? ?? 'ride';
-
-        // Use delivered_at or completed_at for date
-        final dateStr = delivery['delivered_at'] as String? ?? delivery['completed_at'] as String? ?? '';
+      return (response as List).map((raw) {
+        final earning = Map<String, dynamic>.from(raw as Map);
+        final amount = _getEarningsFromLedger(earning);
+        final serviceType = (earning['earning_type'] ?? earning['type'] ?? 'ride').toString();
+        final dateStr = earning['completed_at']?.toString() ?? earning['created_at']?.toString() ?? '';
 
         return EarningModel(
-          id: delivery['id'] as String,
+          id: earning['id'] as String,
           driverId: driverId,
-          rideId: delivery['id'] as String,
+          rideId: (earning['ride_id'] ?? earning['delivery_id'] ?? earning['carpool_id'])?.toString(),
           type: serviceType == 'package' ? TransactionType.rideEarning : TransactionType.rideEarning,
-          amount: amount, // driver_earnings already includes tip
+          amount: amount,
           description: serviceType == 'package'
               ? 'Entrega de paquete'
               : serviceType == 'carpool'
@@ -465,7 +462,7 @@ class PaymentService {
     }
   }
 
-  // Get weekly earnings breakdown - reads from deliveries table
+  // Get weekly earnings breakdown - reads from canonical driver_earnings ledger
   Future<List<DailyEarning>> getWeeklyBreakdown(String driverId) async {
     final now = DateTime.now();
     final startOfWeek = DateTime(now.year, now.month, now.day)
@@ -478,30 +475,17 @@ class PaymentService {
       final dayEnd = dayStart.add(const Duration(days: 1));
 
       try {
-        // Try delivered_at first
-        var response = await _client
-            .from(SupabaseConfig.packageDeliveriesTable)
-            .select()
+        final response = await _client
+            .from('driver_earnings')
+            .select('amount, net_fare, tip_amount, created_at')
             .eq('driver_id', driverId)
-            .inFilter('status', ['completed', 'delivered'])
-            .gte('delivered_at', dayStart.toIso8601String())
-            .lt('delivered_at', dayEnd.toIso8601String());
-
-        // If no results, try completed_at
-        if ((response as List).isEmpty) {
-          response = await _client
-              .from(SupabaseConfig.packageDeliveriesTable)
-              .select()
-              .eq('driver_id', driverId)
-              .inFilter('status', ['completed', 'delivered'])
-              .gte('completed_at', dayStart.toIso8601String())
-              .lt('completed_at', dayEnd.toIso8601String());
-        }
+            .eq('status', 'completed')
+            .gte('created_at', dayStart.toIso8601String())
+            .lt('created_at', dayEnd.toIso8601String());
 
         double dayTotal = 0;
-        for (var item in response) {
-          // driver_earnings already includes tip - DO NOT add tip separately
-          dayTotal += _getEarningsFromDelivery(item);
+        for (var item in (response as List)) {
+          dayTotal += _getEarningsFromLedger(Map<String, dynamic>.from(item as Map));
         }
 
         weeklyEarnings.add(DailyEarning(

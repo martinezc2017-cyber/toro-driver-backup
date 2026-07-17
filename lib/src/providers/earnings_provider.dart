@@ -31,7 +31,8 @@ class EarningsProvider with ChangeNotifier {
   double get weekEarnings => _summary?.weekEarnings ?? 0;
   double get weeklyEarnings => weekEarnings; // Alias for consistency
   double get monthEarnings => _summary?.monthEarnings ?? 0;
-  double get availableBalance => _summary?.totalBalance ?? 0;
+  double get availableBalance => _summary?.availableForPayout ?? 0;
+  double get pendingPayout => _summary?.pendingPayout ?? 0;
 
   // Initialize provider
   Future<void> initialize(String driverId) async {
@@ -60,8 +61,47 @@ class EarningsProvider with ChangeNotifier {
     if (_subscribedDriverId == driverId && _channel != null) return;
     _channel?.unsubscribe();
     _subscribedDriverId = driverId;
+    void reload() {
+      _loadSummary(driverId).then((_) {
+        _loadWeeklyBreakdown(driverId).then((_) => notifyListeners());
+      });
+    }
+
     _channel = Supabase.instance.client
         .channel('earnings_$driverId')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'driver_earnings',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'driver_id',
+            value: driverId,
+          ),
+          callback: (_) => reload(),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'driver_payouts',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'driver_id',
+            value: driverId,
+          ),
+          callback: (_) => reload(),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'drivers',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'id',
+            value: driverId,
+          ),
+          callback: (_) => reload(),
+        )
         .onPostgresChanges(
           event: PostgresChangeEvent.update,
           schema: 'public',
@@ -73,11 +113,11 @@ class EarningsProvider with ChangeNotifier {
           ),
           callback: (payload) {
             final status = payload.newRecord['status']?.toString();
-            if (status == 'completed' || status == 'delivered') {
-              // Recarga summary/breakdown sin re-suscribir (guard arriba).
-              _loadSummary(driverId).then((_) {
-                _loadWeeklyBreakdown(driverId).then((_) => notifyListeners());
-              });
+            // 'cancelled' incluido: un no-show de pasajero cierra el viaje como
+            // cancelado PERO acredita al chofer (driver_earnings) -> hay que
+            // recargar "Hoy"/semana o se queda en el valor viejo (se veía $0).
+            if (status == 'completed' || status == 'delivered' || status == 'cancelled') {
+              reload();
             }
           },
         )

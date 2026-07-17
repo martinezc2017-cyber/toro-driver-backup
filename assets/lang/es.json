@@ -1,4 +1,7 @@
 {
+  "today_time": "Hoy, {}",
+  "yesterday_time": "Ayer, {}",
+  "days_ago_label": "Hace {} días",
   "home_title": "Toro Driver - Inicio",
   "status_online": "En Línea",
   "status_offline": "Desconectado",

@@ -172,6 +172,7 @@ class RideModel {
   final DateTime? completedAt;
   final DateTime? cancelledAt;
   final String? cancellationReason;
+  final double? actualDistanceKm;          // km RECORRIDOS reales (odómetro en vivo)
   // Round trip / Carpool fields
   final List<int> recurringDays;           // Days of week (1-7) for recurring rides
   final int filledSeats;                   // Number of passengers in carpool
@@ -245,6 +246,7 @@ class RideModel {
     this.completedAt,
     this.cancelledAt,
     this.cancellationReason,
+    this.actualDistanceKm,
     this.recurringDays = const [],
     this.filledSeats = 1,
     this.linkedReturnBookingId,
@@ -387,6 +389,7 @@ class RideModel {
       startedAt: json['started_at'] != null
           ? DateTime.parse(json['started_at'] as String)
           : null,
+      actualDistanceKm: (json['actual_distance_km'] as num?)?.toDouble(),
       completedAt: json['completed_at'] != null
           ? DateTime.parse(json['completed_at'] as String)
           : null,
@@ -529,6 +532,7 @@ class RideModel {
     DateTime? acceptedAt,
     DateTime? arrivedAt,
     DateTime? startedAt,
+    double? actualDistanceKm,
     DateTime? completedAt,
     DateTime? cancelledAt,
     String? cancellationReason,
@@ -587,6 +591,7 @@ class RideModel {
       acceptedAt: acceptedAt ?? this.acceptedAt,
       arrivedAt: arrivedAt ?? this.arrivedAt,
       startedAt: startedAt ?? this.startedAt,
+      actualDistanceKm: actualDistanceKm ?? this.actualDistanceKm,
       completedAt: completedAt ?? this.completedAt,
       cancelledAt: cancelledAt ?? this.cancelledAt,
       cancellationReason: cancellationReason ?? this.cancellationReason,

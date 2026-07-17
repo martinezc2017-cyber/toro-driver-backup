@@ -259,6 +259,27 @@ class StripeConnectService {
     try {
       final supabase = SupabaseConfig.client;
 
+      try {
+        final sync = await supabase.functions.invoke(
+          'stripe-instant-payout',
+          body: {'driver_id': driverId, 'mode': 'balance_sync'},
+        );
+        final data = (sync.data is Map)
+            ? Map<String, dynamic>.from(sync.data as Map)
+            : <String, dynamic>{};
+        if (sync.status == 200 && data['success'] == true) {
+          final availablePesos = (data['available_balance'] as num?)?.toDouble() ?? 0;
+          final pendingPesos = (data['pending_balance'] as num?)?.toDouble() ?? 0;
+          return DriverBalance(
+            availableCents: (availablePesos * 100).round(),
+            pendingCents: (pendingPesos * 100).round(),
+            currency: (data['currency'] ?? (provider == 'mx' ? 'mxn' : 'usd')).toString(),
+          );
+        }
+      } catch (e) {
+        AppLogger.log('STRIPE CONNECT -> Balance sync unavailable, using DB balance: $e');
+      }
+
       // Rewire: TORO mantiene el balance canónico en drivers.available_balance
       // (recalculado desde driver_earnings card-net − payouts). Antes invocaba
       // 'stripe-connect-balance' que NO existe. Lee la columna directo.
@@ -321,35 +342,21 @@ class StripeConnectService {
     try {
       final supabase = SupabaseConfig.client;
 
-      // Verificar que la cuenta este activa
-      final status = await getAccountStatus(driverId, provider: provider);
-      if (!status.canReceivePayments) {
-        return PayoutResult(
-          success: false,
-          error: 'Tu cuenta de Stripe no está activa. Completa la verificación primero.',
-        );
+      // LOGS (Carlos): cada paso del retiro a app_logs para diagnosticar.
+      Future<void> plog(String m) async {
+        try {
+          await supabase.from('app_logs').insert({
+            'level': 'info',
+            'message': 'PAYOUT_DBG driver=$driverId | $m',
+          });
+        } catch (_) {}
       }
+      await plog('START amountCents=$amountCents amount=${amountCents / 100.0}');
 
-      // Verificar balance disponible
-      final balance = await getBalance(driverId, provider: provider);
-      if (balance == null) {
-        return PayoutResult(
-          success: false,
-          error: 'No se pudo obtener tu balance. Intenta de nuevo.',
-        );
-      }
-
-      if (balance.availableCents < amountCents) {
-        return PayoutResult(
-          success: false,
-          error: 'Balance insuficiente. Disponible: \$${(balance.availableCents / 100).toStringAsFixed(2)}',
-        );
-      }
-
-      // Rewire: fn canónica 'stripe-instant-payout' (deriva moneda de
-      // drivers.country_code, ignora currency/provider). Espera amount en PESOS,
-      // el cliente tiene centavos → dividir. Antes invocaba 'stripe-connect-payout'
-      // que NO existe.
+      // SIN pre-checks en el app (getBalance/payouts_enabled tronaban o bloqueaban
+      // con falsos negativos -> "Error de conexión"). stripe-instant-payout es la
+      // AUTORIDAD: valida la cuenta, liquida el saldo del pool de la plataforma al
+      // Connect y paga al banco. Si algo falla, devuelve un error claro.
       final response = await supabase.functions.invoke(
         'stripe-instant-payout',
         body: {
@@ -358,22 +365,42 @@ class StripeConnectService {
         },
       );
 
-      if (response.status != 200) {
-        final errorData = response.data as Map<String, dynamic>?;
-        final errorMessage = errorData?['error'] ?? 'Error al procesar retiro';
+      await plog('INVOKE status=${response.status} data=${response.data}');
+
+      final data = (response.data is Map)
+          ? Map<String, dynamic>.from(response.data as Map)
+          : <String, dynamic>{};
+      if (response.status != 200 || data['success'] != true) {
+        final errorMessage = (data['error'] ?? 'Error al procesar retiro').toString();
+        await plog('ERROR: $errorMessage');
         return PayoutResult(success: false, error: errorMessage);
       }
 
-      final data = response.data as Map<String, dynamic>;
+      await plog('SUCCESS payout_id=${data['payout_id']}');
       return PayoutResult(
         success: true,
         payoutId: data['payout_id'] as String?,
         arrivalDate: data['arrival_date'] != null
-            ? DateTime.tryParse(data['arrival_date'])
+            ? DateTime.tryParse(data['arrival_date'].toString())
             : null,
       );
     } catch (e) {
       AppLogger.log('STRIPE CONNECT -> Error requesting payout: $e');
+      // LOG a app_logs el error crudo + details (Carlos: ponle logs).
+      try {
+        await SupabaseConfig.client.from('app_logs').insert({
+          'level': 'error',
+          'message': 'PAYOUT_DBG driver=$driverId | CATCH: $e',
+        });
+      } catch (_) {}
+      // Si es FunctionException (la fn devolvió >=400), tiene .details con el
+      // error REAL — mostrarlo en vez del genérico "Error de conexión".
+      try {
+        final d = (e as dynamic).details;
+        if (d is Map && d['error'] != null) {
+          return PayoutResult(success: false, error: d['error'].toString());
+        }
+      } catch (_) {}
       return PayoutResult(
         success: false,
         error: 'Error de conexión. Intenta de nuevo.',
@@ -415,6 +442,24 @@ class StripeConnectService {
     } catch (e) {
       AppLogger.log('STRIPE CONNECT -> Error getting payout history: $e');
       return [];
+    }
+  }
+
+  Future<Map<String, dynamic>?> getOpenPayout(String driverId) async {
+    try {
+      final row = await SupabaseConfig.client
+          .from('driver_payouts')
+          .select('id, amount, status, stripe_payout_id, created_at')
+          .eq('driver_id', driverId)
+          .inFilter('status', ['pending', 'processing', 'in_transit'])
+          .order('created_at', ascending: false)
+          .limit(1)
+          .maybeSingle();
+
+      return row == null ? null : Map<String, dynamic>.from(row);
+    } catch (e) {
+      AppLogger.log('STRIPE CONNECT -> Error getting open payout: $e');
+      return null;
     }
   }
 }

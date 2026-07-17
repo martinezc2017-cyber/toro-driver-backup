@@ -104,6 +104,12 @@ class PricingConfig {
   final double platformFeePercent;
   final double cancellationFee;
   final bool isActive;
+  // Ventana de espera del chofer en el pickup: minutos GRATIS antes de cobrar
+  // y costo por minuto extra. Vienen de pricing_config (NO hardcodear).
+  final int waitTimeFreeMinutes;
+  final double waitTimeFeePerMin;
+  // Minutos de espera tras los que el chofer puede declarar "no-show".
+  final int noShowDetectionMinutes;
 
   PricingConfig({
     required this.bookingType,
@@ -114,6 +120,9 @@ class PricingConfig {
     required this.platformFeePercent,
     required this.cancellationFee,
     required this.isActive,
+    this.waitTimeFreeMinutes = 3,
+    this.waitTimeFeePerMin = 0,
+    this.noShowDetectionMinutes = 7,
   });
 
   factory PricingConfig.fromJson(Map<String, dynamic> json) {
@@ -126,6 +135,11 @@ class PricingConfig {
       platformFeePercent: _parseDouble(json['platform_commission']),
       cancellationFee: _parseDouble(json['ride_cancellation_fee']),
       isActive: json['is_active'] ?? true,
+      waitTimeFreeMinutes: _parseDouble(json['wait_time_free_minutes']).round(),
+      waitTimeFeePerMin: _parseDouble(json['wait_time_fee_per_min']),
+      noShowDetectionMinutes: json['no_show_detection_minutes'] != null
+          ? _parseDouble(json['no_show_detection_minutes']).round()
+          : 7,
     );
   }
 

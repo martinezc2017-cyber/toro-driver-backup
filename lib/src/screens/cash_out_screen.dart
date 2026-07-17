@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../utils/app_theme.dart';
 import '../utils/money_format.dart';
 import '../providers/riverpod_providers.dart';
@@ -25,6 +26,9 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
   double _selectedAmount = 0;
   String _selectedMethod = 'debit_card';
   String _countryCode = 'US';
+  String _stripeProvider = 'us';
+  bool _connectReady = false; // payouts_enabled en la cuenta Stripe Connect
+  Map<String, dynamic>? _openPayout;
 
   List<Map<String, dynamic>> _bankAccounts = [];
   List<Map<String, dynamic>> _debitCards = [];
@@ -56,6 +60,23 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
       final stripeProvider = ((driver?.countryCode ?? 'US').toUpperCase() == 'MX') ? 'mx' : 'us';
       final stripeBalance = await StripeConnectService.instance
           .getBalance(widget.driverId, provider: stripeProvider);
+      final openPayout = await StripeConnectService.instance
+          .getOpenPayout(widget.driverId);
+
+      // El destino del retiro es la cuenta Stripe Connect que el chofer YA
+      // vinculó. CANÓNICO = drivers.payouts_enabled (lo que Stripe confirmó al
+      // onboardear). ANTES leía getAccountStatus(provider:'mx') que consultaba la
+      // tabla driver_stripe_accounts_mx (VACÍA) -> falso negativo y bloqueaba el
+      // retiro aunque la cuenta SÍ estuviera habilitada (acct enabled/payouts ok).
+      bool connectReady = false;
+      try {
+        final drow = await Supabase.instance.client
+            .from('drivers')
+            .select('payouts_enabled')
+            .eq('id', widget.driverId)
+            .maybeSingle();
+        connectReady = (drow?['payouts_enabled'] as bool?) ?? false;
+      } catch (_) {}
 
       // Si Stripe responde, esa es la verdad. Si no, DB stats como fallback.
       final canonicalAvailable = stripeBalance != null
@@ -67,6 +88,9 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
 
       setState(() {
         _countryCode = driver?.countryCode ?? 'US';
+        _stripeProvider = stripeProvider;
+        _connectReady = connectReady;
+        _openPayout = openPayout;
         _availableBalance = canonicalAvailable;
         _pendingBalance = canonicalPending;
         _bankAccounts = accounts;
@@ -109,7 +133,8 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
   bool get _canCashOut =>
       _selectedAmount > 0 &&
       _selectedAmount <= _availableBalance &&
-      _selectedDestination != null &&
+      _connectReady &&
+      _openPayout == null &&
       _netAmount > 0;
 
   Future<void> _processCashOut() async {
@@ -118,20 +143,25 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
     setState(() => _isProcessing = true);
 
     try {
-      final driverService = ref.read(driverServiceProvider);
-      final success = await driverService.requestInstantPayout(
-        widget.driverId,
-        _selectedAmount,
-        _selectedMethod,
-        _selectedDestination!['id'],
+      // Retiro vía Stripe Connect → deposita al banco/tarjeta del onboarding.
+      // Usa la fn canónica stripe-instant-payout (NO un método local).
+      final result = await StripeConnectService.instance.requestPayout(
+        driverId: widget.driverId,
+        amountCents: (_selectedAmount * 100).round(),
+        provider: _stripeProvider,
       );
 
-      if (success && mounted) {
+      // Refrescar el balance tras el intento: el servidor ya actualizó
+      // drivers.available_balance (ganado − retirado). Así la pantalla muestra el
+      // saldo REAL (baja a $0 si ya retiró) y no el viejo.
+      if (mounted) await _loadData();
+
+      if (result.success && mounted) {
         _showSuccessDialog();
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('screens.cash_out.error_processing'.tr()),
+            content: Text(result.error ?? 'screens.cash_out.error_processing'.tr()),
             backgroundColor: AppTheme.error,
           ),
         );
@@ -184,40 +214,10 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
               ),
             ),
             const SizedBox(height: 10),
-            Text(
-              _selectedMethod == 'debit_card'
-                  ? 'screens.cash_out.money_to_card'.tr()
-                  : 'screens.cash_out.money_to_account'.tr(),
-              style: const TextStyle(color: AppTheme.textMuted, fontSize: 13),
+            const Text(
+              'Llega a tu banco/tarjeta vinculada vía Stripe, en minutos',
+              style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
               textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: AppTheme.border,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    _selectedMethod == 'debit_card'
-                        ? Icons.credit_card
-                        : Icons.account_balance,
-                    color: AppTheme.textMuted,
-                    size: 16,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '****${_selectedDestination?['card_last4'] ?? _selectedDestination?['account_last4'] ?? ''}',
-                    style: const TextStyle(
-                      color: AppTheme.textMuted,
-                      fontSize: 13,
-                    ),
-                  ),
-                ],
-              ),
             ),
           ],
         ),
@@ -278,6 +278,10 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
                 children: [
                   // Balance card
                   _buildBalanceCard(),
+                  if (_openPayout != null) ...[
+                    const SizedBox(height: 12),
+                    _buildOpenPayoutCard(),
+                  ],
                   const SizedBox(height: 24),
                   // Amount input
                   _buildAmountSection(),
@@ -348,11 +352,49 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            formatMoney(_availableBalance, country: _countryCode),
+            // EXACTO, sin redondeo (Carlos: el balance = lo que se retira, sin imaginación).
+            '\$${_availableBalance.toStringAsFixed(2)}',
             style: const TextStyle(
               color: Colors.white,
               fontSize: 36,
               fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOpenPayoutCard() {
+    final amount = (_openPayout?['amount'] as num?)?.toDouble() ?? 0;
+    final status = (_openPayout?['status'] ?? 'processing').toString();
+    final stripeId = (_openPayout?['stripe_payout_id'] ?? '').toString();
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppTheme.warning.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.warning.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.schedule, color: AppTheme.warning, size: 22),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Retiro en proceso',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  '${formatMoney(amount, country: _countryCode)} · $status${stripeId.isNotEmpty ? ' · ${stripeId.substring(0, 8)}...' : ''}',
+                  style: const TextStyle(color: AppTheme.textMuted, fontSize: 12),
+                ),
+              ],
             ),
           ),
         ],
@@ -488,7 +530,7 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
             ),
             child: Text(
               isMax
-                  ? 'Todo (\$${amount.toStringAsFixed(0)})'
+                  ? 'Todo (\$${amount.toStringAsFixed(2)})'
                   : '\$${amount.toStringAsFixed(0)}',
               style: TextStyle(
                 color: isSelected ? AppTheme.primary : Colors.white,
@@ -515,52 +557,63 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
         ),
         const SizedBox(height: 12),
 
-        // Debit cards (instant)
-        if (_debitCards.isNotEmpty) ...[
-          _buildMethodHeader('⚡ ${'screens.cash_out.instant_card'.tr()}', 'screens.cash_out.minutes'.tr()),
-          ..._debitCards.map(
-            (card) => _buildPaymentOption(
-              card,
-              'debit_card',
-              Icons.credit_card,
-              '****${card['card_last4']}',
-              card['card_brand'] ?? 'Tarjeta',
-              isInstant: true,
+        // El retiro SIEMPRE va a la cuenta Stripe Connect que el chofer vinculó
+        // en el onboarding (su banco/tarjeta). NO se agrega método aparte.
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: _connectReady
+                ? AppTheme.primary.withValues(alpha: 0.1)
+                : AppTheme.card,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: _connectReady ? AppTheme.primary : AppTheme.border,
+              width: _connectReady ? 2 : 1,
             ),
           ),
-          const SizedBox(height: 16),
-        ],
-
-        // Bank accounts (1-3 days)
-        if (_bankAccounts.isNotEmpty) ...[
-          _buildMethodHeader('🏦 ${'screens.cash_out.wire_transfer'.tr()}', 'screens.cash_out.one_three_days'.tr()),
-          ..._bankAccounts.map(
-            (account) => _buildPaymentOption(
-              account,
-              'bank_account',
-              Icons.account_balance,
-              '****${account['account_last4']}',
-              account['bank_name'] ?? 'Banco',
-              isInstant: false,
-            ),
-          ),
-        ],
-
-        // Add new method
-        const SizedBox(height: 12),
-        OutlinedButton.icon(
-          onPressed: _addPaymentMethod,
-          icon: const Icon(Icons.add, size: 18),
-          label: Text('screens.cash_out.add_payment_method'.tr()),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: AppTheme.textMuted,
-            side: const BorderSide(color: AppTheme.border),
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppTheme.info.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.account_balance, color: AppTheme.info, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Depósito a tu banco (Stripe)',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                    ),
+                    Text(
+                      _connectReady
+                          ? 'Cuenta vinculada · llega en minutos'
+                          : 'Falta completar tu verificación de pagos',
+                      style: const TextStyle(color: AppTheme.textMuted, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                _connectReady ? Icons.check_circle : Icons.error_outline,
+                color: _connectReady ? AppTheme.success : AppTheme.warning,
+              ),
+            ],
           ),
         ),
+        if (!_connectReady)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              'Completa tu registro de pagos (Stripe) en Ganancias para poder retirar.',
+              style: const TextStyle(color: AppTheme.warning, fontSize: 12),
+            ),
+          ),
       ],
     );
   }
@@ -700,7 +753,7 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
       ),
       child: Column(
         children: [
-          _buildFeeRow('screens.cash_out.amount_label'.tr(), formatMoney(_selectedAmount, country: _countryCode)),
+          _buildFeeRow('screens.cash_out.amount_label'.tr(), '\$${_selectedAmount.toStringAsFixed(2)}'),
           _buildFeeRow(
             'screens.cash_out.service_fee'.tr(),
             '-${formatMoney(_fee, country: _countryCode)}',

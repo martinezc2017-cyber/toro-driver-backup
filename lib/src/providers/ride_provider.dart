@@ -368,13 +368,45 @@ class RideProvider with ChangeNotifier {
     if (_activeRide == null) return false;
 
     try {
-      _activeRide = await _rideService.startRide(_activeRide!.id);
+      // Calcula la espera real (llegada -> inicio) desde el timestamp persistido
+      // (picked_up_at) y la manda para grabarla en total_wait_seconds -> el motor
+      // de tarifa cobra el wait_fee. Anclado al server, no a un contador en memoria.
+      int? waitSecs;
+      final arrival = _activeRide!.arrivedAt;
+      if (arrival != null) {
+        final s = DateTime.now().toUtc().difference(arrival.toUtc()).inSeconds;
+        waitSecs = s < 0 ? 0 : s;
+      }
+      _activeRide = await _rideService.startRide(_activeRide!.id, waitSeconds: waitSecs);
       notifyListeners();
       return true;
     } catch (e) {
       _error = 'Error al iniciar viaje: $e';
       notifyListeners();
       return false;
+    }
+  }
+
+  // No-show de pasajero: cobra (server-side) y cierra el viaje. Devuelve el
+  // desglose {ok, total, driver_share, wait_fee, ...} o {ok:false, error}.
+  Future<Map<String, dynamic>?> reportNoShow() async {
+    final ride = _activeRide;
+    final driverId = _currentDriverId;
+    if (ride == null || driverId == null) return null;
+    try {
+      final res = await _rideService.reportNoShow(ride.id, driverId);
+      if (res['ok'] == true) {
+        _locationService.stopRideTracking();
+        _activeRide = null;
+        _status = RideProviderStatus.idle;
+        _subscribeToAvailableRides();
+        notifyListeners();
+      }
+      return res;
+    } catch (e) {
+      _error = 'Error al reportar no-show: $e';
+      notifyListeners();
+      return {'ok': false, 'error': e.toString()};
     }
   }
 

@@ -12,17 +12,15 @@ enum StripeProvider {
 }
 
 class StripeConfig {
-  // USA Stripe Account
-  static const String publishableKeyUS = 'pk_test_51Ti6y0JjHJ2LZ4e2BXcAfNfud1ZYhSkhLDT5JM9PUAMY6Svda8IiGUwS3FhoDyy5nSKn4cHcDlktiBqWz4ovMB0X00QZLD93rY';
+  // USA Stripe Account — lanzamiento MX-only (2026-07): el fallback es la pk LIVE de
+  // TORO MEXICO (51SvLIZJL). Cuando se lance US real se pone aqui la pk live de USA.
+  static const String publishableKeyUS = 'pk_live_51SvLIZJL6dZ5MsYqTRaH23owX5omYbKUoW83mHNw4qFzKC6CS2H3PEjgAJNu5O4KEWmdjWdrzmqmkQDMJGbXAn2N00CmGSJNbN';
 
-  // Mexico Stripe Account — MUST match STRIPE_MX_SECRET_KEY (the account that runs
-  // charges, vendor + driver Connect, and where PALOMA's money lands). That account is
-  // 51Ti6y0... (object fragment JjHJ2LZ4e2). It was baked as 51TgufO — a STALE account
-  // the apps kept while the server moved to Ti6y0 — causing "No such payment_intent"
-  // and driver Connect onboarding/payouts drifting to the wrong platform.
-  // TODO(single-source): fetch this from get-stripe-config at runtime so it can never
-  // drift from the server account again (no hardcoded key in any app).
-  static const String publishableKeyMX = 'pk_test_51Ti6y0JjHJ2LZ4e2BXcAfNfud1ZYhSkhLDT5JM9PUAMY6Svda8IiGUwS3FhoDyy5nSKn4cHcDlktiBqWz4ovMB0X00QZLD93rY';
+  // Mexico Stripe Account — LIVE (TORO MEXICO 51SvLIZJL). Debe matchear la sk_live que
+  // usan las funciones (STRIPE_MX_SECRET_KEY). La fuente REAL es integration_config en
+  // runtime (loadServerPk); esto es SOLO el fallback si el server no responde -> aun asi
+  // arranca en LIVE, nunca en test.
+  static const String publishableKeyMX = 'pk_live_51SvLIZJL6dZ5MsYqTRaH23owX5omYbKUoW83mHNw4qFzKC6CS2H3PEjgAJNu5O4KEWmdjWdrzmqmkQDMJGbXAn2N00CmGSJNbN';
 
   static const String merchantId = 'merchant.com.toro.driver';
 

@@ -1,4 +1,5 @@
 import 'package:flutter_stripe/flutter_stripe.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Stripe provider for multi-country support
 enum StripeProvider {
@@ -28,11 +29,26 @@ class StripeConfig {
   // Current active provider (can be changed at runtime)
   static StripeProvider _currentProvider = StripeProvider.us;
 
+  /// pk traída de `integration_config` (FUENTE ÚNICA, editable en el admin sin
+  /// recompilar). Si está seteada, gana sobre las hardcodeadas de arriba. Así se
+  /// resuelve el TODO(single-source) y ya no puede driftear del server.
+  static String? _serverPk;
+
+  /// Carga la pk activa desde integration_config (según modo test/live).
+  static Future<void> loadServerPk() async {
+    try {
+      final cfg = await Supabase.instance.client.rpc('get_integration_config');
+      final pk = (cfg is Map ? cfg['stripe_publishable_key'] as String? : null);
+      if (pk != null && pk.isNotEmpty) _serverPk = pk;
+    } catch (_) {/* si falla, usa las hardcodeadas de fallback */}
+  }
+
   /// Get the current provider
   static StripeProvider get currentProvider => _currentProvider;
 
   /// Get publishable key for a specific provider
   static String getPublishableKey(StripeProvider provider) {
+    if (_serverPk != null && _serverPk!.isNotEmpty) return _serverPk!;
     return provider == StripeProvider.mx ? publishableKeyMX : publishableKeyUS;
   }
 
@@ -47,6 +63,7 @@ class StripeConfig {
   /// Initialize Stripe with a specific provider
   static Future<void> initializeWithProvider(StripeProvider provider) async {
     _currentProvider = provider;
+    await loadServerPk(); // fuente única: pk desde integration_config
     Stripe.publishableKey = getPublishableKey(provider);
     Stripe.merchantIdentifier = merchantId;
     await Stripe.instance.applySettings();

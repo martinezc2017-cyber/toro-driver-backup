@@ -342,34 +342,15 @@ class DriverProvider with ChangeNotifier {
       throw Exception(_error);
     }
 
-    // 5. ✨ AUTO-APROBACIÓN: Si tiene todos los documentos pero no está aprobado
-    if (!driver.adminApproved || driver.status != DriverStatus.active) {
-      debugPrint('🎯 AUTO-APPROVAL: Documents complete, auto-approving driver ${driver.id}');
-      try {
-        await Supabase.instance.client.from('drivers').update({
-          'admin_approved': true,
-          'admin_approved_at': DateTime.now().toIso8601String(),
-          'admin_approved_by': 'auto-approval-system',
-          'status': 'active',
-          'can_receive_rides': true,
-          'onboarding_stage': 'approved',
-          'approved_at': DateTime.now().toIso8601String(),
-        }).eq('id', driver.id);
-
-        _driver = driver.copyWith(
-          adminApproved: true,
-          adminApprovedAt: DateTime.now(),
-          status: DriverStatus.active,
-          canReceiveRides: true,
-          onboardingStage: 'approved',
-        );
-        debugPrint('✅ Driver auto-approved successfully');
-      } catch (e) {
-        debugPrint('❌ Auto-approval failed: $e');
-        _error = 'Error al aprobar cuenta: $e';
-        notifyListeners();
-        throw Exception(_error);
-      }
+    // 5. La aprobación la hace un ADMIN (RPC admin_approve_driver), NUNCA el cliente.
+    //    El chofer sube sus documentos y queda en revisión. El candado server-side
+    //    (trg_protect_driver_approval_cols) revierte cualquier intento de auto-aprobarse.
+    //    El modo prueba (trial) sigue permitido para el bootstrap.
+    if (!driver.adminApproved && !driver.trialModeAccepted) {
+      _error = 'Tu cuenta está en revisión. Un administrador debe aprobarte '
+          'antes de que puedas ponerte en línea.';
+      notifyListeners();
+      throw Exception(_error);
     }
 
     // 6. Ya validado, poner online

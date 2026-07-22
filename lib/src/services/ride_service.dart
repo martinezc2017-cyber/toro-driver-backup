@@ -731,13 +731,18 @@ class RideService {
   }
 
   Future<RideModel> cancelRide(String rideId, String reason) async {
+    // FIX: cancela DE VERDAD (status=cancelled). Antes iba a 'pending' (de vuelta al
+    // pool) y el viaje NUNCA se cerraba -> quedaba fantasma. Para soltar al pool sin
+    // cancelar existe forceReleaseAllActiveRides aparte.
     final response = await _client
         .from(SupabaseConfig.packageDeliveriesTable)
         .update({
-          'status': 'pending',  // de vuelta al pool - NO cancelado
-          'driver_id': null,    // libera al chofer para que otro acepte
+          'status': 'cancelled',
+          'driver_id': null,
           'accepted_at': null,
           'started_at': null,
+          'cancelled_at': DateTime.now().toUtc().toIso8601String(),
+          'cancellation_reason': reason,
         })
         .eq('id', rideId)
         .select()

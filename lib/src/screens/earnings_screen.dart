@@ -27,6 +27,12 @@ class _EarningsScreenState extends State<EarningsScreen> {
   DateTime _selectedWeekStart = _getWeekStart(DateTime.now());
   DriverBalance? _stripeBalance;
   Map<String, dynamic>? _openPayout;
+  // % VIVOS traídos de pricing_config (los que edita el admin en Dinero > Pricing).
+  // NADA hardcodeado: si el admin sube o baja un slider, aquí cambia solo.
+  // ANTES esta pantalla usaba una instancia SIN inicializar de DriverQRPointsService
+  // y mostraba los valores hardcodeados de USA (57% chofer / 20.4% plataforma)
+  // aunque el chofer fuera MX (61% / 18%).
+  Map<String, double>? _pct;
 
   static DateTime _getWeekStart(DateTime date) {
     return DateTime(date.year, date.month, date.day)
@@ -51,10 +57,50 @@ class _EarningsScreenState extends State<EarningsScreen> {
       final bal = await StripeConnectService.instance
           .getBalance(driver.id, provider: provider);
       final openPayout = await StripeConnectService.instance.getOpenPayout(driver.id);
+
+      // % VIVOS desde pricing_config (país + estado del chofer, fallback DEFAULT).
+      // Fuente única: la misma tabla que edita el admin. Cero hardcode.
+      Map<String, double>? pct;
+      try {
+        final rows = await Supabase.instance.client
+            .from('pricing_config')
+            .select('state_code, driver_commission, platform_commission, '
+                'insurance_percent, tax_percent, mx_isr_retention_percent, '
+                'mx_iva_retention_percent')
+            .eq('country_code', driver.countryCode.toUpperCase())
+            .eq('is_active', true);
+        final list = (rows as List).cast<Map<String, dynamic>>();
+        Map<String, dynamic>? row;
+        for (final r in list) {
+          if ((r['state_code']?.toString() ?? '') == (driver.stateCode ?? '')) {
+            row = r;
+            break;
+          }
+        }
+        row ??= list.cast<Map<String, dynamic>?>().firstWhere(
+              (r) => (r?['state_code']?.toString() ?? '') == 'DEFAULT',
+              orElse: () => list.isNotEmpty ? list.first : null,
+            );
+        if (row != null) {
+          double v(String k) => (row?[k] as num?)?.toDouble() ?? 0;
+          pct = {
+            'driver': v('driver_commission'),
+            'platform': v('platform_commission'),
+            'insurance': v('insurance_percent'),
+            'iva': v('tax_percent'),
+            'isr_ret': v('mx_isr_retention_percent'),
+            'iva_ret': v('mx_iva_retention_percent'),
+          };
+        }
+      } catch (_) {
+        // Si falla, NO inventamos porcentajes: se deja null y no se pintan.
+      }
+
       if (mounted) {
         setState(() {
           _stripeBalance = bal;
           _openPayout = openPayout;
+          _pct = pct;
         });
       }
     }
@@ -397,8 +443,10 @@ class _EarningsScreenState extends State<EarningsScreen> {
 
     final qrService = DriverQRPointsService();
     final tier = qrService.currentTier;
-    final driverPercent = qrService.effectiveDriverPercent;
-    final toroPercent = qrService.effectivePlatformPercent;
+    // % REALES desde pricing_config (vivos). Solo si no cargaron, se cae al
+    // servicio QR (que trae defaults de USA) — así nunca se muestra un % inventado.
+    final driverPercent = _pct?['driver'] ?? qrService.effectiveDriverPercent;
+    final toroPercent = _pct?['platform'] ?? qrService.effectivePlatformPercent;
 
     const tierColors = [
       Color(0xFF9E9E9E), // Tier 0 - grey
@@ -466,6 +514,18 @@ class _EarningsScreenState extends State<EarningsScreen> {
                     'TORO cobra ${toroPercent.toStringAsFixed(0)}% · Sube de tier para ganar más',
                     style: const TextStyle(color: Colors.white60, fontSize: 12),
                   ),
+                  // DESGLOSE COMPLETO: antes solo se veían chofer + TORO (79%) y
+                  // el chofer nunca sabía a dónde iba el 21% restante ni cuánto
+                  // se le retiene para el SAT. Todo sale de pricing_config (vivo).
+                  if (_pct != null) ...[
+                    const SizedBox(height: 3),
+                    Text(
+                      'Seguro ${_pct!['insurance']!.toStringAsFixed(0)}% · '
+                      'IVA ${_pct!['iva']!.toStringAsFixed(0)}% · '
+                      'Retención SAT ${((_pct!['isr_ret'] ?? 0) + (_pct!['iva_ret'] ?? 0)).toStringAsFixed(1)}% de tu parte',
+                      style: const TextStyle(color: Colors.white38, fontSize: 11),
+                    ),
+                  ],
                 ],
               ),
             ),

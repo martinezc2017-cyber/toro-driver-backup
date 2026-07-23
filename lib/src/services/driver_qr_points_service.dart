@@ -148,10 +148,11 @@ class DriverQRPointsService extends ChangeNotifier {
 
   // Tier config (loaded from pricing_config)
   int _qrMaxLevel = 30;
-  // Platform % loaded from pricing_config per state (US/AZ=20.4%, MX/CDMX=25%)
-  double _basePlatformPercent = 20.4;
-  // Driver base % loaded from pricing_config per state (US/AZ=57%, MX/CDMX=75%)
-  double _baseDriverPercent = 57.0;
+  // % 100% dinámicos: SIEMPRE de pricing_config (país + estado del driver).
+  // Arrancan en 0 a propósito: antes traían los defaults de USA (20.4 / 57) y si
+  // la carga no corría, a un chofer de México se le mostraba el % gringo.
+  double _basePlatformPercent = 0;
+  double _baseDriverPercent = 0;
   int _qrTier1Max = 6;
   double _qrTier1Reduction = 1.0; // 20% → 19%
   int _qrTier2Max = 12;

@@ -209,6 +209,12 @@ class DriverQRPointsService extends ChangeNotifier {
     }
   }
 
+  /// Comision base del pais (pricing_config), SIN la reduccion del tier.
+  double get basePlatformPercent => _basePlatformPercent;
+
+  /// % base del chofer (pricing_config), SIN el bono del tier.
+  double get baseDriverPercent => _baseDriverPercent;
+
   /// Get effective platform commission % after QR reduction
   /// Platform base comes from pricing_config (US/AZ=20.4%, MX/CDMX=25%)
   double get effectivePlatformPercent =>

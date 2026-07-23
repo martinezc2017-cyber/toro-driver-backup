@@ -2467,12 +2467,21 @@ class _HomeScreenState extends State<HomeScreen>
   // ═══════════════════════════════════════════════════════════════════════════
   // QR TIER PANEL - Blue transparent panel with tier info + QR code
   // New model: QR scans per week → reduced Toro commission (not bonus %)
-  // Tier 0: 20% | Tier 1: 19% | Tier 2: 18% | Tier 3: 17% | Tier 4: 16% | Tier 5: 15%
+  // Cada tier baja 1% la comision sobre la BASE del pais (pricing_config).
   // ═══════════════════════════════════════════════════════════════════════════
 
   // Commission tiers: index 0 = no QR, 1-5 = tier 1-5
   static const List<int> _tierMaxQRs = [0, 6, 12, 18, 24, 30];
-  static const List<double> _tierCommission = [20, 19, 18, 17, 16, 15];
+
+  /// Comision de TORO para un tier, VIVA desde pricing_config.
+  ///
+  /// Antes era una tabla fija [20, 19, 18, 17, 16, 15] escrita a mano, o sea
+  /// la base de USA. A un chofer de Mexico (base 18%) le decia "6 QRs para
+  /// 19%" cuando su siguiente tier en realidad es 17%.
+  double _tierCommissionOf(int tier) {
+    final base = _qrPointsService.basePlatformPercent;
+    return (base - tier.clamp(0, 5)).clamp(0, 100).toDouble();
+  }
 
   int _getDriverTier(int qrLevel) {
     if (qrLevel <= 0) return 0;
@@ -2483,10 +2492,7 @@ class _HomeScreenState extends State<HomeScreen>
     return 5;
   }
 
-  double _getCommissionForTier(int tier) {
-    if (tier < 0 || tier > 5) return 20;
-    return _tierCommission[tier];
-  }
+  double _getCommissionForTier(int tier) => _tierCommissionOf(tier);
 
   Widget _buildQRTierPanel() {
     final driver = context.read<DriverProvider>().driver;
@@ -2506,8 +2512,8 @@ class _HomeScreenState extends State<HomeScreen>
         ? _tierMaxQRs[currentTier + 1] - qrLevel
         : 0;
     final nextCommission = currentTier < 5
-        ? _tierCommission[currentTier + 1]
-        : _tierCommission[5];
+        ? _tierCommissionOf(currentTier + 1)
+        : _tierCommissionOf(5);
     final progress = currentTier < 5 && _tierMaxQRs[currentTier + 1] > 0
         ? qrLevel / _tierMaxQRs[currentTier + 1]
         : 1.0;
@@ -2663,7 +2669,7 @@ class _HomeScreenState extends State<HomeScreen>
                     final tierNum = i + 1;
                     final prevMax = i == 0 ? 0 : _tierMaxQRs[i];
                     final maxQR = _tierMaxQRs[tierNum];
-                    final commission = _tierCommission[tierNum];
+                    final commission = _tierCommissionOf(tierNum);
                     final isCurrent = currentTier == tierNum;
                     final isReached = qrLevel >= (prevMax + 1);
 

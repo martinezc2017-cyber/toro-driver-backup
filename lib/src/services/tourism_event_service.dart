@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
 import '../core/logging/app_logger.dart';
 import 'audit_service.dart';
+import 'live_pricing.dart';
 
 /// Service for tourism event operations.
 ///
@@ -2740,7 +2741,7 @@ class TourismEventService {
       // Get driver info for snapshot
       final driver = await _client
           .from('drivers')
-          .select('name, vehicle_type, vehicle_make, vehicle_model, vehicle_plate, rating, total_rides, profile_image_url')
+          .select('name, vehicle_type, vehicle_make, vehicle_model, vehicle_plate, rating, total_rides, profile_image_url, country_code, state_code')
           .eq('id', driverId)
           .single();
 
@@ -2748,6 +2749,13 @@ class TourismEventService {
         driver['vehicle_make'],
         driver['vehicle_model'],
       ].where((s) => s != null && s.toString().isNotEmpty).join(' ');
+
+      // Comision de plataforma VIVA (pricing_config), NO el 20% hardcodeado que
+      // estaba aqui: a un chofer de MX (18%) se le guardaba 20% en el snapshot.
+      final pricing = await LivePricing.load(
+        countryCode: (driver['country_code'] as String?) ?? 'MX',
+        stateCode: driver['state_code'] as String?,
+      );
 
       await _client.from('trip_offers').insert({
         'trip_request_id': tripRequestId,
@@ -2762,7 +2770,9 @@ class TourismEventService {
         'driver_total_trips': driver['total_rides'] ?? 0,
         'driver_photo_url': driver['profile_image_url'],
         'driver_message': message,
-        'platform_fee_percent': 20.00,
+        // % real del pais/estado del chofer; si no cargo, se deja null (no se
+        // inventa un 20% falso).
+        'platform_fee_percent': pricing?.platform,
       });
 
       // Notify rider via edge function

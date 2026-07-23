@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/legal/consent_service.dart';
 import '../core/legal/legal_constants.dart';
@@ -31,6 +32,10 @@ class _TermsAcceptanceScreenState extends State<TermsAcceptanceScreen> {
   final ScrollController _termsScrollController = ScrollController();
   bool _hasOpenedTerms = false;
 
+  // Version REAL de la app (pubspec via PackageInfo). Antes el footer mostraba
+  // la version del bundle LEGAL (2026.03.01.1), que parecia version de app.
+  String _appVersion = '';
+
   // Theme colors
   static const Color primaryColor = Color(0xFF1E88E5);
   static const Color secondaryColor = Color(0xFF43A047);
@@ -42,6 +47,14 @@ class _TermsAcceptanceScreenState extends State<TermsAcceptanceScreen> {
     AppLogger.log('TERMS_SCREEN -> Opened (pre-login)');
 
     WidgetsBinding.instance.addPostFrameCallback((_) => _checkAppVersion());
+    _loadAppVersion();
+  }
+
+  Future<void> _loadAppVersion() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      if (mounted) setState(() => _appVersion = '${info.version}+${info.buildNumber}');
+    } catch (_) {/* si falla, el footer solo muestra el idioma */}
   }
 
   @override
@@ -515,9 +528,12 @@ class _TermsAcceptanceScreenState extends State<TermsAcceptanceScreen> {
 
               const SizedBox(height: 16),
 
-              // Version info + language
+              // Version REAL de la app + idioma. (La version del bundle legal
+              // se sigue guardando aparte para el control de re-firma.)
               Text(
-                'v${LegalConstants.legalBundleVersion} | ${lang.toUpperCase()}',
+                _appVersion.isNotEmpty
+                    ? 'v$_appVersion | ${lang.toUpperCase()}'
+                    : lang.toUpperCase(),
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),

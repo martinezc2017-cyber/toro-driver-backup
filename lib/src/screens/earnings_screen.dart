@@ -12,6 +12,7 @@ import '../utils/app_colors.dart';
 import '../utils/money_format.dart';
 import '../utils/money_logger.dart';
 import '../services/driver_qr_points_service.dart';
+import '../services/live_pricing.dart';
 import '../services/stripe_connect_service.dart';
 import 'qr_points_screen.dart';
 import 'cash_out_screen.dart';
@@ -32,7 +33,12 @@ class _EarningsScreenState extends State<EarningsScreen> {
   // ANTES esta pantalla usaba una instancia SIN inicializar de DriverQRPointsService
   // y mostraba los valores hardcodeados de USA (57% chofer / 20.4% plataforma)
   // aunque el chofer fuera MX (61% / 18%).
-  Map<String, double>? _pct;
+  LivePricing? _pct;
+
+  // Instancia REAL del servicio QR (no es singleton): hay que inicializarla o
+  // el tier sale siempre 0 y los % quedan sin cargar.
+  final DriverQRPointsService _qrService = DriverQRPointsService();
+  bool _qrInit = false;
 
   static DateTime _getWeekStart(DateTime date) {
     return DateTime(date.year, date.month, date.day)
@@ -45,12 +51,27 @@ class _EarningsScreenState extends State<EarningsScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadData());
   }
 
+  @override
+  void dispose() {
+    // El servicio abre canales realtime; si no se cierra, quedan colgados.
+    _qrService.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadData() async {
     final driver = context.read<DriverProvider>().driver;
     if (driver != null) {
       context.read<EarningsProvider>().initialize(driver.id);
       context.read<EarningsProvider>().loadTransactions(driver.id);
       context.read<CashAccountProvider>().initialize(driver.id);
+      // Tier QR REAL (antes se creaba una instancia en el build() sin inicializar,
+      // asi que el tier siempre salia 0 y el bono de comision nunca se veia).
+      if (!_qrInit) {
+        _qrInit = true;
+        _qrService.initialize(driver.id).then((_) {
+          if (mounted) setState(() {});
+        });
+      }
       // CANONICAL: Stripe balance = lo que TORO le va a depositar al driver.
       // Available = ya disponible para retiro. Pending = en hold 2-7 días.
       final provider = (driver.countryCode.toUpperCase() == 'MX') ? 'mx' : 'us';
@@ -60,41 +81,10 @@ class _EarningsScreenState extends State<EarningsScreen> {
 
       // % VIVOS desde pricing_config (país + estado del chofer, fallback DEFAULT).
       // Fuente única: la misma tabla que edita el admin. Cero hardcode.
-      Map<String, double>? pct;
-      try {
-        final rows = await Supabase.instance.client
-            .from('pricing_config')
-            .select('state_code, driver_commission, platform_commission, '
-                'insurance_percent, tax_percent, mx_isr_retention_percent, '
-                'mx_iva_retention_percent')
-            .eq('country_code', driver.countryCode.toUpperCase())
-            .eq('is_active', true);
-        final list = (rows as List).cast<Map<String, dynamic>>();
-        Map<String, dynamic>? row;
-        for (final r in list) {
-          if ((r['state_code']?.toString() ?? '') == (driver.stateCode ?? '')) {
-            row = r;
-            break;
-          }
-        }
-        row ??= list.cast<Map<String, dynamic>?>().firstWhere(
-              (r) => (r?['state_code']?.toString() ?? '') == 'DEFAULT',
-              orElse: () => list.isNotEmpty ? list.first : null,
-            );
-        if (row != null) {
-          double v(String k) => (row?[k] as num?)?.toDouble() ?? 0;
-          pct = {
-            'driver': v('driver_commission'),
-            'platform': v('platform_commission'),
-            'insurance': v('insurance_percent'),
-            'iva': v('tax_percent'),
-            'isr_ret': v('mx_isr_retention_percent'),
-            'iva_ret': v('mx_iva_retention_percent'),
-          };
-        }
-      } catch (_) {
-        // Si falla, NO inventamos porcentajes: se deja null y no se pintan.
-      }
+      final pct = await LivePricing.load(
+        countryCode: driver.countryCode,
+        stateCode: driver.stateCode,
+      );
 
       if (mounted) {
         setState(() {
@@ -441,12 +431,16 @@ class _EarningsScreenState extends State<EarningsScreen> {
     final driver = context.read<DriverProvider>().driver;
     if (driver == null) return const SizedBox.shrink();
 
-    final qrService = DriverQRPointsService();
-    final tier = qrService.currentTier;
-    // % REALES desde pricing_config (vivos). Solo si no cargaron, se cae al
-    // servicio QR (que trae defaults de USA) — así nunca se muestra un % inventado.
-    final driverPercent = _pct?['driver'] ?? qrService.effectiveDriverPercent;
-    final toroPercent = _pct?['platform'] ?? qrService.effectivePlatformPercent;
+    final tier = _qrService.currentTier;
+    // El tier QR no da bono aparte: le BAJA la comisión a TORO y esa diferencia
+    // se la queda el chofer. Base viva de pricing_config + reducción del tier.
+    final reduction = _qrService.currentCommissionReduction;
+    final driverPercent = _pct != null
+        ? _pct!.driver + reduction
+        : _qrService.effectiveDriverPercent;
+    final toroPercent = _pct != null
+        ? (_pct!.platform - reduction).clamp(0.0, 100.0)
+        : _qrService.effectivePlatformPercent;
 
     const tierColors = [
       Color(0xFF9E9E9E), // Tier 0 - grey
@@ -520,9 +514,9 @@ class _EarningsScreenState extends State<EarningsScreen> {
                   if (_pct != null) ...[
                     const SizedBox(height: 3),
                     Text(
-                      'Seguro ${_pct!['insurance']!.toStringAsFixed(0)}% · '
-                      'IVA ${_pct!['iva']!.toStringAsFixed(0)}% · '
-                      'Retención SAT ${((_pct!['isr_ret'] ?? 0) + (_pct!['iva_ret'] ?? 0)).toStringAsFixed(1)}% de tu parte',
+                      'Seguro ${_pct!.insurance.toStringAsFixed(0)}% · '
+                      'IVA ${_pct!.iva.toStringAsFixed(0)}% · '
+                      'Retención SAT ${_pct!.totalRetention.toStringAsFixed(1)}% de tu parte',
                       style: const TextStyle(color: Colors.white38, fontSize: 11),
                     ),
                   ],

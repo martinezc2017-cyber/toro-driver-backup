@@ -7,7 +7,7 @@ import '../providers/ride_provider.dart';
 import '../providers/driver_provider.dart';
 import '../providers/location_provider.dart';
 import '../models/ride_model.dart';
-import '../services/pricing_config_service.dart';
+import '../services/live_pricing.dart';
 import '../utils/app_colors.dart';
 import '../utils/haptic_service.dart';
 import '../utils/money_format.dart';
@@ -41,18 +41,21 @@ class _RidesScreenState extends State<RidesScreen>
     _loadPricingConfig();
   }
 
-  /// Load driver commission percentage from pricing_config
+  /// % del chofer, VIVO desde pricing_config (país + estado del chofer).
+  ///
+  /// Antes usaba PricingConfigService, que filtra por una columna
+  /// `booking_type` que NO existe en la tabla: siempre tronaba y la pantalla
+  /// se quedaba con el 57% hardcodeado de USA. Ahora sale de LivePricing,
+  /// la misma fuente que usa la pantalla de ganancias.
   Future<void> _loadPricingConfig() async {
-    try {
-      final config = await PricingConfigService.instance.getConfig();
-      if (mounted) {
-        setState(() {
-          _driverPercent = config.driverPercent;
-        });
-      }
-    } catch (e) {
-      // Keep default if config not available
-      //Failed to load pricing config: $e');
+    final driver = context.read<DriverProvider>().driver;
+    if (driver == null) return;
+    final cfg = await LivePricing.load(
+      countryCode: driver.countryCode,
+      stateCode: driver.stateCode,
+    );
+    if (cfg != null && mounted) {
+      setState(() => _driverPercent = cfg.driver);
     }
   }
 

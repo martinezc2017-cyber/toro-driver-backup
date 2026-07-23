@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
 import '../core/logging/app_logger.dart';
+import 'live_pricing.dart';
 
 /// ============================================================================
 /// DRIVER QR POINTS SERVICE - COMMISSION REDUCTION MODEL (v2)
@@ -273,35 +274,52 @@ class DriverQRPointsService extends ChangeNotifier {
       final stateCode = driverData?['state_code'];
       _stateCode = stateCode ?? '';
 
-      if (stateCode != null) {
-        final config = await _client
-            .from('pricing_config')
-            .select('qr_max_level, qr_point_value, platform_commission, driver_commission')
-            .eq('state_code', stateCode)
-            .eq('country_code', countryCode)
-            .eq('is_active', true)
-            .maybeSingle();
-
-        if (config != null) {
-          _qrMaxLevel = (config['qr_max_level'] as num?)?.toInt() ?? 30;
-          // Load actual platform/driver percentages from pricing_config
-          // Canonical: pricing_config rows always carry these fields after Phase 1.
-          // If null we still default to 0 (no hardcoded splits leak into accounting).
-          _basePlatformPercent = (config['platform_commission'] as num?)?.toDouble() ?? 0;
-          _baseDriverPercent = (config['driver_commission'] as num?)?.toDouble() ?? 0;
-          // QR tier breakpoints and reductions use hardcoded defaults
-          // since pricing_config doesn't have per-tier columns
-          _qrTier1Max = 6;
-          _qrTier1Reduction = 1.0;
-          _qrTier2Max = 12;
-          _qrTier2Reduction = 2.0;
-          _qrTier3Max = 18;
-          _qrTier3Reduction = 3.0;
-          _qrTier4Max = 24;
-          _qrTier4Reduction = 4.0;
-          _qrTier5Reduction = 5.0;
-        }
+      // % base: MISMA fuente que el resto de la app, con caida a la fila DEFAULT
+      // del pais. Antes se buscaba solo por state_code exacto y, como los
+      // choferes traen el estado vacio, no encontraba fila y la comision se
+      // quedaba en 0 ("Comision Toro: 0%" en el home).
+      final live = await LivePricing.load(
+        countryCode: countryCode,
+        stateCode: stateCode as String?,
+      );
+      if (live != null) {
+        _basePlatformPercent = live.platform;
+        _baseDriverPercent = live.driver;
       }
+
+      // qr_max_level, con el mismo criterio: estado del chofer -> DEFAULT.
+      final rows = await _client
+          .from('pricing_config')
+          .select('state_code, qr_max_level')
+          .eq('country_code', countryCode)
+          .eq('is_active', true);
+      final list = (rows as List).cast<Map<String, dynamic>>();
+      if (list.isNotEmpty) {
+        final state = (stateCode ?? '').toString();
+        Map<String, dynamic>? row;
+        for (final r in list) {
+          if (state.isNotEmpty && (r['state_code']?.toString() ?? '') == state) {
+            row = r;
+            break;
+          }
+        }
+        row ??= list.firstWhere(
+          (r) => (r['state_code']?.toString() ?? '') == 'DEFAULT',
+          orElse: () => list.first,
+        );
+        _qrMaxLevel = (row['qr_max_level'] as num?)?.toInt() ?? 30;
+      }
+
+      // Los cortes de tier no viven en pricing_config: quedan aqui.
+      _qrTier1Max = 6;
+      _qrTier1Reduction = 1.0;
+      _qrTier2Max = 12;
+      _qrTier2Reduction = 2.0;
+      _qrTier3Max = 18;
+      _qrTier3Reduction = 3.0;
+      _qrTier4Max = 24;
+      _qrTier4Reduction = 4.0;
+      _qrTier5Reduction = 5.0;
 
       // Fallback for MX
       if (_qrMaxLevel < 30 && countryCode == 'MX') {

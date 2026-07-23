@@ -8,6 +8,7 @@ import '../utils/money_format.dart';
 import '../providers/riverpod_providers.dart';
 import '../models/driver_model.dart';
 import '../services/stripe_connect_service.dart';
+import 'bank_account_screen.dart';
 /// Instant Cash Out Screen - Like Uber/Lyft instant pay
 class CashOutScreen extends ConsumerStatefulWidget {
   final String driverId;
@@ -606,14 +607,50 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
             ],
           ),
         ),
-        if (!_connectReady)
+        if (!_connectReady) ...[
+          // BOTON, no solo texto. Antes decia "ve a Ganancias" sin llevarte:
+          // el chofer quedaba atorado sin poder retirar y sin saber a donde ir.
+          // Abre la pantalla que crea la cuenta y lanza la liga de Stripe sola.
           Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Text(
-              'Completa tu registro de pagos (Stripe) en Ganancias para poder retirar.',
-              style: const TextStyle(color: AppTheme.warning, fontSize: 12),
+            padding: const EdgeInsets.only(top: 10),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const BankAccountScreen(),
+                    ),
+                  );
+                  // Al volver, re-checa por si ya completo su registro.
+                  if (mounted) _loadData();
+                },
+                icon: const Icon(Icons.account_balance, size: 18),
+                label: const Text(
+                  'Completar registro de pagos',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.warning,
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
             ),
           ),
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              'Es un registro de Stripe: tu CLABE y una identificación. '
+              'Se hace una sola vez y tarda unos minutos.',
+              style: const TextStyle(color: AppTheme.textMuted, fontSize: 11),
+            ),
+          ),
+        ],
       ],
     );
   }

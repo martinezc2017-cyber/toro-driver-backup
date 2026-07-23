@@ -175,8 +175,15 @@ class _PermissionsGateScreenState extends State<PermissionsGateScreen>
 
     return Scaffold(
       backgroundColor: Colors.transparent,
+      // Scroll + altura minima: con los botones de Ajustes el contenido ya no
+      // cabe en pantallas chicas y sin esto reventaba con overflow amarillo.
       body: SafeArea(
-        child: Padding(
+        child: LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: IntrinsicHeight(
+                child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             children: [
@@ -286,6 +293,70 @@ class _PermissionsGateScreenState extends State<PermissionsGateScreen>
                 ),
               ),
 
+              // SALIDA SIEMPRE VISIBLE.
+              // Antes, el acceso a Ajustes solo aparecia cuando Android ya habia
+              // marcado el permiso como bloqueado para siempre (o sea, despues de
+              // negarlo dos veces). Hasta ese momento el chofer veia el boton gris
+              // desactivado y no tenia forma de saber que hay que ir a Ajustes.
+              if (!allOk) ...[
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => !_gpsEnabled
+                            ? Geolocator.openLocationSettings()
+                            : Geolocator.openAppSettings(),
+                        icon: const Icon(Icons.settings, size: 18),
+                        label: Text(
+                          !_gpsEnabled ? 'Activar GPS' : 'Abrir Ajustes',
+                          style: const TextStyle(
+                              fontSize: 13, fontWeight: FontWeight.w600),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFFFFD700),
+                          side: const BorderSide(color: Color(0xFF3A3A3A)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _checkPermissions,
+                        icon: const Icon(Icons.refresh, size: 18),
+                        label: const Text(
+                          'Ya los activé',
+                          style: TextStyle(
+                              fontSize: 13, fontWeight: FontWeight.w600),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.white70,
+                          side: const BorderSide(color: Color(0xFF3A3A3A)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  '¿No te aparece la pregunta? Entra a Ajustes > Permisos > '
+                  'Ubicacion y elige "Permitir".',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.45),
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+
               const SizedBox(height: 16),
 
               Text(
@@ -299,6 +370,10 @@ class _PermissionsGateScreenState extends State<PermissionsGateScreen>
 
               const SizedBox(height: 24),
             ],
+          ),
+                ),
+              ),
+            ),
           ),
         ),
       ),

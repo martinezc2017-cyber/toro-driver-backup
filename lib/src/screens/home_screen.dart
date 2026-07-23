@@ -149,7 +149,7 @@ class _HomeScreenState extends State<HomeScreen>
       _subscribeToNotifications();
       _subscribeToChatMessages();
       _loadCashAccountStatus();
-      _initQRService();
+      _attachDriverListener();
       // Request permissions sequentially so dialogs don't overlap
       _requestPermissionsSequentially();
       // Run tourism schema diagnostics on startup
@@ -297,24 +297,31 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // Reintento: al entrar recien logueado, el driver todavia no esta cargado
-    // en el provider, asi que el intento de initState se iba en vacio y NUNCA
-    // se repetia -> el servicio quedaba sin inicializar y la tarjeta mostraba
-    // "Comision Toro: 0%". Aqui se vuelve a intentar cuando el provider avisa.
+  /// Se engancha al DriverProvider para inicializar el servicio QR EN CUANTO
+  /// el chofer este cargado.
+  ///
+  /// Antes solo se intentaba una vez, en el post-frame de initState. Al entrar
+  /// recien logueado el driver todavia no esta en el provider, el intento se
+  /// iba en vacio y —como se lee con listen:false— nadie volvia a avisar: el
+  /// servicio quedaba sin inicializar toda la sesion y la tarjeta mostraba
+  /// "Comision Toro: 0%" en vez del 18% real.
+  void _attachDriverListener() {
+    final dp = Provider.of<DriverProvider>(context, listen: false);
+    dp.addListener(_initQRService);
     _initQRService();
   }
 
   void _initQRService() {
+    if (!mounted || _qrServiceInitialized) return;
     final driverProvider = Provider.of<DriverProvider>(context, listen: false);
     final driver = driverProvider.driver;
-    if (driver == null || _qrServiceInitialized) return;
+    if (driver == null) return;
 
     _qrPointsService.initialize(driver.id);
     _qrPointsService.addListener(_onQRServiceUpdate);
     _qrServiceInitialized = true;
+    // Ya no hace falta seguir escuchando al provider para esto.
+    driverProvider.removeListener(_initQRService);
   }
 
   void _onQRServiceUpdate() {
@@ -915,6 +922,13 @@ class _HomeScreenState extends State<HomeScreen>
     // Cleanup QR points service
     _qrPointsService.removeListener(_onQRServiceUpdate);
     _qrPointsService.dispose();
+    // Si el chofer nunca cargo, el listener del provider sigue puesto.
+    try {
+      Provider.of<DriverProvider>(
+        context,
+        listen: false,
+      ).removeListener(_initQRService);
+    } catch (_) {}
     // Remove listener when disposing
     try {
       final driverProvider = Provider.of<DriverProvider>(

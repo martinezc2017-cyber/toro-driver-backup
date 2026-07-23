@@ -297,6 +297,16 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Reintento: al entrar recien logueado, el driver todavia no esta cargado
+    // en el provider, asi que el intento de initState se iba en vacio y NUNCA
+    // se repetia -> el servicio quedaba sin inicializar y la tarjeta mostraba
+    // "Comision Toro: 0%". Aqui se vuelve a intentar cuando el provider avisa.
+    _initQRService();
+  }
+
   void _initQRService() {
     final driverProvider = Provider.of<DriverProvider>(context, listen: false);
     final driver = driverProvider.driver;

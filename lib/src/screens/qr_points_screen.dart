@@ -511,12 +511,14 @@ class _QRPointsScreenState extends State<QRPointsScreen>
             ),
           ),
           const SizedBox(height: 8),
-          // Tier 0 (no QR)
+          // Tier 0 (no QR) — % base VIVOS de pricing_config, no escritos a mano.
+          // Antes decia 20% / 64% (numeros de USA) aunque la tarjeta de arriba
+          // mostrara 18% / 61%: la misma pantalla se contradecia.
           _buildTierRow(
             tierNum: 0,
             qrRange: '0',
-            platformPercent: 20,
-            driverPercent: 64,
+            platformPercent: service.basePlatformPercent,
+            driverPercent: service.baseDriverPercent,
             isCurrentTier: tier == 0,
             isReached: true,
           ),
@@ -532,7 +534,11 @@ class _QRPointsScreenState extends State<QRPointsScreen>
               tierNum: tierNum,
               qrRange: '${prevMax + 1}-${bp.max}',
               platformPercent: bp.platformPercent,
-              driverPercent: 100 - bp.platformPercent - 16, // 100 - platform - IVA
+              // Lo que baja de comision se lo queda el chofer, sobre su % base.
+              // Antes era 100 - plataforma - 16: se saltaba el 5% del seguro y
+              // le prometia 67% cuando en realidad le tocan 62%.
+              driverPercent: service.baseDriverPercent +
+                  (service.basePlatformPercent - bp.platformPercent),
               isCurrentTier: isCurrentTier,
               isReached: isReached,
             );

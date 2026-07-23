@@ -327,10 +327,9 @@ class DriverQRPointsService extends ChangeNotifier {
       _qrTier4Reduction = 4.0;
       _qrTier5Reduction = 5.0;
 
-      // Fallback for MX
-      if (_qrMaxLevel < 30 && countryCode == 'MX') {
-        _qrMaxLevel = 30;
-      }
+      // OJO: aqui habia un override que forzaba _qrMaxLevel = 30 para MX. Eso
+      // pisaba el valor del admin (hoy qr_max_level = 10) y la pantalla decia
+      // "0/30" cuando el maximo real es 10. Manda pricing_config, punto.
 
       AppLogger.log('DRIVER_QR -> Config loaded: max=$_qrMaxLevel, tier reductions: $_qrTier1Reduction-$_qrTier5Reduction%');
     } catch (e) {

@@ -20,6 +20,11 @@ class LivePricing {
   final double isrRetention; // retención ISR sobre la parte del chofer (MX)
   final double ivaRetention; // retención IVA sobre la parte del chofer (MX)
 
+  // Turismo / camión (eventos de organizador). Van aparte del split de viajes.
+  final double busSurcharge; // % que se le suma al pasajero sobre el precio base
+  final double busToroKeep; // % que se queda TORO de ese cargo
+  final double busOrganizer; // % del organizador
+
   const LivePricing({
     required this.driver,
     required this.platform,
@@ -27,6 +32,9 @@ class LivePricing {
     required this.iva,
     required this.isrRetention,
     required this.ivaRetention,
+    required this.busSurcharge,
+    required this.busToroKeep,
+    required this.busOrganizer,
   });
 
   /// Retención total del SAT sobre la parte del chofer.
@@ -50,7 +58,8 @@ class LivePricing {
           .from('pricing_config')
           .select('state_code, driver_commission, platform_commission, '
               'insurance_percent, tax_percent, mx_isr_retention_percent, '
-              'mx_iva_retention_percent')
+              'mx_iva_retention_percent, bus_passenger_surcharge_pct, '
+              'bus_platform_keep_pct, bus_organizer_commission_pct')
           .eq('country_code', country)
           .eq('is_active', true);
 
@@ -78,6 +87,9 @@ class LivePricing {
         iva: v('tax_percent'),
         isrRetention: v('mx_isr_retention_percent'),
         ivaRetention: v('mx_iva_retention_percent'),
+        busSurcharge: v('bus_passenger_surcharge_pct'),
+        busToroKeep: v('bus_platform_keep_pct'),
+        busOrganizer: v('bus_organizer_commission_pct'),
       );
       _cache = cfg;
       _cacheKey = key;

@@ -1317,9 +1317,10 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                             ),
                             if (ride.fare - baseEarnings - ride.platformFee > 0.01)
                               _earningsRow(
-                                'Seguro + impuestos',
+                                // TORO NO ofrece seguro -> solo impuestos (IVA).
+                                'Impuestos',
                                 '-${formatMoney(ride.fare - baseEarnings - ride.platformFee, country: cc)}',
-                                Icons.verified_user,
+                                Icons.receipt_long,
                                 color: Colors.white38,
                               ),
                             if (hasTip)

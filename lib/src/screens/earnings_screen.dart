@@ -640,7 +640,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
 
               // Cash rides + Debes a TORO
               _cashRow('Viajes en Efectivo', '$totalCashRides', Icons.local_taxi, AppColors.textPrimary),
-              _cashRow('DEBES A TORO', formatMoney(cashOwed, country: countryCode), Icons.payments, cashOwed > 0 ? AppColors.warning : AppColors.success),
+              _cashRow('Comisión por pagar', formatMoney(cashOwed, country: countryCode), Icons.payments, cashOwed > 0 ? AppColors.warning : AppColors.success),
 
               // Breakdown by type
               if (byType.isNotEmpty) ...[

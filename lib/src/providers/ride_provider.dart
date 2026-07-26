@@ -60,11 +60,17 @@ class RideProvider with ChangeNotifier {
         return;
       }
 
-      final isActiveDriver = driver.status == DriverStatus.active;
+      // RAÍZ del "no aparece el viaje al reiniciar": antes el gate era
+      // driver.status == active, pero esa columna quedó 'pending' (legacy) en
+      // cuentas que SÍ están aprobadas y online (can_receive_rides=true). Un
+      // chofer ONLINE nunca veía viajes tras cold-start. El gate correcto es la
+      // conexión REAL: si está online, ve viajes disponibles (aceptar ya lo
+      // gatea can_receive_rides/RLS). Reusa el mismo criterio que la presencia.
+      final canSeeRides = driver.isOnline || driver.canReceiveRides;
 
       // Check for active ride
       _activeRide = await _rideService.getActiveRide(driverId);
-      debugPrint('INIT: activeRide=${_activeRide?.id}, isActive=$isActiveDriver');
+      debugPrint('INIT: activeRide=${_activeRide?.id}, online=${driver.isOnline}, canReceive=${driver.canReceiveRides}');
 
       if (_activeRide != null) {
         _status = RideProviderStatus.hasActiveRide;
@@ -72,12 +78,13 @@ class RideProvider with ChangeNotifier {
         _subscribeToActiveRide(_activeRide!.id, rideType: _activeRide!.type);
       } else {
         _status = RideProviderStatus.idle;
-        // Only subscribe to available rides if driver is active
-        if (isActiveDriver) {
-          debugPrint('INIT: No active ride, subscribing to available rides');
+        // Suscribir a viajes disponibles si el chofer está ONLINE (aunque
+        // cold-start / status legacy 'pending').
+        if (canSeeRides) {
+          debugPrint('INIT: driver online/eligible, subscribing to available rides');
           _subscribeToAvailableRides();
         } else {
-          debugPrint('INIT: Driver NOT active, NOT subscribing to rides');
+          debugPrint('INIT: driver offline & not eligible, NOT subscribing to rides');
         }
       }
 
@@ -250,6 +257,18 @@ class RideProvider with ChangeNotifier {
       _error = null;
       notifyListeners();
       return true;
+    } on RideAlreadyTakenException catch (_) {
+      // Otro chofer se lo llevó (o se canceló). Quitarlo de la lista AL INSTANTE
+      // y NO marcar error genérico ni arrancar viaje: seguimos disponibles.
+      debugPrint('🚗 RideProvider: viaje $rideId ya lo tomó otro chofer');
+      _availableRides = _availableRides.where((r) => r.id != rideId).toList();
+      _locallyDismissedIds.add(rideId);
+      _error = 'Ese viaje ya lo tomó otro chofer';
+      _status = _activeRide != null
+          ? RideProviderStatus.hasActiveRide
+          : RideProviderStatus.idle;
+      notifyListeners();
+      return false;
     } catch (e) {
       debugPrint('🚗 RideProvider: ERROR accepting ride: $e');
       _error = 'Error al aceptar viaje: $e';

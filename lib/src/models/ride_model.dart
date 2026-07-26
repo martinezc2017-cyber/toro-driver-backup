@@ -157,6 +157,11 @@ class RideModel {
   final double tip;
   final double platformFee;
   final double driverEarnings;
+  // Descuento (QR + promo/first_ride) que la PLATAFORMA absorbe. El chofer gana
+  // sobre la tarifa SIN promo (fare + qrRiderDiscount + discountAmount). Al cobrar/
+  // completar hay que sumar esto a la base del split o el chofer absorbe el promo.
+  final double qrRiderDiscount;
+  final double discountAmount;
   final PaymentMethod paymentMethod;
   final bool isPaid;
   final String? notes;
@@ -235,6 +240,8 @@ class RideModel {
     this.tip = 0.0,
     required this.platformFee,
     required this.driverEarnings,
+    this.qrRiderDiscount = 0.0,
+    this.discountAmount = 0.0,
     required this.paymentMethod,
     this.isPaid = false,
     this.notes,
@@ -371,6 +378,8 @@ class RideModel {
       tip: (json['tip'] as num?)?.toDouble() ?? 0.0,
       platformFee: (json['platform_fee'] as num?)?.toDouble() ?? 0.0,
       driverEarnings: (json['driver_earnings'] as num?)?.toDouble() ?? 0.0,
+      qrRiderDiscount: (json['qr_rider_discount'] as num?)?.toDouble() ?? 0.0,
+      discountAmount: (json['discount_amount'] as num?)?.toDouble() ?? 0.0,
       paymentMethod: parsePaymentMethod(json['payment_method'] as String?),
       isPaid: json['is_paid'] as bool? ?? false,
       notes: json['notes'] as String?,

@@ -255,11 +255,16 @@ serve(async (req) => {
       ? Math.max(search_radius_km, 30)   // wide net: 30 km default for marketplace
       : search_radius_km
 
+    // Frescura 2 min: MISMA semántica canónica que v_drivers_online /
+    // nearby_online_drivers / assign-driver. Sin esto la oferta (push + in-app)
+    // se empujaba a choferes-fantasma (is_online pegado sin latido).
+    const freshCutoff = new Date(Date.now() - 2 * 60 * 1000).toISOString()
     let query = client
       .from('drivers')
       .select('id, fcm_token, current_lat, current_lng, full_name, operating_city, operating_state, country_code, state_code')
       .eq('is_online', true)
       .eq('can_receive_rides', true)
+      .gt('location_updated_at', freshCutoff)
       .eq('country_code', zoneCountry)
     // fcm_token NO se exige en el query: un chofer sin token de push igual debe
     // recibir la notificacion IN-APP (el push FCM ya va guardado por-chofer mas

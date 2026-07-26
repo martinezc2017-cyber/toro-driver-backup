@@ -672,7 +672,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
                   _buildMiniRow('Insurance', insuranceFee),
                   _buildMiniRow('Tax', taxFee),
                   const Divider(color: Colors.white12, height: 12),
-                  _buildMiniRow('Debes a Toro', amount, bold: true),
+                  _buildMiniRow('Comisión por pagar', amount, bold: true),
                 ],
               ),
             ),

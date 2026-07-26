@@ -909,7 +909,7 @@ class _EarningsBreakdownScreenState extends ConsumerState<EarningsBreakdownScree
           ],
 
           // Net owed
-          _buildRow('DEBES A TORO', cashOwed, bold: true, color: AppTheme.warning),
+          _buildRow('Comisión por pagar', cashOwed, bold: true, color: AppTheme.warning),
 
           // Threshold info
           Padding(

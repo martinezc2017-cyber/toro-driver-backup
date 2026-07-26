@@ -44,6 +44,7 @@ import '../services/cash_account_service.dart';
 import '../services/driver_qr_points_service.dart';
 import '../services/ride_service.dart';
 import '../services/driver_service.dart';
+import '../services/background_location_service.dart';
 import 'earnings_screen.dart';
 import 'rides_screen.dart';
 import 'profile_screen.dart';
@@ -114,6 +115,7 @@ class _HomeScreenState extends State<HomeScreen>
   // === CASH CONTROL ===
   final CashAccountService _cashService = CashAccountService();
   double _cashOwed = 0;
+  double _cashLimit = 0; // límite de crédito de efectivo (para avisar solo cerca del tope)
   String _cashAccountStatus = 'active';
 
   // Navigation mode removed - using NavigationMapScreen on tab 1 instead
@@ -197,6 +199,9 @@ class _HomeScreenState extends State<HomeScreen>
         if (uid != null) {
           DriverService().updateOnlineStatus(uid, false).catchError((_) {});
         }
+        // RAÍZ: antes se dejaba VIVO el foreground service, que seguía estampando
+        // location_updated_at tras cerrar la app → chofer "fresco" fantasma. Cortarlo.
+        BackgroundLocationController().stopTracking().catchError((_) {});
         break;
     }
   }
@@ -270,9 +275,11 @@ class _HomeScreenState extends State<HomeScreen>
       if (mounted && account != null) {
         final balance = (account['current_balance'] as num?)?.toDouble() ?? 0;
         final status = account['status'] as String? ?? 'active';
+        final limit = (account['credit_limit'] as num?)?.toDouble() ?? 0;
 
         setState(() {
           _cashOwed = balance;
+          _cashLimit = limit;
           _cashAccountStatus = status;
         });
 
@@ -1119,7 +1126,12 @@ class _HomeScreenState extends State<HomeScreen>
                               );
                             },
                           ),
-                          if (_cashOwed > 0 || _cashAccountStatus != 'active')
+                          // El banner "DEBES A TORO" enfada si sale con cualquier
+                          // monto chico. Mostrarlo SOLO cuando la deuda está cerca
+                          // del límite (>=80%, ya casi se llena y bloquea) o si la
+                          // cuenta está suspendida/bloqueada. Con holgura, no molesta.
+                          if ((_cashLimit > 0 && _cashOwed >= _cashLimit * 0.8) ||
+                              _cashAccountStatus != 'active')
                             _buildCashOwedBanner(),
                           // Banner de viaje activo (antes era codigo muerto, nunca
                           // se llamaba) -> toca para retomar. Marketplace va a su
@@ -2264,7 +2276,7 @@ class _HomeScreenState extends State<HomeScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    isSuspended ? 'CUENTA SUSPENDIDA' : 'DEBES A TORO',
+                    isSuspended ? 'CUENTA SUSPENDIDA' : 'Comisión por pagar',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 13,
@@ -3227,6 +3239,10 @@ class _HomeScreenState extends State<HomeScreen>
     return Consumer2<RideProvider, DriverProvider>(
       builder: (context, rideProvider, driverProvider, child) {
         final todayRides = rideProvider.todayRidesCount;
+        // Mostrar los viajes de la SEMANA (misma fuente que la pantalla Ganancias:
+        // summary.weekRides) para que el home NO diga "0 Viajes" cuando el chofer ya
+        // hizo viajes esta semana (Carlos: home decía 0 y Ganancias 2). Fallback a hoy.
+        final weekRides = context.watch<EarningsProvider>().summary?.weekRides ?? todayRides;
         final stats = driverProvider.stats;
         final isMX = driverProvider.driver?.countryCode == 'MX';
         final onlineTime = stats?['active_time_today'] ?? '0h 0m';
@@ -3259,7 +3275,7 @@ class _HomeScreenState extends State<HomeScreen>
             children: [
               _buildStatItem(
                 Icons.directions_car_outlined,
-                '$todayRides',
+                '$weekRides',
                 'rides_label'.tr(),
               ),
               if (!isMX) ...[

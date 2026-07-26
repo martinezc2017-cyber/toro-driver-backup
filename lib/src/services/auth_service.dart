@@ -13,6 +13,7 @@ import 'package:crypto/crypto.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'background_location_service.dart';
 import '../config/supabase_config.dart';
 import '../models/driver_model.dart';
 import '../core/logging/app_logger.dart';
@@ -615,6 +616,23 @@ class AuthService {
 
   // Sign out - clear all sessions completely (Supabase + Google)
   Future<void> signOut() async {
+    // RAÍZ presencia fantasma: apagar is_online Y cortar el foreground service
+    // ANTES de cerrar sesión (mientras la RLS aún deja escribir). Si no, el
+    // service seguía estampando location_updated_at tras el logout y el chofer
+    // deslogueado quedaba "online y fresco" para siempre (derrotando la ventana
+    // de frescura). Es el único punto que cubre los 5 callers de logout.
+    try {
+      final uid = _client.auth.currentUser?.id;
+      if (uid != null) {
+        await _client
+            .from(SupabaseConfig.driversTable)
+            .update({'is_online': false}).eq('id', uid);
+      }
+    } catch (_) {/* red caída: la ventana de frescura es la red de seguridad */}
+    try {
+      await BackgroundLocationController().stopTracking();
+    } catch (_) {/* ignore */}
+
     // Sign out from Google Sign In first (clears cached account)
     try {
       final googleSignIn = GoogleSignIn();

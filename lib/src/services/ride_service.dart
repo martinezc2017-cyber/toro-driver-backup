@@ -6,6 +6,16 @@ import 'notification_service.dart';
 import 'state_pricing_service.dart';
 import 'location_service.dart';
 
+/// Se lanza cuando un viaje que se intentó aceptar YA fue tomado por otro chofer
+/// (o dejó de estar 'pending' — p.ej. lo cancelaron). El UPDATE atómico devolvió
+/// 0 filas. Evita arrancar un "viaje fantasma" asignado a otro.
+class RideAlreadyTakenException implements Exception {
+  final String rideId;
+  RideAlreadyTakenException(this.rideId);
+  @override
+  String toString() => 'RideAlreadyTakenException($rideId)';
+}
+
 class RideService {
   final SupabaseClient _client = SupabaseConfig.client;
   final LocationService _locationService = LocationService();
@@ -226,35 +236,48 @@ class RideService {
       debugPrint('Warning: Could not track ride response: $e');
     }
 
-    // Direct update - works for both pending and already-assigned rides
-    try {
-      if (serviceType == 'carpool') {
-        await _client
-            .from('share_ride_bookings')
-            .update({
-              'driver_id': driverId,
-              'status': 'confirmed',
-              'confirmed_at': DateTime.now().toUtc().toIso8601String(),
-            })
-            .eq('id', rideId)
-            .inFilter('status', ['pending', 'matched', 'accepted']);
-      } else {
-        // Accept ride - handles both pending (new) and accepted (pre-assigned by assign-driver)
-        await _client
-            .from(SupabaseConfig.packageDeliveriesTable)
-            .update({
-              'driver_id': driverId,
-              'status': statusToDatabase(RideStatus.accepted),
-              'accepted_at': DateTime.now().toUtc().toIso8601String(),
-            })
-            .eq('id', rideId)
-            .inFilter('status', ['pending', 'accepted', 'searching']);
+    if (serviceType == 'carpool') {
+      // Carpool ATÓMICO: solo tomar si sigue disponible y sin chofer. .select()
+      // devuelve las filas realmente actualizadas → 0 filas = ya lo tomaron.
+      final updated = await _client
+          .from('share_ride_bookings')
+          .update({
+            'driver_id': driverId,
+            'status': 'confirmed',
+            'confirmed_at': DateTime.now().toUtc().toIso8601String(),
+          })
+          .eq('id', rideId)
+          .inFilter('status', ['pending', 'matched'])
+          .isFilter('driver_id', null)
+          .select();
+      if (updated.isEmpty) {
+        throw RideAlreadyTakenException(rideId);
       }
-    } catch (e) {
-      debugPrint('Warning: Update failed (ride may already be accepted): $e');
+    } else {
+      // Ride/package ATÓMICO. Motor único = pool self-accept: el viaje SIEMPRE
+      // está 'pending'+driver_id NULL hasta que un humano acepta. El UPDATE con
+      // .select() sobre (status='pending' AND driver_id IS NULL) es la verdad:
+      // si otro chofer ya lo tomó (o se canceló), devuelve 0 filas → NO arrancar
+      // un viaje fantasma asignado a otro; lanzar excepción para quitarlo de la
+      // lista. (Antes: el UPDATE se ignoraba y getRide() devolvía la fila del
+      // OTRO chofer → 2 choferes "tomaban" el mismo viaje.)
+      final updated = await _client
+          .from(SupabaseConfig.packageDeliveriesTable)
+          .update({
+            'driver_id': driverId,
+            'status': statusToDatabase(RideStatus.accepted),
+            'accepted_at': DateTime.now().toUtc().toIso8601String(),
+          })
+          .eq('id', rideId)
+          .eq('status', statusToDatabase(RideStatus.pending))
+          .isFilter('driver_id', null)
+          .select();
+      if (updated.isEmpty) {
+        throw RideAlreadyTakenException(rideId);
+      }
     }
 
-    // Always fetch the ride after attempting accept
+    // Fetch the ride after a CONFIRMED accept (ya sabemos que ganamos la carrera)
     final ride = await getRide(rideId);
     if (ride != null) return ride;
     throw Exception('Ride not found after accept');
@@ -549,13 +572,22 @@ class RideService {
 
     // Calculate driver earnings using ADMIN-defined percentage + tip
     final fare = ride.fare > 0 ? ride.fare : statePricing.minimumFare;
-    final basedriverEarnings = fare * (driverCommissionPercent / 100);
+    // BASE DEL SPLIT = tarifa SIN promo. La PLATAFORMA absorbe el descuento
+    // (qr_rider_discount/discount_amount): el chofer gana sobre fare + descuento,
+    // NO sobre lo descontado. Misma fórmula que el trigger auto_calculate_delivery_fees.
+    // Sin descuento, splitBase == fare (cero regresión).
+    final splitBase = fare + ride.qrRiderDiscount + ride.discountAmount;
+    final basedriverEarnings = splitBase * (driverCommissionPercent / 100);
     final totalDriverEarnings = basedriverEarnings + (tip ?? 0);
 
-    // Calculate breakdown for records
-    final platformAmount = fare * (platformFeePercent / 100);
-    final taxAmount = fare * (taxPercent / 100);
-    final insuranceAmount = fare * (insurancePercent / 100);
+    // Seguro sobre la tarifa SIN promo (0 en MX). IVA = SOLO el IVA de la COMISIÓN de
+    // TORO (IVA incluido en su margen), NO el 16% del viaje entero. El IVA del viaje
+    // es del chofer (cubierto por su retención). Igual que el trigger. "La casa gana".
+    final insuranceAmount = splitBase * (insurancePercent / 100);
+    final platformGross = fare - basedriverEarnings - insuranceAmount;
+    final taxAmount = (platformGross > 0 ? platformGross : 0) *
+        (taxPercent / (100 + taxPercent));
+    final platformAmount = platformGross - taxAmount;
 
     // Calculate duration from timestamps
     int durationMinutes = ride.estimatedMinutes;
@@ -944,30 +976,33 @@ class RideService {
   // Lightweight: parse JSON directly without async HTTP calls to avoid ANR
   // Profile enrichment + split calculation happen in getAvailableRides() periodic backup
   Stream<List<RideModel>> streamAvailableRides() {
-    _fetchInitialPendingRides();
-
+    // RAÍZ del "viaje pegado en la lista del chofer": antes se filtraba el CACHE
+    // ACUMULADO del .stream() en cliente (status=='pending' && driver_id==null).
+    // Cuando un viaje pasa a accepted/cancelled, la RLS oculta la fila NUEVA al
+    // chofer no-asignado → el evento UPDATE nunca se le entrega → el cache del
+    // stream conserva la versión vieja (pending) y el .where la vuelve a incluir
+    // en cada emisión: el viaje fantasma reaparece (el poll de 5s lo quitaba y el
+    // stream lo resucitaba). FIX: usar el .stream() SOLO como DISPARADOR y
+    // RE-DERIVAR de una consulta AUTORITATIVA server-side (status='pending' AND
+    // driver_id IS NULL). Un viaje tomado/cancelado NUNCA reaparece aunque su
+    // UPDATE no llegue por RLS. Parse ligero (sin HTTP de split); el poll de 5s
+    // enriquece nombre/split.
     return _client
         .from(SupabaseConfig.packageDeliveriesTable)
         .stream(primaryKey: ['id'])
-        .order('created_at', ascending: false)
-        .map((dynamic data) {
-          if (data == null) return <RideModel>[];
-
-          final List<dynamic> dataList = data is List ? data : [];
-
+        .asyncMap((_) async {
           try {
-            final filtered = dataList.where((json) {
-              final status = json['status'] as String?;
-              final driverId = json['driver_id'];
-              return status == 'pending' && driverId == null;
-            }).toList();
-
-            // Lightweight parse - no HTTP calls, no async
-            // Profile names + split preview come from periodic getAvailableRides()
-            return filtered.map((json) {
-              final mutableJson = Map<String, dynamic>.from(json as Map);
-              return RideModel.fromJson(mutableJson);
-            }).toList();
+            final rows = await _client
+                .from(SupabaseConfig.packageDeliveriesTable)
+                .select('*')
+                .eq('status', statusToDatabase(RideStatus.pending))
+                .isFilter('driver_id', null)
+                .order('created_at', ascending: false)
+                .limit(20);
+            return (rows as List)
+                .map((json) =>
+                    RideModel.fromJson(Map<String, dynamic>.from(json as Map)))
+                .toList();
           } catch (e) {
             return <RideModel>[];
           }
@@ -1196,10 +1231,20 @@ class RideService {
 
     // Calculate driver earnings using pricing config
     final fare = amount > 0 ? amount : ride.fare;
+    // BASE DEL SPLIT = tarifa SIN promo. La PLATAFORMA absorbe el descuento
+    // (qr_rider_discount/discount_amount): el chofer gana sobre fare + descuento.
+    // Misma fórmula que el trigger. Sin descuento, splitBase == fare (cero regresión).
+    final splitBase = fare + ride.qrRiderDiscount + ride.discountAmount;
     final driverCommissionPercent = statePricing.driverPercentage.toInt();
-    final platformFeePercent = statePricing.platformPercentage;
-    final driverEarnings = fare * (driverCommissionPercent / 100);
-    final platformAmount = fare * (platformFeePercent / 100);
+    final driverEarnings = splitBase * (driverCommissionPercent / 100);
+    final insuranceFee = splitBase * (statePricing.insurancePercentage / 100);
+    // IVA = SOLO el IVA de la COMISIÓN de TORO (IVA incluido en su margen), NO el 16%
+    // del viaje entero. El IVA del viaje es del chofer (cubierto por su retención).
+    // Igual que el trigger auto_calculate_delivery_fees. "La casa gana".
+    final platformGross = fare - driverEarnings - insuranceFee;
+    final taxAmount = (platformGross > 0 ? platformGross : 0) *
+        (statePricing.taxPercentage / (100 + statePricing.taxPercentage));
+    final platformAmount = platformGross - taxAmount;
 
     // Update the delivery with cash payment confirmed
     // NOTE: payment_status = 'paid' is REQUIRED for the trigger to allow status → completed
@@ -1207,6 +1252,8 @@ class RideService {
       'final_price': fare,
       'driver_earnings': driverEarnings,
       'platform_fee': platformAmount,
+      'insurance_fee': insuranceFee,
+      'tax_amount': taxAmount,
       'state_code': resolvedStateCode,
       'payment_status': 'paid',  // CRITICAL: Trigger checks this before allowing completion
       'cash_payment_confirmed': true,
@@ -1266,6 +1313,9 @@ class RideService {
           'booking_id': rideId,
           'driver_id': driverId,
           'gross_amount': fare,
+          // Descuento que TORO absorbe: process-cash-split lo suma a la base del
+          // split para que el chofer gane sobre la tarifa SIN promo.
+          'rider_discount': ride.qrRiderDiscount + ride.discountAmount,
           'tip_amount': 0.0, // Cash tips are not tracked in app
           'state_code': resolvedStateCode,
           'booking_type': ride.type == RideType.carpool ? 'carpool' : 'ride',

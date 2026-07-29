@@ -423,6 +423,25 @@ class _RidesScreenState extends State<RidesScreen>
     ).animate().fadeIn().scale(begin: const Offset(0.9, 0.9));
   }
 
+  /// Agendado aún BLOQUEADO para aceptar: se libera 20 min antes de su hora.
+  /// (El candado real vive en la base — trigger block_early_scheduled_accept;
+  /// esto solo evita que el botón truene y explica cuándo abre.)
+  bool _scheduledLocked(RideModel ride) =>
+      ride.scheduledTime != null &&
+      ride.scheduledTime!
+          .isAfter(DateTime.now().add(const Duration(minutes: 20)));
+
+  String _fmtScheduled(DateTime d) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final day = DateTime(d.year, d.month, d.day);
+    two(int n) => n.toString().padLeft(2, '0');
+    final hhmm = '${two(d.hour)}:${two(d.minute)}';
+    if (day == today) return hhmm;
+    if (day == today.add(const Duration(days: 1))) return 'mañana $hhmm';
+    return '${d.day}/${d.month} $hhmm';
+  }
+
   Widget _buildRideCard(RideModel ride, int index) {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -496,6 +515,39 @@ class _RidesScreenState extends State<RidesScreen>
                               child: const Text('🛒 MERCADO',
                                 style: TextStyle(
                                   color: Colors.black, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 1,
+                                )),
+                            ),
+                          // VIAJE AGENDADO: el rider lo pidió "Para después".
+                          // El chofer lo ve ~15 min antes (RLS) — la hora es el
+                          // dato clave para no llegar antes/después.
+                          if (ride.scheduledTime != null)
+                            Container(
+                              margin: const EdgeInsets.only(bottom: 4),
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF4FC3F7),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                '📅 PROGRAMADO · ${_fmtScheduled(ride.scheduledTime!)}',
+                                style: const TextStyle(
+                                  color: Colors.black, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 1,
+                                )),
+                            ),
+                          // MULTI-PARADA: que el chofer vea las rutas extra
+                          // desde la tarjeta (no solo al abrir el detalle).
+                          if (ride.waypoints != null && ride.waypoints!.isNotEmpty)
+                            Container(
+                              margin: const EdgeInsets.only(bottom: 4),
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                '🚩 ${ride.waypoints!.length} PARADA${ride.waypoints!.length == 1 ? '' : 'S'} EXTRA',
+                                style: TextStyle(
+                                  color: AppColors.textPrimary, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 1,
                                 )),
                             ),
                           Row(
@@ -725,26 +777,44 @@ class _RidesScreenState extends State<RidesScreen>
                     const SizedBox(width: 8),
                     Expanded(
                       flex: 2,
-                      child: NeonButton(
-                        text: 'accept'.tr(),
-                        icon: Icons.check_rounded,
-                        onPressed: () async {
-                          final driverId = context.read<DriverProvider>().driver?.id;
-                          if (driverId != null) {
-                            final success = await context.read<RideProvider>().acceptRide(ride.id, driverId);
-                            if (success) {
-                              HapticService.success();
-                              if (mounted) {
-                                Navigator.pushNamed(context, '/navigation');
-                              }
-                            } else {
-                              HapticService.error();
-                            }
-                          }
-                        },
-                        gradient: AppColors.successGradient,
-                        height: 38,
-                      ),
+                      child: _scheduledLocked(ride)
+                          ? NeonButton(
+                              text:
+                                  'Se libera ${_fmtScheduled(ride.scheduledTime!.subtract(const Duration(minutes: 20)))}',
+                              icon: Icons.lock_clock,
+                              onPressed: () {
+                                HapticService.lightImpact();
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                        'Viaje agendado para ${_fmtScheduled(ride.scheduledTime!)} — se puede aceptar 20 min antes.'),
+                                  ),
+                                );
+                              },
+                              isOutlined: true,
+                              color: const Color(0xFF4FC3F7),
+                              height: 38,
+                            )
+                          : NeonButton(
+                              text: 'accept'.tr(),
+                              icon: Icons.check_rounded,
+                              onPressed: () async {
+                                final driverId = context.read<DriverProvider>().driver?.id;
+                                if (driverId != null) {
+                                  final success = await context.read<RideProvider>().acceptRide(ride.id, driverId);
+                                  if (success) {
+                                    HapticService.success();
+                                    if (mounted) {
+                                      Navigator.pushNamed(context, '/navigation');
+                                    }
+                                  } else {
+                                    HapticService.error();
+                                  }
+                                }
+                              },
+                              gradient: AppColors.successGradient,
+                              height: 38,
+                            ),
                     ),
                   ],
                 ),
@@ -1175,7 +1245,20 @@ class _RidesScreenState extends State<RidesScreen>
                       ),
                     ),
                     const SizedBox(height: 18),
+                    // AGENDADO: la hora pactada es lo primero que debe ver
+                    if (ride.scheduledTime != null)
+                      _buildDetailRow(Icons.event_rounded, 'Programado para',
+                          _fmtScheduled(ride.scheduledTime!)),
                     _buildDetailRow(Icons.location_on_rounded, 'pickup'.tr(), ride.pickupLocation.address ?? 'N/A'),
+                    // MULTI-PARADA: rutas extra del viaje, en orden
+                    if (ride.waypoints != null && ride.waypoints!.isNotEmpty)
+                      _buildDetailRow(
+                          Icons.alt_route_rounded,
+                          'Paradas',
+                          ride.waypoints!
+                              .map((w) => (w['name'] ?? '').toString())
+                              .where((n) => n.isNotEmpty)
+                              .join('  →  ')),
                     _buildDetailRow(Icons.flag_rounded, 'destination'.tr(), ride.dropoffLocation.address ?? 'N/A'),
                     _buildDetailRow(
                       ride.paymentMethod == PaymentMethod.cash
@@ -1206,29 +1289,46 @@ class _RidesScreenState extends State<RidesScreen>
                         const SizedBox(width: 16),
                         Expanded(
                           flex: 2,
-                          child: NeonButton(
-                            text: 'accept_trip_btn'.tr(),
-                            icon: Icons.check_rounded,
-                            onPressed: () async {
-                              final navigator = Navigator.of(context);
-                              final rideProvider = context.read<RideProvider>();
-                              final driverId = context.read<DriverProvider>().driver?.id;
-                              if (driverId != null) {
-                                final success = await rideProvider.acceptRide(ride.id, driverId);
-                                if (success) {
-                                  HapticService.success();
-                                  if (mounted) {
-                                    navigator.pop();
-                                    navigator.pushNamed('/navigation');
-                                  }
-                                } else {
-                                  HapticService.error();
-                                }
-                              }
-                            },
-                            gradient: AppColors.successGradient,
-                            height: 54,
-                          ),
+                          child: _scheduledLocked(ride)
+                              ? NeonButton(
+                                  text:
+                                      'Se libera ${_fmtScheduled(ride.scheduledTime!.subtract(const Duration(minutes: 20)))}',
+                                  icon: Icons.lock_clock,
+                                  onPressed: () {
+                                    HapticService.lightImpact();
+                                    ScaffoldMessenger.of(context)
+                                        .showSnackBar(SnackBar(
+                                      content: Text(
+                                          'Viaje agendado para ${_fmtScheduled(ride.scheduledTime!)} — se puede aceptar 20 min antes.'),
+                                    ));
+                                  },
+                                  isOutlined: true,
+                                  color: const Color(0xFF4FC3F7),
+                                  height: 54,
+                                )
+                              : NeonButton(
+                                  text: 'accept_trip_btn'.tr(),
+                                  icon: Icons.check_rounded,
+                                  onPressed: () async {
+                                    final navigator = Navigator.of(context);
+                                    final rideProvider = context.read<RideProvider>();
+                                    final driverId = context.read<DriverProvider>().driver?.id;
+                                    if (driverId != null) {
+                                      final success = await rideProvider.acceptRide(ride.id, driverId);
+                                      if (success) {
+                                        HapticService.success();
+                                        if (mounted) {
+                                          navigator.pop();
+                                          navigator.pushNamed('/navigation');
+                                        }
+                                      } else {
+                                        HapticService.error();
+                                      }
+                                    }
+                                  },
+                                  gradient: AppColors.successGradient,
+                                  height: 54,
+                                ),
                         ),
                       ],
                     ),

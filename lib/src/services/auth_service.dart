@@ -987,17 +987,32 @@ class AuthService {
     return response != null;
   }
 
-  // Delete account
+  // Delete account: calls edge function to fully delete auth user + all data
   Future<void> deleteAccount() async {
     if (currentUserId == null) return;
 
-    // Delete driver data
-    await _client
-        .from(SupabaseConfig.driversTable)
-        .delete()
-        .eq('id', currentUserId!);
+    try {
+      final response = await _client.functions.invoke(
+        'delete-account',
+        method: HttpMethod.post,
+        body: {},
+      );
+      final data = response.data;
+      if (data is Map && data['ok'] == true) {
+        await DebugLogger.log('DELETE_ACCOUNT', detail: 'Account fully deleted for user: $currentUserId');
+      } else {
+        await DebugLogger.log('DELETE_ACCOUNT', detail: 'Response: $data');
+      }
+    } catch (e) {
+      await DebugLogger.log('DELETE_ACCOUNT_ERROR', detail: '$e — falling back to driver delete');
+      // Fallback: at least delete driver record
+      await _client
+          .from(SupabaseConfig.driversTable)
+          .delete()
+          .eq('id', currentUserId!);
+    }
 
-    // Sign out
+    // Sign out and clear local state
     await signOut();
   }
 }

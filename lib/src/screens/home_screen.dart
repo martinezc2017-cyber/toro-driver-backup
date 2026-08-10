@@ -4689,6 +4689,55 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                     ),
                   ],
                 ),
+                // VIAJE AGENDADO + PARADAS: lo primero que el chofer debe ver
+                // (hora pactada y rutas extra) — también en ESTA tarjeta del
+                // home, no solo en la lista de viajes.
+                if (widget.ride.scheduledTime != null ||
+                    (widget.ride.waypoints?.isNotEmpty ?? false)) ...[
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: [
+                      if (widget.ride.scheduledTime != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF4FC3F7),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            '📅 PROGRAMADO · ${_fmtSchedHome(widget.ride.scheduledTime!)}',
+                            style: const TextStyle(
+                              color: Colors.black,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                      if (widget.ride.waypoints?.isNotEmpty ?? false)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.14),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            '🚩 ${widget.ride.waypoints!.length} PARADA${widget.ride.waypoints!.length == 1 ? '' : 'S'} EXTRA',
+                            style: TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 8),
 
                 // EARNINGS DISPLAY - Simple: Total + Your Earnings (what driver cares about)
@@ -5055,55 +5104,85 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                     ],
                     const SizedBox(width: 8),
                     // Accept button - ACEPTAR VIAJE (clear CTA)
+                    // AGENDADO: se libera 20 min antes de la hora (el candado
+                    // real también vive en la BD — trigger).
                     Expanded(
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () {
-                          widget.onAccept();
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                const Color(0xFF22C55E),
-                                const Color(0xFF16A34A),
+                      child: Builder(builder: (context) {
+                        final st = widget.ride.scheduledTime;
+                        final locked = st != null &&
+                            st.isAfter(DateTime.now()
+                                .add(const Duration(minutes: 20)));
+                        return GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () {
+                            if (locked) {
+                              ScaffoldMessenger.of(context)
+                                  .showSnackBar(SnackBar(
+                                content: Text(
+                                    'Viaje agendado para ${_fmtSchedHome(st)} — se puede aceptar 20 min antes.'),
+                              ));
+                              return;
+                            }
+                            widget.onAccept();
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              gradient: locked
+                                  ? const LinearGradient(colors: [
+                                      Color(0xFF25566B),
+                                      Color(0xFF1B3D4D),
+                                    ])
+                                  : const LinearGradient(colors: [
+                                      Color(0xFF22C55E),
+                                      Color(0xFF16A34A),
+                                    ]),
+                              borderRadius: BorderRadius.circular(10),
+                              boxShadow: locked
+                                  ? null
+                                  : [
+                                      BoxShadow(
+                                        color: AppColors.success
+                                            .withValues(alpha: 0.5),
+                                        blurRadius: 10,
+                                        spreadRadius: 1,
+                                      ),
+                                    ],
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  locked
+                                      ? Icons.lock_clock
+                                      : Icons.check_circle_rounded,
+                                  color: locked
+                                      ? const Color(0xFF4FC3F7)
+                                      : Colors.white,
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  locked
+                                      ? 'SE LIBERA ${_fmtSchedHome(st.subtract(const Duration(minutes: 20)))}'
+                                      : 'ACEPTAR',
+                                  style: TextStyle(
+                                    color: locked
+                                        ? const Color(0xFF4FC3F7)
+                                        : Colors.white,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
                               ],
                             ),
-                            borderRadius: BorderRadius.circular(10),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.success.withValues(alpha: 0.5),
-                                blurRadius: 10,
-                                spreadRadius: 1,
-                              ),
-                            ],
                           ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.check_circle_rounded,
-                                color: Colors.white,
-                                size: 18,
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                'ACEPTAR',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+                        );
+                      }),
                     ),
                   ],
                 ),
@@ -5113,6 +5192,18 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
         },
       ),
     );
+  }
+
+  /// Hoy/mañana/fecha corta + hora, para el badge y el candado del agendado.
+  String _fmtSchedHome(DateTime d) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final day = DateTime(d.year, d.month, d.day);
+    two(int n) => n.toString().padLeft(2, '0');
+    final hhmm = '${two(d.hour)}:${two(d.minute)}';
+    if (day == today) return hhmm;
+    if (day == today.add(const Duration(days: 1))) return 'mañana $hhmm';
+    return '${d.day}/${d.month} $hhmm';
   }
 }
 

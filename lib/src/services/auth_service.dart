@@ -777,8 +777,26 @@ class AuthService {
           countryCode = 'US';
         }
       }
-      // No GPS permission = default US
     } catch (_) {}
+
+    // Fallback: IP geolocation when GPS unavailable
+    if (signupLat == null) {
+      try {
+        final ipResp = await http.get(
+          Uri.parse('http://ip-api.com/json/?fields=status,countryCode,city,lat,lon'),
+        ).timeout(const Duration(seconds: 4));
+        if (ipResp.statusCode == 200) {
+          final ipData = jsonDecode(ipResp.body) as Map<String, dynamic>;
+          if (ipData['status'] == 'success') {
+            signupLat = (ipData['lat'] as num?)?.toDouble();
+            signupLng = (ipData['lon'] as num?)?.toDouble();
+            final ipCC = ipData['countryCode'] as String?;
+            if (ipCC == 'MX' || ipCC == 'US') countryCode = ipCC!;
+            await DebugLogger.log('IP_GEO', detail: 'Fallback: $countryCode, ${ipData['city']}');
+          }
+        }
+      } catch (_) {}
+    }
 
     // Upsert: DB trigger may have already created the row on auth.users INSERT.
     // This updates with GPS-detected country_code and full details.
@@ -919,15 +937,39 @@ class AuthService {
 
         AppLogger.log('AUTH_SERVICE -> Backfilled GPS: ${position.latitude}, ${position.longitude} -> $countryCode (v$appVersion)');
       } else {
-        // No GPS, at least mark driver app installed + version
-        await _client.from('profiles').update({
+        // No GPS — try IP geolocation fallback
+        final updateProfiles = <String, dynamic>{
           'driver_app_installed': true,
           'driver_app_last_open': DateTime.now().toIso8601String(),
           'driver_app_version': appVersion,
-        }).eq('id', userId);
-        await _client.from('drivers').update({
+        };
+        final updateDrivers = <String, dynamic>{
           'app_version': appVersion,
-        }).eq('id', userId);
+        };
+        try {
+          final ipResp = await http.get(
+            Uri.parse('http://ip-api.com/json/?fields=status,countryCode,city,lat,lon'),
+          ).timeout(const Duration(seconds: 4));
+          if (ipResp.statusCode == 200) {
+            final ipData = jsonDecode(ipResp.body) as Map<String, dynamic>;
+            if (ipData['status'] == 'success') {
+              final ipCC = ipData['countryCode'] as String?;
+              if (ipCC == 'MX' || ipCC == 'US') {
+                updateProfiles['country_code'] = ipCC;
+                updateDrivers['country_code'] = ipCC;
+              }
+              updateProfiles['signup_lat'] = (ipData['lat'] as num?)?.toDouble();
+              updateProfiles['signup_lng'] = (ipData['lon'] as num?)?.toDouble();
+              final ipCity = ipData['city'] as String?;
+              if (ipCity != null && ipCity.isNotEmpty) {
+                updateProfiles['city'] = ipCity;
+              }
+              AppLogger.log('AUTH_SERVICE -> IP fallback: $ipCC, $ipCity');
+            }
+          }
+        } catch (_) {}
+        await _client.from('profiles').update(updateProfiles).eq('id', userId);
+        await _client.from('drivers').update(updateDrivers).eq('id', userId);
       }
     } catch (e) {
       AppLogger.log('AUTH_SERVICE -> Backfill GPS failed: $e');

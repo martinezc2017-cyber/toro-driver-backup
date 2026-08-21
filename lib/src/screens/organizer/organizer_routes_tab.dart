@@ -110,21 +110,21 @@ class _OrganizerRoutesTabState extends State<OrganizerRoutesTab> {
                     child: CircularProgressIndicator(color: AppColors.primary),
                   )
                 : _error != null
-                    ? _buildErrorState()
-                    : _routes.isEmpty
-                        ? _buildEmptyState()
-                        : RefreshIndicator(
-                            color: AppColors.primary,
-                            backgroundColor: AppColors.surface,
-                            onRefresh: _loadRoutes,
-                            child: ListView.builder(
-                              physics: const AlwaysScrollableScrollPhysics(),
-                              padding: const EdgeInsets.all(16),
-                              itemCount: _routes.length,
-                              itemBuilder: (context, index) =>
-                                  _buildRouteCard(_routes[index]),
-                            ),
-                          ),
+                ? _buildErrorState()
+                : _routes.isEmpty
+                ? _buildEmptyState()
+                : RefreshIndicator(
+                    color: AppColors.primary,
+                    backgroundColor: AppColors.surface,
+                    onRefresh: _loadRoutes,
+                    child: ListView.builder(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.all(16),
+                      itemCount: _routes.length,
+                      itemBuilder: (context, index) =>
+                          _buildRouteCard(_routes[index]),
+                    ),
+                  ),
           ),
         ],
       ),
@@ -138,13 +138,18 @@ class _OrganizerRoutesTabState extends State<OrganizerRoutesTab> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.error_outline,
-                size: 48, color: AppColors.error.withValues(alpha: 0.7)),
+            Icon(
+              Icons.error_outline,
+              size: 48,
+              color: AppColors.error.withValues(alpha: 0.7),
+            ),
             const SizedBox(height: 16),
             Text(
               _error ?? 'Error desconocido',
               style: const TextStyle(
-                  color: AppColors.textSecondary, fontSize: 14),
+                color: AppColors.textSecondary,
+                fontSize: 14,
+              ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
@@ -172,20 +177,20 @@ class _OrganizerRoutesTabState extends State<OrganizerRoutesTab> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.route_outlined,
-                size: 48,
-                color: AppColors.textTertiary.withValues(alpha: 0.5)),
+            Icon(
+              Icons.route_outlined,
+              size: 48,
+              color: AppColors.textTertiary.withValues(alpha: 0.5),
+            ),
             const SizedBox(height: 16),
             const Text(
               'No hay rutas publicadas',
-              style:
-                  TextStyle(color: AppColors.textSecondary, fontSize: 14),
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
             ),
             const SizedBox(height: 8),
             const Text(
               'Las rutas publicadas apareceran aqui',
-              style:
-                  TextStyle(color: AppColors.textTertiary, fontSize: 12),
+              style: TextStyle(color: AppColors.textTertiary, fontSize: 12),
             ),
           ],
         ),
@@ -198,11 +203,11 @@ class _OrganizerRoutesTabState extends State<OrganizerRoutesTab> {
     final destination = route['destination'] ?? 'Destino';
     final status = route['status'] ?? 'published';
     final departureDate = route['departure_date'] ?? '';
-    final availableSeats = (route['available_seats'] as num?)?.toInt() ??
+    final availableSeats =
+        (route['available_seats'] as num?)?.toInt() ??
         ((route['total_seats'] as num?)?.toInt() ?? 0) -
             ((route['booked_seats'] as num?)?.toInt() ?? 0);
-    final pricePerKm =
-        (route['price_per_km'] as num?)?.toDouble() ?? 0;
+    final pricePerKm = (route['price_per_km'] as num?)?.toDouble() ?? 0;
 
     return GestureDetector(
       onTap: () {
@@ -227,8 +232,11 @@ class _OrganizerRoutesTabState extends State<OrganizerRoutesTab> {
                 Expanded(
                   child: Row(
                     children: [
-                      const Icon(Icons.trip_origin,
-                          size: 14, color: AppColors.success),
+                      const Icon(
+                        Icons.trip_origin,
+                        size: 14,
+                        color: AppColors.success,
+                      ),
                       const SizedBox(width: 6),
                       Flexible(
                         child: Text(
@@ -263,8 +271,7 @@ class _OrganizerRoutesTabState extends State<OrganizerRoutesTab> {
             ),
             Row(
               children: [
-                const Icon(Icons.location_on,
-                    size: 14, color: AppColors.error),
+                const Icon(Icons.location_on, size: 14, color: AppColors.error),
                 const SizedBox(width: 6),
                 Flexible(
                   child: Text(
@@ -301,7 +308,7 @@ class _OrganizerRoutesTabState extends State<OrganizerRoutesTab> {
                   ),
                   _buildInfoChip(
                     icon: Icons.attach_money,
-                    value: '${formatMoney(pricePerKm, country: 'MX')}/km',
+                    value: '${formatMoney(pricePerKm)}/${distanceUnit()}',
                   ),
                 ],
               ),
@@ -406,8 +413,18 @@ class _OrganizerRoutesTabState extends State<OrganizerRoutesTab> {
     final dt = DateTime.tryParse(isoDate);
     if (dt == null) return isoDate;
     final months = [
-      'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
-      'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic',
+      'Ene',
+      'Feb',
+      'Mar',
+      'Abr',
+      'May',
+      'Jun',
+      'Jul',
+      'Ago',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dic',
     ];
     return '${dt.day} ${months[dt.month - 1]}, '
         '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
@@ -447,8 +464,9 @@ class _PassengerListSheetState extends State<_PassengerListSheet> {
 
   Future<void> _loadPassengers() async {
     try {
-      final passengers =
-          await widget.busRouteService.getRoutePassengers(widget.routeId);
+      final passengers = await widget.busRouteService.getRoutePassengers(
+        widget.routeId,
+      );
       if (mounted) {
         setState(() {
           _passengers = passengers;
@@ -518,8 +536,7 @@ class _PassengerListSheetState extends State<_PassengerListSheet> {
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 32),
               child: Center(
-                child:
-                    CircularProgressIndicator(color: AppColors.primary),
+                child: CircularProgressIndicator(color: AppColors.primary),
               ),
             )
           else if (_passengers.isEmpty)
@@ -528,10 +545,11 @@ class _PassengerListSheetState extends State<_PassengerListSheet> {
               child: Center(
                 child: Column(
                   children: [
-                    Icon(Icons.people_outline,
-                        size: 40,
-                        color:
-                            AppColors.textTertiary.withValues(alpha: 0.5)),
+                    Icon(
+                      Icons.people_outline,
+                      size: 40,
+                      color: AppColors.textTertiary.withValues(alpha: 0.5),
+                    ),
                     const SizedBox(height: 12),
                     const Text(
                       'Sin pasajeros registrados',

@@ -7,6 +7,7 @@ import '../services/driver_service.dart';
 import '../services/notification_service.dart';
 import '../services/background_location_service.dart';
 import '../config/supabase_config.dart';
+import '../config/stripe_config.dart';
 import '../models/driver_model.dart';
 import '../utils/money_format.dart' show setUserCountry;
 
@@ -50,23 +51,20 @@ class DriverProvider with ChangeNotifier {
     try {
       // Load driver profile
       _driver = await _driverService.getDriver(driverId);
-      setUserCountry(_driver?.countryCode);
-
-      // If driver doesn't exist in database, create one for testing
       if (_driver == null) {
-        final newDriver = _createMockDriver(driverId);
-        try {
-          _driver = await _driverService.createDriver(newDriver);
-        } catch (e) {
-          // If creation fails (e.g., table doesn't exist), use mock locally
-          _driver = newDriver;
-        }
         _stats = _createEmptyStats();
-        _error = null;
+        _error = 'driver_profile_not_found';
         _isLoading = false;
         notifyListeners();
         return;
       }
+
+      setUserCountry(_driver!.countryCode);
+      await StripeConfig.switchProvider(
+        _driver!.countryCode.toUpperCase() == 'MX'
+            ? StripeProvider.mx
+            : StripeProvider.us,
+      );
 
       // Load stats
       _stats = await _driverService.getDriverStats(driverId);
@@ -85,10 +83,9 @@ class DriverProvider with ChangeNotifier {
 
       _error = null;
     } catch (e) {
-      // On any error, fallback to mock driver for testing
-      _driver = _createMockDriver(driverId);
+      _driver = null;
       _stats = _createEmptyStats();
-      _error = null;
+      _error = e.toString();
     }
 
     _isLoading = false;
@@ -100,7 +97,7 @@ class DriverProvider with ChangeNotifier {
     // Get real user data from Supabase Auth
     final user = Supabase.instance.client.auth.currentUser;
     final userMetadata = user?.userMetadata;
-    
+
     // Extract real name from metadata or use email as fallback
     String realName = 'Driver';
     if (userMetadata != null) {
@@ -114,7 +111,7 @@ class DriverProvider with ChangeNotifier {
     if (realName == 'Driver' && user?.email != null) {
       realName = user!.email!.split('@').first;
     }
-    
+
     return DriverModel(
       id: driverId,
       name: realName,
@@ -126,11 +123,7 @@ class DriverProvider with ChangeNotifier {
       isVerified: true,
       createdAt: DateTime.now().subtract(const Duration(days: 30)),
       updatedAt: DateTime.now(),
-      preferences: {
-        'notifications': true,
-        'sounds': true,
-        'vibration': true,
-      },
+      preferences: {'notifications': true, 'sounds': true, 'vibration': true},
     );
   }
 
@@ -174,65 +167,76 @@ class DriverProvider with ChangeNotifier {
   // Subscribe to real-time driver updates
   void _subscribeToDriverUpdates(String driverId) {
     _driverSubscription?.cancel();
-    _driverSubscription = _driverService.streamDriver(driverId).listen(
-      (driver) {
-        if (driver != null) {
-          final previousDriver = _driver;
-          final wasOnline = previousDriver?.isOnline ?? false;
-          final couldGoOnline = previousDriver?.canGoOnline ?? false;
+    _driverSubscription = _driverService
+        .streamDriver(driverId)
+        .listen(
+          (driver) {
+            if (driver != null) {
+              final previousDriver = _driver;
+              final wasOnline = previousDriver?.isOnline ?? false;
+              final couldGoOnline = previousDriver?.canGoOnline ?? false;
 
-          _driver = driver;
+              _driver = driver;
+              setUserCountry(driver.countryCode);
+              unawaited(
+                StripeConfig.switchProvider(
+                  driver.countryCode.toUpperCase() == 'MX'
+                      ? StripeProvider.mx
+                      : StripeProvider.us,
+                ),
+              );
 
-          // PRESENCIA EN VIVO: mantén el latido GPS corriendo SIEMPRE que esté
-          // online — incluido cuando el app abre ya-online (sin tocar el
-          // switch). Antes solo arrancaba en el toggle → al reabrir el app
-          // quedaba online sin latido y el admin lo veía stale.
-          if (driver.isOnline) {
-            if (_heartbeatTimer == null) _startHeartbeat();
-          } else {
-            _stopHeartbeat();
-          }
+              // PRESENCIA EN VIVO: mantén el latido GPS corriendo SIEMPRE que esté
+              // online — incluido cuando el app abre ya-online (sin tocar el
+              // switch). Antes solo arrancaba en el toggle → al reabrir el app
+              // quedaba online sin latido y el admin lo veía stale.
+              if (driver.isOnline) {
+                if (_heartbeatTimer == null) _startHeartbeat();
+              } else {
+                _stopHeartbeat();
+              }
 
-          // CRITICAL: Auto-disconnect if driver is online but can no longer go online
-          // This happens when admin disapproves, documents expire, account suspended, etc.
-          if (wasOnline && driver.isOnline && !driver.canGoOnline) {
-            // Determine reason for disconnect
-            if (!driver.allDocumentsSigned) {
-              _forceDisconnectReason = 'documents_incomplete';
-            } else if (!driver.adminApproved) {
-              _forceDisconnectReason = 'pending_admin_approval';
-            } else if (driver.onboardingStage == 'suspended') {
-              _forceDisconnectReason = 'account_suspended';
-            } else if (driver.onboardingStage == 'rejected') {
-              _forceDisconnectReason = 'account_rejected';
-            } else {
-              _forceDisconnectReason = 'not_eligible';
+              // CRITICAL: Auto-disconnect if driver is online but can no longer go online
+              // This happens when admin disapproves, documents expire, account suspended, etc.
+              if (wasOnline && driver.isOnline && !driver.canGoOnline) {
+                // Determine reason for disconnect
+                if (!driver.allDocumentsSigned) {
+                  _forceDisconnectReason = 'documents_incomplete';
+                } else if (!driver.adminApproved) {
+                  _forceDisconnectReason = 'pending_admin_approval';
+                } else if (driver.onboardingStage == 'suspended') {
+                  _forceDisconnectReason = 'account_suspended';
+                } else if (driver.onboardingStage == 'rejected') {
+                  _forceDisconnectReason = 'account_rejected';
+                } else {
+                  _forceDisconnectReason = 'not_eligible';
+                }
+
+                _wasForceDisconnected = true;
+
+                // Force disconnect - update DB and local state
+                _forceOffline(driverId);
+              }
+
+              // Also check if DB says offline but local says online (sync issue)
+              // if wasOnline && !driver.isOnline: Local state already updated via _driver = driver
+
+              // APPROVAL NOTIFICATION: Check if driver was just approved
+              // This happens when canGoOnline changes from false to true
+              if (!couldGoOnline && driver.canGoOnline) {
+                _wasJustApproved = true;
+                _approvalMessage =
+                    '¡Tu cuenta ha sido aprobada! Ya puedes comenzar a recibir viajes.';
+              }
+
+              notifyListeners();
             }
-
-            _wasForceDisconnected = true;
-
-            // Force disconnect - update DB and local state
-            _forceOffline(driverId);
-          }
-
-          // Also check if DB says offline but local says online (sync issue)
-          // if wasOnline && !driver.isOnline: Local state already updated via _driver = driver
-
-          // APPROVAL NOTIFICATION: Check if driver was just approved
-          // This happens when canGoOnline changes from false to true
-          if (!couldGoOnline && driver.canGoOnline) {
-            _wasJustApproved = true;
-            _approvalMessage = '¡Tu cuenta ha sido aprobada! Ya puedes comenzar a recibir viajes.';
-          }
-
-          notifyListeners();
-        }
-      },
-      onError: (e) {
-        _error = 'Error en actualizaciones: $e';
-        notifyListeners();
-      },
-    );
+          },
+          onError: (e) {
+            _error = 'Error en actualizaciones: $e';
+            notifyListeners();
+          },
+        );
   }
 
   // Force driver offline (internal method)
@@ -319,7 +323,8 @@ class DriverProvider with ChangeNotifier {
       notifyListeners();
       throw Exception(_error);
     }
-    if (driver.licenseExpiry != null && driver.licenseExpiry!.isBefore(DateTime.now())) {
+    if (driver.licenseExpiry != null &&
+        driver.licenseExpiry!.isBefore(DateTime.now())) {
       _error = 'Tu licencia está vencida';
       notifyListeners();
       throw Exception(_error);
@@ -329,7 +334,8 @@ class DriverProvider with ChangeNotifier {
       notifyListeners();
       throw Exception(_error);
     }
-    if (driver.insuranceExpiry != null && driver.insuranceExpiry!.isBefore(DateTime.now())) {
+    if (driver.insuranceExpiry != null &&
+        driver.insuranceExpiry!.isBefore(DateTime.now())) {
       _error = 'Tu seguro está vencido';
       notifyListeners();
       throw Exception(_error);
@@ -347,7 +353,8 @@ class DriverProvider with ChangeNotifier {
     //    (trg_protect_driver_approval_cols) revierte cualquier intento de auto-aprobarse.
     //    El modo prueba (trial) sigue permitido para el bootstrap.
     if (!driver.adminApproved && !driver.trialModeAccepted) {
-      _error = 'Tu cuenta está en revisión. Un administrador debe aprobarte '
+      _error =
+          'Tu cuenta está en revisión. Un administrador debe aprobarte '
           'antes de que puedas ponerte en línea.';
       notifyListeners();
       throw Exception(_error);
@@ -388,11 +395,15 @@ class DriverProvider with ChangeNotifier {
     try {
       final sb = Supabase.instance.client;
       // cierra sesiones colgadas previas del chofer
-      await sb.from('driver_sessions').update({
-        'is_active': false,
-        'ended_at': nowIso,
-        'logout_reason': 'stale',
-      }).eq('driver_id', d.id).eq('is_active', true);
+      await sb
+          .from('driver_sessions')
+          .update({
+            'is_active': false,
+            'ended_at': nowIso,
+            'logout_reason': 'stale',
+          })
+          .eq('driver_id', d.id)
+          .eq('is_active', true);
       await sb.from('driver_sessions').insert({
         'driver_id': d.id,
         'user_id': sb.auth.currentUser?.id,
@@ -419,12 +430,16 @@ class DriverProvider with ChangeNotifier {
     if (d == null) return;
     try {
       final endIso = DateTime.now().toUtc().toIso8601String();
-      await Supabase.instance.client.from('driver_sessions').update({
-        'is_active': false,
-        'ended_at': endIso,
-        'logged_out_at': endIso,
-        'logout_reason': 'offline',
-      }).eq('driver_id', d.id).eq('is_active', true);
+      await Supabase.instance.client
+          .from('driver_sessions')
+          .update({
+            'is_active': false,
+            'ended_at': endIso,
+            'logged_out_at': endIso,
+            'logout_reason': 'offline',
+          })
+          .eq('driver_id', d.id)
+          .eq('is_active', true);
     } catch (e) {
       debugPrint('session end error: $e');
     }
@@ -434,8 +449,10 @@ class DriverProvider with ChangeNotifier {
     _heartbeatTimer?.cancel();
     _sendHeartbeat(); // inmediato
     _recordSessionStart(); // historial de presencia
-    _heartbeatTimer =
-        Timer.periodic(const Duration(seconds: 30), (_) => _sendHeartbeat());
+    _heartbeatTimer = Timer.periodic(
+      const Duration(seconds: 30),
+      (_) => _sendHeartbeat(),
+    );
     // FOREGROUND SERVICE: mantiene el heartbeat vivo en SEGUNDO PLANO. El Timer
     // de arriba se PAUSA cuando Android manda el app a background -> el chofer
     // "desaparecia" del admin al cerrar/minimizar la pantalla. El service sigue
@@ -470,18 +487,22 @@ class DriverProvider with ChangeNotifier {
       final pos = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       ).timeout(const Duration(seconds: 12));
-      await Supabase.instance.client.from('drivers').update({
-        'current_lat': pos.latitude,
-        'current_lng': pos.longitude,
-        'location_updated_at': nowIso,
-      }).eq('id', d.id);
+      await Supabase.instance.client
+          .from('drivers')
+          .update({
+            'current_lat': pos.latitude,
+            'current_lng': pos.longitude,
+            'location_updated_at': nowIso,
+          })
+          .eq('id', d.id);
     } catch (e) {
       debugPrint('Heartbeat GPS error: $e');
       // Respaldo: al menos mantener la presencia (prueba de vida)
       try {
-        await Supabase.instance.client.from('drivers').update({
-          'location_updated_at': nowIso,
-        }).eq('id', d.id);
+        await Supabase.instance.client
+            .from('drivers')
+            .update({'location_updated_at': nowIso})
+            .eq('id', d.id);
       } catch (_) {}
     }
   }
@@ -519,7 +540,10 @@ class DriverProvider with ChangeNotifier {
       _isLoading = true;
       notifyListeners();
 
-      final imageUrl = await _driverService.uploadProfileImage(_driver!.id, imageBytes);
+      final imageUrl = await _driverService.uploadProfileImage(
+        _driver!.id,
+        imageBytes,
+      );
       _driver = _driver!.copyWith(profileImageUrl: imageUrl);
 
       _isLoading = false;
@@ -569,7 +593,9 @@ class DriverProvider with ChangeNotifier {
       _ranking = await _driverService.getDriverRanking();
 
       if (_driver != null) {
-        _rankingPosition = await _driverService.getDriverRankingPosition(_driver!.id);
+        _rankingPosition = await _driverService.getDriverRankingPosition(
+          _driver!.id,
+        );
       }
 
       _isLoading = false;
@@ -604,10 +630,15 @@ class DriverProvider with ChangeNotifier {
     if (_driver == null) return;
 
     try {
-      final updatedPreferences = Map<String, dynamic>.from(_driver!.preferences);
+      final updatedPreferences = Map<String, dynamic>.from(
+        _driver!.preferences,
+      );
       updatedPreferences[key] = value;
 
-      await _driverService.updateDriverPreferences(_driver!.id, updatedPreferences);
+      await _driverService.updateDriverPreferences(
+        _driver!.id,
+        updatedPreferences,
+      );
       _driver = _driver!.copyWith(preferences: updatedPreferences);
       notifyListeners();
     } catch (e) {

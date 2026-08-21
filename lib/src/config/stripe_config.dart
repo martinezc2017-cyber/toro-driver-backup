@@ -12,15 +12,16 @@ enum StripeProvider {
 }
 
 class StripeConfig {
-  // USA Stripe Account — lanzamiento MX-only (2026-07): el fallback es la pk LIVE de
-  // TORO MEXICO (51SvLIZJL). Cuando se lance US real se pone aqui la pk live de USA.
-  static const String publishableKeyUS = 'pk_live_51SvLIZJL6dZ5MsYqTRaH23owX5omYbKUoW83mHNw4qFzKC6CS2H3PEjgAJNu5O4KEWmdjWdrzmqmkQDMJGbXAn2N00CmGSJNbN';
+  // US must come from country-scoped integration_config. Never fall back to
+  // the MX account because that silently connects US drivers to the wrong Stripe.
+  static const String publishableKeyUS = '';
 
   // Mexico Stripe Account — LIVE (TORO MEXICO 51SvLIZJL). Debe matchear la sk_live que
   // usan las funciones (STRIPE_MX_SECRET_KEY). La fuente REAL es integration_config en
   // runtime (loadServerPk); esto es SOLO el fallback si el server no responde -> aun asi
   // arranca en LIVE, nunca en test.
-  static const String publishableKeyMX = 'pk_live_51SvLIZJL6dZ5MsYqTRaH23owX5omYbKUoW83mHNw4qFzKC6CS2H3PEjgAJNu5O4KEWmdjWdrzmqmkQDMJGbXAn2N00CmGSJNbN';
+  static const String publishableKeyMX =
+      'pk_live_51SvLIZJL6dZ5MsYqTRaH23owX5omYbKUoW83mHNw4qFzKC6CS2H3PEjgAJNu5O4KEWmdjWdrzmqmkQDMJGbXAn2N00CmGSJNbN';
 
   static const String merchantId = 'merchant.com.toro.driver';
 
@@ -30,15 +31,20 @@ class StripeConfig {
   /// pk traída de `integration_config` (FUENTE ÚNICA, editable en el admin sin
   /// recompilar). Si está seteada, gana sobre las hardcodeadas de arriba. Así se
   /// resuelve el TODO(single-source) y ya no puede driftear del server.
-  static String? _serverPk;
+  static final Map<StripeProvider, String> _serverPks = {};
 
   /// Carga la pk activa desde integration_config (según modo test/live).
-  static Future<void> loadServerPk() async {
+  static Future<void> loadServerPk(StripeProvider provider) async {
     try {
-      final cfg = await Supabase.instance.client.rpc('get_integration_config');
+      final cfg = await Supabase.instance.client.rpc(
+        'get_integration_config',
+        params: {'p_country': provider == StripeProvider.mx ? 'MX' : 'US'},
+      );
       final pk = (cfg is Map ? cfg['stripe_publishable_key'] as String? : null);
-      if (pk != null && pk.isNotEmpty) _serverPk = pk;
-    } catch (_) {/* si falla, usa las hardcodeadas de fallback */}
+      if (pk != null && pk.isNotEmpty) _serverPks[provider] = pk;
+    } catch (_) {
+      /* si falla, usa las hardcodeadas de fallback */
+    }
   }
 
   /// Get the current provider
@@ -46,7 +52,8 @@ class StripeConfig {
 
   /// Get publishable key for a specific provider
   static String getPublishableKey(StripeProvider provider) {
-    if (_serverPk != null && _serverPk!.isNotEmpty) return _serverPk!;
+    final serverPk = _serverPks[provider];
+    if (serverPk != null && serverPk.isNotEmpty) return serverPk;
     return provider == StripeProvider.mx ? publishableKeyMX : publishableKeyUS;
   }
 
@@ -61,19 +68,22 @@ class StripeConfig {
   /// Initialize Stripe with a specific provider
   static Future<void> initializeWithProvider(StripeProvider provider) async {
     _currentProvider = provider;
-    await loadServerPk(); // fuente única: pk desde integration_config
-    Stripe.publishableKey = getPublishableKey(provider);
+    await loadServerPk(provider);
+    final key = getPublishableKey(provider);
+    if (key.isEmpty) return;
+    Stripe.publishableKey = key;
     Stripe.merchantIdentifier = merchantId;
     await Stripe.instance.applySettings();
   }
 
   /// Switch to a different provider at runtime
   static Future<void> switchProvider(StripeProvider provider) async {
-    if (_currentProvider != provider) {
-      _currentProvider = provider;
-      Stripe.publishableKey = getPublishableKey(provider);
-      await Stripe.instance.applySettings();
-    }
+    _currentProvider = provider;
+    await loadServerPk(provider);
+    final key = getPublishableKey(provider);
+    if (key.isEmpty || Stripe.publishableKey == key) return;
+    Stripe.publishableKey = key;
+    await Stripe.instance.applySettings();
   }
 
   /// Detect provider from coordinates (Mexico or USA).
@@ -87,8 +97,10 @@ class StripeConfig {
     const mexicoLngMin = -118.4;
     const mexicoLngMax = -86.7;
 
-    if (lat >= mexicoLatMin && lat <= mexicoLatMax &&
-        lng >= mexicoLngMin && lng <= mexicoLngMax) {
+    if (lat >= mexicoLatMin &&
+        lat <= mexicoLatMax &&
+        lng >= mexicoLngMin &&
+        lng <= mexicoLngMax) {
       // Border refinement — must match rider app exactly.
       // Texas/NM/AZ southern band (below 31.8°, west of -97°)
       if (lat < 31.8 && lng < -97.0) return StripeProvider.mx;

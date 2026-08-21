@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../utils/money_format.dart';
 
 /// Servicio para obtener rutas y direcciones de Mapbox Directions API
 class DirectionsService {
@@ -67,9 +68,9 @@ class DirectionsService {
       queryParams['exclude'] = exclude;
     }
 
-    final uri = Uri.parse('$_baseUrl/$profile/$coordinates').replace(
-      queryParameters: queryParams,
-    );
+    final uri = Uri.parse(
+      '$_baseUrl/$profile/$coordinates',
+    ).replace(queryParameters: queryParams);
 
     try {
       final response = await http.get(uri);
@@ -153,9 +154,9 @@ class DirectionsService {
       queryParams['exclude'] = exclude;
     }
 
-    final uri = Uri.parse('$_baseUrl/$profile/$coordinates').replace(
-      queryParameters: queryParams,
-    );
+    final uri = Uri.parse(
+      '$_baseUrl/$profile/$coordinates',
+    ).replace(queryParameters: queryParams);
 
     try {
       final response = await http.get(uri);
@@ -216,9 +217,9 @@ class DirectionsService {
       queryParams['bearings'] = '${bearing.round()},90;';
     }
 
-    final uri = Uri.parse('$_baseUrl/$profile/$coordinates').replace(
-      queryParameters: queryParams,
-    );
+    final uri = Uri.parse(
+      '$_baseUrl/$profile/$coordinates',
+    ).replace(queryParameters: queryParams);
 
     try {
       final response = await http.get(uri);
@@ -292,9 +293,7 @@ class DirectionsService {
   }) async {
     if (waypoints.length < 2) return null;
 
-    final coordinates = waypoints
-        .map((w) => '${w.lng},${w.lat}')
-        .join(';');
+    final coordinates = waypoints.map((w) => '${w.lng},${w.lat}').join(';');
 
     final uri = Uri.parse('$_baseUrl/$profile/$coordinates').replace(
       queryParameters: {
@@ -367,10 +366,7 @@ class DirectionsRoute {
 
     if (geometryData is Map && geometryData['coordinates'] != null) {
       coords = (geometryData['coordinates'] as List)
-          .map((c) => [
-                (c[0] as num).toDouble(),
-                (c[1] as num).toDouble(),
-              ])
+          .map((c) => [(c[0] as num).toDouble(), (c[1] as num).toDouble()])
           .toList();
     }
 
@@ -402,11 +398,13 @@ class DirectionsRoute {
           if (closures != null) {
             for (int i = 0; i < closures.length; i++) {
               if (closures[i] == true) {
-                incidents.add(RouteIncident(
-                  type: 'closure',
-                  description: 'Cierre de carretera',
-                  segmentIndex: i,
-                ));
+                incidents.add(
+                  RouteIncident(
+                    type: 'closure',
+                    description: 'Cierre de carretera',
+                    segmentIndex: i,
+                  ),
+                );
               }
             }
           }
@@ -422,9 +420,8 @@ class DirectionsRoute {
           ? json['geometry']
           : jsonEncode(json['geometry']),
       coordinates: coords,
-      legs: (json['legs'] as List?)
-              ?.map((l) => RouteLeg.fromJson(l))
-              .toList() ??
+      legs:
+          (json['legs'] as List?)?.map((l) => RouteLeg.fromJson(l)).toList() ??
           [],
       routeId: json['uuid'] as String?,
       hasTolls: hasTolls,
@@ -467,11 +464,7 @@ class DirectionsRoute {
 
   /// Distancia formateada (ej: "500 m", "2.5 km")
   String get formattedDistance {
-    if (distance < 1000) {
-      return '${distance.round()} m';
-    } else {
-      return '${(distance / 1000).toStringAsFixed(1)} km';
-    }
+    return formatDistanceFromMeters(distance);
   }
 
   /// ETA estimada
@@ -511,7 +504,8 @@ class RouteLeg {
       distance: (json['distance'] as num).toDouble(),
       duration: (json['duration'] as num).toDouble(),
       summary: json['summary'] as String?,
-      steps: (json['steps'] as List?)
+      steps:
+          (json['steps'] as List?)
               ?.map((s) => RouteStep.fromJson(s))
               .toList() ??
           [],
@@ -527,7 +521,8 @@ class RouteAnnotations {
   final List<double>? distance; // Distancia por segmento
   final List<double>? duration; // Duracion por segmento
   final List<SpeedLimit>? maxspeed; // Limite de velocidad por segmento
-  final List<String>? congestion; // Nivel de congestion: low, moderate, heavy, severe
+  final List<String>?
+  congestion; // Nivel de congestion: low, moderate, heavy, severe
 
   RouteAnnotations({
     this.distance,
@@ -560,11 +555,7 @@ class SpeedLimit {
   final String? unit; // "km/h" o "mph"
   final bool unknown; // Si el limite es desconocido
 
-  SpeedLimit({
-    this.speed,
-    this.unit,
-    this.unknown = false,
-  });
+  SpeedLimit({this.speed, this.unit, this.unknown = false});
 
   factory SpeedLimit.fromJson(Map<String, dynamic> json) {
     if (json['unknown'] == true) {
@@ -590,7 +581,23 @@ class SpeedLimit {
     // Asumimos mph si es un valor común de USA y lo convertimos
     if (unit == null && speed! <= 85) {
       // Valores típicos de mph en USA
-      const mphValues = [15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85];
+      const mphValues = [
+        15,
+        20,
+        25,
+        30,
+        35,
+        40,
+        45,
+        50,
+        55,
+        60,
+        65,
+        70,
+        75,
+        80,
+        85,
+      ];
       if (mphValues.contains(speed!.round())) {
         return speed! * 1.60934;
       }
@@ -617,12 +624,12 @@ class RouteStep {
   final double distance;
   final double duration;
   final String? name; // nombre de la calle
-  final String? ref;  // número de ruta (ej: "AZ 202", "I-10")
+  final String? ref; // número de ruta (ej: "AZ 202", "I-10")
   final String? instruction; // instrucción de texto
   final StepManeuver maneuver;
   final List<List<double>> coordinates;
   final List<BannerInstruction> bannerInstructions; // TODAS las instrucciones
-  final List<VoiceInstruction> voiceInstructions;   // TODAS las instrucciones
+  final List<VoiceInstruction> voiceInstructions; // TODAS las instrucciones
 
   RouteStep({
     required this.distance,
@@ -660,14 +667,16 @@ class RouteStep {
 
     if (activeBanners.isEmpty) {
       // Estamos más cerca que todos los umbrales, usar el más cercano
-      return bannerInstructions.reduce((a, b) =>
-          a.distanceAlongGeometry < b.distanceAlongGeometry ? a : b);
+      return bannerInstructions.reduce(
+        (a, b) => a.distanceAlongGeometry < b.distanceAlongGeometry ? a : b,
+      );
     }
 
     // De los banners activos, usar el que tiene el umbral más pequeño
     // (el más reciente que se activó)
-    return activeBanners.reduce((a, b) =>
-        a.distanceAlongGeometry < b.distanceAlongGeometry ? a : b);
+    return activeBanners.reduce(
+      (a, b) => a.distanceAlongGeometry < b.distanceAlongGeometry ? a : b,
+    );
   }
 
   /// Obtiene la voice instruction apropiada según la distancia
@@ -675,7 +684,9 @@ class RouteStep {
     if (voiceInstructions.isEmpty) return null;
 
     final sorted = List<VoiceInstruction>.from(voiceInstructions)
-      ..sort((a, b) => b.distanceAlongGeometry.compareTo(a.distanceAlongGeometry));
+      ..sort(
+        (a, b) => b.distanceAlongGeometry.compareTo(a.distanceAlongGeometry),
+      );
 
     for (final vi in sorted) {
       if (distanceToManeuver <= vi.distanceAlongGeometry) {
@@ -696,10 +707,7 @@ class RouteStep {
 
     if (geometryData is Map && geometryData['coordinates'] != null) {
       coords = (geometryData['coordinates'] as List)
-          .map((c) => [
-                (c[0] as num).toDouble(),
-                (c[1] as num).toDouble(),
-              ])
+          .map((c) => [(c[0] as num).toDouble(), (c[1] as num).toDouble()])
           .toList();
     }
 
@@ -710,26 +718,26 @@ class RouteStep {
       distance: (json['distance'] as num).toDouble(),
       duration: (json['duration'] as num).toDouble(),
       name: json['name'] as String?,
-      ref: json['ref'] as String?,  // Número de ruta (AZ 202, I-10, etc.)
+      ref: json['ref'] as String?, // Número de ruta (AZ 202, I-10, etc.)
       instruction: json['maneuver']?['instruction'] as String?,
       maneuver: StepManeuver.fromJson(json['maneuver'] ?? {}),
       coordinates: coords,
       bannerInstructions: bannerInstructionsList != null
-          ? bannerInstructionsList.map((b) => BannerInstruction.fromJson(b)).toList()
+          ? bannerInstructionsList
+                .map((b) => BannerInstruction.fromJson(b))
+                .toList()
           : [],
       voiceInstructions: voiceInstructionsList != null
-          ? voiceInstructionsList.map((v) => VoiceInstruction.fromJson(v)).toList()
+          ? voiceInstructionsList
+                .map((v) => VoiceInstruction.fromJson(v))
+                .toList()
           : [],
     );
   }
 
   /// Distancia formateada
   String get formattedDistance {
-    if (distance < 1000) {
-      return '${distance.round()} m';
-    } else {
-      return '${(distance / 1000).toStringAsFixed(1)} km';
-    }
+    return formatDistanceFromMeters(distance);
   }
 }
 
@@ -848,9 +856,7 @@ class BannerInstruction {
       secondary: json['secondary'] != null
           ? BannerContent.fromJson(json['secondary'])
           : null,
-      sub: json['sub'] != null
-          ? BannerContent.fromJson(json['sub'])
-          : null,
+      sub: json['sub'] != null ? BannerContent.fromJson(json['sub']) : null,
     );
   }
 
@@ -880,10 +886,12 @@ class BannerInstruction {
     for (final pattern in patterns) {
       final match = pattern.firstMatch(text);
       if (match != null) {
-        extractedShields.add(BannerComponent(
-          text: match.group(1)!.replaceAll(' ', '-'),
-          type: 'icon',
-        ));
+        extractedShields.add(
+          BannerComponent(
+            text: match.group(1)!.replaceAll(' ', '-'),
+            type: 'icon',
+          ),
+        );
       }
     }
 
@@ -912,13 +920,14 @@ class BannerContent {
       text: json['text'] as String? ?? '',
       type: json['type'] as String?,
       modifier: json['modifier'] as String?,
-      components: (json['components'] as List?)
+      components:
+          (json['components'] as List?)
               ?.map((c) => BannerComponent.fromJson(c))
               .toList() ??
           [],
       lanes: (json['lanes'] as List?)
-              ?.map((l) => LaneInfo.fromJson(l))
-              .toList(),
+          ?.map((l) => LaneInfo.fromJson(l))
+          .toList(),
     );
   }
 }
@@ -947,7 +956,9 @@ class BannerComponent {
       type: json['type'] as String? ?? 'text',
       imageBaseUrl: json['imageBaseURL'] as String?,
       imageUrl: json['imageURL'] as String?,
-      directions: (json['directions'] as List?)?.map((d) => d.toString()).toList(),
+      directions: (json['directions'] as List?)
+          ?.map((d) => d.toString())
+          .toList(),
       active: json['active'] as bool?,
     );
   }
@@ -962,7 +973,8 @@ class BannerComponent {
     if (t.startsWith('I-') || t.startsWith('I ')) return true;
     if (t.startsWith('US-') || t.startsWith('US ')) return true;
     if (t.startsWith('AZ-') || t.startsWith('AZ ')) return true;
-    if (t.startsWith('CA-') || t.startsWith('TX-') || t.startsWith('NV-')) return true;
+    if (t.startsWith('CA-') || t.startsWith('TX-') || t.startsWith('NV-'))
+      return true;
     if (t.contains('LOOP') && RegExp(r'\d').hasMatch(t)) return true;
     if (t.startsWith('SR-') || t.startsWith('SR ')) return true;
     if (t.startsWith('HWY') || t.startsWith('HIGHWAY')) return true;
@@ -980,17 +992,12 @@ class LaneInfo {
   final bool valid; // Si este carril es valido para la maniobra
   final bool? active; // Si este carril es el recomendado
 
-  LaneInfo({
-    required this.indications,
-    required this.valid,
-    this.active,
-  });
+  LaneInfo({required this.indications, required this.valid, this.active});
 
   factory LaneInfo.fromJson(Map<String, dynamic> json) {
     return LaneInfo(
-      indications: (json['indications'] as List?)
-              ?.map((i) => i.toString())
-              .toList() ??
+      indications:
+          (json['indications'] as List?)?.map((i) => i.toString()).toList() ??
           [],
       valid: json['valid'] as bool? ?? false,
       active: json['active'] as bool?,
@@ -1092,7 +1099,8 @@ class TrafficInfo {
   /// Porcentaje de retraso por tráfico
   double get delayPercentage {
     if (typicalDuration == null || typicalDuration! <= 0) return 0;
-    return ((currentDuration - typicalDuration!) / typicalDuration! * 100).clamp(0, 200);
+    return ((currentDuration - typicalDuration!) / typicalDuration! * 100)
+        .clamp(0, 200);
   }
 }
 

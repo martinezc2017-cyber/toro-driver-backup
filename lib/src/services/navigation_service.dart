@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'directions_service.dart';
+import '../utils/money_format.dart';
 
 /// Servicio de navegación turn-by-turn
 class NavigationService {
@@ -48,21 +49,25 @@ class NavigationService {
   double _lastValidBearing = 0;
   double _deadReckonLat = 0;
   double _deadReckonLng = 0;
-  static const int _gpsLostThresholdMs = 3000; // 3 segundos sin GPS = dead reckoning
-  static const int _deadReckonMaxMs = 30000; // Maximo 30 segundos de dead reckoning
+  static const int _gpsLostThresholdMs =
+      3000; // 3 segundos sin GPS = dead reckoning
+  static const int _deadReckonMaxMs =
+      30000; // Maximo 30 segundos de dead reckoning
 
   // Annotations actuales
   double? _currentSpeedLimit;
   String? _currentCongestion;
 
   // Configuración
-  double offRouteThreshold = 30.0; // metros para considerar fuera de ruta (más sensible)
+  double offRouteThreshold =
+      30.0; // metros para considerar fuera de ruta (más sensible)
   double maneuverAlertDistance = 200.0; // metros para alertar maniobra
   double arrivalThreshold = 30.0; // metros para considerar llegada
 
   // Contador para confirmar off-route (evitar falsos positivos)
   int _offRouteCount = 0;
-  static const int _offRouteCountThreshold = 2; // Necesita 2 detecciones seguidas
+  static const int _offRouteCountThreshold =
+      2; // Necesita 2 detecciones seguidas
 
   // Guard: arrival callback fires only once per navigation segment.
   // Prevents repeated onArrival() while the driver is parked at pickup/dropoff
@@ -98,7 +103,7 @@ class NavigationService {
   Function(String instruction)? onAirportInstruction;
 
   NavigationService(String accessToken)
-      : _directionsService = DirectionsService(accessToken);
+    : _directionsService = DirectionsService(accessToken);
 
   /// Inicia navegación hacia un destino
   Future<bool> startNavigation({
@@ -180,19 +185,27 @@ class NavigationService {
     // rebuilds rompían el slide. Si estás casi detenido (poco movimiento Y baja
     // velocidad), NO recalculamos nada: solo mantenemos el marcador.
     if (_lastProcessedLat != null) {
-      final moved =
-          _haversine(lat, lng, _lastProcessedLat!, _lastProcessedLng!);
+      final moved = _haversine(
+        lat,
+        lng,
+        _lastProcessedLat!,
+        _lastProcessedLng!,
+      );
       if (moved < 8 && speed < 1.5) {
         // ignore: avoid_print
-        print('📍 NAV GPS moved=${moved.toStringAsFixed(1)}m '
-            'speed=${speed.toStringAsFixed(1)} -> IGNORADO (jitter, sin recalcular)');
+        print(
+          '📍 NAV GPS moved=${moved.toStringAsFixed(1)}m '
+          'speed=${speed.toStringAsFixed(1)} -> IGNORADO (jitter, sin recalcular)',
+        );
         _lastLat = lat;
         _lastLng = lng;
         return; // ignora el jitter: sin reroute, sin maniobra, sin voz
       }
       // ignore: avoid_print
-      print('📍 NAV GPS moved=${moved.toStringAsFixed(1)}m '
-          'speed=${speed.toStringAsFixed(1)} -> PROCESA (recalcula ruta/voz)');
+      print(
+        '📍 NAV GPS moved=${moved.toStringAsFixed(1)}m '
+        'speed=${speed.toStringAsFixed(1)} -> PROCESA (recalcula ruta/voz)',
+      );
     }
     _lastProcessedLat = lat;
     _lastProcessedLng = lng;
@@ -222,7 +235,8 @@ class NavigationService {
       final routeBearing = _getRouteBearing(lat, lng);
       if (routeBearing != null) {
         final bearingDiff = _getBearingDifference(bearing, routeBearing);
-        if (bearingDiff > 150) { // Solo si va MUY opuesto
+        if (bearingDiff > 150) {
+          // Solo si va MUY opuesto
           isOffRoute = true;
         }
       }
@@ -299,7 +313,12 @@ class NavigationService {
     final elapsedSec = elapsed / 1000.0;
     final distance = _lastValidSpeed * elapsedSec;
 
-    final newPos = _projectPosition(_lastLat, _lastLng, _lastValidBearing, distance);
+    final newPos = _projectPosition(
+      _lastLat,
+      _lastLng,
+      _lastValidBearing,
+      distance,
+    );
     _deadReckonLat = newPos[0];
     _deadReckonLng = newPos[1];
 
@@ -311,7 +330,12 @@ class NavigationService {
     return true;
   }
 
-  List<double> _projectPosition(double lat, double lng, double bearing, double distance) {
+  List<double> _projectPosition(
+    double lat,
+    double lng,
+    double bearing,
+    double distance,
+  ) {
     const R = 6371000.0;
     final bearingRad = bearing * math.pi / 180;
     final latRad = lat * math.pi / 180;
@@ -319,13 +343,15 @@ class NavigationService {
 
     final newLatRad = math.asin(
       math.sin(latRad) * math.cos(distance / R) +
-      math.cos(latRad) * math.sin(distance / R) * math.cos(bearingRad)
+          math.cos(latRad) * math.sin(distance / R) * math.cos(bearingRad),
     );
 
-    final newLngRad = lngRad + math.atan2(
-      math.sin(bearingRad) * math.sin(distance / R) * math.cos(latRad),
-      math.cos(distance / R) - math.sin(latRad) * math.sin(newLatRad)
-    );
+    final newLngRad =
+        lngRad +
+        math.atan2(
+          math.sin(bearingRad) * math.sin(distance / R) * math.cos(latRad),
+          math.cos(distance / R) - math.sin(latRad) * math.sin(newLatRad),
+        );
 
     return [newLatRad * 180 / math.pi, newLngRad * 180 / math.pi];
   }
@@ -350,11 +376,13 @@ class NavigationService {
       }
     }
 
-    if (annotations.maxspeed != null && closestIdx < annotations.maxspeed!.length) {
+    if (annotations.maxspeed != null &&
+        closestIdx < annotations.maxspeed!.length) {
       _currentSpeedLimit = annotations.maxspeed![closestIdx].speedKmh;
     }
 
-    if (annotations.congestion != null && closestIdx < annotations.congestion!.length) {
+    if (annotations.congestion != null &&
+        closestIdx < annotations.congestion!.length) {
       _currentCongestion = annotations.congestion![closestIdx];
     }
   }
@@ -424,7 +452,8 @@ class NavigationService {
       hasExit = true;
       exitName = displayStep.name;
       exitRef = displayStep.ref;
-    } else if (displayNextStep != null && _isExitManeuver(displayNextStep.maneuver.type)) {
+    } else if (displayNextStep != null &&
+        _isExitManeuver(displayNextStep.maneuver.type)) {
       hasExit = true;
       exitName = displayNextStep.name;
       exitRef = displayNextStep.ref;
@@ -521,11 +550,21 @@ class NavigationService {
     final maneuverLoc = currentStep.maneuver.location;
     if (maneuverLoc != null && maneuverLoc.length >= 2) {
       // Distancia directa al punto del maneuver
-      _distanceToNextManeuver = _haversine(lat, lng, maneuverLoc[1], maneuverLoc[0]);
+      _distanceToNextManeuver = _haversine(
+        lat,
+        lng,
+        maneuverLoc[1],
+        maneuverLoc[0],
+      );
     } else if (currentStep.coordinates.isNotEmpty) {
       // Fallback: última coordenada del step
       final lastCoord = currentStep.coordinates.last;
-      _distanceToNextManeuver = _haversine(lat, lng, lastCoord[1], lastCoord[0]);
+      _distanceToNextManeuver = _haversine(
+        lat,
+        lng,
+        lastCoord[1],
+        lastCoord[0],
+      );
     } else {
       // Usar distancia del step
       _distanceToNextManeuver = currentStep.distance;
@@ -648,8 +687,10 @@ class NavigationService {
     double remainingDistance = 0;
     for (int i = closestIdx; i < coords.length - 1; i++) {
       remainingDistance += _haversine(
-        coords[i][1], coords[i][0],
-        coords[i + 1][1], coords[i + 1][0],
+        coords[i][1],
+        coords[i][0],
+        coords[i + 1][1],
+        coords[i + 1][0],
       );
     }
 
@@ -669,7 +710,8 @@ class NavigationService {
 
     final currentStep = _getCurrentStep();
     if (currentStep != null && currentStep.distance > 0) {
-      final stepProgress = 1 - (_distanceToNextManeuver / currentStep.distance).clamp(0.0, 1.0);
+      final stepProgress =
+          1 - (_distanceToNextManeuver / currentStep.distance).clamp(0.0, 1.0);
       stepBasedDuration = currentStep.duration * (1 - stepProgress);
     }
 
@@ -745,13 +787,15 @@ class NavigationService {
         // Solo validar si estamos relativamente cerca de la ruta actual
         final maxReasonableDistance = currentDistToDest * 2.5;
 
-        if (newRoute.distance > maxReasonableDistance && currentDistToDest > 500) {
+        if (newRoute.distance > maxReasonableDistance &&
+            currentDistToDest > 500) {
           // Ruta parece estúpida - rechazar
           _isRerouting = false;
           return;
         }
 
-        if (newRoute.distance > _distanceRemaining * 1.5 && _distanceRemaining > 1000) {
+        if (newRoute.distance > _distanceRemaining * 1.5 &&
+            _distanceRemaining > 1000) {
           // La nueva ruta es 50% más larga - rechazar
           _isRerouting = false;
           return;
@@ -809,8 +853,8 @@ class NavigationService {
     final currentStep = _getCurrentStep();
     if (currentStep == null) return;
 
-    final instruction = currentStep.instruction ??
-        _buildInstruction(currentStep.maneuver);
+    final instruction =
+        currentStep.instruction ?? _buildInstruction(currentStep.maneuver);
 
     if (_distanceToNextManeuver <= 500 && !_alerted500m) {
       _alerted500m = true;
@@ -840,7 +884,8 @@ class NavigationService {
     if (currentStep == null) return;
 
     final isCurrentExit = _isExitManeuver(currentStep.maneuver.type);
-    final isNextExit = nextStep != null && _isExitManeuver(nextStep.maneuver.type);
+    final isNextExit =
+        nextStep != null && _isExitManeuver(nextStep.maneuver.type);
 
     String? exitName;
     double distanceToExit = 0;
@@ -891,15 +936,16 @@ class NavigationService {
 
   bool _isExitManeuver(String type) {
     return type == 'off ramp' ||
-           type == 'exit' ||
-           type == 'exit roundabout' ||
-           type == 'exit rotary';
+        type == 'exit' ||
+        type == 'exit roundabout' ||
+        type == 'exit rotary';
   }
 
   void _checkParkingNearDestination(double lat, double lng) {
     if (_parkingAlertSent || _currentRoute == null) return;
 
-    if (_distanceRemaining <= _parkingAlertDistance && _distanceRemaining > 100) {
+    if (_distanceRemaining <= _parkingAlertDistance &&
+        _distanceRemaining > 100) {
       _parkingAlertSent = true;
 
       final dest = _currentRoute!.coordinates.last;
@@ -910,16 +956,22 @@ class NavigationService {
   void _checkAirportAssistance() {
     if (!_isAirportDestination || _currentRoute == null) return;
 
-    if (_distanceRemaining <= 2000 && _distanceRemaining > 1500 && !_airportAlert2km) {
+    if (_distanceRemaining <= 2000 &&
+        _distanceRemaining > 1500 &&
+        !_airportAlert2km) {
       _airportAlert2km = true;
-      final instruction = 'A 2 kilómetros del aeropuerto. Prepárate para seguir señales de Llegadas.';
+      final instruction =
+          'A 2 kilómetros del aeropuerto. Prepárate para seguir señales de Llegadas.';
       _speakIfNotRecent(instruction);
       onAirportInstruction?.call(instruction);
     }
 
-    if (_distanceRemaining <= 500 && _distanceRemaining > 300 && !_airportAlert500m) {
+    if (_distanceRemaining <= 500 &&
+        _distanceRemaining > 300 &&
+        !_airportAlert500m) {
       _airportAlert500m = true;
-      final instruction = 'Mantente en el carril derecho para zona de Llegadas.';
+      final instruction =
+          'Mantente en el carril derecho para zona de Llegadas.';
       _speakIfNotRecent(instruction);
       onAirportInstruction?.call(instruction);
     }
@@ -932,14 +984,22 @@ class NavigationService {
     switch (type) {
       case 'turn':
         switch (modifier) {
-          case 'left': return 'gira a la izquierda';
-          case 'right': return 'gira a la derecha';
-          case 'slight left': return 'gira ligeramente a la izquierda';
-          case 'slight right': return 'gira ligeramente a la derecha';
-          case 'sharp left': return 'gira bruscamente a la izquierda';
-          case 'sharp right': return 'gira bruscamente a la derecha';
-          case 'uturn': return 'da la vuelta';
-          default: return 'continúa recto';
+          case 'left':
+            return 'gira a la izquierda';
+          case 'right':
+            return 'gira a la derecha';
+          case 'slight left':
+            return 'gira ligeramente a la izquierda';
+          case 'slight right':
+            return 'gira ligeramente a la derecha';
+          case 'sharp left':
+            return 'gira bruscamente a la izquierda';
+          case 'sharp right':
+            return 'gira bruscamente a la derecha';
+          case 'uturn':
+            return 'da la vuelta';
+          default:
+            return 'continúa recto';
         }
       case 'depart':
         final bearing = maneuver.bearingAfter;
@@ -953,10 +1013,14 @@ class NavigationService {
       case 'merge':
         return 'incorpórate';
       case 'fork':
-        return modifier == 'left' ? 'toma el desvío a la izquierda' : 'toma el desvío a la derecha';
+        return modifier == 'left'
+            ? 'toma el desvío a la izquierda'
+            : 'toma el desvío a la derecha';
       case 'roundabout':
         final exit = maneuver.exit;
-        return exit != null ? 'en la rotonda, toma la salida $exit' : 'entra en la rotonda';
+        return exit != null
+            ? 'en la rotonda, toma la salida $exit'
+            : 'entra en la rotonda';
       case 'off ramp':
         return 'toma la salida';
       case 'on ramp':
@@ -989,9 +1053,12 @@ class NavigationService {
     const R = 6371000.0;
     final dLat = (lat2 - lat1) * math.pi / 180;
     final dLng = (lng2 - lng1) * math.pi / 180;
-    final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
-        math.cos(lat1 * math.pi / 180) * math.cos(lat2 * math.pi / 180) *
-        math.sin(dLng / 2) * math.sin(dLng / 2);
+    final a =
+        math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(lat1 * math.pi / 180) *
+            math.cos(lat2 * math.pi / 180) *
+            math.sin(dLng / 2) *
+            math.sin(dLng / 2);
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
   }
 
@@ -1028,7 +1095,8 @@ class NavigationService {
     final lat2Rad = lat2 * math.pi / 180;
 
     final x = math.sin(dLng) * math.cos(lat2Rad);
-    final y = math.cos(lat1Rad) * math.sin(lat2Rad) -
+    final y =
+        math.cos(lat1Rad) * math.sin(lat2Rad) -
         math.sin(lat1Rad) * math.cos(lat2Rad) * math.cos(dLng);
 
     var bearing = math.atan2(x, y) * 180 / math.pi;
@@ -1069,7 +1137,7 @@ class NavigationState {
   final double? tollCost;
   final bool hasUpcomingExit;
   final String? upcomingExitName;
-  final String? exitRef;  // Número de salida/ruta (ej: "51A", "AZ 202")
+  final String? exitRef; // Número de salida/ruta (ej: "51A", "AZ 202")
 
   NavigationState({
     required this.isNavigating,
@@ -1105,19 +1173,11 @@ class NavigationState {
   bool get hasShields => shields != null && shields!.isNotEmpty;
 
   String get formattedDistanceToManeuver {
-    if (distanceToNextManeuver < 1000) {
-      return '${distanceToNextManeuver.round()} m';
-    } else {
-      return '${(distanceToNextManeuver / 1000).toStringAsFixed(1)} km';
-    }
+    return formatDistanceFromMeters(distanceToNextManeuver);
   }
 
   String get formattedDistanceRemaining {
-    if (distanceRemaining < 1000) {
-      return '${distanceRemaining.round()} m';
-    } else {
-      return '${(distanceRemaining / 1000).toStringAsFixed(1)} km';
-    }
+    return formatDistanceFromMeters(distanceRemaining);
   }
 
   String get formattedDurationRemaining {
@@ -1132,7 +1192,9 @@ class NavigationState {
   }
 
   String get formattedETA {
-    final eta = DateTime.now().add(Duration(seconds: durationRemaining.round()));
+    final eta = DateTime.now().add(
+      Duration(seconds: durationRemaining.round()),
+    );
     final hour = eta.hour;
     final minute = eta.minute.toString().padLeft(2, '0');
     final period = hour >= 12 ? 'PM' : 'AM';

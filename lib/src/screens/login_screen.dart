@@ -4,9 +4,11 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../providers/auth_provider.dart';
 import '../services/biometric_service.dart';
 import '../utils/app_colors.dart';
@@ -139,22 +141,41 @@ class _LoginScreenState extends State<LoginScreen>
                 children: [
                   Icon(Icons.history, color: AppColors.primary, size: 20),
                   const SizedBox(width: 8),
-                  Text('Correos recientes',
-                    style: TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
+                  Text(
+                    'login.recent_emails'.tr(),
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ],
               ),
             ),
             const Divider(height: 1),
-            ..._emailHistory.map((email) => ListTile(
-              leading: Icon(Icons.email_outlined, color: AppColors.textSecondary, size: 20),
-              title: Text(email, style: TextStyle(color: AppColors.textPrimary, fontSize: 14)),
-              trailing: Icon(Icons.arrow_forward_ios, color: AppColors.textSecondary, size: 14),
-              onTap: () {
-                _emailController.text = email;
-                Navigator.pop(ctx);
-                HapticService.selectionClick();
-              },
-            )),
+            ..._emailHistory.map(
+              (email) => ListTile(
+                leading: Icon(
+                  Icons.email_outlined,
+                  color: AppColors.textSecondary,
+                  size: 20,
+                ),
+                title: Text(
+                  email,
+                  style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
+                ),
+                trailing: Icon(
+                  Icons.arrow_forward_ios,
+                  color: AppColors.textSecondary,
+                  size: 14,
+                ),
+                onTap: () {
+                  _emailController.text = email;
+                  Navigator.pop(ctx);
+                  HapticService.selectionClick();
+                },
+              ),
+            ),
             const SizedBox(height: 8),
           ],
         ),
@@ -167,7 +188,9 @@ class _LoginScreenState extends State<LoginScreen>
     if (query.isEmpty || _emailHistory.isEmpty) return const SizedBox.shrink();
 
     final suggestions = _emailHistory
-        .where((e) => e.toLowerCase().contains(query) && e.toLowerCase() != query)
+        .where(
+          (e) => e.toLowerCase().contains(query) && e.toLowerCase() != query,
+        )
         .toList();
     if (suggestions.isEmpty) return const SizedBox.shrink();
 
@@ -180,26 +203,43 @@ class _LoginScreenState extends State<LoginScreen>
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        children: suggestions.map((email) => InkWell(
-          onTap: () {
-            _emailController.text = email;
-            HapticService.selectionClick();
-          },
-          borderRadius: BorderRadius.circular(8),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            child: Row(
-              children: [
-                Icon(Icons.history, color: AppColors.primary, size: 16),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(email, style: TextStyle(color: AppColors.textPrimary, fontSize: 13)),
+        children: suggestions
+            .map(
+              (email) => InkWell(
+                onTap: () {
+                  _emailController.text = email;
+                  HapticService.selectionClick();
+                },
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.history, color: AppColors.primary, size: 16),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          email,
+                          style: TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                      Icon(
+                        Icons.north_west,
+                        color: AppColors.textSecondary,
+                        size: 14,
+                      ),
+                    ],
+                  ),
                 ),
-                Icon(Icons.north_west, color: AppColors.textSecondary, size: 14),
-              ],
-            ),
-          ),
-        )).toList(),
+              ),
+            )
+            .toList(),
       ),
     );
   }
@@ -267,7 +307,8 @@ class _LoginScreenState extends State<LoginScreen>
     final authProvider = context.read<AuthProvider>();
 
     try {
-      final credentials = await BiometricService.instance.getStoredCredentials();
+      final credentials = await BiometricService.instance
+          .getStoredCredentials();
       if (credentials != null) {
         final success = await authProvider.signIn(
           email: credentials['email']!,
@@ -320,10 +361,7 @@ class _LoginScreenState extends State<LoginScreen>
 
     bool success;
     if (_isLogin) {
-      success = await authProvider.signIn(
-        email: email,
-        password: password,
-      );
+      success = await authProvider.signIn(email: email, password: password);
     } else {
       success = await authProvider.signUp(
         email: email,
@@ -343,11 +381,13 @@ class _LoginScreenState extends State<LoginScreen>
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('Account created. Check your email to confirm.'),
+              content: Text('login.account_created_confirm'.tr()),
               backgroundColor: AppColors.success,
               behavior: SnackBarBehavior.floating,
               duration: const Duration(seconds: 4),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
           );
           setState(() {
@@ -378,7 +418,9 @@ class _LoginScreenState extends State<LoginScreen>
             content: Text(authProvider.error!),
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         );
       }
@@ -409,21 +451,23 @@ class _LoginScreenState extends State<LoginScreen>
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                'Enable $_biometricName',
+                'login.enable_biometric'.tr(
+                  namedArgs: {'biometric': _biometricName},
+                ),
                 style: TextStyle(color: AppColors.textPrimary, fontSize: 18),
               ),
             ),
           ],
         ),
         content: Text(
-          'Sign in faster with $_biometricName',
+          'login.biometric_faster'.tr(namedArgs: {'biometric': _biometricName}),
           style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             child: Text(
-              'Not now',
+              'not_now'.tr(),
               style: TextStyle(color: AppColors.textSecondary),
             ),
           ),
@@ -435,7 +479,10 @@ class _LoginScreenState extends State<LoginScreen>
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
-            child: const Text('Enable', style: TextStyle(color: Colors.white)),
+            child: Text(
+              'login.enable'.tr(),
+              style: const TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -473,7 +520,9 @@ class _LoginScreenState extends State<LoginScreen>
           SafeArea(
             child: Center(
               child: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: kIsWeb ? 420 : double.infinity),
+                constraints: BoxConstraints(
+                  maxWidth: kIsWeb ? 420 : double.infinity,
+                ),
                 child: Padding(
                   padding: const EdgeInsets.all(20),
                   child: SingleChildScrollView(
@@ -569,9 +618,7 @@ class _LoginScreenState extends State<LoginScreen>
       builder: (context, child) {
         return CustomPaint(
           size: size,
-          painter: _HighwayPainter(
-            carProgress: _carFlowController.value,
-          ),
+          painter: _HighwayPainter(carProgress: _carFlowController.value),
         );
       },
     );
@@ -586,7 +633,10 @@ class _LoginScreenState extends State<LoginScreen>
             final offset = (index * 0.083 + _particleController.value) % 1.0;
             final x = (math.sin(index * 1.5) * 0.4 + 0.5) * size.width;
             final y = offset * size.height * 1.2 - 50;
-            final opacity = (math.sin(offset * math.pi) * 0.2).clamp(0.03, 0.12);
+            final opacity = (math.sin(offset * math.pi) * 0.2).clamp(
+              0.03,
+              0.12,
+            );
             final particleSize = 2.0 + (index % 3);
 
             return Positioned(
@@ -699,7 +749,7 @@ class _LoginScreenState extends State<LoginScreen>
 
   Widget _buildTagline() {
     return Text(
-      'Drive with TORO',
+      'login.tagline'.tr(),
       style: TextStyle(
         fontSize: 13,
         fontWeight: FontWeight.w400,
@@ -764,7 +814,9 @@ class _LoginScreenState extends State<LoginScreen>
               ),
               const SizedBox(width: 12),
               Text(
-                _isLogin ? 'Driver Sign In' : 'Create Driver Account',
+                _isLogin
+                    ? 'login.driver_sign_in'.tr()
+                    : 'login.create_driver_account'.tr(),
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -780,24 +832,26 @@ class _LoginScreenState extends State<LoginScreen>
           if (!_isLogin) ...[
             _buildTextField(
               controller: _firstNameController,
-              label: 'First Name',
+              label: 'login.first_name'.tr(),
               icon: Icons.person_outline_rounded,
-              validator: (v) => v!.isEmpty ? 'Enter your first name' : null,
+              validator: (v) =>
+                  v!.isEmpty ? 'login.enter_first_name'.tr() : null,
             ),
             const SizedBox(height: 12),
             _buildTextField(
               controller: _lastNameController,
-              label: 'Last Name',
+              label: 'login.last_name'.tr(),
               icon: Icons.person_outline_rounded,
-              validator: (v) => v!.isEmpty ? 'Enter your last name' : null,
+              validator: (v) =>
+                  v!.isEmpty ? 'login.enter_last_name'.tr() : null,
             ),
             const SizedBox(height: 12),
             _buildTextField(
               controller: _phoneController,
-              label: 'Phone',
+              label: 'phone'.tr(),
               icon: Icons.phone_outlined,
               keyboardType: TextInputType.phone,
-              validator: (v) => v!.isEmpty ? 'Enter your phone' : null,
+              validator: (v) => v!.isEmpty ? 'login.enter_phone'.tr() : null,
             ),
             const SizedBox(height: 12),
           ],
@@ -805,11 +859,11 @@ class _LoginScreenState extends State<LoginScreen>
           // Email field
           _buildTextField(
             controller: _emailController,
-            label: 'Email',
+            label: 'email'.tr(),
             icon: Icons.email_outlined,
             keyboardType: TextInputType.emailAddress,
             validator: (v) {
-              if (v!.trim().isEmpty) return 'Enter your email';
+              if (v!.trim().isEmpty) return 'login.enter_email'.tr();
               return null;
             },
           ),
@@ -833,7 +887,7 @@ class _LoginScreenState extends State<LoginScreen>
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Text(
-                  'or continue with',
+                  'login.or_continue_with'.tr(),
                   style: TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 11,
@@ -863,10 +917,7 @@ class _LoginScreenState extends State<LoginScreen>
           // Toggle login/register
           _buildToggleMode(),
 
-          if (_isLogin) ...[
-            const SizedBox(height: 8),
-            _buildForgotPassword(),
-          ],
+          if (_isLogin) ...[const SizedBox(height: 8), _buildForgotPassword()],
         ],
       ),
     ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.1, end: 0);
@@ -879,14 +930,20 @@ class _LoginScreenState extends State<LoginScreen>
     TextInputType keyboardType = TextInputType.text,
     String? Function(String?)? validator,
   }) {
-    bool isEmailField = label.toLowerCase().contains('email') || label.toLowerCase().contains('correo');
+    bool isEmailField =
+        label.toLowerCase().contains('email') ||
+        label.toLowerCase().contains('correo');
     bool isPhoneField = keyboardType == TextInputType.phone;
 
     // Pick the right FocusNode for this field
-    final FocusNode fieldFocus = isEmailField ? _emailFocusNode
-        : isPhoneField ? _phoneFocusNode
-        : controller == _firstNameController ? _firstNameFocusNode
-        : controller == _lastNameController ? _lastNameFocusNode
+    final FocusNode fieldFocus = isEmailField
+        ? _emailFocusNode
+        : isPhoneField
+        ? _phoneFocusNode
+        : controller == _firstNameController
+        ? _firstNameFocusNode
+        : controller == _lastNameController
+        ? _lastNameFocusNode
         : _emailFocusNode;
 
     return TextFormField(
@@ -902,12 +959,16 @@ class _LoginScreenState extends State<LoginScreen>
         labelStyle: TextStyle(color: AppColors.textSecondary, fontSize: 13),
         prefixIcon: Icon(icon, color: AppColors.primary, size: 18),
         suffixIcon: isEmailField && _emailHistory.isNotEmpty
-          ? IconButton(
-              icon: Icon(Icons.arrow_drop_down_circle_outlined, color: AppColors.primary, size: 20),
-              onPressed: _showEmailHistoryDropdown,
-              tooltip: 'Email history',
-            )
-          : null,
+            ? IconButton(
+                icon: Icon(
+                  Icons.arrow_drop_down_circle_outlined,
+                  color: AppColors.primary,
+                  size: 20,
+                ),
+                onPressed: _showEmailHistoryDropdown,
+                tooltip: 'Email history',
+              )
+            : null,
         filled: true,
         fillColor: AppColors.surface,
         isDense: true,
@@ -917,7 +978,9 @@ class _LoginScreenState extends State<LoginScreen>
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.border.withValues(alpha: 0.5)),
+          borderSide: BorderSide(
+            color: AppColors.border.withValues(alpha: 0.5),
+          ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -927,7 +990,10 @@ class _LoginScreenState extends State<LoginScreen>
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: AppColors.error),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 12,
+        ),
       ),
     );
   }
@@ -940,15 +1006,19 @@ class _LoginScreenState extends State<LoginScreen>
       cursorColor: AppColors.primary,
       autovalidateMode: AutovalidateMode.onUserInteraction,
       validator: (v) {
-        if (v!.isEmpty) return 'Enter your password';
-        if (v.length < 6) return 'Minimum 6 characters';
+        if (v!.isEmpty) return 'login.enter_password'.tr();
+        if (v.length < 6) return 'login.minimum_password'.tr();
         return null;
       },
       style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
       decoration: InputDecoration(
-        labelText: 'Password',
+        labelText: 'login.password'.tr(),
         labelStyle: TextStyle(color: AppColors.textSecondary, fontSize: 13),
-        prefixIcon: Icon(Icons.lock_outline_rounded, color: AppColors.primary, size: 18),
+        prefixIcon: Icon(
+          Icons.lock_outline_rounded,
+          color: AppColors.primary,
+          size: 18,
+        ),
         suffixIcon: IconButton(
           icon: Icon(
             _obscurePassword ? Icons.visibility_off : Icons.visibility,
@@ -966,13 +1036,18 @@ class _LoginScreenState extends State<LoginScreen>
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.border.withValues(alpha: 0.5)),
+          borderSide: BorderSide(
+            color: AppColors.border.withValues(alpha: 0.5),
+          ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: AppColors.primary, width: 1.5),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 12,
+        ),
       ),
     );
   }
@@ -981,8 +1056,10 @@ class _LoginScreenState extends State<LoginScreen>
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
         return NeonButton(
-          text: _isLogin ? 'Sign In' : 'Create Account',
-          icon: _isLogin ? Icons.arrow_forward_rounded : Icons.person_add_rounded,
+          text: _isLogin ? 'login.sign_in'.tr() : 'login.create_account'.tr(),
+          icon: _isLogin
+              ? Icons.arrow_forward_rounded
+              : Icons.person_add_rounded,
           isLoading: authProvider.isLoading,
           onPressed: _submit,
           style: NeonButtonStyle.primary,
@@ -993,7 +1070,7 @@ class _LoginScreenState extends State<LoginScreen>
 
   Widget _buildBiometricButton() {
     return NeonButton(
-      text: 'Use $_biometricName',
+      text: 'login.use_biometric'.tr(namedArgs: {'biometric': _biometricName}),
       icon: _biometricName == 'Face ID' ? Icons.face : Icons.fingerprint,
       onPressed: _handleBiometricLogin,
       style: NeonButtonStyle.subtle,
@@ -1004,7 +1081,7 @@ class _LoginScreenState extends State<LoginScreen>
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
         return _GoogleNeonButton(
-          text: 'Continue with Google',
+          text: 'login.continue_with_google'.tr(),
           isLoading: authProvider.isLoading,
           onPressed: () async {
             HapticService.buttonPress();
@@ -1030,30 +1107,17 @@ class _LoginScreenState extends State<LoginScreen>
         return SizedBox(
           width: double.infinity,
           height: 48,
-          child: ElevatedButton.icon(
+          child: SignInWithAppleButton(
             onPressed: authProvider.isLoading
-                ? null
+                ? () {}
                 : () async {
                     HapticService.buttonPress();
                     await authProvider.signInWithApple();
                   },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: Colors.black,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              elevation: 0,
-            ),
-            icon: const Icon(Icons.apple, size: 24, color: Colors.black),
-            label: const Text(
-              'Continue with Apple',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: Colors.black,
-              ),
-            ),
+            text: 'continue_with_apple'.tr(),
+            style: SignInWithAppleButtonStyle.white,
+            borderRadius: BorderRadius.circular(12),
+            height: 48,
           ),
         );
       },
@@ -1078,19 +1142,23 @@ class _LoginScreenState extends State<LoginScreen>
             );
 
             if (success) {
-              final biometricSuccess = await BiometricService.instance.enableBiometric(
-                email: email,
-                password: password,
-              );
+              final biometricSuccess = await BiometricService.instance
+                  .enableBiometric(email: email, password: password);
 
               if (biometricSuccess && mounted) {
                 setState(() => _biometricEnabled = true);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('$_biometricName enabled'),
+                    content: Text(
+                      'login.biometric_enabled'.tr(
+                        namedArgs: {'biometric': _biometricName},
+                      ),
+                    ),
                     backgroundColor: AppColors.success,
                     behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 );
                 // AuthWrapper handles navigation automatically
@@ -1104,11 +1172,8 @@ class _LoginScreenState extends State<LoginScreen>
           size: 18,
         ),
         label: Text(
-          'Enable $_biometricName',
-          style: TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 13,
-          ),
+          'login.enable_biometric'.tr(namedArgs: {'biometric': _biometricName}),
+          style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
         ),
       ),
     );
@@ -1119,7 +1184,7 @@ class _LoginScreenState extends State<LoginScreen>
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Text(
-          _isLogin ? "Don't have an account?" : 'Already have an account?',
+          _isLogin ? 'login.no_account'.tr() : 'login.already_account'.tr(),
           style: TextStyle(color: AppColors.textSecondary),
         ),
         TextButton(
@@ -1128,7 +1193,7 @@ class _LoginScreenState extends State<LoginScreen>
             setState(() => _isLogin = !_isLogin);
           },
           child: Text(
-            _isLogin ? 'Sign Up' : 'Sign In',
+            _isLogin ? 'login.sign_up'.tr() : 'login.sign_in'.tr(),
             style: TextStyle(
               color: AppColors.primary,
               fontWeight: FontWeight.bold,
@@ -1146,10 +1211,12 @@ class _LoginScreenState extends State<LoginScreen>
           if (_emailController.text.isEmpty) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: const Text('Enter your email first'),
+                content: Text('login.enter_email_first'.tr()),
                 backgroundColor: AppColors.warning,
                 behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             );
             return;
@@ -1157,26 +1224,30 @@ class _LoginScreenState extends State<LoginScreen>
 
           HapticService.lightImpact();
           final authProvider = context.read<AuthProvider>();
-          final success = await authProvider.resetPassword(_emailController.text.trim());
+          final success = await authProvider.resetPassword(
+            _emailController.text.trim(),
+          );
 
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(
                   success
-                      ? 'Recovery email sent'
-                      : authProvider.error ?? 'Error sending email',
+                      ? 'login.recovery_sent'.tr()
+                      : authProvider.error ?? 'login.recovery_error'.tr(),
                 ),
                 backgroundColor: success ? AppColors.success : AppColors.error,
                 behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             );
           }
         },
-        child: const Text(
-          'Forgot your password?',
-          style: TextStyle(color: AppColors.textSecondary),
+        child: Text(
+          'login.forgot_password'.tr(),
+          style: const TextStyle(color: AppColors.textSecondary),
         ),
       ),
     );
@@ -1240,8 +1311,8 @@ class _CitySkylinePainter extends CustomPainter {
           if (random.nextDouble() > 0.4) {
             final twinkle =
                 (math.sin((twinkleValue + random.nextDouble()) * math.pi * 2) +
-                        1) /
-                    2;
+                    1) /
+                2;
             final opacity =
                 0.2 + (twinkle * 0.5) * (random.nextDouble() > 0.7 ? 1 : 0.3);
 
@@ -1249,16 +1320,10 @@ class _CitySkylinePainter extends CustomPainter {
               const Color(0xFFFFE4AA),
               const Color(0xFF6A8AAA),
               random.nextDouble(),
-            )!
-                .withValues(alpha: opacity);
+            )!.withValues(alpha: opacity);
 
             canvas.drawRect(
-              Rect.fromLTWH(
-                x + 3 + col * 6,
-                baseY - h + 8 + row * 12,
-                3,
-                4,
-              ),
+              Rect.fromLTWH(x + 3 + col * 6, baseY - h + 8 + row * 12, 3, 4),
               paint,
             );
           }
@@ -1322,11 +1387,10 @@ class _HighwayPainter extends CustomPainter {
       canvas.drawCircle(Offset(x + 4, y), 2, paint);
 
       final trailPaint = Paint()
-        ..shader = ui.Gradient.linear(
-          Offset(x - 30, y),
-          Offset(x, y),
-          [Colors.transparent, const Color(0xFFAA3030).withValues(alpha: 0.3)],
-        );
+        ..shader = ui.Gradient.linear(Offset(x - 30, y), Offset(x, y), [
+          Colors.transparent,
+          const Color(0xFFAA3030).withValues(alpha: 0.3),
+        ]);
       canvas.drawRect(Rect.fromLTWH(x - 30, y - 1, 30, 2), trailPaint);
     }
 
@@ -1341,11 +1405,10 @@ class _HighwayPainter extends CustomPainter {
       canvas.drawCircle(Offset(x - 5, y), 2.5, paint);
 
       final glowPaint = Paint()
-        ..shader = ui.Gradient.radial(
-          Offset(x, y),
-          15,
-          [const Color(0xFFEEEEFF).withValues(alpha: 0.2), Colors.transparent],
-        );
+        ..shader = ui.Gradient.radial(Offset(x, y), 15, [
+          const Color(0xFFEEEEFF).withValues(alpha: 0.2),
+          Colors.transparent,
+        ]);
       canvas.drawCircle(Offset(x, y), 15, glowPaint);
     }
   }
@@ -1416,7 +1479,11 @@ class _GoogleNeonButtonState extends State<_GoogleNeonButton>
           return AnimatedContainer(
             duration: const Duration(milliseconds: 150),
             height: 54,
-            transform: Matrix4.diagonal3Values(_isPressed ? 0.98 : 1.0, _isPressed ? 0.98 : 1.0, 1.0),
+            transform: Matrix4.diagonal3Values(
+              _isPressed ? 0.98 : 1.0,
+              _isPressed ? 0.98 : 1.0,
+              1.0,
+            ),
             transformAlignment: Alignment.center,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),

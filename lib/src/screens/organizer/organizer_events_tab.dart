@@ -44,6 +44,9 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
   int _totalPassengers = 0;
   double _totalRevenue = 0;
 
+  String _eventCountry(Map<String, dynamic> event) =>
+      ((event['country_code'] as String?) ?? userCountry()).toUpperCase();
+
   @override
   void initState() {
     super.initState();
@@ -122,7 +125,9 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
         final status = event['status'] ?? 'draft';
         if (status == 'cancelled' || status == 'deleted') continue;
         nonCancelledEvents++;
-        if (status == 'active' || status == 'in_progress' || status == 'vehicle_accepted') {
+        if (status == 'active' ||
+            status == 'in_progress' ||
+            status == 'vehicle_accepted') {
           active++;
         }
         passengers += (event['confirmed_passengers'] as int?) ?? 0;
@@ -154,15 +159,26 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
       final eventDateStr = event['event_date'] as String?;
       DateTime? eventDate;
       if (eventDateStr != null) {
-        try { eventDate = DateTime.parse(eventDateStr); } catch (_) {}
+        try {
+          eventDate = DateTime.parse(eventDateStr);
+        } catch (_) {}
       }
 
       switch (tabIndex) {
-        case 0: return true;
-        case 1: return status == 'active' || status == 'in_progress' || status == 'vehicle_accepted';
-        case 2: return eventDate != null && eventDate.isAfter(now) && status != 'completed';
-        case 3: return status == 'completed';
-        default: return true;
+        case 0:
+          return true;
+        case 1:
+          return status == 'active' ||
+              status == 'in_progress' ||
+              status == 'vehicle_accepted';
+        case 2:
+          return eventDate != null &&
+              eventDate.isAfter(now) &&
+              status != 'completed';
+        case 3:
+          return status == 'completed';
+        default:
+          return true;
       }
     }).toList();
   }
@@ -189,20 +205,24 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
             // Content
             Expanded(
               child: _loading
-                  ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.primary,
+                      ),
+                    )
                   : _error != null
-                      ? _buildError()
-                      : hasEvents
-                          ? TabBarView(
-                              controller: _tabController,
-                              children: [
-                                _buildEventsList(0),
-                                _buildEventsList(1),
-                                _buildEventsList(2),
-                                _buildEventsList(3),
-                              ],
-                            )
-                          : _buildWelcomeEmpty(),
+                  ? _buildError()
+                  : hasEvents
+                  ? TabBarView(
+                      controller: _tabController,
+                      children: [
+                        _buildEventsList(0),
+                        _buildEventsList(1),
+                        _buildEventsList(2),
+                        _buildEventsList(3),
+                      ],
+                    )
+                  : _buildWelcomeEmpty(),
             ),
           ],
         ),
@@ -217,15 +237,24 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
       child: Row(
         children: [
           const Expanded(
-            child: Text('Mis Eventos',
-              style: TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w600),
+            child: Text(
+              'Mis Eventos',
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           GestureDetector(
             onTap: _loadEvents,
             child: const Padding(
               padding: EdgeInsets.all(6),
-              child: Icon(Icons.refresh_rounded, color: AppColors.textSecondary, size: 16),
+              child: Icon(
+                Icons.refresh_rounded,
+                color: AppColors.textSecondary,
+                size: 16,
+              ),
             ),
           ),
         ],
@@ -309,12 +338,19 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
             const SizedBox(height: 16),
             const Text(
               'Error al cargar eventos',
-              style: TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
               _error ?? '',
-              style: const TextStyle(color: AppColors.textTertiary, fontSize: 13),
+              style: const TextStyle(
+                color: AppColors.textTertiary,
+                fontSize: 13,
+              ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 20),
@@ -325,7 +361,9 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
             ),
           ],
@@ -353,12 +391,10 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
               ? ((w - (w * 0.92).clamp(0, 800)) / 2).clamp(16, double.infinity)
               : 16;
           return ListView.builder(
-            padding: EdgeInsets.symmetric(
-              horizontal: hPad,
-              vertical: 12,
-            ),
+            padding: EdgeInsets.symmetric(horizontal: hPad, vertical: 12),
             itemCount: filteredEvents.length,
-            itemBuilder: (context, index) => _buildEventCard(filteredEvents[index]),
+            itemBuilder: (context, index) =>
+                _buildEventCard(filteredEvents[index]),
           );
         },
       ),
@@ -366,18 +402,31 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
   }
 
   Widget _buildEmptyState(int tabIndex) {
-    final labels = ['No tienes eventos', 'No tienes eventos activos',
-                    'No tienes eventos próximos', 'No tienes eventos completados'];
-    final icons = [Icons.event_busy, Icons.play_circle_outline,
-                   Icons.upcoming, Icons.check_circle_outline];
+    final labels = [
+      'No tienes eventos',
+      'No tienes eventos activos',
+      'No tienes eventos próximos',
+      'No tienes eventos completados',
+    ];
+    final icons = [
+      Icons.event_busy,
+      Icons.play_circle_outline,
+      Icons.upcoming,
+      Icons.check_circle_outline,
+    ];
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icons[tabIndex], color: AppColors.textTertiary, size: 48),
           const SizedBox(height: 16),
-          Text(labels[tabIndex],
-            style: const TextStyle(color: AppColors.textSecondary, fontSize: 16)),
+          Text(
+            labels[tabIndex],
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 16,
+            ),
+          ),
         ],
       ),
     );
@@ -391,10 +440,7 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
         Expanded(
           child: Text(
             text,
-            style: const TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 13,
-            ),
+            style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
           ),
         ),
       ],
@@ -403,9 +449,7 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
 
   /// Welcome screen when organizer has zero events - EPIC VERSION
   Widget _buildWelcomeEmpty() {
-    return _AnimatedEmptyState(
-      onCreateEvent: _createEvent,
-    );
+    return _AnimatedEmptyState(onCreateEvent: _createEvent);
   }
 
   Widget _buildEventCard(Map<String, dynamic> event) {
@@ -417,6 +461,7 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
     final confirmedPassengers = event['confirmed_passengers'] ?? 0;
     final itinerary = event['itinerary'] as List<dynamic>? ?? [];
     final distKm = (event['total_distance_km'] as num?)?.toDouble() ?? 0;
+    final country = _eventCountry(event);
     final imageUrl = event['cover_image_url'] as String?;
 
     // Vehicle info (assigned vehicle on the event)
@@ -427,7 +472,9 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
     final totalSeats = vehicle?['total_seats'] as int?;
     final ownerName = vehicle?['owner_name'] as String? ?? 'Sin chofer';
     final imageUrls = vehicle?['image_urls'] as List<dynamic>?;
-    final vehiclePhoto = (imageUrls != null && imageUrls.isNotEmpty) ? imageUrls[0].toString() : null;
+    final vehiclePhoto = (imageUrls != null && imageUrls.isNotEmpty)
+        ? imageUrls[0].toString()
+        : null;
 
     // Find winning driver from bids
     final bids = event['tourism_vehicle_bids'] as List<dynamic>? ?? [];
@@ -440,7 +487,10 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
       }
     }
     final winningDriver = winningBid?['bid_driver'] as Map<String, dynamic>?;
-    final driverName = winningDriver?['full_name'] as String? ?? winningDriver?['name'] as String? ?? ownerName;
+    final driverName =
+        winningDriver?['full_name'] as String? ??
+        winningDriver?['name'] as String? ??
+        ownerName;
     final driverPhone = winningDriver?['phone'] as String?;
     final driverPhoto = winningDriver?['profile_image_url'] as String?;
 
@@ -452,8 +502,14 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
       try {
         final date = DateTime.parse(eventDate);
         final now = DateTime.now();
-        isToday = date.year == now.year && date.month == now.month && date.day == now.day;
-        isTomorrow = date.year == now.year && date.month == now.month && date.day == now.day + 1;
+        isToday =
+            date.year == now.year &&
+            date.month == now.month &&
+            date.day == now.day;
+        isTomorrow =
+            date.year == now.year &&
+            date.month == now.month &&
+            date.day == now.day + 1;
         if (isToday) {
           formattedDate = 'Hoy';
         } else if (isTomorrow) {
@@ -476,7 +532,8 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
     String? destinationName;
     if (itinerary.isNotEmpty) {
       originName = itinerary.first['name'] as String?;
-      if (itinerary.length > 1) destinationName = itinerary.last['name'] as String?;
+      if (itinerary.length > 1)
+        destinationName = itinerary.last['name'] as String?;
     }
 
     final urgentDate = isToday || status == 'in_progress';
@@ -490,7 +547,9 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: urgentDate ? AppColors.primary.withOpacity(0.5) : AppColors.border,
+            color: urgentDate
+                ? AppColors.primary.withOpacity(0.5)
+                : AppColors.border,
             width: urgentDate ? 1.5 : 0.5,
           ),
         ),
@@ -503,7 +562,9 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
                 borderRadius: BorderRadius.circular(8),
                 child: Image.network(
                   imageUrl ?? vehiclePhoto!,
-                  width: 60, height: 60, fit: BoxFit.cover,
+                  width: 60,
+                  height: 60,
+                  fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) => _vehicleIcon(),
                 ),
               )
@@ -519,31 +580,55 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
                   Row(
                     children: [
                       Expanded(
-                        child: Text(eventName,
-                          style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w700),
-                          maxLines: 1, overflow: TextOverflow.ellipsis,
+                        child: Text(
+                          eventName,
+                          style: const TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       const SizedBox(width: 4),
-                      Builder(builder: (_) {
-                        final bids = event['tourism_vehicle_bids'] as List<dynamic>? ?? [];
-                        final currentUid = SupabaseConfig.client.auth.currentUser?.id;
-                        final receivedBids = bids.where((b) {
-                          final m = b as Map<String, dynamic>;
-                          return m['driver_status'] == 'accepted'
-                              && m['organizer_status'] == 'pending'
-                              && m['driver_id'] != currentUid;
-                        }).length;
-                        final hasWinner = bids.any((b) {
-                          final m = b as Map<String, dynamic>;
-                          return m['organizer_status'] == 'selected' && m['is_winning_bid'] == true;
-                        });
-                        if (hasWinner) return _buildStatusChip('Asignado', AppColors.success);
-                        if (receivedBids > 0 && (status == 'draft' || status == 'pending_vehicle')) {
-                          return _buildStatusChip('$receivedBids Puja${receivedBids > 1 ? 's' : ''}', AppColors.primary);
-                        }
-                        return _buildStatusChip(_statusLabel(status), _statusColor(status));
-                      }),
+                      Builder(
+                        builder: (_) {
+                          final bids =
+                              event['tourism_vehicle_bids'] as List<dynamic>? ??
+                              [];
+                          final currentUid =
+                              SupabaseConfig.client.auth.currentUser?.id;
+                          final receivedBids = bids.where((b) {
+                            final m = b as Map<String, dynamic>;
+                            return m['driver_status'] == 'accepted' &&
+                                m['organizer_status'] == 'pending' &&
+                                m['driver_id'] != currentUid;
+                          }).length;
+                          final hasWinner = bids.any((b) {
+                            final m = b as Map<String, dynamic>;
+                            return m['organizer_status'] == 'selected' &&
+                                m['is_winning_bid'] == true;
+                          });
+                          if (hasWinner)
+                            return _buildStatusChip(
+                              'Asignado',
+                              AppColors.success,
+                            );
+                          if (receivedBids > 0 &&
+                              (status == 'draft' ||
+                                  status == 'pending_vehicle')) {
+                            return _buildStatusChip(
+                              '$receivedBids Puja${receivedBids > 1 ? 's' : ''}',
+                              AppColors.primary,
+                            );
+                          }
+                          return _buildStatusChip(
+                            _statusLabel(status),
+                            _statusColor(status),
+                          );
+                        },
+                      ),
                     ],
                   ),
                   const SizedBox(height: 2),
@@ -551,27 +636,75 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
                   Row(
                     children: [
                       if (formattedDate.isNotEmpty) ...[
-                        Icon(Icons.calendar_today, size: 10, color: urgentDate ? AppColors.error : AppColors.textTertiary),
+                        Icon(
+                          Icons.calendar_today,
+                          size: 10,
+                          color: urgentDate
+                              ? AppColors.error
+                              : AppColors.textTertiary,
+                        ),
                         const SizedBox(width: 2),
-                        Text(formattedDate, style: TextStyle(color: urgentDate ? AppColors.error : AppColors.textSecondary, fontSize: 10)),
+                        Text(
+                          formattedDate,
+                          style: TextStyle(
+                            color: urgentDate
+                                ? AppColors.error
+                                : AppColors.textSecondary,
+                            fontSize: 10,
+                          ),
+                        ),
                         const SizedBox(width: 6),
                       ],
                       if (formattedTime.isNotEmpty) ...[
-                        Icon(Icons.access_time, size: 10, color: urgentDate ? AppColors.error : AppColors.textTertiary),
+                        Icon(
+                          Icons.access_time,
+                          size: 10,
+                          color: urgentDate
+                              ? AppColors.error
+                              : AppColors.textTertiary,
+                        ),
                         const SizedBox(width: 2),
-                        Text(formattedTime, style: TextStyle(color: urgentDate ? AppColors.error : AppColors.textSecondary, fontSize: 10)),
+                        Text(
+                          formattedTime,
+                          style: TextStyle(
+                            color: urgentDate
+                                ? AppColors.error
+                                : AppColors.textSecondary,
+                            fontSize: 10,
+                          ),
+                        ),
                         const SizedBox(width: 6),
                       ],
                       if (distKm > 0) ...[
-                        const Icon(Icons.straighten, size: 10, color: AppColors.textTertiary),
+                        const Icon(
+                          Icons.straighten,
+                          size: 10,
+                          color: AppColors.textTertiary,
+                        ),
                         const SizedBox(width: 2),
-                        Text('${distKm.toStringAsFixed(0)} km', style: const TextStyle(color: AppColors.textSecondary, fontSize: 10)),
+                        Text(
+                          formatDistance(distKm, country: country, decimals: 0),
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 10,
+                          ),
+                        ),
                         const SizedBox(width: 6),
                       ],
-                      Icon(Icons.event_seat, size: 10, color: AppColors.success),
+                      Icon(
+                        Icons.event_seat,
+                        size: 10,
+                        color: AppColors.success,
+                      ),
                       const SizedBox(width: 2),
-                      Text('$confirmedPassengers/${maxPassengers > 0 ? maxPassengers : totalSeats ?? 0}',
-                        style: const TextStyle(color: AppColors.success, fontSize: 10, fontWeight: FontWeight.w600)),
+                      Text(
+                        '$confirmedPassengers/${maxPassengers > 0 ? maxPassengers : totalSeats ?? 0}',
+                        style: const TextStyle(
+                          color: AppColors.success,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 2),
@@ -579,14 +712,55 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
                   if (originName != null)
                     Row(
                       children: [
-                        Container(width: 5, height: 5, decoration: const BoxDecoration(color: AppColors.success, shape: BoxShape.circle)),
+                        Container(
+                          width: 5,
+                          height: 5,
+                          decoration: const BoxDecoration(
+                            color: AppColors.success,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
                         const SizedBox(width: 4),
-                        Flexible(child: Text(originName, style: const TextStyle(color: AppColors.textTertiary, fontSize: 10), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                        Flexible(
+                          child: Text(
+                            originName,
+                            style: const TextStyle(
+                              color: AppColors.textTertiary,
+                              fontSize: 10,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                         if (destinationName != null) ...[
-                          const Padding(padding: EdgeInsets.symmetric(horizontal: 3), child: Icon(Icons.arrow_forward, size: 10, color: AppColors.textTertiary)),
-                          Container(width: 5, height: 5, decoration: const BoxDecoration(color: AppColors.error, shape: BoxShape.circle)),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 3),
+                            child: Icon(
+                              Icons.arrow_forward,
+                              size: 10,
+                              color: AppColors.textTertiary,
+                            ),
+                          ),
+                          Container(
+                            width: 5,
+                            height: 5,
+                            decoration: const BoxDecoration(
+                              color: AppColors.error,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
                           const SizedBox(width: 4),
-                          Flexible(child: Text(destinationName, style: const TextStyle(color: AppColors.textTertiary, fontSize: 10), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                          Flexible(
+                            child: Text(
+                              destinationName,
+                              style: const TextStyle(
+                                color: AppColors.textTertiary,
+                                fontSize: 10,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
                         ],
                       ],
                     ),
@@ -595,13 +769,22 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
                     const SizedBox(height: 2),
                     Row(
                       children: [
-                        const Icon(Icons.directions_bus, size: 10, color: AppColors.textTertiary),
+                        const Icon(
+                          Icons.directions_bus,
+                          size: 10,
+                          color: AppColors.textTertiary,
+                        ),
                         const SizedBox(width: 3),
                         Expanded(
                           child: Text(
-                            '${make ?? ''} ${model ?? ''} ${year != null ? '($year)' : ''} · $driverName'.trim(),
-                            style: const TextStyle(color: AppColors.textTertiary, fontSize: 10),
-                            maxLines: 1, overflow: TextOverflow.ellipsis,
+                            '${make ?? ''} ${model ?? ''} ${year != null ? '($year)' : ''} · $driverName'
+                                .trim(),
+                            style: const TextStyle(
+                              color: AppColors.textTertiary,
+                              fontSize: 10,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
@@ -612,25 +795,49 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
                     const SizedBox(height: 2),
                     Row(
                       children: [
-                        Icon(Icons.emoji_events, size: 10, color: AppColors.success),
+                        Icon(
+                          Icons.emoji_events,
+                          size: 10,
+                          color: AppColors.success,
+                        ),
                         const SizedBox(width: 3),
                         Expanded(
-                          child: Text('Puja ganada — ${event['organizers']?['company_name'] ?? 'Chofer'}',
-                            style: TextStyle(fontSize: 10, color: AppColors.success, fontWeight: FontWeight.w600),
-                            maxLines: 1, overflow: TextOverflow.ellipsis),
+                          child: Text(
+                            'Puja ganada — ${event['organizers']?['company_name'] ?? 'Chofer'}',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: AppColors.success,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ],
                     ),
                   ],
                   // Warning
-                  if (event['_is_driver_event'] != true && (event['driver_id'] == null || vehicle == null)) ...[
+                  if (event['_is_driver_event'] != true &&
+                      (event['driver_id'] == null || vehicle == null)) ...[
                     const SizedBox(height: 2),
                     Row(
                       children: [
-                        Icon(Icons.warning_amber_rounded, size: 10, color: Colors.orange),
+                        Icon(
+                          Icons.warning_amber_rounded,
+                          size: 10,
+                          color: Colors.orange,
+                        ),
                         const SizedBox(width: 3),
-                        Text(event['driver_id'] == null ? 'Falta chofer' : 'Falta unidad',
-                          style: TextStyle(fontSize: 10, color: Colors.orange, fontWeight: FontWeight.w500)),
+                        Text(
+                          event['driver_id'] == null
+                              ? 'Falta chofer'
+                              : 'Falta unidad',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.orange,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
                       ],
                     ),
                   ],
@@ -645,12 +852,17 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
 
   Widget _vehicleIcon() {
     return Container(
-      width: 44, height: 44,
+      width: 44,
+      height: 44,
       decoration: BoxDecoration(
         color: AppColors.primary.withOpacity(0.1),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: const Icon(Icons.directions_bus, color: AppColors.primary, size: 20),
+      child: const Icon(
+        Icons.directions_bus,
+        color: AppColors.primary,
+        size: 20,
+      ),
     );
   }
 
@@ -661,7 +873,10 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
       children: [
         Icon(icon, size: 13, color: c),
         const SizedBox(width: 4),
-        Text(text, style: TextStyle(color: c, fontSize: 12, fontWeight: FontWeight.w500)),
+        Text(
+          text,
+          style: TextStyle(color: c, fontSize: 12, fontWeight: FontWeight.w500),
+        ),
       ],
     );
   }
@@ -673,9 +888,11 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
       children: [
         Icon(icon, size: 15, color: c),
         const SizedBox(height: 3),
-        Text(text,
+        Text(
+          text,
           style: TextStyle(color: c, fontSize: 12, fontWeight: FontWeight.w600),
-          textAlign: TextAlign.center),
+          textAlign: TextAlign.center,
+        ),
       ],
     );
   }
@@ -689,7 +906,9 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
 
     final pendingBids = bids.where((b) {
       final m = b as Map<String, dynamic>;
-      if (m['driver_status'] != 'accepted' || m['organizer_status'] != 'pending') return false;
+      if (m['driver_status'] != 'accepted' ||
+          m['organizer_status'] != 'pending')
+        return false;
       // Filter out the organizer's own bid (same user bidding on their own event)
       if (m['driver_id'] == currentUserId) return false;
       return true;
@@ -699,6 +918,7 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
 
     final eventId = event['id'] as String?;
     final totalDist = (event['total_distance_km'] as num?)?.toDouble() ?? 0;
+    final country = _eventCountry(event);
 
     return [
       const SizedBox(height: 10),
@@ -719,22 +939,40 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
                       HapticService.lightImpact();
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => OrganizerBiddingScreen(eventId: eventId)),
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              OrganizerBiddingScreen(eventId: eventId),
+                        ),
                       ).then((_) => _loadEvents());
                     }
                   : null,
               child: Row(
                 children: [
-                  const Icon(Icons.gavel_rounded, size: 15, color: Colors.orange),
+                  const Icon(
+                    Icons.gavel_rounded,
+                    size: 15,
+                    color: Colors.orange,
+                  ),
                   const SizedBox(width: 6),
                   Text(
                     '${pendingBids.length} Puja${pendingBids.length > 1 ? 's' : ''} Recibida${pendingBids.length > 1 ? 's' : ''}',
-                    style: const TextStyle(color: Colors.orange, fontSize: 12, fontWeight: FontWeight.w700),
+                    style: const TextStyle(
+                      color: Colors.orange,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   const Spacer(),
-                  const Text('Ver todas', style: TextStyle(color: Colors.orange, fontSize: 11)),
+                  const Text(
+                    'Ver todas',
+                    style: TextStyle(color: Colors.orange, fontSize: 11),
+                  ),
                   const SizedBox(width: 2),
-                  const Icon(Icons.arrow_forward_ios, size: 10, color: Colors.orange),
+                  const Icon(
+                    Icons.arrow_forward_ios,
+                    size: 10,
+                    color: Colors.orange,
+                  ),
                 ],
               ),
             ),
@@ -744,7 +982,10 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
               final bidId = bid['id'] as String?;
               final price = (bid['proposed_price_per_km'] as num?)?.toDouble();
               final bidDriver = bid['bid_driver'] as Map<String, dynamic>?;
-              final name = bidDriver?['full_name'] as String? ?? bidDriver?['name'] as String? ?? 'Chofer';
+              final name =
+                  bidDriver?['full_name'] as String? ??
+                  bidDriver?['name'] as String? ??
+                  'Chofer';
               final phone = bidDriver?['phone'] as String?;
               final totalPrice = price != null ? price * totalDist : null;
 
@@ -756,7 +997,8 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
               final vSeats = bidVehicle?['total_seats'];
               final vPlate = bidVehicle?['plate'] as String?;
               final vehicleDesc = [
-                if (vMake != null || vModel != null) '${vMake ?? ''} ${vModel ?? ''}'.trim(),
+                if (vMake != null || vModel != null)
+                  '${vMake ?? ''} ${vModel ?? ''}'.trim(),
                 if (vYear != null) '($vYear)',
                 if (vSeats != null) '$vSeats asientos',
                 if (vPlate != null) '• $vPlate',
@@ -778,12 +1020,21 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
                         CircleAvatar(
                           radius: 16,
                           backgroundColor: AppColors.primary.withOpacity(0.15),
-                          backgroundImage: bidDriver?['profile_image_url'] != null
-                              ? NetworkImage(bidDriver!['profile_image_url'] as String)
+                          backgroundImage:
+                              bidDriver?['profile_image_url'] != null
+                              ? NetworkImage(
+                                  bidDriver!['profile_image_url'] as String,
+                                )
                               : null,
                           child: bidDriver?['profile_image_url'] == null
-                              ? Text(name[0].toUpperCase(),
-                                  style: const TextStyle(color: AppColors.primary, fontSize: 13, fontWeight: FontWeight.w700))
+                              ? Text(
+                                  name[0].toUpperCase(),
+                                  style: const TextStyle(
+                                    color: AppColors.primary,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                )
                               : null,
                         ),
                         const SizedBox(width: 8),
@@ -791,12 +1042,24 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(name,
-                                style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
-                                maxLines: 1, overflow: TextOverflow.ellipsis),
+                              Text(
+                                name,
+                                style: const TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                               if (phone != null)
-                                Text(phone,
-                                  style: const TextStyle(color: AppColors.textTertiary, fontSize: 11)),
+                                Text(
+                                  phone,
+                                  style: const TextStyle(
+                                    color: AppColors.textTertiary,
+                                    fontSize: 11,
+                                  ),
+                                ),
                             ],
                           ),
                         ),
@@ -805,11 +1068,23 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              Text('\$${price.toStringAsFixed(1)}/km',
-                                style: const TextStyle(color: AppColors.primary, fontSize: 13, fontWeight: FontWeight.w700)),
+                              Text(
+                                formatPricePerDistance(price, country: country),
+                                style: const TextStyle(
+                                  color: AppColors.primary,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
                               if (totalPrice != null)
-                                Text('Total \$${totalPrice.toStringAsFixed(0)}',
-                                  style: const TextStyle(color: AppColors.textTertiary, fontSize: 10)),
+                                Text(
+                                  'Total ${formatMoney(totalPrice, country: country)} '
+                                  '${currencyCode(country: country)}',
+                                  style: const TextStyle(
+                                    color: AppColors.textTertiary,
+                                    fontSize: 10,
+                                  ),
+                                ),
                             ],
                           ),
                       ],
@@ -820,12 +1095,22 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
                       Row(
                         children: [
                           const SizedBox(width: 40), // align with name
-                          const Icon(Icons.directions_bus, size: 12, color: AppColors.textTertiary),
+                          const Icon(
+                            Icons.directions_bus,
+                            size: 12,
+                            color: AppColors.textTertiary,
+                          ),
                           const SizedBox(width: 4),
                           Expanded(
-                            child: Text(vehicleDesc,
-                              style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
-                              maxLines: 1, overflow: TextOverflow.ellipsis),
+                            child: Text(
+                              vehicleDesc,
+                              style: const TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 11,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         ],
                       ),
@@ -836,7 +1121,8 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
                       SizedBox(
                         width: double.infinity,
                         child: GestureDetector(
-                          onTap: () => _acceptBidFromCard(bidId, eventId, name, price),
+                          onTap: () =>
+                              _acceptBidFromCard(bidId, eventId, name, price),
                           child: Container(
                             padding: const EdgeInsets.symmetric(vertical: 8),
                             decoration: BoxDecoration(
@@ -844,8 +1130,14 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: const Center(
-                              child: Text('Aceptar Puja',
-                                style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700)),
+                              child: Text(
+                                'Aceptar Puja',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -870,34 +1162,52 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
       ),
       child: Text(
         label,
-        style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600),
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
 
   String _statusLabel(String status) {
     switch (status) {
-      case 'active': return 'Activo';
-      case 'in_progress': return 'En Curso';
-      case 'completed': return 'Completado';
-      case 'cancelled': return 'Cancelado';
-      case 'vehicle_accepted': return 'Chofer Asignado';
+      case 'active':
+        return 'Activo';
+      case 'in_progress':
+        return 'En Curso';
+      case 'completed':
+        return 'Completado';
+      case 'cancelled':
+        return 'Cancelado';
+      case 'vehicle_accepted':
+        return 'Chofer Asignado';
       case 'draft':
-      case 'pending_vehicle': return 'Esperando Puja';
-      default: return status;
+      case 'pending_vehicle':
+        return 'Esperando Puja';
+      default:
+        return status;
     }
   }
 
   Color _statusColor(String status) {
     switch (status) {
-      case 'active': return AppColors.success;
-      case 'in_progress': return AppColors.primary;
-      case 'completed': return Colors.blue;
-      case 'cancelled': return AppColors.error;
-      case 'vehicle_accepted': return AppColors.success;
+      case 'active':
+        return AppColors.success;
+      case 'in_progress':
+        return AppColors.primary;
+      case 'completed':
+        return Colors.blue;
+      case 'cancelled':
+        return AppColors.error;
+      case 'vehicle_accepted':
+        return AppColors.success;
       case 'draft':
-      case 'pending_vehicle': return Colors.orange;
-      default: return AppColors.textTertiary;
+      case 'pending_vehicle':
+        return Colors.orange;
+      default:
+        return AppColors.textTertiary;
     }
   }
 
@@ -907,8 +1217,10 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
       backgroundColor: AppColors.primary,
       elevation: 4,
       icon: const Icon(Icons.add, color: Colors.white),
-      label: const Text('Nuevo',
-        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+      label: const Text(
+        'Nuevo',
+        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+      ),
     );
   }
 
@@ -928,7 +1240,8 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
           children: [
             // Handle
             Container(
-              width: 40, height: 4,
+              width: 40,
+              height: 4,
               margin: const EdgeInsets.only(bottom: 16),
               decoration: BoxDecoration(
                 color: AppColors.border,
@@ -945,28 +1258,44 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
             ),
             const SizedBox(height: 16),
             _buildSheetOption(
-              emoji: '\u{1F68C}', title: 'Ruta Fija',
+              emoji: '\u{1F68C}',
+              title: 'Ruta Fija',
               subtitle: 'Microbús, camión, escolar',
               color: const Color(0xFF2196F3),
-              onTap: () { Navigator.pop(ctx); _createEventWithType('fixed_route'); },
+              onTap: () {
+                Navigator.pop(ctx);
+                _createEventWithType('fixed_route');
+              },
             ),
             _buildSheetOption(
-              emoji: '\u{1F3D6}', title: 'Tour / Paseo',
+              emoji: '\u{1F3D6}',
+              title: 'Tour / Paseo',
               subtitle: 'Excursión, turismo, playa',
               color: const Color(0xFFFF9800),
-              onTap: () { Navigator.pop(ctx); _createEventWithType('tourism'); },
+              onTap: () {
+                Navigator.pop(ctx);
+                _createEventWithType('tourism');
+              },
             ),
             _buildSheetOption(
-              emoji: '\u{1F3C8}', title: 'Evento Especial',
+              emoji: '\u{1F3C8}',
+              title: 'Evento Especial',
               subtitle: 'Boda, fiesta, concierto',
               color: const Color(0xFF9C27B0),
-              onTap: () { Navigator.pop(ctx); _createEventWithType('special_event'); },
+              onTap: () {
+                Navigator.pop(ctx);
+                _createEventWithType('special_event');
+              },
             ),
             _buildSheetOption(
-              emoji: '\u{270B}', title: '¿Quién más va?',
+              emoji: '\u{270B}',
+              title: '¿Quién más va?',
               subtitle: 'Junta gente al mismo destino',
               color: const Color(0xFF4CAF50),
-              onTap: () { Navigator.pop(ctx); _createEventWithType('shared_trip'); },
+              onTap: () {
+                Navigator.pop(ctx);
+                _createEventWithType('shared_trip');
+              },
             ),
           ],
         ),
@@ -1002,34 +1331,70 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: TextStyle(color: color, fontSize: 15, fontWeight: FontWeight.w700)),
-                  Text(subtitle, style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
                 ],
               ),
             ),
-            Icon(Icons.arrow_forward_ios, color: color.withOpacity(0.4), size: 16),
+            Icon(
+              Icons.arrow_forward_ios,
+              color: color.withOpacity(0.4),
+              size: 16,
+            ),
           ],
         ),
       ),
     );
   }
 
-  Future<void> _acceptBidFromCard(String bidId, String eventId, String driverName, double? price) async {
+  Future<void> _acceptBidFromCard(
+    String bidId,
+    String eventId,
+    String driverName,
+    double? price,
+  ) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
-        title: const Text('Aceptar Puja', style: TextStyle(color: AppColors.textPrimary)),
+        title: const Text(
+          'Aceptar Puja',
+          style: TextStyle(color: AppColors.textPrimary),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Chofer: $driverName',
-              style: const TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+            Text(
+              'Chofer: $driverName',
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 14,
+              ),
+            ),
             if (price != null) ...[
               const SizedBox(height: 4),
-              Text('Precio: ${formatMoney(price, country: 'MX')}/km',
-                style: const TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w700)),
+              Text(
+                'Precio: ${formatMoney(price)}/${distanceUnit()}',
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ],
             const SizedBox(height: 12),
             Container(
@@ -1043,8 +1408,13 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
                   Icon(Icons.info_outline, size: 16, color: Colors.orange),
                   SizedBox(width: 8),
                   Expanded(
-                    child: Text('Las demás pujas serán rechazadas automáticamente',
-                      style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
+                    child: Text(
+                      'Las demás pujas serán rechazadas automáticamente',
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 11,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -1059,7 +1429,10 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: AppColors.success),
-            child: const Text('Confirmar', style: TextStyle(fontWeight: FontWeight.w600)),
+            child: const Text(
+              'Confirmar',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
           ),
         ],
       ),
@@ -1075,7 +1448,10 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
       if (mounted) {
         HapticService.success();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Puja de $driverName aceptada'), backgroundColor: AppColors.success),
+          SnackBar(
+            content: Text('Puja de $driverName aceptada'),
+            backgroundColor: AppColors.success,
+          ),
         );
         _loadEvents();
       }
@@ -1083,7 +1459,10 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
       if (mounted) {
         HapticService.error();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: AppColors.error,
+          ),
         );
       }
     }
@@ -1132,7 +1511,9 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
     _ensureAgreementThen(() {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => const OrganizerCreateEventSimpleScreen()),
+        MaterialPageRoute(
+          builder: (_) => const OrganizerCreateEventSimpleScreen(),
+        ),
       ).then((_) => _loadEvents());
     });
   }
@@ -1143,13 +1524,13 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => OrganizerCreateEventSimpleScreen(serviceType: serviceType),
+          builder: (_) =>
+              OrganizerCreateEventSimpleScreen(serviceType: serviceType),
         ),
       ).then((_) => _loadEvents());
     });
   }
 }
-
 
 // ============================================================
 // EPIC EMPTY STATE WIDGET - Matching Splash Screen Quality
@@ -1187,14 +1568,16 @@ class _AnimatedEmptyStateState extends State<_AnimatedEmptyState>
 
   void _initParticles() {
     for (int i = 0; i < 40; i++) {
-      _particles.add(_Particle(
-        x: _random.nextDouble(),
-        y: _random.nextDouble(),
-        size: _random.nextDouble() * 2 + 0.5,
-        speedX: (_random.nextDouble() - 0.5) * 0.001,
-        speedY: (_random.nextDouble() - 0.5) * 0.001,
-        opacity: _random.nextDouble() * 0.5 + 0.3,
-      ));
+      _particles.add(
+        _Particle(
+          x: _random.nextDouble(),
+          y: _random.nextDouble(),
+          size: _random.nextDouble() * 2 + 0.5,
+          speedX: (_random.nextDouble() - 0.5) * 0.001,
+          speedY: (_random.nextDouble() - 0.5) * 0.001,
+          opacity: _random.nextDouble() * 0.5 + 0.3,
+        ),
+      );
     }
   }
 
@@ -1220,17 +1603,11 @@ class _AnimatedEmptyStateState extends State<_AnimatedEmptyState>
     );
 
     _floatAnimation = Tween<double>(begin: 0, end: 10).animate(
-      CurvedAnimation(
-        parent: _floatController,
-        curve: Curves.easeInOutSine,
-      ),
+      CurvedAnimation(parent: _floatController, curve: Curves.easeInOutSine),
     );
 
     _pulseAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _pulseController,
-        curve: Curves.easeInOut,
-      ),
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
   }
 
@@ -1308,22 +1685,33 @@ class _AnimatedEmptyStateState extends State<_AnimatedEmptyState>
                   // solo ayuda a abordar pasajeros (modelo intermediario).
                   Container(
                     margin: const EdgeInsets.symmetric(horizontal: 8),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFF22D3EE).withOpacity(0.08),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFF22D3EE).withOpacity(0.3)),
+                      border: Border.all(
+                        color: const Color(0xFF22D3EE).withOpacity(0.3),
+                      ),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.info_outline_rounded,
-                            color: Color(0xFF22D3EE), size: 18),
+                        const Icon(
+                          Icons.info_outline_rounded,
+                          color: Color(0xFF22D3EE),
+                          size: 18,
+                        ),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
                             'organizer.colectivo_role'.tr(),
                             style: const TextStyle(
-                                color: Colors.white, fontSize: 13, height: 1.4),
+                              color: Colors.white,
+                              fontSize: 13,
+                              height: 1.4,
+                            ),
                           ),
                         ),
                       ],
@@ -1385,12 +1773,30 @@ class _AnimatedEmptyStateState extends State<_AnimatedEmptyState>
                                 ],
                               ),
                               const SizedBox(height: 16),
-                              _buildGlassExampleRow(Icons.directions_bus, 'organizer.example_bus'.tr()),
-                              _buildGlassExampleRow(Icons.beach_access, 'organizer.example_beach'.tr()),
-                              _buildGlassExampleRow(Icons.sports_football, 'organizer.example_sports'.tr()),
-                              _buildGlassExampleRow(Icons.school, 'organizer.example_school'.tr()),
-                              _buildGlassExampleRow(Icons.route, 'organizer.example_city'.tr()),
-                              _buildGlassExampleRow(Icons.people, 'organizer.example_friends'.tr()),
+                              _buildGlassExampleRow(
+                                Icons.directions_bus,
+                                'organizer.example_bus'.tr(),
+                              ),
+                              _buildGlassExampleRow(
+                                Icons.beach_access,
+                                'organizer.example_beach'.tr(),
+                              ),
+                              _buildGlassExampleRow(
+                                Icons.sports_football,
+                                'organizer.example_sports'.tr(),
+                              ),
+                              _buildGlassExampleRow(
+                                Icons.school,
+                                'organizer.example_school'.tr(),
+                              ),
+                              _buildGlassExampleRow(
+                                Icons.route,
+                                'organizer.example_city'.tr(),
+                              ),
+                              _buildGlassExampleRow(
+                                Icons.people,
+                                'organizer.example_friends'.tr(),
+                              ),
                             ],
                           ),
                         ),
@@ -1421,7 +1827,9 @@ class _AnimatedEmptyStateState extends State<_AnimatedEmptyState>
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: [
                               BoxShadow(
-                                color: AppColors.primary.withOpacity(0.4 * _pulseAnimation.value),
+                                color: AppColors.primary.withOpacity(
+                                  0.4 * _pulseAnimation.value,
+                                ),
                                 blurRadius: 20,
                                 spreadRadius: 4,
                                 offset: const Offset(0, 4),
@@ -1475,11 +1883,7 @@ class _AnimatedEmptyStateState extends State<_AnimatedEmptyState>
               color: Colors.white.withOpacity(0.1),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(
-              icon,
-              color: Colors.white.withOpacity(0.9),
-              size: 18,
-            ),
+            child: Icon(icon, color: Colors.white.withOpacity(0.9), size: 18),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -1570,19 +1974,17 @@ class _ParticlePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     // Dark gradient background
     final bgPaint = Paint()
-      ..shader = RadialGradient(
-        colors: [
-          const Color(0xFF0A1628),
-          const Color(0xFF050A10),
-        ],
-        stops: const [0.0, 1.0],
-      ).createShader(
-        Rect.fromCenter(
-          center: Offset(size.width / 2, size.height / 2),
-          width: size.width,
-          height: size.height,
-        ),
-      );
+      ..shader =
+          RadialGradient(
+            colors: [const Color(0xFF0A1628), const Color(0xFF050A10)],
+            stops: const [0.0, 1.0],
+          ).createShader(
+            Rect.fromCenter(
+              center: Offset(size.width / 2, size.height / 2),
+              width: size.width,
+              height: size.height,
+            ),
+          );
     canvas.drawRect(Offset.zero & size, bgPaint);
 
     // Draw particles
@@ -1619,7 +2021,9 @@ class _ParticlePainter extends CustomPainter {
         final dist = sqrt(dx * dx + dy * dy);
 
         if (dist < 100) {
-          linePaint.color = AppColors.primary.withOpacity(0.1 * (1 - dist / 100));
+          linePaint.color = AppColors.primary.withOpacity(
+            0.1 * (1 - dist / 100),
+          );
           canvas.drawLine(
             Offset(particles[i].x * size.width, particles[i].y * size.height),
             Offset(particles[j].x * size.width, particles[j].y * size.height),

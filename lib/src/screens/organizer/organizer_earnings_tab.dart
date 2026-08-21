@@ -58,8 +58,7 @@ class _OrganizerEarningsTabState extends State<OrganizerEarningsTab> {
     });
 
     try {
-      final authProvider =
-          Provider.of<AuthProvider>(context, listen: false);
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final userId = authProvider.driver?.id;
 
       if (userId == null) {
@@ -70,8 +69,7 @@ class _OrganizerEarningsTabState extends State<OrganizerEarningsTab> {
         return;
       }
 
-      final profile =
-          await _organizerService.getOrganizerProfile(userId);
+      final profile = await _organizerService.getOrganizerProfile(userId);
       final organizerId = profile?['id']?.toString() ?? userId;
       _organizerId = organizerId;
 
@@ -87,7 +85,8 @@ class _OrganizerEarningsTabState extends State<OrganizerEarningsTab> {
           _totalReservations =
               (result['total_reservations'] as num?)?.toInt() ?? 0;
           _reservations = List<Map<String, dynamic>>.from(
-              result['reservations'] ?? []);
+            result['reservations'] ?? [],
+          );
           _isLoading = false;
         });
       }
@@ -123,25 +122,6 @@ class _OrganizerEarningsTabState extends State<OrganizerEarningsTab> {
           ),
         ),
         centerTitle: false,
-        actions: [
-          TextButton.icon(
-            onPressed: () {
-              HapticService.lightImpact();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Proximamente'),
-                  backgroundColor: AppColors.primary,
-                ),
-              );
-            },
-            icon: const Icon(Icons.picture_as_pdf,
-                size: 16, color: AppColors.primary),
-            label: const Text(
-              'Exportar PDF',
-              style: TextStyle(color: AppColors.primary, fontSize: 13),
-            ),
-          ),
-        ],
       ),
       body: Column(
         children: [
@@ -153,13 +133,13 @@ class _OrganizerEarningsTabState extends State<OrganizerEarningsTab> {
                     child: CircularProgressIndicator(color: AppColors.primary),
                   )
                 : _error != null
-                    ? _buildErrorState()
-                    : RefreshIndicator(
-                        color: AppColors.primary,
-                        backgroundColor: AppColors.surface,
-                        onRefresh: _loadEarnings,
-                        child: _buildContent(),
-                      ),
+                ? _buildErrorState()
+                : RefreshIndicator(
+                    color: AppColors.primary,
+                    backgroundColor: AppColors.surface,
+                    onRefresh: _loadEarnings,
+                    child: _buildContent(),
+                  ),
           ),
         ],
       ),
@@ -173,13 +153,18 @@ class _OrganizerEarningsTabState extends State<OrganizerEarningsTab> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.error_outline,
-                size: 48, color: AppColors.error.withValues(alpha: 0.7)),
+            Icon(
+              Icons.error_outline,
+              size: 48,
+              color: AppColors.error.withValues(alpha: 0.7),
+            ),
             const SizedBox(height: 16),
             Text(
               _error ?? 'Error desconocido',
               style: const TextStyle(
-                  color: AppColors.textSecondary, fontSize: 14),
+                color: AppColors.textSecondary,
+                fontSize: 14,
+              ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
@@ -276,7 +261,7 @@ class _OrganizerEarningsTabState extends State<OrganizerEarningsTab> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  formatMoney(_totalCommission, country: 'MX'),
+                  formatMoney(_totalCommission),
                   style: const TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 28,
@@ -285,8 +270,10 @@ class _OrganizerEarningsTabState extends State<OrganizerEarningsTab> {
                 ),
                 const SizedBox(height: 4),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.success.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(4),
@@ -304,11 +291,7 @@ class _OrganizerEarningsTabState extends State<OrganizerEarningsTab> {
             ),
           ),
           // Divider
-          Container(
-            width: 1,
-            height: 60,
-            color: AppColors.border,
-          ),
+          Container(width: 1, height: 60, color: AppColors.border),
           const SizedBox(width: 20),
           // Total reservations
           Column(
@@ -316,10 +299,7 @@ class _OrganizerEarningsTabState extends State<OrganizerEarningsTab> {
             children: [
               const Text(
                 'Reservaciones',
-                style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 12,
-                ),
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
               ),
               const SizedBox(height: 6),
               Text(
@@ -341,28 +321,16 @@ class _OrganizerEarningsTabState extends State<OrganizerEarningsTab> {
   Widget _buildDateRangeFilter() {
     return Row(
       children: [
-        _buildFilterChip(
-          label: 'Esta Semana',
-          range: _DateRange.thisWeek,
-        ),
+        _buildFilterChip(label: 'Esta Semana', range: _DateRange.thisWeek),
         const SizedBox(width: 8),
-        _buildFilterChip(
-          label: 'Este Mes',
-          range: _DateRange.thisMonth,
-        ),
+        _buildFilterChip(label: 'Este Mes', range: _DateRange.thisMonth),
         const SizedBox(width: 8),
-        _buildFilterChip(
-          label: 'Todo',
-          range: _DateRange.allTime,
-        ),
+        _buildFilterChip(label: 'Todo', range: _DateRange.allTime),
       ],
     );
   }
 
-  Widget _buildFilterChip({
-    required String label,
-    required _DateRange range,
-  }) {
+  Widget _buildFilterChip({required String label, required _DateRange range}) {
     final isSelected = _selectedRange == range;
 
     return GestureDetector(
@@ -370,23 +338,17 @@ class _OrganizerEarningsTabState extends State<OrganizerEarningsTab> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected
-              ? AppColors.primary
-              : AppColors.card,
+          color: isSelected ? AppColors.primary : AppColors.card,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected
-                ? AppColors.primary
-                : AppColors.border,
+            color: isSelected ? AppColors.primary : AppColors.border,
             width: 0.5,
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected
-                ? Colors.white
-                : AppColors.textSecondary,
+            color: isSelected ? Colors.white : AppColors.textSecondary,
             fontSize: 12,
             fontWeight: FontWeight.w600,
           ),
@@ -405,16 +367,15 @@ class _OrganizerEarningsTabState extends State<OrganizerEarningsTab> {
       ),
       child: Column(
         children: [
-          Icon(Icons.receipt_long_outlined,
-              size: 40,
-              color: AppColors.textTertiary.withValues(alpha: 0.5)),
+          Icon(
+            Icons.receipt_long_outlined,
+            size: 40,
+            color: AppColors.textTertiary.withValues(alpha: 0.5),
+          ),
           const SizedBox(height: 12),
           const Text(
             'Sin reservaciones en este periodo',
-            style: TextStyle(
-              color: AppColors.textTertiary,
-              fontSize: 14,
-            ),
+            style: TextStyle(color: AppColors.textTertiary, fontSize: 14),
           ),
         ],
       ),
@@ -425,11 +386,9 @@ class _OrganizerEarningsTabState extends State<OrganizerEarningsTab> {
     final commission =
         (reservation['organizer_commission'] as num?)?.toDouble() ?? 0;
     final seats = (reservation['seats'] as num?)?.toInt() ?? 1;
-    final passengerName =
-        reservation['passenger_name'] ?? 'Pasajero';
+    final passengerName = reservation['passenger_name'] ?? 'Pasajero';
     final createdAt = reservation['created_at'] ?? '';
-    final totalAmount =
-        (reservation['total_amount'] as num?)?.toDouble() ?? 0;
+    final totalAmount = (reservation['total_amount'] as num?)?.toDouble() ?? 0;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -449,8 +408,7 @@ class _OrganizerEarningsTabState extends State<OrganizerEarningsTab> {
               color: AppColors.success.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.paid,
-                size: 20, color: AppColors.success),
+            child: const Icon(Icons.paid, size: 20, color: AppColors.success),
           ),
           const SizedBox(width: 12),
           // Info
@@ -478,7 +436,7 @@ class _OrganizerEarningsTabState extends State<OrganizerEarningsTab> {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      'Total: ${formatMoney(totalAmount, country: 'MX')}',
+                      'Total: ${formatMoney(totalAmount)}',
                       style: const TextStyle(
                         color: AppColors.textTertiary,
                         fontSize: 11,
@@ -502,7 +460,7 @@ class _OrganizerEarningsTabState extends State<OrganizerEarningsTab> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '+${formatMoney(commission, country: 'MX')}',
+                '+${formatMoney(commission)}',
                 style: const TextStyle(
                   color: AppColors.success,
                   fontSize: 16,
@@ -511,10 +469,7 @@ class _OrganizerEarningsTabState extends State<OrganizerEarningsTab> {
               ),
               const Text(
                 'comision',
-                style: TextStyle(
-                  color: AppColors.textTertiary,
-                  fontSize: 10,
-                ),
+                style: TextStyle(color: AppColors.textTertiary, fontSize: 10),
               ),
             ],
           ),
@@ -527,8 +482,18 @@ class _OrganizerEarningsTabState extends State<OrganizerEarningsTab> {
     final dt = DateTime.tryParse(isoDate);
     if (dt == null) return isoDate;
     final months = [
-      'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
-      'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic',
+      'Ene',
+      'Feb',
+      'Mar',
+      'Abr',
+      'May',
+      'Jun',
+      'Jul',
+      'Ago',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dic',
     ];
     return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
   }

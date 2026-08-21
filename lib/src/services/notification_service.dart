@@ -23,7 +23,8 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 class NotificationService {
   final SupabaseClient _client = SupabaseConfig.client;
-  final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin _localNotifications =
+      FlutterLocalNotificationsPlugin();
   // Lazy-init: FirebaseMessaging.instance crashes on web if Firebase not configured
   FirebaseMessaging? _messagingInstance;
   FirebaseMessaging get _messaging {
@@ -32,7 +33,9 @@ class NotificationService {
   }
 
   // Platform channel for native custom notifications (colored TORO logo)
-  static const _nativeChannel = MethodChannel('com.tororide.driver/notifications');
+  static const _nativeChannel = MethodChannel(
+    'com.tororide.driver/notifications',
+  );
   StreamSubscription<RemoteMessage>? _foregroundSub;
   StreamSubscription<RemoteMessage>? _openedAppSub;
 
@@ -57,7 +60,9 @@ class NotificationService {
 
   // Initialize local notifications
   Future<void> _initializeLocalNotifications() async {
-    const androidSettings = AndroidInitializationSettings('@drawable/ic_notification');
+    const androidSettings = AndroidInitializationSettings(
+      '@drawable/ic_notification',
+    );
     const iosSettings = DarwinInitializationSettings(
       requestAlertPermission: true,
       requestBadgePermission: true,
@@ -84,7 +89,9 @@ class NotificationService {
   // Create Android notification channels
   Future<void> _createNotificationChannels() async {
     final androidPlugin = _localNotifications
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
 
     if (androidPlugin != null) {
       await androidPlugin.createNotificationChannel(
@@ -137,7 +144,9 @@ class NotificationService {
   }) async {
     if (kIsWeb) return; // Local notifications not supported on web
     // Load TORO logo for Person avatar (shows full color on LEFT)
-    final ByteData byteData = await rootBundle.load('assets/images/toro_notification_logo.png');
+    final ByteData byteData = await rootBundle.load(
+      'assets/images/toro_notification_logo.png',
+    );
     final Uint8List iconBytes = byteData.buffer.asUint8List();
 
     final toroPerson = Person(
@@ -151,10 +160,10 @@ class NotificationService {
       channelId == rideChannel
           ? 'Solicitudes de viaje'
           : channelId == chatChannel
-              ? 'Mensajes'
-              : channelId == earningsChannel
-                  ? 'Ganancias'
-                  : 'General',
+          ? 'Mensajes'
+          : channelId == earningsChannel
+          ? 'Ganancias'
+          : 'General',
       importance: Importance.max,
       priority: Priority.max,
       showWhen: true,
@@ -172,9 +181,7 @@ class NotificationService {
       styleInformation: MessagingStyleInformation(
         toroPerson,
         conversationTitle: title,
-        messages: [
-          Message(body, DateTime.now(), toroPerson),
-        ],
+        messages: [Message(body, DateTime.now(), toroPerson)],
       ),
     );
 
@@ -232,7 +239,8 @@ class NotificationService {
   }) async {
     await _showLocalNotification(
       title: '¡Nueva solicitud de viaje!',
-      body: 'Recoger en: $pickupAddress\nTarifa: ${formatMoney(fare, country: country)}',
+      body:
+          'Recoger en: $pickupAddress\nTarifa: ${formatMoney(fare, country: country)}',
       payload: jsonEncode({'type': 'ride_request', 'id': rideId}),
       channelId: rideChannel,
     );
@@ -276,10 +284,12 @@ class NotificationService {
   }) async {
     final parts = <String>['${formatMoney(baseFare, country: country)} base'];
     if (tip > 0) parts.add('+${formatMoney(tip, country: country)} propina');
-    if (qrBonus > 0) parts.add('+${formatMoney(qrBonus, country: country)} QR bonus');
+    if (qrBonus > 0)
+      parts.add('+${formatMoney(qrBonus, country: country)} QR bonus');
 
     await _showLocalNotification(
-      title: '+${formatMoney(totalEarnings, country: country)} - Viaje completado',
+      title:
+          '+${formatMoney(totalEarnings, country: country)} - Viaje completado',
       body: parts.join(' | '),
       payload: jsonEncode({'type': 'earning'}),
       channelId: earningsChannel,
@@ -333,7 +343,9 @@ class NotificationService {
   }
 
   // Get notification history from database
-  Future<List<Map<String, dynamic>>> getNotificationHistory(String driverId) async {
+  Future<List<Map<String, dynamic>>> getNotificationHistory(
+    String driverId,
+  ) async {
     final response = await _client
         .from(SupabaseConfig.notificationsTable)
         .select()
@@ -395,7 +407,9 @@ class NotificationService {
   }) async {
     await _showLocalNotification(
       title: '¡Nueva Solicitud de Puja!',
-      body: '$organizerName te invita a participar en: $eventName\n${totalKm.toStringAsFixed(0)} km',
+      body:
+          '$organizerName te invita a participar en: $eventName\n'
+          '${formatDistance(totalKm, decimals: 0)}',
       payload: jsonEncode({'type': 'bid_request', 'id': bidId}),
       channelId: rideChannel,
     );
@@ -411,7 +425,7 @@ class NotificationService {
     if (accepted) {
       await _showLocalNotification(
         title: 'Nueva Oferta Recibida',
-        body: '$driverName ofrece ${formatMoney(pricePerKm, country: 'MX')}/km',
+        body: '$driverName ofrece ${formatMoney(pricePerKm)}/${distanceUnit()}',
         payload: jsonEncode({'type': 'bid_response', 'id': bidId}),
         channelId: earningsChannel,
       );
@@ -435,7 +449,8 @@ class NotificationService {
     if (isWinner) {
       await _showLocalNotification(
         title: '¡Tu Puja Fue Seleccionada!',
-        body: 'Ganaste: $eventName a ${formatMoney(pricePerKm, country: 'MX')}/km',
+        body:
+            'Ganaste: $eventName a ${formatMoney(pricePerKm)}/${distanceUnit()}',
         payload: jsonEncode({'type': 'bid_won', 'id': bidId}),
         channelId: earningsChannel,
       );
@@ -457,11 +472,9 @@ class NotificationService {
   }) async {
     await _showLocalNotification(
       title: 'Contra-oferta Recibida',
-      body: 'El organizador propone ${formatMoney(counterOfferPrice, country: 'MX')}/km para: $eventName',
-      payload: jsonEncode({
-        'type': 'bid_counter_offer',
-        'bid_id': bidId,
-      }),
+      body:
+          'El organizador propone ${formatMoney(counterOfferPrice)}/${distanceUnit()} para: $eventName',
+      payload: jsonEncode({'type': 'bid_counter_offer', 'bid_id': bidId}),
       channelId: rideChannel,
     );
   }
@@ -475,10 +488,7 @@ class NotificationService {
     await _showLocalNotification(
       title: 'Nueva Solicitud de Pasajero',
       body: '$passengerName quiere unirse a: $eventName',
-      payload: jsonEncode({
-        'type': 'join_request_new',
-        'event_id': eventId,
-      }),
+      payload: jsonEncode({'type': 'join_request_new', 'event_id': eventId}),
       channelId: generalChannel,
     );
   }
@@ -491,11 +501,9 @@ class NotificationService {
   }) async {
     await _showLocalNotification(
       title: 'Nueva Resena',
-      body: 'Calificacion: ${rating.toStringAsFixed(1)} estrellas para: $eventName',
-      payload: jsonEncode({
-        'type': 'review_submitted',
-        'event_id': eventId,
-      }),
+      body:
+          'Calificacion: ${rating.toStringAsFixed(1)} estrellas para: $eventName',
+      payload: jsonEncode({'type': 'review_submitted', 'event_id': eventId}),
       channelId: generalChannel,
     );
   }
@@ -509,10 +517,7 @@ class NotificationService {
     await _showLocalNotification(
       title: 'Actualizacion de Reporte',
       body: message ?? 'Tu reporte ha sido actualizado. Estado: $status',
-      payload: jsonEncode({
-        'type': 'abuse_report_update',
-        'id': reportId,
-      }),
+      payload: jsonEncode({'type': 'abuse_report_update', 'id': reportId}),
       channelId: generalChannel,
     );
   }
@@ -526,7 +531,8 @@ class NotificationService {
   }) async {
     await _showLocalNotification(
       title: 'Liquidacion de Servicios',
-      body: 'Debes ${formatMoney(amountDue, country: country)}\nFecha límite: $dueDate',
+      body:
+          'Debes ${formatMoney(amountDue, country: country)}\nFecha límite: $dueDate',
       payload: jsonEncode({'type': 'weekly_statement', 'id': statementId}),
       channelId: earningsChannel,
     );
@@ -557,7 +563,8 @@ class NotificationService {
   }) async {
     await _showLocalNotification(
       title: '✅ Pago Aprobado',
-      body: 'Tu pago de ${formatMoney(amount, country: country)} ha sido aprobado',
+      body:
+          'Tu pago de ${formatMoney(amount, country: country)} ha sido aprobado',
       payload: jsonEncode({'type': 'payment_approved', 'id': paymentId}),
       channelId: earningsChannel,
     );
@@ -609,17 +616,23 @@ class NotificationService {
   Future<void> _setupFirebaseMessaging() async {
     try {
       // Background handler (top-level)
-      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+      FirebaseMessaging.onBackgroundMessage(
+        _firebaseMessagingBackgroundHandler,
+      );
 
       // Foreground messages → show in-app banner + local notification
-      _foregroundSub = FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      _foregroundSub = FirebaseMessaging.onMessage.listen((
+        RemoteMessage message,
+      ) {
         debugPrint('🔔 FCM Foreground: ${message.notification?.title}');
         final notification = message.notification;
         if (notification != null) {
           final title = notification.title ?? 'Toro Driver';
           final body = notification.body ?? '';
-          final type = message.data['type'] as String? ??
-              message.data['notification_type'] as String? ?? '';
+          final type =
+              message.data['type'] as String? ??
+              message.data['notification_type'] as String? ??
+              '';
           final data = Map<String, dynamic>.from(message.data);
 
           // Show in-app banner overlay. Un NUEVO VIAJE persiste 30s (la ventana
@@ -648,7 +661,9 @@ class NotificationService {
       });
 
       // When user taps notification that opened the app from background
-      _openedAppSub = FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      _openedAppSub = FirebaseMessaging.onMessageOpenedApp.listen((
+        RemoteMessage message,
+      ) {
         debugPrint('🔔 FCM Opened app: ${message.data}');
         _navigateFromNotification(Map<String, dynamic>.from(message.data));
       });
@@ -659,7 +674,9 @@ class NotificationService {
         debugPrint('🔔 FCM Initial message: ${initialMessage.data}');
         // Delay to let navigator initialize
         Future.delayed(const Duration(milliseconds: 500), () {
-          _navigateFromNotification(Map<String, dynamic>.from(initialMessage.data));
+          _navigateFromNotification(
+            Map<String, dynamic>.from(initialMessage.data),
+          );
         });
       }
     } catch (e) {
@@ -706,7 +723,10 @@ class NotificationService {
           debugPrint('🔔 APNs token null, retry ${i + 1}/5 in ${wait}s...');
           await Future.delayed(Duration(seconds: wait));
         }
-        await _remoteLog('apns_result', extra: apnsToken != null ? 'present' : 'FAILED_5_retries');
+        await _remoteLog(
+          'apns_result',
+          extra: apnsToken != null ? 'present' : 'FAILED_5_retries',
+        );
       }
 
       // Get FCM token with retries
@@ -719,14 +739,22 @@ class NotificationService {
         await Future.delayed(Duration(seconds: wait));
       }
 
-      await _remoteLog('fcm_result', extra: token != null ? 'token=${token.substring(0, 30)}' : 'NULL_after_5_retries');
+      await _remoteLog(
+        'fcm_result',
+        extra: token != null
+            ? 'token=${token.substring(0, 30)}'
+            : 'NULL_after_5_retries',
+      );
 
       if (token != null) {
         debugPrint('🔔 FCM Token: ${token.substring(0, 20)}...');
-        await _client.from(SupabaseConfig.driversTable).update({
-          'fcm_token': token,
-          'fcm_token_updated_at': DateTime.now().toIso8601String(),
-        }).eq('id', driverId);
+        await _client
+            .from(SupabaseConfig.driversTable)
+            .update({
+              'fcm_token': token,
+              'fcm_token_updated_at': DateTime.now().toIso8601String(),
+            })
+            .eq('id', driverId);
         await _remoteLog('token_saved');
       } else if (Platform.isIOS) {
         // Schedule a delayed retry for iOS
@@ -735,11 +763,17 @@ class NotificationService {
           try {
             final delayedToken = await _messaging.getToken();
             if (delayedToken != null) {
-              await _client.from(SupabaseConfig.driversTable).update({
-                'fcm_token': delayedToken,
-                'fcm_token_updated_at': DateTime.now().toIso8601String(),
-              }).eq('id', driverId);
-              await _remoteLog('delayed_retry_success', extra: 'token=${delayedToken.substring(0, 30)}');
+              await _client
+                  .from(SupabaseConfig.driversTable)
+                  .update({
+                    'fcm_token': delayedToken,
+                    'fcm_token_updated_at': DateTime.now().toIso8601String(),
+                  })
+                  .eq('id', driverId);
+              await _remoteLog(
+                'delayed_retry_success',
+                extra: 'token=${delayedToken.substring(0, 30)}',
+              );
             } else {
               await _remoteLog('delayed_retry_failed');
             }
@@ -752,11 +786,17 @@ class NotificationService {
       // Listen for token refresh
       _messaging.onTokenRefresh.listen((newToken) async {
         debugPrint('🔔 FCM Token refreshed: ${newToken.substring(0, 20)}...');
-        await _client.from(SupabaseConfig.driversTable).update({
-          'fcm_token': newToken,
-          'fcm_token_updated_at': DateTime.now().toIso8601String(),
-        }).eq('id', driverId);
-        _remoteLog('token_refreshed', extra: 'token=${newToken.substring(0, 30)}');
+        await _client
+            .from(SupabaseConfig.driversTable)
+            .update({
+              'fcm_token': newToken,
+              'fcm_token_updated_at': DateTime.now().toIso8601String(),
+            })
+            .eq('id', driverId);
+        _remoteLog(
+          'token_refreshed',
+          extra: 'token=${newToken.substring(0, 30)}',
+        );
       });
     } catch (e) {
       debugPrint('🔔 FCM Token error: $e');
@@ -768,9 +808,10 @@ class NotificationService {
   Future<void> clearFCMToken(String driverId) async {
     if (kIsWeb) return;
     try {
-      await _client.from(SupabaseConfig.driversTable).update({
-        'fcm_token': null,
-      }).eq('id', driverId);
+      await _client
+          .from(SupabaseConfig.driversTable)
+          .update({'fcm_token': null})
+          .eq('id', driverId);
       await _messaging.deleteToken();
       debugPrint('🔔 FCM Token cleared for driver $driverId');
     } catch (e) {
@@ -794,7 +835,8 @@ class NotificationService {
         type.contains('payout') ||
         type.contains('bid_won') ||
         type.contains('bid_response') ||
-        type.contains('weekly_statement')) return earningsChannel;
+        type.contains('weekly_statement'))
+      return earningsChannel;
 
     // High-priority bid requests and counter-offers
     if (type.contains('bid_request') || type.contains('bid_counter_offer')) {
@@ -825,8 +867,8 @@ class NotificationService {
     final navigator = InAppBannerService.navigatorKey.currentState;
     if (navigator == null) return;
 
-    final type = data['type'] as String? ??
-        data['notification_type'] as String? ?? '';
+    final type =
+        data['type'] as String? ?? data['notification_type'] as String? ?? '';
     final eventId = data['event_id'] as String?;
     final bidId = data['bid_id'] as String?;
 
@@ -835,7 +877,10 @@ class NotificationService {
       case 'tourism':
       case 'bid_request':
         if (eventId != null) {
-          navigator.pushNamed('/vehicle-requests', arguments: {'event_id': eventId, 'bid_id': bidId});
+          navigator.pushNamed(
+            '/vehicle-requests',
+            arguments: {'event_id': eventId, 'bid_id': bidId},
+          );
         } else {
           navigator.pushNamed('/notifications');
         }
@@ -844,10 +889,10 @@ class NotificationService {
       // Counter-offer from organizer → vehicle request screen to see it
       case 'bid_counter_offer':
         if (eventId != null) {
-          navigator.pushNamed('/vehicle-requests', arguments: {
-            'event_id': eventId,
-            'bid_id': bidId,
-          });
+          navigator.pushNamed(
+            '/vehicle-requests',
+            arguments: {'event_id': eventId, 'bid_id': bidId},
+          );
         } else {
           navigator.pushNamed('/notifications');
         }
@@ -856,9 +901,10 @@ class NotificationService {
       // New join request from a passenger → join requests screen
       case 'join_request_new':
         if (eventId != null) {
-          navigator.pushNamed('/join-requests', arguments: {
-            'event_id': eventId,
-          });
+          navigator.pushNamed(
+            '/join-requests',
+            arguments: {'event_id': eventId},
+          );
         } else {
           navigator.pushNamed('/notifications');
         }
@@ -873,9 +919,10 @@ class NotificationService {
       // New review submitted for an event → event reviews screen
       case 'review_submitted':
         if (eventId != null) {
-          navigator.pushNamed('/event-reviews', arguments: {
-            'event_id': eventId,
-          });
+          navigator.pushNamed(
+            '/event-reviews',
+            arguments: {'event_id': eventId},
+          );
         } else {
           navigator.pushNamed('/notifications');
         }
@@ -941,7 +988,10 @@ class NotificationService {
   /// Marketplace → MarketplaceDeliveryAcceptScreen. Otherwise → /rides.
   /// [stacked] indicates this is an on-the-way offer to a driver already
   /// holding another delivery — accept screen renders a "extra package" banner.
-  Future<void> _routeByServiceType(String rideId, {bool stacked = false}) async {
+  Future<void> _routeByServiceType(
+    String rideId, {
+    bool stacked = false,
+  }) async {
     final navigator = InAppBannerService.navigatorKey.currentState;
     if (navigator == null) return;
     try {
@@ -952,12 +1002,14 @@ class NotificationService {
           .maybeSingle();
       final svc = row?['service_type'] as String?;
       if (svc == 'marketplace') {
-        navigator.push(MaterialPageRoute(
-          builder: (_) => MarketplaceDeliveryAcceptScreen(
-            deliveryId: rideId,
-            isStackedOffer: stacked,
+        navigator.push(
+          MaterialPageRoute(
+            builder: (_) => MarketplaceDeliveryAcceptScreen(
+              deliveryId: rideId,
+              isStackedOffer: stacked,
+            ),
           ),
-        ));
+        );
         return;
       }
     } catch (e) {

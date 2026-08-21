@@ -41,8 +41,11 @@ class _EarningsScreenState extends State<EarningsScreen> {
   bool _qrInit = false;
 
   static DateTime _getWeekStart(DateTime date) {
-    return DateTime(date.year, date.month, date.day)
-        .subtract(Duration(days: date.weekday - 1));
+    return DateTime(
+      date.year,
+      date.month,
+      date.day,
+    ).subtract(Duration(days: date.weekday - 1));
   }
 
   @override
@@ -75,9 +78,13 @@ class _EarningsScreenState extends State<EarningsScreen> {
       // CANONICAL: Stripe balance = lo que TORO le va a depositar al driver.
       // Available = ya disponible para retiro. Pending = en hold 2-7 días.
       final provider = (driver.countryCode.toUpperCase() == 'MX') ? 'mx' : 'us';
-      final bal = await StripeConnectService.instance
-          .getBalance(driver.id, provider: provider);
-      final openPayout = await StripeConnectService.instance.getOpenPayout(driver.id);
+      final bal = await StripeConnectService.instance.getBalance(
+        driver.id,
+        provider: provider,
+      );
+      final openPayout = await StripeConnectService.instance.getOpenPayout(
+        driver.id,
+      );
 
       // % VIVOS desde pricing_config (país + estado del chofer, fallback DEFAULT).
       // Fuente única: la misma tabla que edita el admin. Cero hardcode.
@@ -96,7 +103,11 @@ class _EarningsScreenState extends State<EarningsScreen> {
     }
   }
 
-  void _previousWeek() => setState(() => _selectedWeekStart = _selectedWeekStart.subtract(const Duration(days: 7)));
+  void _previousWeek() => setState(
+    () => _selectedWeekStart = _selectedWeekStart.subtract(
+      const Duration(days: 7),
+    ),
+  );
 
   void _nextWeek() {
     final nextWeek = _selectedWeekStart.add(const Duration(days: 7));
@@ -110,9 +121,17 @@ class _EarningsScreenState extends State<EarningsScreen> {
     final now = DateTime.now();
     final daysUntilSunday = DateTime.sunday - now.weekday;
     if (daysUntilSunday <= 0) {
-      return DateTime(now.year, now.month, now.day).add(Duration(days: daysUntilSunday + 7));
+      return DateTime(
+        now.year,
+        now.month,
+        now.day,
+      ).add(Duration(days: daysUntilSunday + 7));
     }
-    return DateTime(now.year, now.month, now.day).add(Duration(days: daysUntilSunday));
+    return DateTime(
+      now.year,
+      now.month,
+      now.day,
+    ).add(Duration(days: daysUntilSunday));
   }
 
   @override
@@ -138,7 +157,13 @@ class _EarningsScreenState extends State<EarningsScreen> {
             const SizedBox(width: 4),
             GestureDetector(
               onTap: _nextWeek,
-              child: Icon(Icons.chevron_right, size: 20, color: _selectedWeekStart == _getWeekStart(DateTime.now()) ? AppColors.textSecondary : null),
+              child: Icon(
+                Icons.chevron_right,
+                size: 20,
+                color: _selectedWeekStart == _getWeekStart(DateTime.now())
+                    ? AppColors.textSecondary
+                    : null,
+              ),
             ),
           ],
         ),
@@ -149,22 +174,38 @@ class _EarningsScreenState extends State<EarningsScreen> {
             return const Center(child: CircularProgressIndicator());
           }
           final summary = provider.summary;
-          if (summary == null) return const Center(child: Text('No data'));
+          if (summary == null) {
+            return Center(child: Text('common.no_data'.tr()));
+          }
 
-          final countryCode = context.read<DriverProvider>().driver?.countryCode ?? 'US';
+          final countryCode =
+              context.read<DriverProvider>().driver?.countryCode ?? 'US';
           final total = summary.weekEarnings;
           final tips = summary.weekTips;
-          final netFare = total - tips - summary.weekQRBoost - summary.weekPeakHoursBonus -
-                          summary.weekPromotions - summary.weekExtraBonus - summary.weekDamageFee;
+          final netFare =
+              total -
+              tips -
+              summary.weekQRBoost -
+              summary.weekPeakHoursBonus -
+              summary.weekPromotions -
+              summary.weekExtraBonus -
+              summary.weekDamageFee;
 
           // Audit: log what this screen renders so it can be matched vs admin/rider/vendor.
-          MoneyLogger.snapshot('driver_earnings', {
-            'WEEK_EARNINGS': total,
-            'TIPS': tips,
-            'NET_FARE': netFare,
-            'STRIPE_AVAIL': (_stripeBalance?.availableCents ?? 0) / 100,
-            'STRIPE_PENDING': (_stripeBalance?.pendingCents ?? 0) / 100,
-          }, context: {'country': countryCode, 'week': _selectedWeekStart.toIso8601String()});
+          MoneyLogger.snapshot(
+            'driver_earnings',
+            {
+              'WEEK_EARNINGS': total,
+              'TIPS': tips,
+              'NET_FARE': netFare,
+              'STRIPE_AVAIL': (_stripeBalance?.availableCents ?? 0) / 100,
+              'STRIPE_PENDING': (_stripeBalance?.pendingCents ?? 0) / 100,
+            },
+            context: {
+              'country': countryCode,
+              'week': _selectedWeekStart.toIso8601String(),
+            },
+          );
 
           return RefreshIndicator(
             onRefresh: () async {
@@ -184,12 +225,18 @@ class _EarningsScreenState extends State<EarningsScreen> {
                     children: [
                       Text(
                         formatMoney(total, country: countryCode),
-                        style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          fontSize: 36,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       const SizedBox(height: 2),
                       const Text(
                         'Ganado esta semana',
-                        style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                     ],
                   ),
@@ -215,15 +262,27 @@ class _EarningsScreenState extends State<EarningsScreen> {
                             children: [
                               const Row(
                                 children: [
-                                  Icon(Icons.account_balance, size: 14, color: AppColors.success),
+                                  Icon(
+                                    Icons.account_balance,
+                                    size: 14,
+                                    color: AppColors.success,
+                                  ),
                                   SizedBox(width: 6),
-                                  Text('Disponible Stripe',
-                                      style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                                  Text(
+                                    'Disponible Stripe',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
                                 ],
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                formatMoney(_stripeBalance!.availableCents / 100, country: countryCode),
+                                formatMoney(
+                                  _stripeBalance!.availableCents / 100,
+                                  country: countryCode,
+                                ),
                                 style: const TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.w800,
@@ -233,7 +292,11 @@ class _EarningsScreenState extends State<EarningsScreen> {
                             ],
                           ),
                         ),
-                        Container(width: 1, height: 36, color: AppColors.divider),
+                        Container(
+                          width: 1,
+                          height: 36,
+                          color: AppColors.divider,
+                        ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Column(
@@ -241,15 +304,27 @@ class _EarningsScreenState extends State<EarningsScreen> {
                             children: [
                               const Row(
                                 children: [
-                                  Icon(Icons.schedule, size: 14, color: AppColors.warning),
+                                  Icon(
+                                    Icons.schedule,
+                                    size: 14,
+                                    color: AppColors.warning,
+                                  ),
                                   SizedBox(width: 6),
-                                  Text('Pendiente',
-                                      style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                                  Text(
+                                    'Pendiente',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
                                 ],
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                formatMoney(_stripeBalance!.pendingCents / 100, country: countryCode),
+                                formatMoney(
+                                  _stripeBalance!.pendingCents / 100,
+                                  country: countryCode,
+                                ),
                                 style: const TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.w800,
@@ -273,25 +348,30 @@ class _EarningsScreenState extends State<EarningsScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
-                      onPressed: _openPayout == null ? () async {
-                        final id = context.read<DriverProvider>().driver?.id;
-                        if (id == null) return;
-                        await Navigator.of(context).push(
-                          MaterialPageRoute(
-                            // CashOutScreen usa riverpod (ref) y la app NO tiene
-                            // ProviderScope global -> lo envolvemos aquí para que
-                            // no truene al abrirlo.
-                            builder: (_) => riverpod.ProviderScope(
-                              child: CashOutScreen(driverId: id),
-                            ),
-                          ),
-                        );
-                        // Al volver del retiro, recargar para mostrar el saldo real
-                        // (el servidor ya bajó drivers.available_balance).
-                        if (mounted) _loadData();
-                      } : null,
+                      onPressed: _openPayout == null
+                          ? () async {
+                              final id = context
+                                  .read<DriverProvider>()
+                                  .driver
+                                  ?.id;
+                              if (id == null) return;
+                              await Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  // CashOutScreen usa riverpod (ref) y la app NO tiene
+                                  // ProviderScope global -> lo envolvemos aquí para que
+                                  // no truene al abrirlo.
+                                  builder: (_) => riverpod.ProviderScope(
+                                    child: CashOutScreen(driverId: id),
+                                  ),
+                                ),
+                              );
+                              // Al volver del retiro, recargar para mostrar el saldo real
+                              // (el servidor ya bajó drivers.available_balance).
+                              if (mounted) _loadData();
+                            }
+                          : null,
                       icon: const Icon(Icons.account_balance_wallet, size: 18),
-                      label: const Text('Retirar a mi banco'),
+                      label: Text('earnings.withdraw_to_bank'.tr()),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.success,
                         foregroundColor: Colors.white,
@@ -311,28 +391,61 @@ class _EarningsScreenState extends State<EarningsScreen> {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: provider.weeklyBreakdown.map((d) {
-                      final max = provider.weeklyBreakdown.fold<double>(1, (m, e) => e.amount > m ? e.amount : m);
+                      final max = provider.weeklyBreakdown.fold<double>(
+                        1,
+                        (m, e) => e.amount > m ? e.amount : m,
+                      );
                       final pct = d.amount / max;
-                      final isToday = d.date.day == DateTime.now().day && d.date.month == DateTime.now().month;
+                      final isToday =
+                          d.date.day == DateTime.now().day &&
+                          d.date.month == DateTime.now().month;
                       return Expanded(
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 3),
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
-                              if (d.amount > 0) Text('\$${d.amount.toInt()}', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                              if (d.amount > 0)
+                                Text(
+                                  formatMoney(d.amount, country: countryCode),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
                               const SizedBox(height: 4),
                               Container(
                                 height: (85 * pct).clamp(4.0, 85.0),
                                 decoration: BoxDecoration(
-                                  color: isToday ? AppColors.primary : AppColors.primary.withValues(alpha: 0.3),
+                                  color: isToday
+                                      ? AppColors.primary
+                                      : AppColors.primary.withValues(
+                                          alpha: 0.3,
+                                        ),
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                               ),
                               const SizedBox(height: 6),
                               Text(
-                                ['M', 'T', 'W', 'T', 'F', 'S', 'S'][d.date.weekday - 1],
-                                style: TextStyle(fontSize: 10, fontWeight: isToday ? FontWeight.bold : FontWeight.normal, color: isToday ? AppColors.primary : AppColors.textSecondary),
+                                [
+                                  'M',
+                                  'T',
+                                  'W',
+                                  'T',
+                                  'F',
+                                  'S',
+                                  'S',
+                                ][d.date.weekday - 1],
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: isToday
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                                  color: isToday
+                                      ? AppColors.primary
+                                      : AppColors.textSecondary,
+                                ),
                               ),
                             ],
                           ),
@@ -344,14 +457,22 @@ class _EarningsScreenState extends State<EarningsScreen> {
                 const SizedBox(height: 32),
 
                 // Breakdown
-                const Text('Breakdown', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                const Text(
+                  'Breakdown',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                ),
                 const SizedBox(height: 12),
                 _row('Net Fare', netFare),
-                if (summary.weekQRBoost > 0) _row('QR Boost', summary.weekQRBoost),
-                if (summary.weekPeakHoursBonus > 0) _row('Peak Hours', summary.weekPeakHoursBonus),
-                if (summary.weekPromotions > 0) _row('Promotions', summary.weekPromotions),
-                if (summary.weekExtraBonus > 0) _row('Extra Bonus', summary.weekExtraBonus),
-                if (summary.weekDamageFee > 0) _row('Damage Fee', summary.weekDamageFee),
+                if (summary.weekQRBoost > 0)
+                  _row('QR Boost', summary.weekQRBoost),
+                if (summary.weekPeakHoursBonus > 0)
+                  _row('Peak Hours', summary.weekPeakHoursBonus),
+                if (summary.weekPromotions > 0)
+                  _row('Promotions', summary.weekPromotions),
+                if (summary.weekExtraBonus > 0)
+                  _row('Extra Bonus', summary.weekExtraBonus),
+                if (summary.weekDamageFee > 0)
+                  _row('Damage Fee', summary.weekDamageFee),
                 _row('Tips', tips),
                 const Divider(height: 24),
                 _row('Total', total, bold: true),
@@ -361,7 +482,11 @@ class _EarningsScreenState extends State<EarningsScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    if (countryCode != 'MX') _stat('Online Hours', _fmtTime(summary.weekOnlineMinutes)),
+                    if (countryCode != 'MX')
+                      _stat(
+                        'Online Hours',
+                        _fmtTime(summary.weekOnlineMinutes),
+                      ),
                     _stat('Total Trips', '${summary.weekRides}'),
                   ],
                 ),
@@ -412,12 +537,18 @@ class _EarningsScreenState extends State<EarningsScreen> {
               children: [
                 const Text(
                   'Retiro en proceso',
-                  style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   '${formatMoney(amount, country: countryCode)} · $status${stripeId.isNotEmpty ? ' · ${stripeId.substring(0, 8)}...' : ''}',
-                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                  ),
                 ),
               ],
             ),
@@ -517,13 +648,20 @@ class _EarningsScreenState extends State<EarningsScreen> {
                       'Seguro ${_pct!.insurance.toStringAsFixed(0)}% · '
                       'IVA ${_pct!.iva.toStringAsFixed(0)}% · '
                       'Retención SAT ${_pct!.totalRetention.toStringAsFixed(1)}% de tu parte',
-                      style: const TextStyle(color: Colors.white38, fontSize: 11),
+                      style: const TextStyle(
+                        color: Colors.white38,
+                        fontSize: 11,
+                      ),
                     ),
                   ],
                 ],
               ),
             ),
-            const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white38, size: 14),
+            const Icon(
+              Icons.arrow_forward_ios_rounded,
+              color: Colors.white38,
+              size: 14,
+            ),
           ],
         ),
       ),
@@ -531,7 +669,8 @@ class _EarningsScreenState extends State<EarningsScreen> {
   }
 
   Widget _buildCashControlSection() {
-    final countryCode = context.read<DriverProvider>().driver?.countryCode ?? 'US';
+    final countryCode =
+        context.read<DriverProvider>().driver?.countryCode ?? 'US';
     return Consumer<CashAccountProvider>(
       builder: (context, cashProvider, _) {
         if (cashProvider.status == CashAccountStatus.loading) {
@@ -541,7 +680,13 @@ class _EarningsScreenState extends State<EarningsScreen> {
               color: AppColors.card,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))),
+            child: const Center(
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
           );
         }
 
@@ -560,31 +705,33 @@ class _EarningsScreenState extends State<EarningsScreen> {
         final borderColor = isSuspended
             ? AppColors.error
             : isNearThreshold
-                ? AppColors.warning
-                : AppColors.border;
+            ? AppColors.warning
+            : AppColors.border;
 
         return Container(
           decoration: BoxDecoration(
             color: AppColors.card,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: borderColor,
-              width: isSuspended ? 2 : 1,
-            ),
+            border: Border.all(color: borderColor, width: isSuspended ? 2 : 1),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Header
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: isSuspended
                       ? AppColors.error.withValues(alpha: 0.1)
                       : isNearThreshold
-                          ? AppColors.warning.withValues(alpha: 0.08)
-                          : null,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(11)),
+                      ? AppColors.warning.withValues(alpha: 0.08)
+                      : null,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(11),
+                  ),
                 ),
                 child: Row(
                   children: [
@@ -597,7 +744,9 @@ class _EarningsScreenState extends State<EarningsScreen> {
                     Text(
                       isSuspended ? 'CUENTA SUSPENDIDA' : 'BALANCE EFECTIVO',
                       style: TextStyle(
-                        color: isSuspended ? AppColors.error : AppColors.warning,
+                        color: isSuspended
+                            ? AppColors.error
+                            : AppColors.warning,
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 0.5,
@@ -605,15 +754,22 @@ class _EarningsScreenState extends State<EarningsScreen> {
                     ),
                     const Spacer(),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
                       decoration: BoxDecoration(
-                        color: (isSuspended ? AppColors.error : AppColors.warning).withValues(alpha: 0.2),
+                        color:
+                            (isSuspended ? AppColors.error : AppColors.warning)
+                                .withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
                         formatMoney(cashOwed, country: countryCode),
                         style: TextStyle(
-                          color: isSuspended ? AppColors.error : AppColors.warning,
+                          color: isSuspended
+                              ? AppColors.error
+                              : AppColors.warning,
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
                         ),
@@ -628,10 +784,27 @@ class _EarningsScreenState extends State<EarningsScreen> {
                 padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
                 child: Row(
                   children: [
-                    const Icon(Icons.calendar_today, size: 13, color: AppColors.textSecondary),
+                    const Icon(
+                      Icons.calendar_today,
+                      size: 13,
+                      color: AppColors.textSecondary,
+                    ),
                     const SizedBox(width: 6),
-                    Text('Fecha de corte: ', style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
-                    Text(cutoffStr, style: const TextStyle(color: AppColors.textPrimary, fontSize: 11, fontWeight: FontWeight.w600)),
+                    Text(
+                      'Fecha de corte: ',
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 11,
+                      ),
+                    ),
+                    Text(
+                      cutoffStr,
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -639,14 +812,30 @@ class _EarningsScreenState extends State<EarningsScreen> {
               const SizedBox(height: 8),
 
               // Cash rides + Debes a TORO
-              _cashRow('Viajes en Efectivo', '$totalCashRides', Icons.local_taxi, AppColors.textPrimary),
-              _cashRow('Comisión por pagar', formatMoney(cashOwed, country: countryCode), Icons.payments, cashOwed > 0 ? AppColors.warning : AppColors.success),
+              _cashRow(
+                'Viajes en Efectivo',
+                '$totalCashRides',
+                Icons.local_taxi,
+                AppColors.textPrimary,
+              ),
+              _cashRow(
+                'Comisión por pagar',
+                formatMoney(cashOwed, country: countryCode),
+                Icons.payments,
+                cashOwed > 0 ? AppColors.warning : AppColors.success,
+              ),
 
               // Breakdown by type
               if (byType.isNotEmpty) ...[
                 Padding(
                   padding: const EdgeInsets.fromLTRB(14, 8, 14, 4),
-                  child: Text('Desglose por tipo:', style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
+                  child: Text(
+                    'Desglose por tipo:',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 11,
+                    ),
+                  ),
                 ),
                 for (final entry in byType.entries)
                   _cashRow(
@@ -659,17 +848,24 @@ class _EarningsScreenState extends State<EarningsScreen> {
 
               // Threshold progress bar
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
                 child: Row(
                   children: [
                     Expanded(
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(4),
                         child: LinearProgressIndicator(
-                          value: threshold > 0 ? (cashOwed / threshold).clamp(0.0, 1.0) : 0,
+                          value: threshold > 0
+                              ? (cashOwed / threshold).clamp(0.0, 1.0)
+                              : 0,
                           backgroundColor: AppColors.border,
                           valueColor: AlwaysStoppedAnimation(
-                            cashOwed >= threshold ? AppColors.error : AppColors.warning,
+                            cashOwed >= threshold
+                                ? AppColors.error
+                                : AppColors.warning,
                           ),
                           minHeight: 6,
                         ),
@@ -677,8 +873,11 @@ class _EarningsScreenState extends State<EarningsScreen> {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      'Limite: \$${threshold.toStringAsFixed(0)}',
-                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                      '${'screens.cash_balance.limit'.tr()}: ${formatMoney(threshold, country: countryCode)}',
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 11,
+                      ),
                     ),
                   ],
                 ),
@@ -693,16 +892,25 @@ class _EarningsScreenState extends State<EarningsScreen> {
                     decoration: BoxDecoration(
                       color: AppColors.error.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                      border: Border.all(
+                        color: AppColors.error.withValues(alpha: 0.3),
+                      ),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.warning_amber_rounded, color: AppColors.error, size: 18),
+                        const Icon(
+                          Icons.warning_amber_rounded,
+                          color: AppColors.error,
+                          size: 18,
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             'Tu cuenta esta suspendida. Deposita para reactivar.',
-                            style: TextStyle(color: AppColors.error, fontSize: 12),
+                            style: TextStyle(
+                              color: AppColors.error,
+                              fontSize: 12,
+                            ),
                           ),
                         ),
                       ],
@@ -716,16 +924,26 @@ class _EarningsScreenState extends State<EarningsScreen> {
                 child: SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
-                    onPressed: cashOwed > 0 ? () => _showPayNowDialog(cashOwed) : null,
+                    onPressed: cashOwed > 0
+                        ? () => _showPayNowDialog(cashOwed)
+                        : null,
                     icon: const Icon(Icons.payment, size: 18),
-                    label: Text(cashOwed > 0 ? 'Pagar Ahora' : 'Sin saldo pendiente', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                    label: Text(
+                      cashOwed > 0 ? 'Pagar Ahora' : 'Sin saldo pendiente',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.success,
                       foregroundColor: Colors.white,
                       disabledBackgroundColor: AppColors.card,
                       disabledForegroundColor: AppColors.textSecondary,
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                   ),
                 ),
@@ -739,12 +957,17 @@ class _EarningsScreenState extends State<EarningsScreen> {
                   child: OutlinedButton.icon(
                     onPressed: _contactSupport,
                     icon: const Icon(Icons.headset_mic, size: 14),
-                    label: const Text('Contactar Soporte', style: TextStyle(fontSize: 11)),
+                    label: const Text(
+                      'Contactar Soporte',
+                      style: TextStyle(fontSize: 11),
+                    ),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.textSecondary,
                       side: BorderSide(color: AppColors.border),
                       padding: const EdgeInsets.symmetric(vertical: 8),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                   ),
                 ),
@@ -763,8 +986,23 @@ class _EarningsScreenState extends State<EarningsScreen> {
         children: [
           Icon(icon, size: 14, color: AppColors.textSecondary),
           const SizedBox(width: 8),
-          Expanded(child: Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12))),
-          Text(value, style: TextStyle(color: valueColor, fontSize: 12, fontWeight: FontWeight.w600)),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 12,
+              ),
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              color: valueColor,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );
@@ -772,29 +1010,37 @@ class _EarningsScreenState extends State<EarningsScreen> {
 
   String _sourceTypeLabel(String type) {
     switch (type) {
-      case 'ride': return 'Viajes';
-      case 'carpool': return 'Carpool';
-      case 'package': return 'Paquetes';
-      case 'tourism': return 'Turismo';
-      default: return type;
+      case 'ride':
+        return 'Viajes';
+      case 'carpool':
+        return 'Carpool';
+      case 'package':
+        return 'Paquetes';
+      case 'tourism':
+        return 'Turismo';
+      default:
+        return type;
     }
   }
 
   IconData _sourceTypeIcon(String type) {
     switch (type) {
-      case 'ride': return Icons.local_taxi;
-      case 'carpool': return Icons.people;
-      case 'package': return Icons.inventory_2;
-      case 'tourism': return Icons.tour;
-      default: return Icons.receipt;
+      case 'ride':
+        return Icons.local_taxi;
+      case 'carpool':
+        return Icons.people;
+      case 'package':
+        return Icons.inventory_2;
+      case 'tourism':
+        return Icons.tour;
+      default:
+        return Icons.receipt;
     }
   }
 
   void _showPayNowDialog(double amountOwed) {
-    final countryCode = context.read<DriverProvider>().driver?.countryCode ?? 'US';
-    // Default = TARJETA (la única opción instantánea que SÍ funciona). SPEI y
-    // Depósito están "pendiente de configurar" (sin cuenta) -> caer ahí por
-    // defecto hacía ver el flujo roto.
+    final countryCode =
+        context.read<DriverProvider>().driver?.countryCode ?? 'US';
     String selectedMethod = 'card';
     bool _submitting = false;
 
@@ -803,12 +1049,21 @@ class _EarningsScreenState extends State<EarningsScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
           backgroundColor: AppColors.card,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Row(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Row(
             children: [
-              Icon(Icons.payment, color: AppColors.success, size: 22),
-              SizedBox(width: 8),
-              Text('Pagar Ahora', style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
+              const Icon(Icons.payment, color: AppColors.success, size: 22),
+              const SizedBox(width: 8),
+              Text(
+                'earnings.pay_now'.tr(),
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ],
           ),
           content: Column(
@@ -822,92 +1077,122 @@ class _EarningsScreenState extends State<EarningsScreen> {
                 decoration: BoxDecoration(
                   color: AppColors.warning.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+                  border: Border.all(
+                    color: AppColors.warning.withValues(alpha: 0.3),
+                  ),
                 ),
                 child: Column(
                   children: [
-                    const Text('Monto a pagar', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                    Text(
+                      'earnings.amount_to_pay'.tr(),
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
                     const SizedBox(height: 4),
-                    Text(formatMoney(amountOwed, country: countryCode), style: const TextStyle(color: AppColors.warning, fontSize: 28, fontWeight: FontWeight.bold)),
+                    Text(
+                      formatMoney(amountOwed, country: countryCode),
+                      style: const TextStyle(
+                        color: AppColors.warning,
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ],
                 ),
               ),
               const SizedBox(height: 16),
 
               // Payment method
-              const Text('Metodo de pago:', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+              Text(
+                'payment_method'.tr(),
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 12,
+                ),
+              ),
               const SizedBox(height: 8),
-              _payMethodOption(ctx, setDialogState, selectedMethod, 'card', Icons.credit_card, 'Tarjeta de crédito/débito (instantáneo)', (v) => selectedMethod = v),
-              const SizedBox(height: 6),
-              _payMethodOption(ctx, setDialogState, selectedMethod, 'transfer', Icons.account_balance, 'Transferencia Bancaria (SPEI)', (v) => selectedMethod = v),
-              const SizedBox(height: 6),
-              _payMethodOption(ctx, setDialogState, selectedMethod, 'deposit', Icons.storefront, 'Deposito en Sucursal', (v) => selectedMethod = v),
-              const SizedBox(height: 16),
-
-              // Bank details
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.background,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Datos de deposito:', style: TextStyle(color: AppColors.textSecondary, fontSize: 11, fontWeight: FontWeight.w600)),
-                    SizedBox(height: 6),
-                    Text('Banco: BBVA Mexico', style: TextStyle(color: AppColors.textPrimary, fontSize: 13)),
-                    Text('Cuenta: Pendiente de configurar', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-                    SizedBox(height: 4),
-                    Text('Se te notificara cuando los datos esten disponibles.', style: TextStyle(color: AppColors.textSecondary, fontSize: 11, fontStyle: FontStyle.italic)),
-                  ],
-                ),
+              _payMethodOption(
+                ctx,
+                setDialogState,
+                selectedMethod,
+                'card',
+                Icons.credit_card,
+                'earnings.card_instant'.tr(),
+                (value) => selectedMethod = value,
               ),
             ],
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancelar', style: TextStyle(color: AppColors.textSecondary)),
+              child: Text(
+                'cancel'.tr(),
+                style: const TextStyle(color: AppColors.textSecondary),
+              ),
             ),
             ElevatedButton(
-              onPressed: _submitting ? null : () async {
-                final driverId = context.read<DriverProvider>().driver?.id;
-                if (driverId == null) return;
+              onPressed: _submitting
+                  ? null
+                  : () async {
+                      final driverId = context
+                          .read<DriverProvider>()
+                          .driver
+                          ?.id;
+                      if (driverId == null) return;
 
-                // ── TARJETA: cobro instantáneo vía Stripe PaymentSheet ──
-                if (selectedMethod == 'card') {
-                  if (ctx.mounted) Navigator.pop(ctx);
-                  await _payDebtWithCard(amountOwed);
-                  return;
-                }
+                      // ── TARJETA: cobro instantáneo vía Stripe PaymentSheet ──
+                      if (selectedMethod == 'card') {
+                        if (ctx.mounted) Navigator.pop(ctx);
+                        await _payDebtWithCard(amountOwed);
+                        return;
+                      }
 
-                // ── Transferencia / depósito: solicitud manual (admin aprueba) ──
-                setDialogState(() => _submitting = true);
-                final success = await context.read<CashAccountProvider>().submitDeposit(
-                  amount: amountOwed,
-                  paymentMethod: selectedMethod,
-                );
-                if (ctx.mounted) Navigator.pop(ctx);
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: Text(success
-                        ? 'Solicitud de pago enviada. El admin sera notificado.'
-                        : 'Error al enviar solicitud. Intenta de nuevo.'),
-                    backgroundColor: success ? AppColors.success : AppColors.error,
-                  ));
-                }
-              },
+                      // ── Transferencia / depósito: solicitud manual (admin aprueba) ──
+                      setDialogState(() => _submitting = true);
+                      final success = await context
+                          .read<CashAccountProvider>()
+                          .submitDeposit(
+                            amount: amountOwed,
+                            paymentMethod: selectedMethod,
+                          );
+                      if (ctx.mounted) Navigator.pop(ctx);
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              success
+                                  ? 'Solicitud de pago enviada. El admin sera notificado.'
+                                  : 'Error al enviar solicitud. Intenta de nuevo.',
+                            ),
+                            backgroundColor: success
+                                ? AppColors.success
+                                : AppColors.error,
+                          ),
+                        );
+                      }
+                    },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.success,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
               child: _submitting
-                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : Text(selectedMethod == 'card' ? 'Pagar' : 'Enviar Solicitud', style: const TextStyle(fontWeight: FontWeight.bold)),
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Text(
+                      'earnings.pay'.tr(),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
             ),
           ],
         ),
@@ -915,23 +1200,52 @@ class _EarningsScreenState extends State<EarningsScreen> {
     );
   }
 
-  Widget _payMethodOption(BuildContext ctx, StateSetter setDialogState, String current, String value, IconData icon, String label, Function(String) onChanged) {
+  Widget _payMethodOption(
+    BuildContext ctx,
+    StateSetter setDialogState,
+    String current,
+    String value,
+    IconData icon,
+    String label,
+    Function(String) onChanged,
+  ) {
     final selected = current == value;
     return GestureDetector(
       onTap: () => setDialogState(() => onChanged(value)),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: selected ? AppColors.success.withValues(alpha: 0.1) : AppColors.background,
+          color: selected
+              ? AppColors.success.withValues(alpha: 0.1)
+              : AppColors.background,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: selected ? AppColors.success : AppColors.border),
+          border: Border.all(
+            color: selected ? AppColors.success : AppColors.border,
+          ),
         ),
         child: Row(
           children: [
-            Icon(icon, size: 18, color: selected ? AppColors.success : AppColors.textSecondary),
+            Icon(
+              icon,
+              size: 18,
+              color: selected ? AppColors.success : AppColors.textSecondary,
+            ),
             const SizedBox(width: 10),
-            Expanded(child: Text(label, style: TextStyle(color: selected ? AppColors.success : AppColors.textPrimary, fontSize: 13))),
-            if (selected) const Icon(Icons.check_circle, color: AppColors.success, size: 18),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: selected ? AppColors.success : AppColors.textPrimary,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+            if (selected)
+              const Icon(
+                Icons.check_circle,
+                color: AppColors.success,
+                size: 18,
+              ),
           ],
         ),
       ),
@@ -946,8 +1260,12 @@ class _EarningsScreenState extends State<EarningsScreen> {
     final currency = (driver?.countryCode == 'US') ? 'usd' : 'mxn';
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Preparando pago seguro…'), duration: Duration(seconds: 2)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('earnings.preparing_secure_payment'.tr()),
+          duration: const Duration(seconds: 2),
+        ),
+      );
     }
     try {
       // 1) PaymentIntent en el edge (cobro directo a la cuenta plataforma, sin split)
@@ -958,14 +1276,18 @@ class _EarningsScreenState extends State<EarningsScreen> {
       final data = res.data as Map?;
       final clientSecret = data?['clientSecret'] as String?;
       if (clientSecret == null) {
-        throw Exception(data?['error']?.toString() ?? 'No se pudo iniciar el pago');
+        throw Exception(
+          data?['error']?.toString() ?? 'earnings.payment_start_error'.tr(),
+        );
       }
 
       // CRÍTICO: usar la pk de la MISMA cuenta donde el edge creó el PaymentIntent.
       // Si la pk del SDK es de otra cuenta, el PaymentSheet truena con
       // "No such payment_intent" (mismo patrón que marketplace).
       final pubKey = data?['publishable_key'] as String?;
-      if (pubKey != null && pubKey.isNotEmpty && Stripe.publishableKey != pubKey) {
+      if (pubKey != null &&
+          pubKey.isNotEmpty &&
+          Stripe.publishableKey != pubKey) {
         Stripe.publishableKey = pubKey;
         await Stripe.instance.applySettings();
       }
@@ -982,30 +1304,50 @@ class _EarningsScreenState extends State<EarningsScreen> {
       // 3) Éxito → registrar el pago como tarjeta (la reconciliación final del
       //    saldo la confirma el webhook payment_intent.succeeded en el server).
       await context.read<CashAccountProvider>().submitDeposit(
-            amount: amount,
-            paymentMethod: 'card',
-          );
+        amount: amount,
+        paymentMethod: 'card',
+      );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('¡Pago con tarjeta exitoso! Tu saldo se actualizará.'),
-          backgroundColor: AppColors.success));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('earnings.payment_success'.tr()),
+            backgroundColor: AppColors.success,
+          ),
+        );
       }
     } on StripeException catch (e) {
       if (mounted && e.error.code != FailureCode.Canceled) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Pago rechazado: ${e.error.localizedMessage ?? e.error.code}'),
-          backgroundColor: AppColors.error));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'earnings.payment_declined'.tr(
+                namedArgs: {
+                  'error': e.error.localizedMessage ?? e.error.code.name,
+                },
+              ),
+            ),
+            backgroundColor: AppColors.error,
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Error en el pago: $e'), backgroundColor: AppColors.error));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'earnings.payment_error'.tr(namedArgs: {'error': e.toString()}),
+            ),
+            backgroundColor: AppColors.error,
+          ),
+        );
       }
     }
   }
 
   void _contactSupport() async {
-    final uri = Uri.parse('https://wa.me/+526865551234?text=Hola,%20necesito%20ayuda%20con%20mi%20balance%20de%20efectivo');
+    final uri = Uri.parse(
+      'https://wa.me/+526865551234?text=Hola,%20necesito%20ayuda%20con%20mi%20balance%20de%20efectivo',
+    );
     try {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (_) {
@@ -1018,21 +1360,40 @@ class _EarningsScreenState extends State<EarningsScreen> {
   Widget _stat(String label, String value) {
     return Column(
       children: [
-        Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        Text(label, style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        Text(
+          label,
+          style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+        ),
       ],
     );
   }
 
   Widget _row(String label, double amount, {bool bold = false}) {
-    final countryCode = context.read<DriverProvider>().driver?.countryCode ?? 'US';
+    final countryCode =
+        context.read<DriverProvider>().driver?.countryCode ?? 'US';
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(fontSize: 14, fontWeight: bold ? FontWeight.bold : FontWeight.normal)),
-          Text(formatMoney(amount, country: countryCode), style: TextStyle(fontSize: 14, fontWeight: bold ? FontWeight.bold : FontWeight.normal)),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: bold ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+          Text(
+            formatMoney(amount, country: countryCode),
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: bold ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
         ],
       ),
     );

@@ -47,7 +47,7 @@ class RentalVehicleService {
     int minRentalDays = 1,
     int maxRentalDays = 90,
     bool instantBooking = false,
-    String currency = 'MXN',
+    required String currency,
     String? pickupAddress,
     double? pickupLat,
     double? pickupLng,
@@ -62,11 +62,7 @@ class RentalVehicleService {
     // Upload owner document (INE/license)
     String? documentUrl;
     if (ownerDocument != null) {
-      documentUrl = await _uploadFile(
-        ownerId,
-        ownerDocument,
-        'documents',
-      );
+      documentUrl = await _uploadFile(ownerId, ownerDocument, 'documents');
     }
 
     final data = <String, dynamic>{
@@ -112,11 +108,7 @@ class RentalVehicleService {
       'status': 'active',
     };
 
-    final result = await _client
-        .from(_table)
-        .insert(data)
-        .select()
-        .single();
+    final result = await _client.from(_table).insert(data).select().single();
 
     return result;
   }
@@ -143,10 +135,7 @@ class RentalVehicleService {
 
     updates['updated_at'] = DateTime.now().toIso8601String();
 
-    await _client
-        .from(_table)
-        .update(updates)
-        .eq('id', listingId);
+    await _client.from(_table).update(updates).eq('id', listingId);
   }
 
   /// Delete a listing
@@ -162,7 +151,10 @@ class RentalVehicleService {
   // ═══════════════════════════════════════════════════════════════════════════
 
   /// Upload multiple photos to rental-media bucket
-  static Future<List<String>> uploadPhotos(String ownerId, List<XFile> photos) async {
+  static Future<List<String>> uploadPhotos(
+    String ownerId,
+    List<XFile> photos,
+  ) async {
     final urls = <String>[];
     for (final photo in photos) {
       final url = await _uploadFile(ownerId, photo, 'vehicles');
@@ -172,7 +164,11 @@ class RentalVehicleService {
   }
 
   /// Upload a single file and return its public URL
-  static Future<String?> _uploadFile(String ownerId, XFile file, String folder) async {
+  static Future<String?> _uploadFile(
+    String ownerId,
+    XFile file,
+    String folder,
+  ) async {
     try {
       final ext = file.path.split('.').last.toLowerCase();
       final fileName = '${DateTime.now().millisecondsSinceEpoch}_${file.name}';
@@ -180,17 +176,21 @@ class RentalVehicleService {
 
       if (kIsWeb) {
         final bytes = await file.readAsBytes();
-        await _client.storage.from(_bucket).uploadBinary(
-          path,
-          bytes,
-          fileOptions: FileOptions(contentType: 'image/$ext', upsert: true),
-        );
+        await _client.storage
+            .from(_bucket)
+            .uploadBinary(
+              path,
+              bytes,
+              fileOptions: FileOptions(contentType: 'image/$ext', upsert: true),
+            );
       } else {
-        await _client.storage.from(_bucket).upload(
-          path,
-          File(file.path),
-          fileOptions: FileOptions(contentType: 'image/$ext', upsert: true),
-        );
+        await _client.storage
+            .from(_bucket)
+            .upload(
+              path,
+              File(file.path),
+              fileOptions: FileOptions(contentType: 'image/$ext', upsert: true),
+            );
       }
 
       final url = _client.storage.from(_bucket).getPublicUrl(path);
@@ -229,10 +229,7 @@ class RentalVehicleService {
     int limit = 50,
     int offset = 0,
   }) async {
-    var query = _client
-        .from(_table)
-        .select('*')
-        .eq('status', 'active');
+    var query = _client.from(_table).select('*').eq('status', 'active');
 
     if (vehicleType != null && vehicleType.isNotEmpty) {
       query = query.eq('vehicle_type', vehicleType);
@@ -269,7 +266,9 @@ class RentalVehicleService {
   }
 
   /// Get listings owned by a specific user
-  static Future<List<Map<String, dynamic>>> getMyListings(String ownerId) async {
+  static Future<List<Map<String, dynamic>>> getMyListings(
+    String ownerId,
+  ) async {
     final result = await _client
         .from(_table)
         .select('*')
@@ -281,7 +280,10 @@ class RentalVehicleService {
   }
 
   /// Toggle listing status (active/inactive)
-  static Future<void> toggleStatus(String listingId, String currentStatus) async {
+  static Future<void> toggleStatus(
+    String listingId,
+    String currentStatus,
+  ) async {
     final newStatus = currentStatus == 'active' ? 'inactive' : 'active';
     await _client
         .from(_table)
@@ -301,7 +303,9 @@ class RentalVehicleService {
     try {
       final result = await _client
           .from('drivers')
-          .select('id, name, email, phone, profile_image_url, rating, total_rides')
+          .select(
+            'id, name, email, phone, profile_image_url, rating, total_rides',
+          )
           .eq('id', ownerId)
           .single();
       return result;

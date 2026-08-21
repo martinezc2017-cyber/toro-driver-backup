@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/haptic_service.dart';
+import '../../utils/money_format.dart';
 import '../../services/rental_vehicle_service.dart';
 import 'rental_detail_screen.dart';
 
@@ -41,7 +42,10 @@ class _BrowseRentalsScreenState extends State<BrowseRentalsScreen> {
   }
 
   Future<void> _loadListings() async {
-    setState(() { _isLoading = true; _error = null; });
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
     try {
       final results = await RentalVehicleService.getActiveListings(
         vehicleType: _selectedType.isNotEmpty ? _selectedType : null,
@@ -59,15 +63,24 @@ class _BrowseRentalsScreenState extends State<BrowseRentalsScreen> {
 
       _applyFilters();
     } catch (e) {
-      if (mounted) setState(() { _error = 'Error: $e'; _isLoading = false; });
+      if (mounted)
+        setState(() {
+          _error = 'Error: $e';
+          _isLoading = false;
+        });
     }
   }
 
   String _extractState(String address) {
     if (address.isEmpty) return '';
     // pickup_address usually has "City, State" or "Street, City, State, Country"
-    final parts = address.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
-    if (parts.length >= 2) return parts[parts.length - 2]; // second to last is usually state
+    final parts = address
+        .split(',')
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
+    if (parts.length >= 2)
+      return parts[parts.length - 2]; // second to last is usually state
     if (parts.length == 1) return parts[0];
     return '';
   }
@@ -85,11 +98,17 @@ class _BrowseRentalsScreenState extends State<BrowseRentalsScreen> {
 
     // Sort
     if (_sortBy == 'price_low') {
-      results.sort((a, b) => ((a['weekly_price_base'] ?? 0) as num)
-          .compareTo((b['weekly_price_base'] ?? 0) as num));
+      results.sort(
+        (a, b) => ((a['weekly_price_base'] ?? 0) as num).compareTo(
+          (b['weekly_price_base'] ?? 0) as num,
+        ),
+      );
     } else if (_sortBy == 'price_high') {
-      results.sort((a, b) => ((b['weekly_price_base'] ?? 0) as num)
-          .compareTo((a['weekly_price_base'] ?? 0) as num));
+      results.sort(
+        (a, b) => ((b['weekly_price_base'] ?? 0) as num).compareTo(
+          (a['weekly_price_base'] ?? 0) as num,
+        ),
+      );
     }
 
     // Search filter
@@ -99,11 +118,17 @@ class _BrowseRentalsScreenState extends State<BrowseRentalsScreen> {
         final make = (l['vehicle_make'] ?? '').toString().toLowerCase();
         final model = (l['vehicle_model'] ?? '').toString().toLowerCase();
         final title = (l['title'] ?? '').toString().toLowerCase();
-        return make.contains(query) || model.contains(query) || title.contains(query);
+        return make.contains(query) ||
+            model.contains(query) ||
+            title.contains(query);
       }).toList();
     }
 
-    if (mounted) setState(() { _listings = results; _isLoading = false; });
+    if (mounted)
+      setState(() {
+        _listings = results;
+        _isLoading = false;
+      });
   }
 
   @override
@@ -119,7 +144,11 @@ class _BrowseRentalsScreenState extends State<BrowseRentalsScreen> {
             snap: true,
             elevation: 0,
             leading: IconButton(
-              icon: Icon(Icons.arrow_back_ios_rounded, color: AppColors.textPrimary, size: 20),
+              icon: Icon(
+                Icons.arrow_back_ios_rounded,
+                color: AppColors.textPrimary,
+                size: 20,
+              ),
               onPressed: () => Navigator.pop(context),
             ),
             title: Text(
@@ -136,7 +165,10 @@ class _BrowseRentalsScreenState extends State<BrowseRentalsScreen> {
                 children: [
                   // Search bar
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     child: Container(
                       decoration: BoxDecoration(
                         color: AppColors.card,
@@ -145,17 +177,37 @@ class _BrowseRentalsScreenState extends State<BrowseRentalsScreen> {
                       ),
                       child: TextField(
                         controller: _searchCtrl,
-                        style: TextStyle(color: AppColors.textPrimary, fontSize: 15),
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 15,
+                        ),
                         decoration: InputDecoration(
                           hintText: 'Buscar por marca, modelo...',
-                          hintStyle: TextStyle(color: AppColors.textDisabled, fontSize: 15),
-                          prefixIcon: Icon(Icons.search_rounded, color: AppColors.textTertiary, size: 22),
+                          hintStyle: TextStyle(
+                            color: AppColors.textDisabled,
+                            fontSize: 15,
+                          ),
+                          prefixIcon: Icon(
+                            Icons.search_rounded,
+                            color: AppColors.textTertiary,
+                            size: 22,
+                          ),
                           border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
                           suffixIcon: _searchCtrl.text.isNotEmpty
                               ? IconButton(
-                                  icon: Icon(Icons.clear_rounded, color: AppColors.textTertiary, size: 20),
-                                  onPressed: () { _searchCtrl.clear(); _applyFilters(); },
+                                  icon: Icon(
+                                    Icons.clear_rounded,
+                                    color: AppColors.textTertiary,
+                                    size: 20,
+                                  ),
+                                  onPressed: () {
+                                    _searchCtrl.clear();
+                                    _applyFilters();
+                                  },
                                 )
                               : null,
                         ),
@@ -198,13 +250,21 @@ class _BrowseRentalsScreenState extends State<BrowseRentalsScreen> {
                 children: [
                   Text(
                     '${_listings.length} vehiculo${_listings.length != 1 ? 's' : ''} disponible${_listings.length != 1 ? 's' : ''}',
-                    style: TextStyle(color: AppColors.textTertiary, fontSize: 13, fontWeight: FontWeight.w500),
+                    style: TextStyle(
+                      color: AppColors.textTertiary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                   const Spacer(),
                   if (_isLoading)
                     SizedBox(
-                      width: 16, height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: _accent),
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: _accent,
+                      ),
                     ),
                 ],
               ),
@@ -214,9 +274,7 @@ class _BrowseRentalsScreenState extends State<BrowseRentalsScreen> {
           // Listings
           if (_isLoading && _listings.isEmpty)
             SliverFillRemaining(
-              child: Center(
-                child: CircularProgressIndicator(color: _accent),
-              ),
+              child: Center(child: CircularProgressIndicator(color: _accent)),
             )
           else if (_error != null)
             SliverFillRemaining(
@@ -224,13 +282,23 @@ class _BrowseRentalsScreenState extends State<BrowseRentalsScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.error_outline_rounded, color: AppColors.error, size: 48),
+                    Icon(
+                      Icons.error_outline_rounded,
+                      color: AppColors.error,
+                      size: 48,
+                    ),
                     const SizedBox(height: 12),
-                    Text(_error!, style: TextStyle(color: AppColors.error, fontSize: 14)),
+                    Text(
+                      _error!,
+                      style: TextStyle(color: AppColors.error, fontSize: 14),
+                    ),
                     const SizedBox(height: 16),
                     TextButton(
                       onPressed: _loadListings,
-                      child: Text('Reintentar', style: TextStyle(color: _accent)),
+                      child: Text(
+                        'Reintentar',
+                        style: TextStyle(color: _accent),
+                      ),
                     ),
                   ],
                 ),
@@ -248,17 +316,28 @@ class _BrowseRentalsScreenState extends State<BrowseRentalsScreen> {
                         color: _accent.withValues(alpha: 0.1),
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(Icons.car_rental_rounded, color: _accent, size: 48),
+                      child: Icon(
+                        Icons.car_rental_rounded,
+                        color: _accent,
+                        size: 48,
+                      ),
                     ),
                     const SizedBox(height: 20),
                     Text(
                       'No hay vehiculos disponibles',
-                      style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       'Intenta con otros filtros o vuelve mas tarde',
-                      style: TextStyle(color: AppColors.textTertiary, fontSize: 14),
+                      style: TextStyle(
+                        color: AppColors.textTertiary,
+                        fontSize: 14,
+                      ),
                     ),
                   ],
                 ),
@@ -268,27 +347,25 @@ class _BrowseRentalsScreenState extends State<BrowseRentalsScreen> {
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               sliver: SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    final listing = _listings[index];
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: _VehicleCard(
-                        listing: listing,
-                        onTap: () {
-                          HapticService.lightImpact();
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => RentalDetailScreen(listing: listing),
-                            ),
-                          );
-                        },
-                      ),
-                    );
-                  },
-                  childCount: _listings.length,
-                ),
+                delegate: SliverChildBuilderDelegate((context, index) {
+                  final listing = _listings[index];
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: _VehicleCard(
+                      listing: listing,
+                      onTap: () {
+                        HapticService.lightImpact();
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                RentalDetailScreen(listing: listing),
+                          ),
+                        );
+                      },
+                    ),
+                  );
+                }, childCount: _listings.length),
               ),
             ),
 
@@ -351,35 +428,48 @@ class _BrowseRentalsScreenState extends State<BrowseRentalsScreen> {
             ],
           ),
         ),
-        ..._availableStates.map((s) => PopupMenuItem(
-          value: s,
-          child: Row(
-            children: [
-              if (_selectedState == s)
-                Icon(Icons.check_rounded, color: _accent, size: 16)
-              else
-                const SizedBox(width: 16),
-              const SizedBox(width: 8),
-              Text(s),
-            ],
+        ..._availableStates.map(
+          (s) => PopupMenuItem(
+            value: s,
+            child: Row(
+              children: [
+                if (_selectedState == s)
+                  Icon(Icons.check_rounded, color: _accent, size: 16)
+                else
+                  const SizedBox(width: 16),
+                const SizedBox(width: 8),
+                Text(s),
+              ],
+            ),
           ),
-        )),
+        ),
       ],
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
           color: hasFilter ? _accent.withValues(alpha: 0.15) : AppColors.card,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: hasFilter ? _accent.withValues(alpha: 0.5) : AppColors.border),
+          border: Border.all(
+            color: hasFilter
+                ? _accent.withValues(alpha: 0.5)
+                : AppColors.border,
+          ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.location_on_rounded, color: hasFilter ? _accent : AppColors.textTertiary, size: 14),
+            Icon(
+              Icons.location_on_rounded,
+              color: hasFilter ? _accent : AppColors.textTertiary,
+              size: 14,
+            ),
             const SizedBox(width: 4),
             Text(
               hasFilter ? _selectedState : 'Estado',
-              style: TextStyle(color: hasFilter ? _accent : AppColors.textSecondary, fontSize: 12),
+              style: TextStyle(
+                color: hasFilter ? _accent : AppColors.textSecondary,
+                fontSize: 12,
+              ),
             ),
           ],
         ),
@@ -398,19 +488,23 @@ class _BrowseRentalsScreenState extends State<BrowseRentalsScreen> {
         setState(() => _sortBy = val);
         _applyFilters();
       },
-      itemBuilder: (ctx) => labels.entries.map((e) => PopupMenuItem(
-        value: e.key,
-        child: Row(
-          children: [
-            if (_sortBy == e.key)
-              Icon(Icons.check_rounded, color: _accent, size: 16)
-            else
-              const SizedBox(width: 16),
-            const SizedBox(width: 8),
-            Text(e.value),
-          ],
-        ),
-      )).toList(),
+      itemBuilder: (ctx) => labels.entries
+          .map(
+            (e) => PopupMenuItem(
+              value: e.key,
+              child: Row(
+                children: [
+                  if (_sortBy == e.key)
+                    Icon(Icons.check_rounded, color: _accent, size: 16)
+                  else
+                    const SizedBox(width: 16),
+                  const SizedBox(width: 8),
+                  Text(e.value),
+                ],
+              ),
+            ),
+          )
+          .toList(),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
@@ -454,7 +548,7 @@ class _VehicleCard extends StatelessWidget {
     final weeklyPrice = (listing['weekly_price_base'] ?? 0).toDouble();
     final dailyPrice = (listing['daily_price'] ?? 0).toDouble();
     final type = listing['vehicle_type'] ?? 'sedan';
-    final currency = listing['currency'] ?? 'MXN';
+    final currency = listing['currency'] ?? currencyCode();
     final address = listing['pickup_address'] ?? '';
 
     return GestureDetector(
@@ -477,7 +571,9 @@ class _VehicleCard extends StatelessWidget {
           children: [
             // Thumbnail
             ClipRRect(
-              borderRadius: const BorderRadius.horizontal(left: Radius.circular(12)),
+              borderRadius: const BorderRadius.horizontal(
+                left: Radius.circular(12),
+              ),
               child: SizedBox(
                 width: 120,
                 height: 110,
@@ -495,14 +591,21 @@ class _VehicleCard extends StatelessWidget {
                               bottom: 4,
                               right: 4,
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
                                 decoration: BoxDecoration(
                                   color: Colors.black.withValues(alpha: 0.6),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(
                                   '${imageUrls.length}',
-                                  style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ),
                             ),
@@ -514,7 +617,10 @@ class _VehicleCard extends StatelessWidget {
             // Info
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -534,9 +640,14 @@ class _VehicleCard extends StatelessWidget {
                           ),
                         ),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 5,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF8B5CF6).withValues(alpha: 0.15),
+                            color: const Color(
+                              0xFF8B5CF6,
+                            ).withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
@@ -555,15 +666,34 @@ class _VehicleCard extends StatelessWidget {
                     // Year + Location
                     Row(
                       children: [
-                        Text(year, style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
+                        Text(
+                          year,
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 11,
+                          ),
+                        ),
                         if (address.isNotEmpty) ...[
-                          Text(' · ', style: TextStyle(color: AppColors.textDisabled, fontSize: 11)),
-                          Icon(Icons.location_on_rounded, color: AppColors.textTertiary, size: 11),
+                          Text(
+                            ' · ',
+                            style: TextStyle(
+                              color: AppColors.textDisabled,
+                              fontSize: 11,
+                            ),
+                          ),
+                          Icon(
+                            Icons.location_on_rounded,
+                            color: AppColors.textTertiary,
+                            size: 11,
+                          ),
                           const SizedBox(width: 2),
                           Expanded(
                             child: Text(
                               address,
-                              style: TextStyle(color: AppColors.textTertiary, fontSize: 11),
+                              style: TextStyle(
+                                color: AppColors.textTertiary,
+                                fontSize: 11,
+                              ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -578,27 +708,51 @@ class _VehicleCard extends StatelessWidget {
                         if (dailyPrice > 0) ...[
                           Text(
                             '\$${dailyPrice.toStringAsFixed(0)}',
-                            style: TextStyle(color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.w800),
+                            style: TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                           Text(
                             ' $currency/dia',
-                            style: TextStyle(color: AppColors.textTertiary, fontSize: 10),
+                            style: TextStyle(
+                              color: AppColors.textTertiary,
+                              fontSize: 10,
+                            ),
                           ),
                         ],
                         if (dailyPrice > 0 && weeklyPrice > 0)
-                          Text(' · ', style: TextStyle(color: AppColors.textDisabled, fontSize: 11)),
+                          Text(
+                            ' · ',
+                            style: TextStyle(
+                              color: AppColors.textDisabled,
+                              fontSize: 11,
+                            ),
+                          ),
                         if (weeklyPrice > 0) ...[
                           Text(
                             '\$${weeklyPrice.toStringAsFixed(0)}',
-                            style: TextStyle(color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.w800),
+                            style: TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                           Text(
                             ' $currency/sem',
-                            style: TextStyle(color: AppColors.textTertiary, fontSize: 10),
+                            style: TextStyle(
+                              color: AppColors.textTertiary,
+                              fontSize: 10,
+                            ),
                           ),
                         ],
                         const Spacer(),
-                        Icon(Icons.chevron_right_rounded, color: AppColors.textTertiary, size: 20),
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          color: AppColors.textTertiary,
+                          size: 20,
+                        ),
                       ],
                     ),
                   ],
@@ -615,7 +769,11 @@ class _VehicleCard extends StatelessWidget {
     return Container(
       color: AppColors.cardSecondary,
       child: Center(
-        child: Icon(Icons.directions_car_rounded, color: AppColors.textDisabled, size: 32),
+        child: Icon(
+          Icons.directions_car_rounded,
+          color: AppColors.textDisabled,
+          size: 32,
+        ),
       ),
     );
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:timeago/timeago.dart' as timeago;
@@ -65,7 +66,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         )
         .subscribe();
 
-    debugPrint('📱 Notifications screen subscribed to Realtime for driver ${driver.id}');
+    debugPrint(
+      '📱 Notifications screen subscribed to Realtime for driver ${driver.id}',
+    );
   }
 
   Future<void> _loadNotifications() async {
@@ -75,7 +78,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     });
 
     try {
-      final driverProvider = Provider.of<DriverProvider>(context, listen: false);
+      final driverProvider = Provider.of<DriverProvider>(
+        context,
+        listen: false,
+      );
       final driver = driverProvider.driver;
 
       if (driver == null) {
@@ -86,7 +92,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return;
       }
 
-      final notifications = await _notificationService.getNotificationHistory(driver.id);
+      final notifications = await _notificationService.getNotificationHistory(
+        driver.id,
+      );
 
       setState(() {
         _notifications = notifications;
@@ -104,7 +112,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     try {
       await _notificationService.markNotificationAsRead(notificationId);
       setState(() {
-        final index = _notifications.indexWhere((n) => n['id'] == notificationId);
+        final index = _notifications.indexWhere(
+          (n) => n['id'] == notificationId,
+        );
         if (index != -1) {
           _notifications[index]['read'] = true;
         }
@@ -116,7 +126,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   Future<void> _markAllAsRead() async {
     try {
-      final driverProvider = Provider.of<DriverProvider>(context, listen: false);
+      final driverProvider = Provider.of<DriverProvider>(
+        context,
+        listen: false,
+      );
       final driver = driverProvider.driver;
       if (driver == null) return;
 
@@ -157,13 +170,21 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Clear all?', style: TextStyle(color: AppColors.textPrimary)),
-        content: Text('This will delete all notifications.',
-            style: TextStyle(color: AppColors.textSecondary)),
+        title: Text(
+          'Clear all?',
+          style: TextStyle(color: AppColors.textPrimary),
+        ),
+        content: Text(
+          'This will delete all notifications.',
+          style: TextStyle(color: AppColors.textSecondary),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
@@ -272,7 +293,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     if (dateStr == null) return '';
     try {
       final date = DateTime.parse(dateStr);
-      return timeago.format(date, locale: 'es');
+      return timeago.format(date, locale: context.locale.languageCode);
     } catch (e) {
       return '';
     }
@@ -292,10 +313,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : _error != null
-                      ? _buildErrorState()
-                      : _notifications.isEmpty
-                          ? _buildEmptyState()
-                          : _buildNotificationsList(),
+                  ? _buildErrorState()
+                  : _notifications.isEmpty
+                  ? _buildEmptyState()
+                  : _buildNotificationsList(),
             ),
           ],
         ),
@@ -354,7 +375,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 if (unreadCount > 0) ...[
                   const SizedBox(width: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.primary,
                       borderRadius: BorderRadius.circular(12),
@@ -376,7 +400,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             GestureDetector(
               onTap: _markAllAsRead,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
@@ -401,7 +428,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   color: Colors.red.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.delete_outline, color: Colors.red, size: 18),
+                child: const Icon(
+                  Icons.delete_outline,
+                  color: Colors.red,
+                  size: 18,
+                ),
               ),
             ),
           ],
@@ -439,10 +470,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           const SizedBox(height: 8),
           Text(
             'Ride notifications will appear here',
-            style: TextStyle(
-              fontSize: 14,
-              color: AppColors.textSecondary,
-            ),
+            style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
           ),
         ],
       ),
@@ -454,18 +482,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.error_outline,
-            size: 48,
-            color: AppColors.error,
-          ),
+          Icon(Icons.error_outline, size: 48, color: AppColors.error),
           const SizedBox(height: 16),
           Text(
             'Error loading notifications',
-            style: TextStyle(
-              fontSize: 16,
-              color: AppColors.textPrimary,
-            ),
+            style: TextStyle(fontSize: 16, color: AppColors.textPrimary),
           ),
           const SizedBox(height: 8),
           TextButton.icon(
@@ -528,7 +549,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isRead ? AppColors.card : AppColors.primary.withValues(alpha: 0.05),
+          color: isRead
+              ? AppColors.card
+              : AppColors.primary.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isRead
@@ -573,7 +596,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           title,
                           style: TextStyle(
                             fontSize: 15,
-                            fontWeight: isRead ? FontWeight.w500 : FontWeight.w600,
+                            fontWeight: isRead
+                                ? FontWeight.w500
+                                : FontWeight.w600,
                             color: AppColors.textPrimary,
                           ),
                         ),
@@ -629,8 +654,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         final eventId = data?['event_id'] as String?;
         final bidId = data?['bid_id'] as String?;
         if (eventId != null) {
-          Navigator.pushNamed(context, '/vehicle-requests',
-              arguments: {'event_id': eventId, 'bid_id': bidId});
+          Navigator.pushNamed(
+            context,
+            '/vehicle-requests',
+            arguments: {'event_id': eventId, 'bid_id': bidId},
+          );
         }
         break;
       case 'bid_won':

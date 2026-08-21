@@ -26,6 +26,13 @@ enum _ViewMode { thisWeek, statements, allEvents }
 class _OrganizerEarningsTabNewState extends State<OrganizerEarningsTabNew> {
   final OrganizerService _organizerService = OrganizerService();
 
+  String get _driverCountry =>
+      (context.read<AuthProvider>().driver?.countryCode ?? userCountry())
+          .toUpperCase();
+
+  String _eventCountry(Map<String, dynamic> event) =>
+      ((event['country_code'] as String?) ?? _driverCountry).toUpperCase();
+
   bool _isLoading = true;
   String? _error;
   _ViewMode _selectedMode = _ViewMode.thisWeek;
@@ -330,12 +337,12 @@ class _OrganizerEarningsTabNewState extends State<OrganizerEarningsTabNew> {
                     child: CircularProgressIndicator(color: AppColors.primary),
                   )
                 : _error != null
-                    ? _buildErrorState()
-                    : RefreshIndicator(
-                        color: AppColors.primary,
-                        onRefresh: _loadData,
-                        child: _buildContent(),
-                      ),
+                ? _buildErrorState()
+                : RefreshIndicator(
+                    color: AppColors.primary,
+                    onRefresh: _loadData,
+                    child: _buildContent(),
+                  ),
           ),
         ],
       ),
@@ -675,7 +682,7 @@ class _OrganizerEarningsTabNewState extends State<OrganizerEarningsTabNew> {
                         ),
                       ),
                       Text(
-                        formatMoney(amountOwed, country: 'MX'),
+                        formatMoney(amountOwed),
                         style: const TextStyle(
                           color: AppColors.error,
                           fontSize: 18,
@@ -1076,7 +1083,8 @@ class _OrganizerEarningsTabNewState extends State<OrganizerEarningsTabNew> {
     final eventId = event['id'] as String? ?? '';
     final eventName = event['event_name'] ?? 'Sin nombre';
     final km = (event['total_distance_km'] as num?)?.toDouble() ?? 0;
-    final pricePerKm = (event['price_per_km'] as num?)?.toDouble() ?? 85;
+    final pricePerKm = (event['price_per_km'] as num?)?.toDouble() ?? 0;
+    final country = _eventCountry(event);
     final cost = km * pricePerKm;
     final commission = cost * _commissionRate;
     final net = cost - commission;
@@ -1244,14 +1252,14 @@ class _OrganizerEarningsTabNewState extends State<OrganizerEarningsTabNew> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    '${km.toStringAsFixed(0)} km',
+                    formatDistance(km, country: country, decimals: 0),
                     style: const TextStyle(
                       color: AppColors.textTertiary,
                       fontSize: 10,
                     ),
                   ),
                   Text(
-                    'TORO: \$${commission.toStringAsFixed(0)}',
+                    'TORO: ${formatMoney(commission, country: country)}',
                     style: const TextStyle(
                       color: AppColors.error,
                       fontSize: 10,
@@ -1297,7 +1305,7 @@ class _OrganizerEarningsTabNewState extends State<OrganizerEarningsTabNew> {
                 icon: Icons.straighten,
                 title: 'Distancia',
                 child: Text(
-                  '${km.toStringAsFixed(1)} km',
+                  formatDistance(km, country: country),
                   style: const TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 12,
@@ -1421,14 +1429,15 @@ class _OrganizerEarningsTabNewState extends State<OrganizerEarningsTabNew> {
                     ),
                     const SizedBox(height: 10),
                     _buildFinancialRow(
-                      '${km.toStringAsFixed(1)} km x \$${pricePerKm.toStringAsFixed(0)}/km',
-                      '\$${cost.toStringAsFixed(0)}',
+                      '${formatDistance(km, country: country)} x '
+                      '${formatPricePerDistance(pricePerKm, country: country)}',
+                      formatMoney(cost, country: country),
                       AppColors.textPrimary,
                     ),
                     const SizedBox(height: 4),
                     _buildFinancialRow(
                       'TORO (${(_commissionRate * 100).toStringAsFixed(0)}%)',
-                      '-\$${commission.toStringAsFixed(0)}',
+                      '-${formatMoney(commission, country: country)}',
                       AppColors.error,
                     ),
                     const SizedBox(height: 6),
@@ -1436,7 +1445,7 @@ class _OrganizerEarningsTabNewState extends State<OrganizerEarningsTabNew> {
                     const SizedBox(height: 6),
                     _buildFinancialRow(
                       'Neto Chofer',
-                      '\$${net.toStringAsFixed(0)}',
+                      formatMoney(net, country: country),
                       AppColors.success,
                       bold: true,
                     ),
@@ -1712,7 +1721,7 @@ class _OrganizerEarningsTabNewState extends State<OrganizerEarningsTabNew> {
               ),
               const SizedBox(width: 12),
               Text(
-                '${totalKm.toStringAsFixed(0)} km',
+                formatDistance(totalKm, country: _driverCountry, decimals: 0),
                 style: const TextStyle(
                   color: AppColors.textTertiary,
                   fontSize: 11,

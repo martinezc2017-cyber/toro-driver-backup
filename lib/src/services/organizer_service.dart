@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
+import '../utils/money_format.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
 import '../core/logging/app_logger.dart';
@@ -58,7 +59,8 @@ class OrganizerService {
 
   /// Creates a new organizer profile and returns the inserted row.
   Future<Map<String, dynamic>> createOrganizerProfile(
-      Map<String, dynamic> data) async {
+    Map<String, dynamic> data,
+  ) async {
     final response = await _client
         .from('organizers')
         .insert(data)
@@ -151,10 +153,7 @@ class OrganizerService {
   ) async {
     try {
       auditData['updated_at'] = DateTime.now().toUtc().toIso8601String();
-      await _client
-          .from('organizers')
-          .update(auditData)
-          .eq('id', organizerId);
+      await _client.from('organizers').update(auditData).eq('id', organizerId);
     } catch (e) {
       debugPrint('ORGANIZER_SVC -> saveAgreementSignature ERROR: $e');
       // Don't rethrow - legal_consents is the real audit trail
@@ -166,9 +165,15 @@ class OrganizerService {
   // ---------------------------------------------------------------------------
 
   /// Uploads a company logo to Supabase storage and returns the public URL.
-  Future<String?> uploadCompanyLogo(String organizerId, String filePath, {Uint8List? bytes}) async {
+  Future<String?> uploadCompanyLogo(
+    String organizerId,
+    String filePath, {
+    Uint8List? bytes,
+  }) async {
     try {
-      AppLogger.log('LOGO_UPLOAD -> Starting upload for organizer: $organizerId');
+      AppLogger.log(
+        'LOGO_UPLOAD -> Starting upload for organizer: $organizerId',
+      );
       AppLogger.log('LOGO_UPLOAD -> File path: $filePath');
 
       // Prefer pre-read bytes (works on web), fallback to file read (mobile)
@@ -194,19 +199,19 @@ class OrganizerService {
 
       AppLogger.log('LOGO_UPLOAD -> Uploading to: $storagePath ($contentType)');
 
-      await _client.storage.from('organizer-logos').uploadBinary(
+      await _client.storage
+          .from('organizer-logos')
+          .uploadBinary(
             storagePath,
             file,
-            fileOptions: FileOptions(
-              contentType: contentType,
-              upsert: true,
-            ),
+            fileOptions: FileOptions(contentType: contentType, upsert: true),
           );
 
       AppLogger.log('LOGO_UPLOAD -> Upload successful');
 
-      final publicUrl =
-          _client.storage.from('organizer-logos').getPublicUrl(storagePath);
+      final publicUrl = _client.storage
+          .from('organizer-logos')
+          .getPublicUrl(storagePath);
 
       AppLogger.log('LOGO_UPLOAD -> Public URL: $publicUrl');
 
@@ -228,7 +233,11 @@ class OrganizerService {
   }
 
   /// Upload a business card image for the organizer
-  Future<String?> uploadBusinessCard(String organizerId, String filePath, {Uint8List? bytes}) async {
+  Future<String?> uploadBusinessCard(
+    String organizerId,
+    String filePath, {
+    Uint8List? bytes,
+  }) async {
     try {
       final Uint8List fileBytes;
       if (bytes != null) {
@@ -241,24 +250,34 @@ class OrganizerService {
 
       final extension = filePath.split('.').last.toLowerCase();
       final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final storagePath = 'organizers/$organizerId/business_card_$timestamp.$extension';
+      final storagePath =
+          'organizers/$organizerId/business_card_$timestamp.$extension';
 
       String contentType = 'image/jpeg';
-      if (extension == 'png') contentType = 'image/png';
-      else if (extension == 'webp') contentType = 'image/webp';
+      if (extension == 'png')
+        contentType = 'image/png';
+      else if (extension == 'webp')
+        contentType = 'image/webp';
 
-      await _client.storage.from('organizer-logos').uploadBinary(
-        storagePath,
-        fileBytes,
-        fileOptions: FileOptions(contentType: contentType, upsert: true),
-      );
+      await _client.storage
+          .from('organizer-logos')
+          .uploadBinary(
+            storagePath,
+            fileBytes,
+            fileOptions: FileOptions(contentType: contentType, upsert: true),
+          );
 
-      final publicUrl = _client.storage.from('organizer-logos').getPublicUrl(storagePath);
+      final publicUrl = _client.storage
+          .from('organizer-logos')
+          .getPublicUrl(storagePath);
 
-      await _client.from('organizers').update({
-        'business_card_url': publicUrl,
-        'updated_at': DateTime.now().toUtc().toIso8601String(),
-      }).eq('id', organizerId);
+      await _client
+          .from('organizers')
+          .update({
+            'business_card_url': publicUrl,
+            'updated_at': DateTime.now().toUtc().toIso8601String(),
+          })
+          .eq('id', organizerId);
 
       return publicUrl;
     } catch (e) {
@@ -310,15 +329,13 @@ class OrganizerService {
         query = query.lte('created_at', to.toIso8601String());
       }
 
-      final response =
-          await query.order('created_at', ascending: false);
+      final response = await query.order('created_at', ascending: false);
 
       final reservations = List<Map<String, dynamic>>.from(response);
 
       double totalCommission = 0;
       for (final r in reservations) {
-        totalCommission +=
-            (r['organizer_commission'] as num?)?.toDouble() ?? 0;
+        totalCommission += (r['organizer_commission'] as num?)?.toDouble() ?? 0;
       }
 
       return {
@@ -352,7 +369,8 @@ class OrganizerService {
       var query = _client
           .from('bus_vehicles')
           .select(
-              '*, drivers!bus_vehicles_owner_id_fkey(id, user_id, name, phone, current_lat, current_lng)')
+            '*, drivers!bus_vehicles_owner_id_fkey(id, user_id, name, phone, current_lat, current_lng)',
+          )
           .eq('is_active', true)
           .eq('available_for_tourism', true);
 
@@ -374,7 +392,8 @@ class OrganizerService {
           // Driver info (person who will operate the bus)
           vehicle['driver_name'] = driver['name'] ?? 'Sin nombre';
           vehicle['driver_phone'] = driver['phone'] ?? '';
-          vehicle['driver_phone_hidden'] = false; // No privacy setting without profiles
+          vehicle['driver_phone_hidden'] =
+              false; // No privacy setting without profiles
           vehicle['driver_email'] = ''; // Not available without profile join
 
           // GPS coordinates from driver
@@ -412,8 +431,7 @@ class OrganizerService {
         query = query.eq('state', state);
       }
 
-      final response =
-          await query.order('created_at', ascending: false);
+      final response = await query.order('created_at', ascending: false);
 
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
@@ -423,7 +441,8 @@ class OrganizerService {
 
   /// Submits a new transport request and returns the inserted row.
   Future<Map<String, dynamic>> submitTransportRequest(
-      Map<String, dynamic> data) async {
+    Map<String, dynamic> data,
+  ) async {
     final response = await _client
         .from('bus_transport_requests')
         .insert(data)
@@ -449,9 +468,7 @@ class OrganizerService {
       'title': 'New message from organizer',
       'body': message,
       'type': 'organizer_contact',
-      'data': {
-        'organizer_id': organizerId,
-      },
+      'data': {'organizer_id': organizerId},
       'read': false,
       'created_at': DateTime.now().toIso8601String(),
     });
@@ -468,7 +485,9 @@ class OrganizerService {
     try {
       final response = await _client
           .from('bus_driver_location')
-          .select('*, drivers!bus_driver_location_driver_id_fkey(id, name, phone)')
+          .select(
+            '*, drivers!bus_driver_location_driver_id_fkey(id, name, phone)',
+          )
           .order('updated_at', ascending: false);
 
       final results = <Map<String, dynamic>>[];
@@ -489,11 +508,15 @@ class OrganizerService {
   }
 
   /// Fetches bus locations for a specific route.
-  Future<List<Map<String, dynamic>>> getBusLocationsForRoute(String routeId) async {
+  Future<List<Map<String, dynamic>>> getBusLocationsForRoute(
+    String routeId,
+  ) async {
     try {
       final response = await _client
           .from('bus_driver_location')
-          .select('*, drivers!bus_driver_location_driver_id_fkey(id, name, phone)')
+          .select(
+            '*, drivers!bus_driver_location_driver_id_fkey(id, name, phone)',
+          )
           .eq('route_id', routeId)
           .order('updated_at', ascending: false);
 
@@ -523,24 +546,26 @@ class OrganizerService {
   }) {
     final channel = _client.channel('bus_locations_realtime');
 
-    channel.onPostgresChanges(
-      event: PostgresChangeEvent.all,
-      schema: 'public',
-      table: 'bus_driver_location',
-      filter: routeId != null
-          ? PostgresChangeFilter(
-              type: PostgresChangeFilterType.eq,
-              column: 'route_id',
-              value: routeId,
-            )
-          : null,
-      callback: (payload) {
-        final newRecord = payload.newRecord;
-        if (newRecord.isNotEmpty) {
-          onLocationUpdate(newRecord);
-        }
-      },
-    ).subscribe();
+    channel
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'bus_driver_location',
+          filter: routeId != null
+              ? PostgresChangeFilter(
+                  type: PostgresChangeFilterType.eq,
+                  column: 'route_id',
+                  value: routeId,
+                )
+              : null,
+          callback: (payload) {
+            final newRecord = payload.newRecord;
+            if (newRecord.isNotEmpty) {
+              onLocationUpdate(newRecord);
+            }
+          },
+        )
+        .subscribe();
 
     return channel;
   }
@@ -590,24 +615,26 @@ class OrganizerService {
   }) {
     final channel = _client.channel('bus_events_realtime');
 
-    channel.onPostgresChanges(
-      event: PostgresChangeEvent.insert,
-      schema: 'public',
-      table: 'bus_events',
-      filter: routeId != null
-          ? PostgresChangeFilter(
-              type: PostgresChangeFilterType.eq,
-              column: 'route_id',
-              value: routeId,
-            )
-          : null,
-      callback: (payload) {
-        final newRecord = payload.newRecord;
-        if (newRecord.isNotEmpty) {
-          onEvent(newRecord);
-        }
-      },
-    ).subscribe();
+    channel
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'bus_events',
+          filter: routeId != null
+              ? PostgresChangeFilter(
+                  type: PostgresChangeFilterType.eq,
+                  column: 'route_id',
+                  value: routeId,
+                )
+              : null,
+          callback: (payload) {
+            final newRecord = payload.newRecord;
+            if (newRecord.isNotEmpty) {
+              onEvent(newRecord);
+            }
+          },
+        )
+        .subscribe();
 
     return channel;
   }
@@ -620,10 +647,7 @@ class OrganizerService {
   ///
   /// Creates entries in `tourism_vehicle_bids` table with status 'pending'.
   /// Looks up the owner (driver) for each vehicle before creating bids.
-  Future<void> sendBidRequests(
-    String eventId,
-    List<String> vehicleIds,
-  ) async {
+  Future<void> sendBidRequests(String eventId, List<String> vehicleIds) async {
     // Look up owner_id (driver) for each vehicle
     final vehicleData = await _client
         .from('bus_vehicles')
@@ -638,9 +662,9 @@ class OrganizerService {
     }
 
     final now = DateTime.now().toUtc().toIso8601String();
-    final bids = vehicleIds
-        .where((vid) => ownerMap.containsKey(vid))
-        .map((vehicleId) {
+    final bids = vehicleIds.where((vid) => ownerMap.containsKey(vid)).map((
+      vehicleId,
+    ) {
       return {
         'event_id': eventId,
         'vehicle_id': vehicleId,
@@ -659,11 +683,13 @@ class OrganizerService {
       try {
         final event = await _client
             .from('tourism_events')
-            .select('event_name, total_distance_km, organizer_id')
+            .select('event_name, total_distance_km, organizer_id, country_code')
             .eq('id', eventId)
             .single();
         final eventName = event['event_name'] as String? ?? 'Evento';
         final distKm = (event['total_distance_km'] as num?)?.toDouble() ?? 0;
+        final country = (event['country_code'] as String? ?? userCountry())
+            .toUpperCase();
 
         // Get organizer name
         final orgId = event['organizer_id'] as String?;
@@ -683,7 +709,9 @@ class OrganizerService {
             await _sendDbNotification(
               userId: driverId,
               title: 'Nueva Solicitud de Puja',
-              body: '$orgName te invita a pujar en: $eventName (${distKm.toStringAsFixed(0)} km)',
+              body:
+                  '$orgName te invita a pujar en: $eventName '
+                  '(${formatDistance(distKm, country: country, decimals: 0)})',
               type: 'bid_request',
               data: {'event_id': eventId},
             );
@@ -761,11 +789,14 @@ class OrganizerService {
         .neq('id', bidId);
 
     // Select the winning bid
-    await _client.from('tourism_vehicle_bids').update({
-      'organizer_status': 'selected',
-      'is_winning_bid': true,
-      'responded_at': DateTime.now().toUtc().toIso8601String(),
-    }).eq('id', bidId);
+    await _client
+        .from('tourism_vehicle_bids')
+        .update({
+          'organizer_status': 'selected',
+          'is_winning_bid': true,
+          'responded_at': DateTime.now().toUtc().toIso8601String(),
+        })
+        .eq('id', bidId);
 
     // Get the winning bid details to update the event
     final winningBid = await _client
@@ -806,17 +837,22 @@ class OrganizerService {
       final winnerId = winningBid['driver_id'] as String?;
       final event = await _client
           .from('tourism_events')
-          .select('event_name')
+          .select('event_name, country_code')
           .eq('id', eventId)
           .single();
       final eventName = event['event_name'] as String? ?? 'Evento';
-      final price = (winningBid['proposed_price_per_km'] as num?)?.toDouble() ?? 0;
+      final price =
+          (winningBid['proposed_price_per_km'] as num?)?.toDouble() ?? 0;
+      final country = (event['country_code'] as String? ?? userCountry())
+          .toUpperCase();
 
       if (winnerId != null) {
         await _sendDbNotification(
           userId: winnerId,
           title: 'Tu Puja Fue Seleccionada!',
-          body: 'Ganaste: $eventName a \$${price.toStringAsFixed(2)}/km',
+          body:
+              'Ganaste: $eventName a '
+              '${formatPricePerDistance(price, country: country)}',
           type: 'bid_won',
           data: {'event_id': eventId, 'bid_id': bidId},
         );
@@ -863,12 +899,15 @@ class OrganizerService {
 
     final currentRound = (current['negotiation_round'] as num?)?.toInt() ?? 0;
 
-    await _client.from('tourism_vehicle_bids').update({
-      'organizer_status': 'counter_offered',
-      'organizer_proposed_price': proposedPrice,
-      'negotiation_round': currentRound + 1,
-      'updated_at': DateTime.now().toUtc().toIso8601String(),
-    }).eq('id', bidId);
+    await _client
+        .from('tourism_vehicle_bids')
+        .update({
+          'organizer_status': 'counter_offered',
+          'organizer_proposed_price': proposedPrice,
+          'negotiation_round': currentRound + 1,
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
+        })
+        .eq('id', bidId);
 
     // Notify the driver about the counter-offer
     try {
@@ -881,20 +920,25 @@ class OrganizerService {
       final eventId = bid['event_id'] as String?;
 
       String eventName = 'Evento';
+      String country = userCountry();
       if (eventId != null) {
         final event = await _client
             .from('tourism_events')
-            .select('event_name')
+            .select('event_name, country_code')
             .eq('id', eventId)
             .maybeSingle();
         eventName = event?['event_name'] as String? ?? eventName;
+        country = (event?['country_code'] as String? ?? country).toUpperCase();
       }
 
       if (driverId != null) {
         await _sendDbNotification(
           userId: driverId,
           title: 'Contra-oferta Recibida',
-          body: 'El organizador propone \$${proposedPrice.toStringAsFixed(2)}/km para: $eventName',
+          body:
+              'El organizador propone '
+              '${formatPricePerDistance(proposedPrice, country: country)} '
+              'para: $eventName',
           type: 'bid_counter_offer',
           data: {'bid_id': bidId, 'event_id': eventId},
         );
@@ -915,11 +959,14 @@ class OrganizerService {
     required double driverProposedPrice,
   }) async {
     // Update the bid: accept the driver's counter-offer price
-    await _client.from('tourism_vehicle_bids').update({
-      'organizer_status': 'accepted',
-      'proposed_price_per_km': driverProposedPrice,
-      'updated_at': DateTime.now().toUtc().toIso8601String(),
-    }).eq('id', bidId);
+    await _client
+        .from('tourism_vehicle_bids')
+        .update({
+          'organizer_status': 'accepted',
+          'proposed_price_per_km': driverProposedPrice,
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
+        })
+        .eq('id', bidId);
 
     // Now select this as the winning bid
     await selectWinningBid(bidId, eventId);
@@ -932,22 +979,24 @@ class OrganizerService {
   }) {
     final channel = _client.channel('bids_$eventId');
 
-    channel.onPostgresChanges(
-      event: PostgresChangeEvent.all,
-      schema: 'public',
-      table: 'tourism_vehicle_bids',
-      filter: PostgresChangeFilter(
-        type: PostgresChangeFilterType.eq,
-        column: 'event_id',
-        value: eventId,
-      ),
-      callback: (payload) {
-        final newRecord = payload.newRecord;
-        if (newRecord.isNotEmpty) {
-          onBidUpdate(newRecord);
-        }
-      },
-    ).subscribe();
+    channel
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'tourism_vehicle_bids',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'event_id',
+            value: eventId,
+          ),
+          callback: (payload) {
+            final newRecord = payload.newRecord;
+            if (newRecord.isNotEmpty) {
+              onBidUpdate(newRecord);
+            }
+          },
+        )
+        .subscribe();
 
     return channel;
   }
@@ -1010,23 +1059,28 @@ class OrganizerService {
     required double amountOwed,
     String? message,
   }) async {
-    final response = await _client.from('week_reset_requests').insert({
-      'requester_id': requesterId,
-      'requester_type': requesterType,
-      'organizer_id': organizerId,
-      'statement_id': statementId,
-      'amount_owed': amountOwed,
-      'message': message,
-      'status': 'pending',
-      'created_at': DateTime.now().toUtc().toIso8601String(),
-    }).select().single();
+    final response = await _client
+        .from('week_reset_requests')
+        .insert({
+          'requester_id': requesterId,
+          'requester_type': requesterType,
+          'organizer_id': organizerId,
+          'statement_id': statementId,
+          'amount_owed': amountOwed,
+          'message': message,
+          'status': 'pending',
+          'created_at': DateTime.now().toUtc().toIso8601String(),
+        })
+        .select()
+        .single();
 
     return response;
   }
 
   /// Fetches pending reset requests for this organizer.
   Future<List<Map<String, dynamic>>> getMyResetRequests(
-      String requesterId) async {
+    String requesterId,
+  ) async {
     try {
       final response = await _client
           .from('week_reset_requests')
@@ -1042,8 +1096,7 @@ class OrganizerService {
   }
 
   /// Fetches current week's events and calculates totals.
-  Future<Map<String, dynamic>> getCurrentWeekSummary(
-      String organizerId) async {
+  Future<Map<String, dynamic>> getCurrentWeekSummary(String organizerId) async {
     try {
       // Get current week range (Sunday to Saturday)
       final now = DateTime.now();

@@ -29,10 +29,7 @@ import '../../utils/money_format.dart';
 class LiveTripPanelScreen extends StatefulWidget {
   final String eventId;
 
-  const LiveTripPanelScreen({
-    super.key,
-    required this.eventId,
-  });
+  const LiveTripPanelScreen({super.key, required this.eventId});
 
   @override
   State<LiveTripPanelScreen> createState() => _LiveTripPanelScreenState();
@@ -122,8 +119,7 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
 
   Future<void> _loadTripData() async {
     try {
-      final summary =
-          await _fareService.getActiveTripSummary(widget.eventId);
+      final summary = await _fareService.getActiveTripSummary(widget.eventId);
 
       if (summary.containsKey('error')) {
         debugPrint('LIVE_TRIP -> Error: ${summary['error']}');
@@ -139,20 +135,19 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
       if (mounted) {
         setState(() {
           _tripSummary = summary;
-          _passengers =
-              List<Map<String, dynamic>>.from(summary['passengers'] ?? []);
-          _itinerary =
-              List<Map<String, dynamic>>.from(summary['itinerary'] ?? []);
-          _currentStopIndex =
-              (summary['current_stop_index'] as int?) ?? 0;
-          _elapsedFormatted =
-              (summary['elapsed_time'] as String?) ?? '00:00';
+          _passengers = List<Map<String, dynamic>>.from(
+            summary['passengers'] ?? [],
+          );
+          _itinerary = List<Map<String, dynamic>>.from(
+            summary['itinerary'] ?? [],
+          );
+          _currentStopIndex = (summary['current_stop_index'] as int?) ?? 0;
+          _elapsedFormatted = (summary['elapsed_time'] as String?) ?? '00:00';
           _isLoading = false;
 
           // Set trip start time for local timer
           if (_tripStartTime == null && _event?['started_at'] != null) {
-            _tripStartTime =
-                DateTime.tryParse(_event!['started_at'] as String);
+            _tripStartTime = DateTime.tryParse(_event!['started_at'] as String);
             _startElapsedTimer();
           }
         });
@@ -203,19 +198,20 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
       distanceFilter: 30,
     );
 
-    _positionSubscription = Geolocator.getPositionStream(
-      locationSettings: locationSettings,
-    ).listen((Position position) {
-      if (mounted) {
-        _currentPosition = position;
-        // Update status based on speed
-        final isMoving = position.speed > 1.5;
-        final newStatus = isMoving ? 'en_ruta' : 'detenido';
-        if (newStatus != _tripStatus) {
-          setState(() => _tripStatus = newStatus);
-        }
-      }
-    });
+    _positionSubscription =
+        Geolocator.getPositionStream(locationSettings: locationSettings).listen(
+          (Position position) {
+            if (mounted) {
+              _currentPosition = position;
+              // Update status based on speed
+              final isMoving = position.speed > 1.5;
+              final newStatus = isMoving ? 'en_ruta' : 'detenido';
+              if (newStatus != _tripStatus) {
+                setState(() => _tripStatus = newStatus);
+              }
+            }
+          },
+        );
 
     // Update driver location in DB every 10 seconds
     _locationUpdateTimer = Timer.periodic(
@@ -226,8 +222,7 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
 
   Future<void> _updateDriverLocation() async {
     if (_currentPosition == null) return;
-    final driverProvider =
-        Provider.of<DriverProvider>(context, listen: false);
+    final driverProvider = Provider.of<DriverProvider>(context, listen: false);
     final driverId = driverProvider.driver?.id;
     if (driverId == null) return;
 
@@ -288,8 +283,7 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
       await _eventService.markStopArrived(widget.eventId, nextStopIndex);
 
       // 2. Check which passengers exit here
-      final exitingPassengers =
-          await _fareService.getPassengersExitingAtStop(
+      final exitingPassengers = await _fareService.getPassengersExitingAtStop(
         eventId: widget.eventId,
         stopIndex: nextStopIndex,
       );
@@ -305,18 +299,23 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
 
       // 3. Advance stop index
       if (nextStopIndex < _itinerary.length - 1) {
-        await Supabase.instance.client.from('tourism_events').update({
-          'current_stop_index': nextStopIndex + 1,
-          'updated_at': DateTime.now().toUtc().toIso8601String(),
-        }).eq('id', widget.eventId);
+        await Supabase.instance.client
+            .from('tourism_events')
+            .update({
+              'current_stop_index': nextStopIndex + 1,
+              'updated_at': DateTime.now().toUtc().toIso8601String(),
+            })
+            .eq('id', widget.eventId);
       }
 
       if (!mounted) return;
 
       // 4. Create bus event (non-blocking — FK may fail if bus_routes is empty)
       if (!mounted) return;
-      final driverProvider =
-          Provider.of<DriverProvider>(context, listen: false);
+      final driverProvider = Provider.of<DriverProvider>(
+        context,
+        listen: false,
+      );
       final driverId = driverProvider.driver?.id;
       if (driverId != null && _currentPosition != null) {
         try {
@@ -383,10 +382,7 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
         exitStopIndex: stopIndex,
         pricePerKm: pricePerKm,
       );
-      passengerFares.add({
-        ...p,
-        'calculated_fare': fare,
-      });
+      passengerFares.add({...p, 'calculated_fare': fare});
     }
 
     final confirmed = await showDialog<bool>(
@@ -394,9 +390,7 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.card,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
             Container(
@@ -444,16 +438,13 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
             child: ListView.separated(
               shrinkWrap: true,
               itemCount: passengerFares.length,
-              separatorBuilder: (_, _) => Divider(
-                color: AppColors.border.withOpacity(0.5),
-                height: 1,
-              ),
+              separatorBuilder: (_, _) =>
+                  Divider(color: AppColors.border.withOpacity(0.5), height: 1),
               itemBuilder: (_, i) {
                 final p = passengerFares[i];
                 final name = p['invited_name'] ?? 'Pasajero';
                 final fare = (p['calculated_fare'] as num?)?.toDouble() ?? 0.0;
-                final payment =
-                    (p['payment_method'] as String?) ?? 'efectivo';
+                final payment = (p['payment_method'] as String?) ?? 'efectivo';
                 return Padding(
                   padding: const EdgeInsets.symmetric(vertical: 10),
                   child: Row(
@@ -467,9 +458,7 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
                         ),
                         child: Center(
                           child: Text(
-                            name.isNotEmpty
-                                ? name[0].toUpperCase()
-                                : '?',
+                            name.isNotEmpty ? name[0].toUpperCase() : '?',
                             style: const TextStyle(
                               color: AppColors.primary,
                               fontWeight: FontWeight.w700,
@@ -504,7 +493,15 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
                         ),
                       ),
                       Text(
-                        formatMoney(fare, country: context.read<DriverProvider>().driver?.countryCode ?? 'MX'),
+                        formatMoney(
+                          fare,
+                          country:
+                              context
+                                  .read<DriverProvider>()
+                                  .driver
+                                  ?.countryCode ??
+                              'US',
+                        ),
                         style: const TextStyle(
                           color: AppColors.success,
                           fontSize: 16,
@@ -587,17 +584,14 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
         await Supabase.instance.client
             .from(SupabaseConfig.notificationsTable)
             .insert({
-          'user_id': userId,
-          'title': 'Proxima parada: $stopName',
-          'body': 'Tu parada es la siguiente. Preparate para bajar.',
-          'type': 'tourism_next_stop',
-          'data': {
-            'event_id': widget.eventId,
-            'stop_index': nextStopIndex,
-          },
-          'read': false,
-          'created_at': DateTime.now().toUtc().toIso8601String(),
-        });
+              'user_id': userId,
+              'title': 'Proxima parada: $stopName',
+              'body': 'Tu parada es la siguiente. Preparate para bajar.',
+              'type': 'tourism_next_stop',
+              'data': {'event_id': widget.eventId, 'stop_index': nextStopIndex},
+              'read': false,
+              'created_at': DateTime.now().toUtc().toIso8601String(),
+            });
       }
     } catch (e) {
       debugPrint('LIVE_TRIP -> Error notifying next stop: $e');
@@ -652,9 +646,7 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.card,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
             Container(
@@ -683,10 +675,7 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
         content: const Text(
           'Esto enviara una notificacion de emergencia a TODOS los pasajeros y al organizador del evento.\n\n'
           'Solo usar en situaciones reales de emergencia.',
-          style: TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 14,
-          ),
+          style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
         ),
         actions: [
           TextButton(
@@ -719,7 +708,8 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
       await _eventService.notifyEventPassengers(
         eventId: widget.eventId,
         title: 'ALERTA DE EMERGENCIA',
-        body: 'El conductor ha emitido una alerta de emergencia. '
+        body:
+            'El conductor ha emitido una alerta de emergencia. '
             'Por favor siga las instrucciones del conductor.',
         type: 'tourism_emergency',
         extraData: {
@@ -735,20 +725,20 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
         await Supabase.instance.client
             .from(SupabaseConfig.notificationsTable)
             .insert({
-          'user_id': organizerId,
-          'title': 'EMERGENCIA - Conductor',
-          'body':
-              'El conductor ha emitido una alerta de emergencia en el evento.',
-          'type': 'tourism_emergency',
-          'data': {
-            'event_id': widget.eventId,
-            'level': 4,
-            'lat': _currentPosition?.latitude,
-            'lng': _currentPosition?.longitude,
-          },
-          'read': false,
-          'created_at': DateTime.now().toUtc().toIso8601String(),
-        });
+              'user_id': organizerId,
+              'title': 'EMERGENCIA - Conductor',
+              'body':
+                  'El conductor ha emitido una alerta de emergencia en el evento.',
+              'type': 'tourism_emergency',
+              'data': {
+                'event_id': widget.eventId,
+                'level': 4,
+                'lat': _currentPosition?.latitude,
+                'lng': _currentPosition?.longitude,
+              },
+              'read': false,
+              'created_at': DateTime.now().toUtc().toIso8601String(),
+            });
       }
 
       if (mounted) {
@@ -828,8 +818,8 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
                   height: 48,
                   decoration: BoxDecoration(
                     color: _getCategoryColor(
-                            passenger['category'] as String? ?? 'waiting')
-                        .withOpacity(0.2),
+                      passenger['category'] as String? ?? 'waiting',
+                    ).withOpacity(0.2),
                     shape: BoxShape.circle,
                   ),
                   child: Center(
@@ -837,7 +827,8 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
                       name.isNotEmpty ? name[0].toUpperCase() : '?',
                       style: TextStyle(
                         color: _getCategoryColor(
-                            passenger['category'] as String? ?? 'waiting'),
+                          passenger['category'] as String? ?? 'waiting',
+                        ),
                         fontWeight: FontWeight.w800,
                         fontSize: 20,
                       ),
@@ -875,14 +866,23 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
             _buildDetailRow(
               Icons.attach_money,
               'Tarifa estimada',
-              formatMoney(estimatedFare, country: context.read<DriverProvider>().driver?.countryCode ?? 'MX'),
+              formatMoney(
+                estimatedFare,
+                country:
+                    context.read<DriverProvider>().driver?.countryCode ?? 'US',
+              ),
             ),
             if (finalFare != null) ...[
               const SizedBox(height: 10),
               _buildDetailRow(
                 Icons.receipt,
                 'Tarifa final',
-                formatMoney(finalFare, country: context.read<DriverProvider>().driver?.countryCode ?? 'MX'),
+                formatMoney(
+                  finalFare,
+                  country:
+                      context.read<DriverProvider>().driver?.countryCode ??
+                      'US',
+                ),
                 valueColor: AppColors.success,
               ),
             ],
@@ -1018,8 +1018,7 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
         invitationId: invitationId,
         exitStopIndex: _currentStopIndex,
         fare: fare,
-        paymentMethod:
-            (passenger['payment_method'] as String?) ?? 'efectivo',
+        paymentMethod: (passenger['payment_method'] as String?) ?? 'efectivo',
       );
       HapticService.success();
       await _loadTripData();
@@ -1029,7 +1028,7 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
           SnackBar(
             content: Text(
               '${passenger['invited_name'] ?? "Pasajero"} bajo - '
-              'Tarifa: ${formatMoney(fare, country: context.read<DriverProvider>().driver?.countryCode ?? 'MX')}',
+              'Tarifa: ${formatMoney(fare, country: context.read<DriverProvider>().driver?.countryCode ?? 'US')}',
             ),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
@@ -1191,10 +1190,7 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
         const SizedBox(width: 12),
         Text(
           '$label: ',
-          style: const TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 14,
-          ),
+          style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
         ),
         Expanded(
           child: Text(
@@ -1251,10 +1247,7 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
           SizedBox(height: 16),
           Text(
             'Cargando panel de viaje...',
-            style: TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 14,
-            ),
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
           ),
         ],
       ),
@@ -1331,15 +1324,15 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
             builder: (context, child) {
               final statusColor = _getStatusColor(_tripStatus);
               return Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
-                  color: statusColor
-                      .withOpacity(_pulseAnimation.value * 0.25),
+                  color: statusColor.withOpacity(_pulseAnimation.value * 0.25),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color:
-                        statusColor.withOpacity(_pulseAnimation.value),
+                    color: statusColor.withOpacity(_pulseAnimation.value),
                     width: 1.5,
                   ),
                 ),
@@ -1382,10 +1375,10 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
         ((_tripSummary['total_fare_collected'] as num?)?.toDouble()) ?? 0.0;
     final estimated =
         ((_tripSummary['estimated_total_fare'] as num?)?.toDouble()) ?? 0.0;
-    final nextStopName =
-        (_tripSummary['next_stop_name'] as String?) ?? 'Final';
-    final progress =
-        maxPassengers > 0 ? (aboard / maxPassengers).clamp(0.0, 1.0) : 0.0;
+    final nextStopName = (_tripSummary['next_stop_name'] as String?) ?? 'Final';
+    final progress = maxPassengers > 0
+        ? (aboard / maxPassengers).clamp(0.0, 1.0)
+        : 0.0;
 
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 8, 12, 4),
@@ -1469,11 +1462,7 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
           // Next stop
           Row(
             children: [
-              const Icon(
-                Icons.arrow_forward,
-                color: AppColors.info,
-                size: 16,
-              ),
+              const Icon(Icons.arrow_forward, color: AppColors.info, size: 16),
               const SizedBox(width: 6),
               Text(
                 'Siguiente: ',
@@ -1494,8 +1483,7 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
                 ),
               ),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: AppColors.primary.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(8),
@@ -1534,10 +1522,7 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
             const SizedBox(height: 12),
             const Text(
               'Sin pasajeros registrados',
-              style: TextStyle(
-                color: AppColors.textTertiary,
-                fontSize: 14,
-              ),
+              style: TextStyle(color: AppColors.textTertiary, fontSize: 14),
             ),
           ],
         ),
@@ -1545,15 +1530,11 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
     }
 
     // Group passengers by category
-    final aboard = _passengers
-        .where((p) => p['category'] == 'aboard')
-        .toList();
+    final aboard = _passengers.where((p) => p['category'] == 'aboard').toList();
     final waiting = _passengers
         .where((p) => p['category'] == 'waiting')
         .toList();
-    final exited = _passengers
-        .where((p) => p['category'] == 'exited')
-        .toList();
+    final exited = _passengers.where((p) => p['category'] == 'exited').toList();
 
     return RefreshIndicator(
       color: AppColors.primary,
@@ -1641,14 +1622,12 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
   Widget _buildPassengerCard(Map<String, dynamic> passenger) {
     final name = (passenger['invited_name'] as String?) ?? 'Pasajero';
     final category = (passenger['category'] as String?) ?? 'waiting';
-    final boardingStop =
-        (passenger['boarding_stop_name'] as String?) ?? '-';
+    final boardingStop = (passenger['boarding_stop_name'] as String?) ?? '-';
     final exitStop = passenger['exit_stop_name'] as String?;
     final estimatedFare =
         (passenger['estimated_fare'] as num?)?.toDouble() ?? 0.0;
     final finalFare = (passenger['final_fare'] as num?)?.toDouble();
-    final payment =
-        (passenger['payment_method'] as String?) ?? 'efectivo';
+    final payment = (passenger['payment_method'] as String?) ?? 'efectivo';
     final seatNumber = passenger['seat_number'] as String?;
     final gpsEnabled = passenger['gps_tracking_enabled'] as bool? ?? false;
     final hasGps = passenger['last_known_lat'] != null;
@@ -1663,13 +1642,9 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
         margin: const EdgeInsets.only(bottom: 6),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isExited
-              ? AppColors.card.withOpacity(0.6)
-              : AppColors.card,
+          color: isExited ? AppColors.card.withOpacity(0.6) : AppColors.card,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: categoryColor.withOpacity(0.2),
-          ),
+          border: Border.all(color: categoryColor.withOpacity(0.2)),
         ),
         child: Row(
           children: [
@@ -1685,7 +1660,8 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
                   ),
                   child: Center(
                     child: Text(
-                      seatNumber ?? (name.isNotEmpty ? name[0].toUpperCase() : '?'),
+                      seatNumber ??
+                          (name.isNotEmpty ? name[0].toUpperCase() : '?'),
                       style: TextStyle(
                         color: categoryColor,
                         fontWeight: FontWeight.w700,
@@ -1706,7 +1682,11 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
                         shape: BoxShape.circle,
                         border: Border.all(color: AppColors.card, width: 1.5),
                       ),
-                      child: const Icon(Icons.gps_fixed, color: Colors.white, size: 7),
+                      child: const Icon(
+                        Icons.gps_fixed,
+                        color: Colors.white,
+                        size: 7,
+                      ),
                     ),
                   ),
               ],
@@ -1777,7 +1757,12 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  formatMoney(displayFare, country: context.read<DriverProvider>().driver?.countryCode ?? 'MX'),
+                  formatMoney(
+                    displayFare,
+                    country:
+                        context.read<DriverProvider>().driver?.countryCode ??
+                        'US',
+                  ),
                   style: TextStyle(
                     color: finalFare != null
                         ? AppColors.success
@@ -1788,8 +1773,10 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
                 ),
                 const SizedBox(height: 2),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: payment == 'efectivo'
                         ? AppColors.warning.withOpacity(0.15)
@@ -1843,7 +1830,11 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
             Expanded(
               child: Text(
                 'tourism_complete_trip_title'.tr(),
-                style: const TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w700),
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ],
@@ -1855,7 +1846,10 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text('tourism_cancel'.tr(), style: const TextStyle(color: AppColors.textSecondary)),
+            child: Text(
+              'tourism_cancel'.tr(),
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
           ),
           ElevatedButton.icon(
             onPressed: () => Navigator.pop(ctx, true),
@@ -1864,7 +1858,9 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.success,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
           ),
         ],
@@ -1918,14 +1914,14 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
         await Supabase.instance.client
             .from(SupabaseConfig.notificationsTable)
             .insert({
-          'user_id': organizerId,
-          'title': 'tourism_trip_completed'.tr(),
-          'body': 'tourism_trip_completed_organizer'.tr(),
-          'type': 'tourism_trip_completed',
-          'data': {'event_id': widget.eventId},
-          'read': false,
-          'created_at': DateTime.now().toUtc().toIso8601String(),
-        });
+              'user_id': organizerId,
+              'title': 'tourism_trip_completed'.tr(),
+              'body': 'tourism_trip_completed_organizer'.tr(),
+              'type': 'tourism_trip_completed',
+              'data': {'event_id': widget.eventId},
+              'read': false,
+              'created_at': DateTime.now().toUtc().toIso8601String(),
+            });
       }
 
       scaffoldMessenger.showSnackBar(
@@ -1942,7 +1938,9 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
       }
       scaffoldMessenger.showSnackBar(
         SnackBar(
-          content: Text('tourism_error_completing'.tr(namedArgs: {'error': '$e'})),
+          content: Text(
+            'tourism_error_completing'.tr(namedArgs: {'error': '$e'}),
+          ),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
         ),
@@ -1982,17 +1980,31 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
                 ? ElevatedButton.icon(
                     onPressed: _isCompleting ? null : _onCompleteTrip,
                     icon: _isCompleting
-                        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
                         : const Icon(Icons.flag, size: 20),
                     label: Text(
-                      _isCompleting ? 'tourism_completing'.tr() : 'tourism_complete_trip'.tr(),
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                      _isCompleting
+                          ? 'tourism_completing'.tr()
+                          : 'tourism_complete_trip'.tr(),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.success,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                       elevation: 0,
                     ),
                   )
@@ -2001,13 +2013,18 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
                     icon: const Icon(Icons.skip_next, size: 20),
                     label: Text(
                       'tourism_next_stop'.tr(),
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                       elevation: 0,
                     ),
                   ),
@@ -2019,13 +2036,13 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
             child: ElevatedButton.icon(
               onPressed: _onToggleBoarding,
               icon: Icon(
-                _acceptingBoardings
-                    ? Icons.person_off
-                    : Icons.person_add,
+                _acceptingBoardings ? Icons.person_off : Icons.person_add,
                 size: 18,
               ),
               label: Text(
-                _acceptingBoardings ? 'tourism_boarding_closed'.tr() : 'tourism_boarding_open'.tr(),
+                _acceptingBoardings
+                    ? 'tourism_boarding_closed'.tr()
+                    : 'tourism_boarding_open'.tr(),
                 style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -2035,8 +2052,9 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
                 backgroundColor: _acceptingBoardings
                     ? AppColors.warning.withOpacity(0.15)
                     : AppColors.success.withOpacity(0.15),
-                foregroundColor:
-                    _acceptingBoardings ? AppColors.warning : AppColors.success,
+                foregroundColor: _acceptingBoardings
+                    ? AppColors.warning
+                    : AppColors.success,
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
@@ -2063,9 +2081,7 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
                 padding: EdgeInsets.zero,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
-                  side: BorderSide(
-                    color: AppColors.error.withOpacity(0.3),
-                  ),
+                  side: BorderSide(color: AppColors.error.withOpacity(0.3)),
                 ),
                 elevation: 0,
               ),

@@ -22,6 +22,7 @@ class _DocumentsScreenState extends State<DocumentsScreen>
   final ImagePicker _imagePicker = ImagePicker();
 
   bool _isLoading = true;
+  bool _isMexico = false;
   CompleteDocumentStatus? _completeStatus;
   String? _vehicleId;
   String? _driverId;
@@ -34,20 +35,23 @@ class _DocumentsScreenState extends State<DocumentsScreen>
   // so the merged tab behaves exactly like the old standalone MX screen.
   List<MexicoDocument> _mexicoDocs = [];
   List<MexicoDocumentType> _requiredMexicoDocs = [];
-  String _driverStateCode = 'CDMX';
+  String _driverStateCode = 'MX';
   String? _driverCurp;
   String? _driverRfc;
 
-  int get _totalDocs => _personalDocs.length + _vehicleDocs.length + _requiredMexicoDocs.length;
+  int get _totalDocs =>
+      _personalDocs.length +
+      _vehicleDocs.length +
+      (_isMexico ? _requiredMexicoDocs.length : 0);
   int get _approvedDocs =>
       _personalDocs.where((d) => d.status == DocumentStatus.approved).length +
       _vehicleDocs.where((d) => d.status == DocumentStatus.approved).length +
-      _mexicoDocs.where((d) => d.isApproved).length;
+      (_isMexico ? _mexicoDocs.where((d) => d.isApproved).length : 0);
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
     _loadDocuments();
   }
 
@@ -75,19 +79,36 @@ class _DocumentsScreenState extends State<DocumentsScreen>
       try {
         final driverRow = await SupabaseConfig.client
             .from('drivers')
-            .select('id, state_code, rfc, curp')
+            .select('id, country_code, state_code, rfc, curp')
             .eq('user_id', user.id)
             .maybeSingle();
 
         if (driverRow != null) {
           _driverId = driverRow['id'] as String?;
-          _driverStateCode = (driverRow['state_code'] as String?) ?? 'CDMX';
+          final isMexico =
+              driverRow['country_code']?.toString().toUpperCase() == 'MX';
+          if (_isMexico != isMexico) {
+            final oldIndex = _tabController.index;
+            _tabController.dispose();
+            _isMexico = isMexico;
+            final tabCount = _isMexico ? 3 : 2;
+            _tabController = TabController(
+              length: tabCount,
+              vsync: this,
+              initialIndex: oldIndex < tabCount ? oldIndex : tabCount - 1,
+            );
+          }
+          _driverStateCode = (driverRow['state_code'] as String?) ?? 'MX';
           _driverRfc = driverRow['rfc'] as String?;
           _driverCurp = driverRow['curp'] as String?;
 
-          _requiredMexicoDocs = _mexicoService.getRequiredDocuments(_driverStateCode);
-          if (_driverId != null) {
+          _requiredMexicoDocs = _isMexico
+              ? _mexicoService.getRequiredDocuments(_driverStateCode)
+              : [];
+          if (_isMexico && _driverId != null) {
             _mexicoDocs = await _mexicoService.getDriverDocuments(_driverId!);
+          } else {
+            _mexicoDocs = [];
           }
         }
       } catch (_) {
@@ -110,26 +131,39 @@ class _DocumentsScreenState extends State<DocumentsScreen>
         ),
         DocumentItem(
           'doc_profile_photo'.tr(),
-          driverDocs.hasProfilePhoto ? 'doc_uploaded'.tr() : 'doc_not_uploaded'.tr(),
+          driverDocs.hasProfilePhoto
+              ? 'doc_uploaded'.tr()
+              : 'doc_not_uploaded'.tr(),
           'doc_required_verification'.tr(),
           Icons.person,
-          driverDocs.hasProfilePhoto ? DocumentStatus.approved : DocumentStatus.missing,
+          driverDocs.hasProfilePhoto
+              ? DocumentStatus.approved
+              : DocumentStatus.missing,
           onTap: () => _showUploadDialog(DocumentUploadType.profilePhoto),
         ),
         DocumentItem(
           'doc_background_check'.tr(),
-          driverDocs.backgroundCheckStatus ?? 'Pendiente',
+          driverDocs.backgroundCheckStatus ?? 'pending'.tr(),
           'doc_auto_verification'.tr(),
           Icons.security,
           _mapBackgroundCheckStatus(driverDocs.backgroundCheckStatus),
         ),
         DocumentItem(
           'doc_driver_agreement'.tr(),
-          driverDocs.agreementSigned ? 'driver_agreement_accepted'.tr() : 'driver_agreement_not_signed'.tr(),
-          driverDocs.agreementSigned ? 'doc_auto_verification'.tr() : 'doc_required'.tr(),
+          driverDocs.agreementSigned
+              ? 'driver_agreement_accepted'.tr()
+              : 'driver_agreement_not_signed'.tr(),
+          driverDocs.agreementSigned
+              ? 'doc_auto_verification'.tr()
+              : 'doc_required'.tr(),
           Icons.description,
-          driverDocs.agreementSigned ? DocumentStatus.approved : DocumentStatus.missing,
-          onTap: () => Navigator.pushNamed(context, '/driver-agreement').then((_) => _loadDocuments()),
+          driverDocs.agreementSigned
+              ? DocumentStatus.approved
+              : DocumentStatus.missing,
+          onTap: () => Navigator.pushNamed(
+            context,
+            '/driver-agreement',
+          ).then((_) => _loadDocuments()),
         ),
       ];
 
@@ -152,52 +186,138 @@ class _DocumentsScreenState extends State<DocumentsScreen>
             return DocumentStatus.missing;
         }
       }
-      DocumentItem vehPhoto(String label, String hint, String? url, DocumentUploadType t) =>
+
+      DocumentItem vehPhoto(
+        String label,
+        String hint,
+        String? url,
+        DocumentUploadType t,
+      ) => DocumentItem(
+        label,
+        (url != null && url.isNotEmpty) ? 'Subida ✓' : 'No proporcionada',
+        hint,
+        Icons.photo_camera,
+        (url != null && url.isNotEmpty)
+            ? DocumentStatus.approved
+            : DocumentStatus.missing,
+        onTap: () => _showUploadDialog(t),
+      );
+      if (_isMexico) {
+        _vehicleDocs = [
           DocumentItem(
-            label,
-            (url != null && url.isNotEmpty) ? 'Subida ✓' : 'No proporcionada',
-            hint,
+            'Seguro (póliza)',
+            driverDocs.hasInsurance ? 'Subido ✓' : 'No proporcionado',
+            driverDocs.insuranceProvider ?? 'Foto de la póliza vigente',
+            Icons.shield,
+            mapDoc(driverDocs.insuranceStatus),
+            onTap: () => _showUploadDialog(DocumentUploadType.insurancePolicy),
+          ),
+          DocumentItem(
+            'Tarjeta de circulación',
+            driverDocs.hasCirculationCard ? 'Subida ✓' : 'No proporcionada',
+            driverDocs.circulationCardPlate != null
+                ? 'Placa: ${driverDocs.circulationCardPlate}'
+                : 'Foto de la tarjeta de circulación',
+            Icons.directions_car,
+            mapDoc(driverDocs.circulationCardStatus),
+            onTap: () => _showUploadDialog(DocumentUploadType.circulationCard),
+          ),
+          vehPhoto(
+            'Foto del vehículo — Frente',
+            'Frente del auto',
+            driverDocs.vehiclePhotoFrontUrl,
+            DocumentUploadType.vehFront,
+          ),
+          vehPhoto(
+            'Foto del vehículo — Atrás',
+            'Parte trasera',
+            driverDocs.vehiclePhotoBackUrl,
+            DocumentUploadType.vehBack,
+          ),
+          vehPhoto(
+            'Foto del vehículo — Izquierda',
+            'Costado izquierdo',
+            driverDocs.vehiclePhotoLeftUrl,
+            DocumentUploadType.vehLeft,
+          ),
+          vehPhoto(
+            'Foto del vehículo — Derecha',
+            'Costado derecho',
+            driverDocs.vehiclePhotoRightUrl,
+            DocumentUploadType.vehRight,
+          ),
+        ];
+      } else {
+        final usVehicleDocs = vehicleDocs;
+        final photoCount = usVehicleDocs?.vehiclePhotosCount ?? 0;
+        _vehicleDocs = [
+          DocumentItem(
+            'doc_vehicle_insurance'.tr(),
+            usVehicleDocs?.hasInsurance == true
+                ? 'doc_uploaded'.tr()
+                : 'doc_not_uploaded'.tr(),
+            usVehicleDocs?.insuranceCompany ?? 'doc_required'.tr(),
+            Icons.shield,
+            usVehicleDocs == null
+                ? DocumentStatus.missing
+                : _mapInsuranceStatus(usVehicleDocs),
+            onTap: () => _showUploadDialog(DocumentUploadType.insurance),
+          ),
+          DocumentItem(
+            'doc_rideshare_endorsement'.tr(),
+            usVehicleDocs?.hasEndorsement == true
+                ? 'doc_uploaded'.tr()
+                : 'doc_not_uploaded'.tr(),
+            'doc_required'.tr(),
+            Icons.verified,
+            usVehicleDocs?.hasEndorsement == true
+                ? DocumentStatus.pending
+                : DocumentStatus.missing,
+            onTap: () => _showUploadDialog(DocumentUploadType.endorsement),
+          ),
+          DocumentItem(
+            'doc_vehicle_registration'.tr(),
+            usVehicleDocs?.hasRegistration == true
+                ? 'doc_uploaded'.tr()
+                : 'doc_not_uploaded'.tr(),
+            'doc_required'.tr(),
+            Icons.directions_car,
+            usVehicleDocs?.hasRegistration == true
+                ? DocumentStatus.pending
+                : DocumentStatus.missing,
+            onTap: () => _showUploadDialog(DocumentUploadType.registration),
+          ),
+          DocumentItem(
+            'doc_vehicle_photos'.tr(),
+            '$photoCount/4',
+            'doc_required_verification'.tr(),
             Icons.photo_camera,
-            (url != null && url.isNotEmpty) ? DocumentStatus.approved : DocumentStatus.missing,
-            onTap: () => _showUploadDialog(t),
-          );
-      _vehicleDocs = [
-        DocumentItem(
-          'Seguro (póliza)',
-          driverDocs.hasInsurance ? 'Subido ✓' : 'No proporcionado',
-          driverDocs.insuranceProvider ?? 'Foto de la póliza vigente',
-          Icons.shield,
-          mapDoc(driverDocs.insuranceStatus),
-          onTap: () => _showUploadDialog(DocumentUploadType.insurancePolicy),
-        ),
-        DocumentItem(
-          'Tarjeta de circulación',
-          driverDocs.hasCirculationCard ? 'Subida ✓' : 'No proporcionada',
-          driverDocs.circulationCardPlate != null
-              ? 'Placa: ${driverDocs.circulationCardPlate}'
-              : 'Foto de la tarjeta de circulación',
-          Icons.directions_car,
-          mapDoc(driverDocs.circulationCardStatus),
-          onTap: () => _showUploadDialog(DocumentUploadType.circulationCard),
-        ),
-        vehPhoto('Foto del vehículo — Frente', 'Frente del auto',
-            driverDocs.vehiclePhotoFrontUrl, DocumentUploadType.vehFront),
-        vehPhoto('Foto del vehículo — Atrás', 'Parte trasera',
-            driverDocs.vehiclePhotoBackUrl, DocumentUploadType.vehBack),
-        vehPhoto('Foto del vehículo — Izquierda', 'Costado izquierdo',
-            driverDocs.vehiclePhotoLeftUrl, DocumentUploadType.vehLeft),
-        vehPhoto('Foto del vehículo — Derecha', 'Costado derecho',
-            driverDocs.vehiclePhotoRightUrl, DocumentUploadType.vehRight),
-      ];
+            photoCount == 4 ? DocumentStatus.pending : DocumentStatus.missing,
+            onTap: () => _showUploadDialog(DocumentUploadType.vehiclePhotos),
+          ),
+        ];
+      }
 
       setState(() => _isLoading = false);
     } catch (e) {
       //DocumentsScreen: Error loading documents: $e');
       _personalDocs = [
-        DocumentItem('doc_drivers_license'.tr(), 'doc_not_uploaded'.tr(), 'doc_required'.tr(), Icons.credit_card, DocumentStatus.missing),
+        DocumentItem(
+          'doc_drivers_license'.tr(),
+          'doc_not_uploaded'.tr(),
+          'doc_required'.tr(),
+          Icons.credit_card,
+          DocumentStatus.missing,
+        ),
       ];
       _vehicleDocs = [
-        DocumentItem('doc_vehicle_insurance'.tr(), 'doc_not_uploaded'.tr(), 'doc_required'.tr(), Icons.shield, DocumentStatus.missing),
+        DocumentItem(
+          'doc_vehicle_insurance'.tr(),
+          'doc_not_uploaded'.tr(),
+          'doc_required'.tr(),
+          Icons.shield,
+          DocumentStatus.missing,
+        ),
       ];
       setState(() => _isLoading = false);
     }
@@ -249,7 +369,9 @@ class _DocumentsScreenState extends State<DocumentsScreen>
     } else {
       final month = expiry.month.toString().padLeft(2, '0');
       final day = expiry.day.toString().padLeft(2, '0');
-      return 'doc_valid_until'.tr(namedArgs: {'date': '$month/$day/${expiry.year}'});
+      return 'doc_valid_until'.tr(
+        namedArgs: {'date': '$month/$day/${expiry.year}'},
+      );
     }
   }
 
@@ -269,28 +391,34 @@ class _DocumentsScreenState extends State<DocumentsScreen>
 
       // Check all required documents
       final bool hasAgreement = driver['agreement_signed'] == true;
-      final bool hasLicense = driver['license_number'] != null &&
-                              driver['license_image_url'] != null;
+      final bool hasLicense =
+          driver['license_number'] != null &&
+          driver['license_image_url'] != null;
       final bool hasProfilePhoto = driver['profile_photo_url'] != null;
-      final bool hasBackgroundCheck = driver['background_check_status'] == 'approved';
-      final bool hasVehicle = driver['vehicle_make'] != null &&
-                              driver['vehicle_model'] != null;
+      final bool hasBackgroundCheck =
+          driver['background_check_status'] == 'approved';
+      final bool hasVehicle =
+          driver['vehicle_make'] != null && driver['vehicle_model'] != null;
       final bool hasInsurance = driver['insurance_policy'] != null;
 
       // All documents complete?
-      final bool allComplete = hasAgreement &&
-                               hasLicense &&
-                               hasProfilePhoto &&
-                               hasBackgroundCheck &&
-                               hasVehicle &&
-                               hasInsurance;
+      final bool allComplete =
+          hasAgreement &&
+          hasLicense &&
+          hasProfilePhoto &&
+          hasBackgroundCheck &&
+          hasVehicle &&
+          hasInsurance;
 
       if (allComplete) {
-        await SupabaseConfig.client.from('drivers').update({
-          'status': 'active',
-          'is_active': true,
-          'can_receive_rides': true,
-        }).eq('id', driver['id']);
+        await SupabaseConfig.client
+            .from('drivers')
+            .update({
+              'status': 'active',
+              'is_active': true,
+              'can_receive_rides': true,
+            })
+            .eq('id', driver['id']);
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -405,7 +533,11 @@ class _DocumentsScreenState extends State<DocumentsScreen>
             const SizedBox(height: 12),
             Text(
               title,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
             ),
             const SizedBox(height: 4),
             Text(
@@ -425,7 +557,9 @@ class _DocumentsScreenState extends State<DocumentsScreen>
                       foregroundColor: AppColors.primary,
                       side: BorderSide(color: AppColors.primary),
                       padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                   ),
                 ),
@@ -439,7 +573,9 @@ class _DocumentsScreenState extends State<DocumentsScreen>
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.black,
                       padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                   ),
                 ),
@@ -452,7 +588,10 @@ class _DocumentsScreenState extends State<DocumentsScreen>
     );
   }
 
-  Future<void> _pickAndUpload(DocumentUploadType type, ImageSource source) async {
+  Future<void> _pickAndUpload(
+    DocumentUploadType type,
+    ImageSource source,
+  ) async {
     Navigator.pop(context);
 
     try {
@@ -474,7 +613,14 @@ class _DocumentsScreenState extends State<DocumentsScreen>
           SnackBar(
             content: Row(
               children: [
-                const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
+                const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                ),
                 const SizedBox(width: 12),
                 Text('screens.documents.uploading'.tr()),
               ],
@@ -497,53 +643,87 @@ class _DocumentsScreenState extends State<DocumentsScreen>
           break;
         case DocumentUploadType.insurance:
           if (_vehicleId != null) {
-            success = await _documentService.uploadInsuranceCard(vehicleId: _vehicleId!, frontImage: file);
+            success = await _documentService.uploadInsuranceCard(
+              vehicleId: _vehicleId!,
+              frontImage: file,
+            );
           }
           break;
         case DocumentUploadType.endorsement:
           if (_vehicleId != null) {
-            success = await _documentService.uploadEndorsementDocument(vehicleId: _vehicleId!, file: file);
+            success = await _documentService.uploadEndorsementDocument(
+              vehicleId: _vehicleId!,
+              file: file,
+            );
           }
           break;
         case DocumentUploadType.registration:
           if (_vehicleId != null) {
-            success = await _documentService.uploadRegistration(_vehicleId!, file);
+            success = await _documentService.uploadRegistration(
+              _vehicleId!,
+              file,
+            );
           }
           break;
         case DocumentUploadType.vehiclePhotos:
           if (_vehicleId != null) {
-            success = await _documentService.uploadVehiclePhotos(vehicleId: _vehicleId!, frontPhoto: file);
+            success = await _documentService.uploadVehiclePhotos(
+              vehicleId: _vehicleId!,
+              frontPhoto: file,
+            );
           }
           break;
         // ===== MX Fase 2: escriben a la tabla drivers =====
         case DocumentUploadType.insurancePolicy:
-          success = await _documentService.uploadInsuranceImage(
-                  _driverId ?? user.id, file) !=
+          success =
+              await _documentService.uploadInsuranceImage(
+                _driverId ?? user.id,
+                file,
+              ) !=
               null;
           break;
         case DocumentUploadType.circulationCard:
-          success = await _documentService.uploadCirculationCard(
-                  _driverId ?? user.id, file) !=
+          success =
+              await _documentService.uploadCirculationCard(
+                _driverId ?? user.id,
+                file,
+              ) !=
               null;
           break;
         case DocumentUploadType.vehFront:
-          success = await _documentService.uploadVehicleSidePhoto(
-                  _driverId ?? user.id, 'front', file) !=
+          success =
+              await _documentService.uploadVehicleSidePhoto(
+                _driverId ?? user.id,
+                'front',
+                file,
+              ) !=
               null;
           break;
         case DocumentUploadType.vehBack:
-          success = await _documentService.uploadVehicleSidePhoto(
-                  _driverId ?? user.id, 'back', file) !=
+          success =
+              await _documentService.uploadVehicleSidePhoto(
+                _driverId ?? user.id,
+                'back',
+                file,
+              ) !=
               null;
           break;
         case DocumentUploadType.vehLeft:
-          success = await _documentService.uploadVehicleSidePhoto(
-                  _driverId ?? user.id, 'left', file) !=
+          success =
+              await _documentService.uploadVehicleSidePhoto(
+                _driverId ?? user.id,
+                'left',
+                file,
+              ) !=
               null;
           break;
         case DocumentUploadType.vehRight:
-          success = await _documentService.uploadVehicleSidePhoto(
-                  _driverId ?? user.id, 'right', file) !=
+          success =
+              await _documentService.uploadVehicleSidePhoto(
+                _driverId ?? user.id,
+                'right',
+                file,
+              ) !=
               null;
           break;
       }
@@ -566,7 +746,10 @@ class _DocumentsScreenState extends State<DocumentsScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: AppColors.error,
+          ),
         );
       }
     }
@@ -601,7 +784,11 @@ class _DocumentsScreenState extends State<DocumentsScreen>
             Text(
               'mx_documents_title'.tr(),
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
             ),
             const SizedBox(height: 6),
             Text(
@@ -631,7 +818,9 @@ class _DocumentsScreenState extends State<DocumentsScreen>
             decoration: BoxDecoration(
               color: AppColors.card,
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.3),
+              ),
             ),
             child: Row(
               children: [
@@ -639,12 +828,18 @@ class _DocumentsScreenState extends State<DocumentsScreen>
                 const SizedBox(width: 8),
                 Text(
                   'mx_state'.tr(namedArgs: {'state': _driverStateCode}),
-                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
                 ),
                 const Spacer(),
                 Text(
                   '$total ${'mx_docs_required'.tr()}',
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                  ),
                 ),
               ],
             ),
@@ -664,8 +859,22 @@ class _DocumentsScreenState extends State<DocumentsScreen>
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('mx_docs_progress'.tr(), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-                    Text('${(progress * 100).toInt()}%', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                    Text(
+                      'mx_docs_progress'.tr(),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    Text(
+                      '${(progress * 100).toInt()}%',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -674,7 +883,9 @@ class _DocumentsScreenState extends State<DocumentsScreen>
                   child: LinearProgressIndicator(
                     value: progress,
                     backgroundColor: AppColors.border,
-                    valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      AppColors.primary,
+                    ),
                     minHeight: 6,
                   ),
                 ),
@@ -682,8 +893,13 @@ class _DocumentsScreenState extends State<DocumentsScreen>
                 Text(
                   progress == 1.0
                       ? 'mx_docs_complete'.tr()
-                      : 'mx_docs_pending'.tr(namedArgs: {'count': '${total - approved}'}),
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                      : 'mx_docs_pending'.tr(
+                          namedArgs: {'count': '${total - approved}'},
+                        ),
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 11,
+                  ),
                 ),
               ],
             ),
@@ -696,7 +912,9 @@ class _DocumentsScreenState extends State<DocumentsScreen>
           const SizedBox(height: 12),
 
           // Required MX document cards
-          ..._requiredMexicoDocs.map((docType) => _buildMexicoDocumentCard(docType)),
+          ..._requiredMexicoDocs.map(
+            (docType) => _buildMexicoDocumentCard(docType),
+          ),
           const SizedBox(height: 80),
         ],
       ),
@@ -704,8 +922,12 @@ class _DocumentsScreenState extends State<DocumentsScreen>
   }
 
   Widget _buildFiscalInfoCard() {
-    final rfc = (_driverRfc != null && _driverRfc!.isNotEmpty) ? _driverRfc! : 'doc_not_registered'.tr();
-    final curp = (_driverCurp != null && _driverCurp!.isNotEmpty) ? _driverCurp! : 'doc_not_registered'.tr();
+    final rfc = (_driverRfc != null && _driverRfc!.isNotEmpty)
+        ? _driverRfc!
+        : 'doc_not_registered'.tr();
+    final curp = (_driverCurp != null && _driverCurp!.isNotEmpty)
+        ? _driverCurp!
+        : 'doc_not_registered'.tr();
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -732,7 +954,14 @@ class _DocumentsScreenState extends State<DocumentsScreen>
         const SizedBox(width: 10),
         SizedBox(
           width: 48,
-          child: Text(label, style: const TextStyle(color: AppColors.textPrimary, fontSize: 12, fontWeight: FontWeight.w600)),
+          child: Text(
+            label,
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ),
         Expanded(
           child: Text(
@@ -795,20 +1024,40 @@ class _DocumentsScreenState extends State<DocumentsScreen>
             color: statusColor.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(_getMexicoDocIcon(docType.type), color: statusColor, size: 18),
+          child: Icon(
+            _getMexicoDocIcon(docType.type),
+            color: statusColor,
+            size: 18,
+          ),
         ),
         title: Text(
           docType.displayName,
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.textPrimary),
+          style: const TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
+            color: AppColors.textPrimary,
+          ),
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(docType.description, style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
+            Text(
+              docType.description,
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
+            ),
             if (doc != null && doc.expiryDate != null)
               Text(
-                'mx_expires'.tr(namedArgs: {'date': DateFormat('dd/MM/yyyy').format(doc.expiryDate!)}),
-                style: TextStyle(color: doc.isExpiringSoon ? AppColors.warning : AppColors.textSecondary, fontSize: 10),
+                'mx_expires'.tr(
+                  namedArgs: {
+                    'date': DateFormat('dd/MM/yyyy').format(doc.expiryDate!),
+                  },
+                ),
+                style: TextStyle(
+                  color: doc.isExpiringSoon
+                      ? AppColors.warning
+                      : AppColors.textSecondary,
+                  fontSize: 10,
+                ),
               ),
           ],
         ),
@@ -823,7 +1072,14 @@ class _DocumentsScreenState extends State<DocumentsScreen>
             children: [
               Icon(statusIcon, color: statusColor, size: 12),
               const SizedBox(width: 4),
-              Text(statusText, style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.w600)),
+              Text(
+                statusText,
+                style: TextStyle(
+                  color: statusColor,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
           ),
         ),
@@ -888,11 +1144,19 @@ class _DocumentsScreenState extends State<DocumentsScreen>
                 ),
               ),
               const SizedBox(height: 16),
-              Icon(_getMexicoDocIcon(docType.type), color: AppColors.primary, size: 32),
+              Icon(
+                _getMexicoDocIcon(docType.type),
+                color: AppColors.primary,
+                size: 32,
+              ),
               const SizedBox(height: 12),
               Text(
                 docType.displayName,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
               ),
               const SizedBox(height: 4),
               Text(
@@ -906,8 +1170,12 @@ class _DocumentsScreenState extends State<DocumentsScreen>
               if (docType.type == 'ine' || docType.type == 'rfcConstancia') ...[
                 TextField(
                   decoration: InputDecoration(
-                    labelText: docType.type == 'rfcConstancia' ? 'RFC' : 'mx_doc_number'.tr(),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    labelText: docType.type == 'rfcConstancia'
+                        ? 'RFC'
+                        : 'mx_doc_number'.tr(),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                     filled: true,
                     fillColor: AppColors.card,
                   ),
@@ -922,9 +1190,13 @@ class _DocumentsScreenState extends State<DocumentsScreen>
                   onTap: () async {
                     final date = await showDatePicker(
                       context: context,
-                      initialDate: DateTime.now().add(const Duration(days: 365)),
+                      initialDate: DateTime.now().add(
+                        const Duration(days: 365),
+                      ),
                       firstDate: DateTime.now(),
-                      lastDate: DateTime.now().add(const Duration(days: 365 * 10)),
+                      lastDate: DateTime.now().add(
+                        const Duration(days: 365 * 10),
+                      ),
                     );
                     if (date != null) {
                       setSheetState(() => expiryDate = date);
@@ -939,13 +1211,21 @@ class _DocumentsScreenState extends State<DocumentsScreen>
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.calendar_today, color: AppColors.primary, size: 18),
+                        Icon(
+                          Icons.calendar_today,
+                          color: AppColors.primary,
+                          size: 18,
+                        ),
                         const SizedBox(width: 12),
                         Text(
                           expiryDate != null
                               ? DateFormat('dd/MM/yyyy').format(expiryDate!)
                               : 'mx_select_expiry'.tr(),
-                          style: TextStyle(color: expiryDate != null ? AppColors.textPrimary : AppColors.textSecondary),
+                          style: TextStyle(
+                            color: expiryDate != null
+                                ? AppColors.textPrimary
+                                : AppColors.textSecondary,
+                          ),
                         ),
                       ],
                     ),
@@ -957,28 +1237,42 @@ class _DocumentsScreenState extends State<DocumentsScreen>
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () => _pickAndUploadMexico(docType, ImageSource.camera, documentNumber, expiryDate),
+                      onPressed: () => _pickAndUploadMexico(
+                        docType,
+                        ImageSource.camera,
+                        documentNumber,
+                        expiryDate,
+                      ),
                       icon: const Icon(Icons.camera_alt, size: 18),
                       label: Text('mx_camera'.tr()),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.primary,
                         side: BorderSide(color: AppColors.primary),
                         padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: () => _pickAndUploadMexico(docType, ImageSource.gallery, documentNumber, expiryDate),
+                      onPressed: () => _pickAndUploadMexico(
+                        docType,
+                        ImageSource.gallery,
+                        documentNumber,
+                        expiryDate,
+                      ),
                       icon: const Icon(Icons.photo_library, size: 18),
                       label: Text('mx_gallery'.tr()),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.black,
                         padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
                     ),
                   ),
@@ -1019,7 +1313,14 @@ class _DocumentsScreenState extends State<DocumentsScreen>
           SnackBar(
             content: Row(
               children: [
-                const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
+                const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                ),
                 const SizedBox(width: 12),
                 Text('mx_uploading'.tr()),
               ],
@@ -1093,7 +1394,10 @@ class _DocumentsScreenState extends State<DocumentsScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: AppColors.error,
+          ),
         );
       }
     }
@@ -1114,7 +1418,10 @@ class _DocumentsScreenState extends State<DocumentsScreen>
           children: [
             Icon(Icons.folder, size: 18, color: AppColors.primary),
             const SizedBox(width: 8),
-            Text('documents_title'.tr(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            Text(
+              'documents_title'.tr(),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
           ],
         ),
         actions: [
@@ -1130,7 +1437,14 @@ class _DocumentsScreenState extends State<DocumentsScreen>
               children: [
                 Icon(Icons.check_circle, color: AppColors.success, size: 14),
                 const SizedBox(width: 4),
-                Text('$_approvedDocs/$_totalDocs', style: TextStyle(color: AppColors.success, fontWeight: FontWeight.bold, fontSize: 12)),
+                Text(
+                  '$_approvedDocs/$_totalDocs',
+                  style: TextStyle(
+                    color: AppColors.success,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
               ],
             ),
           ),
@@ -1160,12 +1474,15 @@ class _DocumentsScreenState extends State<DocumentsScreen>
               unselectedLabelColor: AppColors.textSecondary,
               indicatorSize: TabBarIndicatorSize.tab,
               dividerColor: Colors.transparent,
-              labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+              labelStyle: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+              ),
               isScrollable: false,
               tabs: [
                 Tab(text: 'documents_personal'.tr()),
                 Tab(text: 'documents_vehicle'.tr()),
-                const Tab(text: 'Fiscal MX'),
+                if (_isMexico) const Tab(text: 'Fiscal MX'),
               ],
             ),
           ),
@@ -1177,7 +1494,7 @@ class _DocumentsScreenState extends State<DocumentsScreen>
                     children: [
                       _buildDocumentList(_personalDocs),
                       _buildDocumentList(_vehicleDocs),
-                      _buildMexicoTab(),
+                      if (_isMexico) _buildMexicoTab(),
                     ],
                   ),
           ),
@@ -1192,7 +1509,9 @@ class _DocumentsScreenState extends State<DocumentsScreen>
   }
 
   Widget _buildDocumentList(List<DocumentItem> docs) {
-    final approved = docs.where((d) => d.status == DocumentStatus.approved).length;
+    final approved = docs
+        .where((d) => d.status == DocumentStatus.approved)
+        .length;
     final total = docs.length;
     final progress = total > 0 ? approved / total : 0.0;
 
@@ -1200,56 +1519,71 @@ class _DocumentsScreenState extends State<DocumentsScreen>
       onRefresh: _loadDocuments,
       color: AppColors.primary,
       child: ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      children: [
-        // Simple progress bar
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: AppColors.card,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'documents_status'.tr(),
-                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
-                  ),
-                  Text(
-                    '${(progress * 100).toInt()}%',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.primary),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  value: progress,
-                  backgroundColor: AppColors.border,
-                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
-                  minHeight: 6,
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        children: [
+          // Simple progress bar
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.card,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'documents_status'.tr(),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    Text(
+                      '${(progress * 100).toInt()}%',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                approved == total
-                    ? 'documents_complete'.tr()
-                    : 'documents_missing'.tr(namedArgs: {'count': '${total - approved}'}),
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
-              ),
-            ],
+                const SizedBox(height: 8),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    backgroundColor: AppColors.border,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      AppColors.primary,
+                    ),
+                    minHeight: 6,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  approved == total
+                      ? 'documents_complete'.tr()
+                      : 'documents_missing'.tr(
+                          namedArgs: {'count': '${total - approved}'},
+                        ),
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-        const SizedBox(height: 12),
-        ...docs.map((doc) => _buildDocumentCard(doc)),
-        const SizedBox(height: 80),
-      ],
+          const SizedBox(height: 12),
+          ...docs.map((doc) => _buildDocumentCard(doc)),
+          const SizedBox(height: 80),
+        ],
       ),
     );
   }
@@ -1307,12 +1641,19 @@ class _DocumentsScreenState extends State<DocumentsScreen>
         ),
         title: Text(
           doc.title,
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.textPrimary),
+          style: const TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
+            color: AppColors.textPrimary,
+          ),
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(doc.subtitle, style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
+            Text(
+              doc.subtitle,
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
+            ),
             const SizedBox(height: 2),
             Row(
               children: [
@@ -1321,7 +1662,11 @@ class _DocumentsScreenState extends State<DocumentsScreen>
                 Expanded(
                   child: Text(
                     doc.description,
-                    style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.w500),
+                    style: TextStyle(
+                      color: statusColor,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                    ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -1337,7 +1682,11 @@ class _DocumentsScreenState extends State<DocumentsScreen>
           ),
           child: Text(
             statusText,
-            style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              color: statusColor,
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
         onTap: doc.onTap ?? () => _showDocumentDetail(doc),
@@ -1365,7 +1714,11 @@ class _DocumentsScreenState extends State<DocumentsScreen>
                 Expanded(
                   child: Text(
                     doc.title,
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
                 ),
               ],
@@ -1384,7 +1737,9 @@ class _DocumentsScreenState extends State<DocumentsScreen>
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.black,
                   padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
               ),
             ),
@@ -1403,10 +1758,20 @@ class _DocumentsScreenState extends State<DocumentsScreen>
         children: [
           SizedBox(
             width: 80,
-            child: Text(label, style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+            child: Text(
+              label,
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+            ),
           ),
           Expanded(
-            child: Text(value, style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w500)),
+            child: Text(
+              value,
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
         ],
       ),
@@ -1428,10 +1793,20 @@ class _DocumentsScreenState extends State<DocumentsScreen>
             Container(
               width: 32,
               height: 4,
-              decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)),
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
             const SizedBox(height: 16),
-            Text('Subir documento', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+            Text(
+              'Subir documento',
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+            ),
             const SizedBox(height: 12),
             _buildUploadOption(Icons.credit_card, 'Licencia', () {
               Navigator.pop(context);
@@ -1466,8 +1841,15 @@ class _DocumentsScreenState extends State<DocumentsScreen>
     return ListTile(
       dense: true,
       leading: Icon(icon, color: AppColors.primary, size: 20),
-      title: Text(title, style: const TextStyle(color: AppColors.textPrimary, fontSize: 14)),
-      trailing: Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 18),
+      title: Text(
+        title,
+        style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+      ),
+      trailing: Icon(
+        Icons.chevron_right,
+        color: AppColors.textSecondary,
+        size: 18,
+      ),
       onTap: onTap,
     );
   }
@@ -1481,7 +1863,14 @@ class DocumentItem {
   final DocumentStatus status;
   final VoidCallback? onTap;
 
-  DocumentItem(this.title, this.subtitle, this.description, this.icon, this.status, {this.onTap});
+  DocumentItem(
+    this.title,
+    this.subtitle,
+    this.description,
+    this.icon,
+    this.status, {
+    this.onTap,
+  });
 }
 
 enum DocumentStatus { approved, pending, expiring, missing, rejected }

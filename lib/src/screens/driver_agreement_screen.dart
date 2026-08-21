@@ -29,12 +29,33 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
   bool _isSubmitting = false;
   bool _hasAgreed = false;
   bool _showFullContract = false;
+  bool _countryLoaded = false;
+  String _countryCode = 'US';
   String _appVersion = '1.0.0';
 
   @override
   void initState() {
     super.initState();
     _loadVersion();
+    _loadCountry();
+  }
+
+  Future<void> _loadCountry() async {
+    try {
+      final user = SupabaseConfig.client.auth.currentUser;
+      if (user != null) {
+        final driver = await SupabaseConfig.client
+            .from('drivers')
+            .select('country_code')
+            .eq('user_id', user.id)
+            .maybeSingle();
+        _countryCode = driver?['country_code']?.toString().toUpperCase() == 'MX'
+            ? 'MX'
+            : 'US';
+      }
+    } finally {
+      if (mounted) setState(() => _countryLoaded = true);
+    }
   }
 
   Future<void> _loadVersion() async {
@@ -57,37 +78,43 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
         ),
         title: Text(
           'driver_agreement_title'.tr(),
-          style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Quick Summary
-            _buildQuickSummary(),
-            const SizedBox(height: 16),
+      body: !_countryLoaded
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Quick Summary
+                  _buildQuickSummary(),
+                  const SizedBox(height: 16),
 
-            // Full Contract (expandable)
-            _buildContractSection(),
-            const SizedBox(height: 20),
+                  // Full Contract (expandable)
+                  _buildContractSection(),
+                  const SizedBox(height: 20),
 
-            // Signature Pad
-            _buildSignaturePad(),
-            const SizedBox(height: 16),
+                  // Signature Pad
+                  _buildSignaturePad(),
+                  const SizedBox(height: 16),
 
-            // Checkbox
-            _buildAgreeCheckbox(),
-            const SizedBox(height: 16),
+                  // Checkbox
+                  _buildAgreeCheckbox(),
+                  const SizedBox(height: 16),
 
-            // Submit Button
-            _buildSubmitButton(),
-            const SizedBox(height: 30),
-          ],
-        ),
-      ),
+                  // Submit Button
+                  _buildSubmitButton(),
+                  const SizedBox(height: 30),
+                ],
+              ),
+            ),
     );
   }
 
@@ -96,7 +123,10 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [AppColors.primary.withValues(alpha: 0.2), AppColors.primary.withValues(alpha: 0.05)],
+          colors: [
+            AppColors.primary.withValues(alpha: 0.2),
+            AppColors.primary.withValues(alpha: 0.05),
+          ],
         ),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
@@ -110,7 +140,11 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
               const SizedBox(width: 8),
               Text(
                 'driver_agreement_screen_key_points'.tr(),
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
               ),
             ],
           ),
@@ -135,13 +169,20 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
             margin: const EdgeInsets.only(top: 6),
             width: 4,
             height: 4,
-            decoration: BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+            decoration: BoxDecoration(
+              color: AppColors.primary,
+              shape: BoxShape.circle,
+            ),
           ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               text,
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 12, height: 1.4),
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 12,
+                height: 1.4,
+              ),
             ),
           ),
         ],
@@ -164,7 +205,11 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
             child: Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                border: Border(bottom: BorderSide(color: AppColors.border.withValues(alpha: 0.2))),
+                border: Border(
+                  bottom: BorderSide(
+                    color: AppColors.border.withValues(alpha: 0.2),
+                  ),
+                ),
               ),
               child: Row(
                 children: [
@@ -173,7 +218,11 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
                   Expanded(
                     child: Text(
                       'driver_agreement_screen_section_header'.tr(),
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
                     ),
                   ),
                   Icon(
@@ -202,7 +251,9 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
                 ),
               ),
             ),
-            crossFadeState: _showFullContract ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+            crossFadeState: _showFullContract
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
             duration: const Duration(milliseconds: 200),
           ),
           // Tap to read indicator
@@ -239,7 +290,11 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
                     const SizedBox(width: 8),
                     Text(
                       'driver_agreement_screen_your_signature'.tr(),
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
                     ),
                   ],
                 ),
@@ -249,12 +304,18 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
                     setState(() => _signaturePoints.clear());
                   },
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.error.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
                     ),
-                    child: Text('driver_agreement_clear'.tr(), style: TextStyle(color: AppColors.error, fontSize: 11)),
+                    child: Text(
+                      'driver_agreement_clear'.tr(),
+                      style: TextStyle(color: AppColors.error, fontSize: 11),
+                    ),
                   ),
                 ),
               ],
@@ -267,7 +328,9 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
               color: AppColors.surface,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                color: _isSigning ? AppColors.primary : AppColors.border.withValues(alpha: 0.3),
+                color: _isSigning
+                    ? AppColors.primary
+                    : AppColors.border.withValues(alpha: 0.3),
                 width: _isSigning ? 2 : 1,
               ),
             ),
@@ -277,7 +340,10 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
                   Center(
                     child: Text(
                       'driver_agreement_screen_draw_here'.tr(),
-                      style: TextStyle(color: AppColors.textSecondary.withValues(alpha: 0.5), fontSize: 12),
+                      style: TextStyle(
+                        color: AppColors.textSecondary.withValues(alpha: 0.5),
+                        fontSize: 12,
+                      ),
                     ),
                   ),
                 GestureDetector(
@@ -321,10 +387,14 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: _hasAgreed ? AppColors.success.withValues(alpha: 0.1) : AppColors.card,
+          color: _hasAgreed
+              ? AppColors.success.withValues(alpha: 0.1)
+              : AppColors.card,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: _hasAgreed ? AppColors.success.withValues(alpha: 0.5) : AppColors.border.withValues(alpha: 0.3),
+            color: _hasAgreed
+                ? AppColors.success.withValues(alpha: 0.5)
+                : AppColors.border.withValues(alpha: 0.3),
           ),
         ),
         child: Row(
@@ -358,7 +428,8 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
   }
 
   Widget _buildSubmitButton() {
-    final bool canSubmit = _signaturePoints.isNotEmpty && _hasAgreed && !_isSubmitting;
+    final bool canSubmit =
+        _signaturePoints.isNotEmpty && _hasAgreed && !_isSubmitting;
 
     return GestureDetector(
       onTap: canSubmit ? _submitAgreement : null,
@@ -369,7 +440,9 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
           gradient: canSubmit ? AppColors.primaryGradient : null,
           color: canSubmit ? null : AppColors.card,
           borderRadius: BorderRadius.circular(12),
-          border: canSubmit ? null : Border.all(color: AppColors.border.withValues(alpha: 0.3)),
+          border: canSubmit
+              ? null
+              : Border.all(color: AppColors.border.withValues(alpha: 0.3)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -378,10 +451,17 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
               const SizedBox(
                 width: 20,
                 height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(Colors.white)),
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
               )
             else ...[
-              Icon(Icons.check_circle, color: canSubmit ? Colors.white : AppColors.textSecondary, size: 20),
+              Icon(
+                Icons.check_circle,
+                color: canSubmit ? Colors.white : AppColors.textSecondary,
+                size: 20,
+              ),
               const SizedBox(width: 8),
               Text(
                 'driver_agreement_screen_submit'.tr(),
@@ -401,7 +481,9 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
   /// Get public IP address for legal audit
   Future<String?> _getPublicIP() async {
     try {
-      final response = await http.get(Uri.parse('https://api.ipify.org?format=json'));
+      final response = await http.get(
+        Uri.parse('https://api.ipify.org?format=json'),
+      );
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         return data['ip'];
@@ -516,19 +598,22 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
       if (driverResponse == null) throw Exception('Driver profile not found');
 
       // Update agreement signed with ALL audit fields (Uber-style)
-      await SupabaseConfig.client.from('drivers').update({
-        'agreement_signed': true,
-        'agreement_signed_at': DateTime.now().toIso8601String(),
-        'agreement_ip_address': ipAddress,
-        'agreement_device_info': deviceInfo,
-        'agreement_user_agent': userAgent,
-        'agreement_latitude': location?.latitude,
-        'agreement_longitude': location?.longitude,
-        'agreement_app_version': _appVersion,
-        'agreement_document_hash': documentHash,
-        'agreement_session_id': sessionId,
-        'agreement_timezone': timezone,
-      }).eq('id', driverResponse['id']);
+      await SupabaseConfig.client
+          .from('drivers')
+          .update({
+            'agreement_signed': true,
+            'agreement_signed_at': DateTime.now().toIso8601String(),
+            'agreement_ip_address': ipAddress,
+            'agreement_device_info': deviceInfo,
+            'agreement_user_agent': userAgent,
+            'agreement_latitude': location?.latitude,
+            'agreement_longitude': location?.longitude,
+            'agreement_app_version': _appVersion,
+            'agreement_document_hash': documentHash,
+            'agreement_session_id': sessionId,
+            'agreement_timezone': timezone,
+          })
+          .eq('id', driverResponse['id']);
 
       // Check if all documents are complete to activate driver
       await _checkAndActivateDriver(driverResponse['id']);
@@ -550,7 +635,9 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
             ),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
         );
         navigator.pop(true);
@@ -558,7 +645,10 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: AppColors.error),
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: AppColors.error,
+          ),
         );
       }
     } finally {
@@ -578,51 +668,61 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
 
       // Check all required documents
       final bool hasAgreement = driver['agreement_signed'] == true;
-      final bool hasLicense = driver['license_number'] != null &&
-                              driver['license_image_url'] != null;
+      final bool hasLicense =
+          driver['license_number'] != null &&
+          driver['license_image_url'] != null;
       final bool hasProfilePhoto = driver['profile_photo_url'] != null;
-      final bool hasBackgroundCheck = driver['background_check_status'] == 'approved';
-      final bool hasVehicle = driver['vehicle_make'] != null &&
-                              driver['vehicle_model'] != null;
+      final bool hasBackgroundCheck =
+          driver['background_check_status'] == 'approved';
+      final bool hasVehicle =
+          driver['vehicle_make'] != null && driver['vehicle_model'] != null;
       final bool hasInsurance = driver['insurance_policy'] != null;
 
       // All documents complete?
-      final bool allComplete = hasAgreement &&
-                               hasLicense &&
-                               hasProfilePhoto &&
-                               hasBackgroundCheck &&
-                               hasVehicle &&
-                               hasInsurance;
+      final bool allComplete =
+          hasAgreement &&
+          hasLicense &&
+          hasProfilePhoto &&
+          hasBackgroundCheck &&
+          hasVehicle &&
+          hasInsurance;
 
       if (allComplete) {
-        await SupabaseConfig.client.from('drivers').update({
-          'status': 'active',
-          'is_active': true,
-          'can_receive_rides': true,
-        }).eq('id', driverId);
+        await SupabaseConfig.client
+            .from('drivers')
+            .update({
+              'status': 'active',
+              'is_active': true,
+              'can_receive_rides': true,
+            })
+            .eq('id', driverId);
       } else {
         // Still pending - update status to show what's missing
-        await SupabaseConfig.client.from('drivers').update({
-          'status': 'pending_documents',
-        }).eq('id', driverId);
+        await SupabaseConfig.client
+            .from('drivers')
+            .update({'status': 'pending_documents'})
+            .eq('id', driverId);
       }
     } catch (e) {
       //Error checking driver activation: $e');
     }
   }
 
-  /// The displayed full contract is the approved, language-aware
-  /// MEXICO OPERATIONS ADDENDUM (commercial marketplace framing).
+  /// Builds the full agreement for the driver's operating country.
   /// Every line containing a date header ("Effective Date" / "Fecha Efectiva")
   /// is stripped so NO dates appear in the displayed contract.
   String _buildContractText(BuildContext context) {
     final lang = context.locale.languageCode;
-    final addendum = LegalDocuments.getMexicoAddendum(lang);
-    final filtered = addendum
+    final agreement = _countryCode == 'MX'
+        ? LegalDocuments.getCombinedDocumentWithMexico(lang)
+        : LegalDocuments.getCombinedDocument(lang);
+    final filtered = agreement
         .split('\n')
-        .where((line) =>
-            !line.contains('Effective Date') &&
-            !line.contains('Fecha Efectiva'))
+        .where(
+          (line) =>
+              !line.contains('Effective Date') &&
+              !line.contains('Fecha Efectiva'),
+        )
         .join('\n');
     return filtered;
   }
@@ -648,5 +748,6 @@ class SignaturePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(SignaturePainter oldDelegate) => oldDelegate.points != points;
+  bool shouldRepaint(SignaturePainter oldDelegate) =>
+      oldDelegate.points != points;
 }

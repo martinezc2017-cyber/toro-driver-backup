@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../utils/app_theme.dart';
 import '../utils/money_format.dart';
 import '../providers/riverpod_providers.dart';
 import '../models/driver_model.dart';
 import '../services/stripe_connect_service.dart';
 import 'bank_account_screen.dart';
+
 /// Instant Cash Out Screen - Like Uber/Lyft instant pay
 class CashOutScreen extends ConsumerStatefulWidget {
   final String driverId;
@@ -25,15 +25,10 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
   double _availableBalance = 0;
   double _pendingBalance = 0;
   double _selectedAmount = 0;
-  String _selectedMethod = 'debit_card';
   String _countryCode = 'US';
   String _stripeProvider = 'us';
   bool _connectReady = false; // payouts_enabled en la cuenta Stripe Connect
   Map<String, dynamic>? _openPayout;
-
-  List<Map<String, dynamic>> _bankAccounts = [];
-  List<Map<String, dynamic>> _debitCards = [];
-  Map<String, dynamic>? _selectedDestination;
 
   final _amountController = TextEditingController();
 
@@ -49,35 +44,29 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
     try {
       final driverService = ref.read(driverServiceProvider);
 
-      // Get financial stats (DB) + payment methods + driver in parallel
+      // Stripe Connect is the only payout destination. Legacy bank/card tables
+      // are intentionally not queried because they do not control the payout.
       final stats = await driverService.getFinancialStats(widget.driverId);
-      final accounts = await driverService.getBankAccounts(widget.driverId);
-      final cards = await driverService.getDebitCards(widget.driverId);
       final driver = await driverService.getDriver(widget.driverId);
 
       // CANONICAL: Stripe Connect balance es la verdad de cuánto puede retirar.
       // El driverService.getFinancialStats es agregación de DB; Stripe API es
       // lo que el banco realmente le va a transferir.
-      final stripeProvider = ((driver?.countryCode ?? 'US').toUpperCase() == 'MX') ? 'mx' : 'us';
-      final stripeBalance = await StripeConnectService.instance
-          .getBalance(widget.driverId, provider: stripeProvider);
-      final openPayout = await StripeConnectService.instance
-          .getOpenPayout(widget.driverId);
+      final stripeProvider =
+          ((driver?.countryCode ?? 'US').toUpperCase() == 'MX') ? 'mx' : 'us';
+      final stripeBalance = await StripeConnectService.instance.getBalance(
+        widget.driverId,
+        provider: stripeProvider,
+      );
+      final openPayout = await StripeConnectService.instance.getOpenPayout(
+        widget.driverId,
+      );
 
-      // El destino del retiro es la cuenta Stripe Connect que el chofer YA
-      // vinculó. CANÓNICO = drivers.payouts_enabled (lo que Stripe confirmó al
-      // onboardear). ANTES leía getAccountStatus(provider:'mx') que consultaba la
-      // tabla driver_stripe_accounts_mx (VACÍA) -> falso negativo y bloqueaba el
-      // retiro aunque la cuenta SÍ estuviera habilitada (acct enabled/payouts ok).
-      bool connectReady = false;
-      try {
-        final drow = await Supabase.instance.client
-            .from('drivers')
-            .select('payouts_enabled')
-            .eq('id', widget.driverId)
-            .maybeSingle();
-        connectReady = (drow?['payouts_enabled'] as bool?) ?? false;
-      } catch (_) {}
+      final stripeStatus = await StripeConnectService.instance.getAccountStatus(
+        widget.driverId,
+        provider: stripeProvider,
+      );
+      final connectReady = stripeStatus == StripeAccountStatus.active;
 
       // Si Stripe responde, esa es la verdad. Si no, DB stats como fallback.
       final canonicalAvailable = stripeBalance != null
@@ -94,25 +83,8 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
         _openPayout = openPayout;
         _availableBalance = canonicalAvailable;
         _pendingBalance = canonicalPending;
-        _bankAccounts = accounts;
-        _debitCards = cards;
         _selectedAmount = _availableBalance;
         _amountController.text = _availableBalance.toStringAsFixed(2);
-
-        // Select default destination
-        if (_debitCards.isNotEmpty) {
-          _selectedDestination = _debitCards.firstWhere(
-            (c) => c['is_default'] == true,
-            orElse: () => _debitCards.first,
-          );
-          _selectedMethod = 'debit_card';
-        } else if (_bankAccounts.isNotEmpty) {
-          _selectedDestination = _bankAccounts.firstWhere(
-            (a) => a['is_default'] == true,
-            orElse: () => _bankAccounts.first,
-          );
-          _selectedMethod = 'bank_account';
-        }
 
         _isLoading = false;
       });
@@ -122,12 +94,9 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
     }
   }
 
-  double get _fee {
-    if (_selectedAmount <= 0) return 0;
-    // 1.5% or $0.50, whichever is higher
-    final percentFee = _selectedAmount * 0.015;
-    return percentFee < 0.50 ? 0.50 : percentFee;
-  }
+  // stripe-instant-payout is authoritative. It currently reserves and pays the
+  // exact requested amount, so the app must not invent a client-side fee.
+  double get _fee => 0;
 
   double get _netAmount => _selectedAmount - _fee;
 
@@ -162,7 +131,9 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(result.error ?? 'screens.cash_out.error_processing'.tr()),
+            content: Text(
+              result.error ?? 'screens.cash_out.error_processing'.tr(),
+            ),
             backgroundColor: AppTheme.error,
           ),
         );
@@ -170,7 +141,14 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('screens.cash_out.error_generic'.tr(namedArgs: {'error': e.toString()})), backgroundColor: AppTheme.error),
+          SnackBar(
+            content: Text(
+              'screens.cash_out.error_generic'.tr(
+                namedArgs: {'error': e.toString()},
+              ),
+            ),
+            backgroundColor: AppTheme.error,
+          ),
         );
       }
     } finally {
@@ -215,9 +193,9 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
               ),
             ),
             const SizedBox(height: 10),
-            const Text(
-              'Llega a tu banco/tarjeta vinculada vía Stripe, en minutos',
-              style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
+            Text(
+              'screens.cash_out.arrival_managed'.tr(),
+              style: const TextStyle(color: AppTheme.textMuted, fontSize: 13),
               textAlign: TextAlign.center,
             ),
           ],
@@ -262,9 +240,12 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
           icon: const Icon(Icons.close, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Cash Out',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        title: Text(
+          'screens.cash_out.title'.tr(),
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         centerTitle: true,
       ),
@@ -354,7 +335,7 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
           const SizedBox(height: 8),
           Text(
             // EXACTO, sin redondeo (Carlos: el balance = lo que se retira, sin imaginación).
-            '\$${_availableBalance.toStringAsFixed(2)}',
+            formatMoney(_availableBalance, country: _countryCode),
             style: const TextStyle(
               color: Colors.white,
               fontSize: 36,
@@ -386,14 +367,20 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Retiro en proceso',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                Text(
+                  'screens.cash_out.processing_payout'.tr(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(height: 3),
                 Text(
                   '${formatMoney(amount, country: _countryCode)} · $status${stripeId.isNotEmpty ? ' · ${stripeId.substring(0, 8)}...' : ''}',
-                  style: const TextStyle(color: AppTheme.textMuted, fontSize: 12),
+                  style: const TextStyle(
+                    color: AppTheme.textMuted,
+                    fontSize: 12,
+                  ),
                 ),
               ],
             ),
@@ -440,7 +427,9 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
               Expanded(
                 child: TextField(
                   controller: _amountController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 32,
@@ -531,8 +520,8 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
             ),
             child: Text(
               isMax
-                  ? 'Todo (\$${amount.toStringAsFixed(2)})'
-                  : '\$${amount.toStringAsFixed(0)}',
+                  ? '${'screens.cash_out.all'.tr()} (${formatMoney(amount, country: _countryCode)})'
+                  : formatMoney(amount, country: _countryCode),
               style: TextStyle(
                 color: isSelected ? AppTheme.primary : Colors.white,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
@@ -580,22 +569,32 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
                   color: AppTheme.info.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.account_balance, color: AppTheme.info, size: 20),
+                child: const Icon(
+                  Icons.account_balance,
+                  color: AppTheme.info,
+                  size: 20,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Depósito a tu banco (Stripe)',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                    Text(
+                      'screens.cash_out.stripe_bank_destination'.tr(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     Text(
                       _connectReady
-                          ? 'Cuenta vinculada · llega en minutos'
-                          : 'Falta completar tu verificación de pagos',
-                      style: const TextStyle(color: AppTheme.textMuted, fontSize: 12),
+                          ? 'screens.cash_out.stripe_ready'.tr()
+                          : 'screens.cash_out.stripe_not_ready'.tr(),
+                      style: const TextStyle(
+                        color: AppTheme.textMuted,
+                        fontSize: 12,
+                      ),
                     ),
                   ],
                 ),
@@ -627,9 +626,9 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
                   if (mounted) _loadData();
                 },
                 icon: const Icon(Icons.account_balance, size: 18),
-                label: const Text(
-                  'Completar registro de pagos',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                label: Text(
+                  'screens.cash_out.complete_payment_registration'.tr(),
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.warning,
@@ -645,139 +644,15 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
           Padding(
             padding: const EdgeInsets.only(top: 6),
             child: Text(
-              'Es un registro de Stripe: tu CLABE y una identificación. '
-              'Se hace una sola vez y tarda unos minutos.',
+              (_countryCode == 'MX'
+                      ? 'screens.cash_out.registration_note_mx'
+                      : 'screens.cash_out.registration_note_us')
+                  .tr(),
               style: const TextStyle(color: AppTheme.textMuted, fontSize: 11),
             ),
           ),
         ],
       ],
-    );
-  }
-
-  Widget _buildMethodHeader(String title, String timing) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          Text(
-            title,
-            style: const TextStyle(color: AppTheme.textMuted, fontSize: 12),
-          ),
-          const Spacer(),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: AppTheme.primary.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Text(
-              timing,
-              style: const TextStyle(color: AppTheme.primary, fontSize: 10),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPaymentOption(
-    Map<String, dynamic> data,
-    String method,
-    IconData icon,
-    String number,
-    String name, {
-    bool isInstant = false,
-  }) {
-    final isSelected = _selectedDestination?['id'] == data['id'];
-
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedDestination = data;
-          _selectedMethod = method;
-        });
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: isSelected ? AppTheme.primary.withValues(alpha: 0.1) : AppTheme.card,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected ? AppTheme.primary : AppTheme.border,
-            width: isSelected ? 2 : 1,
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: (isInstant ? AppTheme.warning : AppTheme.info)
-                    .withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                icon,
-                color: isInstant ? AppTheme.warning : AppTheme.info,
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    name,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  Text(
-                    number,
-                    style: const TextStyle(
-                      color: AppTheme.textMuted,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (isInstant)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppTheme.warning.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.bolt, color: AppTheme.warning, size: 12),
-                    SizedBox(width: 2),
-                    Text(
-                      'Instant',
-                      style: TextStyle(
-                        color: AppTheme.warning,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            const SizedBox(width: 8),
-            Icon(
-              isSelected ? Icons.check_circle : Icons.radio_button_unchecked,
-              color: isSelected ? AppTheme.primary : AppTheme.textMuted,
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -790,7 +665,10 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
       ),
       child: Column(
         children: [
-          _buildFeeRow('screens.cash_out.amount_label'.tr(), '\$${_selectedAmount.toStringAsFixed(2)}'),
+          _buildFeeRow(
+            'screens.cash_out.amount_label'.tr(),
+            formatMoney(_selectedAmount, country: _countryCode),
+          ),
           _buildFeeRow(
             'screens.cash_out.service_fee'.tr(),
             '-${formatMoney(_fee, country: _countryCode)}',
@@ -799,7 +677,7 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
           const Divider(color: AppTheme.border, height: 20),
           _buildFeeRow(
             'screens.cash_out.you_receive'.tr(),
-            '\$${_netAmount.toStringAsFixed(2)}',
+            formatMoney(_netAmount, country: _countryCode),
             isTotal: true,
           ),
         ],
@@ -868,7 +746,7 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
                   const Icon(Icons.bolt, color: Colors.white),
                   const SizedBox(width: 8),
                   Text(
-                    'Cash Out ${formatMoney(_netAmount, country: _countryCode)}',
+                    '${'screens.cash_out.withdraw'.tr()} ${formatMoney(_netAmount, country: _countryCode)}',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 16,
@@ -894,9 +772,7 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              _selectedMethod == 'debit_card'
-                  ? 'screens.cash_out.disclaimer_card'.tr(namedArgs: {'min': '\$0.50'})
-                  : 'screens.cash_out.disclaimer_bank'.tr(),
+              'screens.cash_out.arrival_managed'.tr(),
               style: TextStyle(color: AppTheme.info, fontSize: 12),
             ),
           ),
@@ -939,38 +815,6 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
               leading: Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppTheme.warning.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.credit_card, color: AppTheme.warning),
-              ),
-              title: Text(
-                'screens.cash_out.debit_card_label'.tr(),
-                style: const TextStyle(color: Colors.white),
-              ),
-              subtitle: Text(
-                'screens.cash_out.instant_receive_minutes'.tr(),
-                style: const TextStyle(color: AppTheme.textMuted, fontSize: 12),
-              ),
-              trailing: const Icon(
-                Icons.chevron_right,
-                color: AppTheme.textMuted,
-              ),
-              onTap: () {
-                Navigator.pop(context);
-                // TODO: Navigate to add debit card screen
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('screens.cash_out.add_card_coming_soon'.tr()),
-                  ),
-                );
-              },
-            ),
-            const Divider(color: AppTheme.border),
-            ListTile(
-              leading: Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
                   color: AppTheme.info.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -988,14 +832,13 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
                 Icons.chevron_right,
                 color: AppTheme.textMuted,
               ),
-              onTap: () {
+              onTap: () async {
                 Navigator.pop(context);
-                // TODO: Navigate to add bank account screen
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('screens.cash_out.add_account_coming_soon'.tr()),
-                  ),
+                await Navigator.push(
+                  this.context,
+                  MaterialPageRoute(builder: (_) => const BankAccountScreen()),
                 );
+                if (mounted) _loadData();
               },
             ),
           ],

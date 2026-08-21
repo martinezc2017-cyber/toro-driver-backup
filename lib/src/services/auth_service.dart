@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io' show ContentType, HttpRequest, HttpServer, InternetAddress, Platform;
+import 'dart:io'
+    show ContentType, HttpRequest, HttpServer, InternetAddress, Platform;
 import 'dart:math' as math;
 import 'dart:ui' show PlatformDispatcher;
 import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
@@ -17,7 +18,9 @@ import 'background_location_service.dart';
 import '../config/supabase_config.dart';
 import '../models/driver_model.dart';
 import '../core/logging/app_logger.dart';
+import 'app_installation_service.dart';
 import '../core/logging/debug_logger.dart';
+import '../utils/geo_utils.dart';
 
 class AuthService {
   /// Lazy getter — avoids accessing Supabase.instance before initialization.
@@ -88,7 +91,9 @@ class AuthService {
                 role: role,
               );
             } catch (e) {
-              debugPrint('AUTH -> _createDriverProfile cross-app (non-fatal): $e');
+              debugPrint(
+                'AUTH -> _createDriverProfile cross-app (non-fatal): $e',
+              );
             }
           }
           return AuthResponse(
@@ -104,7 +109,8 @@ class AuthService {
       }
     }
 
-    if (resp.statusCode != 200 || body.containsKey('error') && body['session'] == null) {
+    if (resp.statusCode != 200 ||
+        body.containsKey('error') && body['session'] == null) {
       throw AuthException(body['error'] as String? ?? 'Signup failed');
     }
 
@@ -154,9 +160,7 @@ class AuthService {
 
   // Sign in with phone (OTP)
   Future<void> signInWithPhone(String phone) async {
-    await _client.auth.signInWithOtp(
-      phone: phone,
-    );
+    await _client.auth.signInWithOtp(phone: phone);
   }
 
   // Verify OTP
@@ -210,7 +214,10 @@ class AuthService {
       final rawNonce = _generateNonce();
       final hashedNonce = sha256.convert(utf8.encode(rawNonce)).toString();
 
-      await DebugLogger.log('APPLE_2_CREDENTIAL', detail: 'Requesting Apple credential');
+      await DebugLogger.log(
+        'APPLE_2_CREDENTIAL',
+        detail: 'Requesting Apple credential',
+      );
       final credential = await SignInWithApple.getAppleIDCredential(
         scopes: [
           AppleIDAuthorizationScopes.email,
@@ -220,13 +227,20 @@ class AuthService {
       );
 
       final idToken = credential.identityToken;
-      await DebugLogger.log('APPLE_3_TOKEN', detail: 'Got token: ${idToken != null ? "YES" : "NULL"}, email: ${credential.email}');
+      await DebugLogger.log(
+        'APPLE_3_TOKEN',
+        detail:
+            'Got token: ${idToken != null ? "YES" : "NULL"}, email: ${credential.email}',
+      );
       if (idToken == null) {
         await DebugLogger.log('APPLE_3_FAIL', detail: 'No ID token');
         return false;
       }
 
-      await DebugLogger.log('APPLE_4_SUPABASE', detail: 'Calling signInWithIdToken');
+      await DebugLogger.log(
+        'APPLE_4_SUPABASE',
+        detail: 'Calling signInWithIdToken',
+      );
       final response = await _client.auth.signInWithIdToken(
         provider: OAuthProvider.apple,
         idToken: idToken,
@@ -234,7 +248,11 @@ class AuthService {
       );
 
       final hasSession = response.session != null;
-      await DebugLogger.log('APPLE_5_RESULT', detail: 'session: $hasSession, user: ${response.user?.email}', userId: response.user?.id);
+      await DebugLogger.log(
+        'APPLE_5_RESULT',
+        detail: 'session: $hasSession, user: ${response.user?.email}',
+        userId: response.user?.id,
+      );
       return hasSession;
     } catch (e) {
       await DebugLogger.log('APPLE_ERROR', detail: e.toString());
@@ -244,9 +262,13 @@ class AuthService {
   }
 
   String _generateNonce([int length = 32]) {
-    const charset = '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
+    const charset =
+        '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
     final random = math.Random.secure();
-    return List.generate(length, (_) => charset[random.nextInt(charset.length)]).join();
+    return List.generate(
+      length,
+      (_) => charset[random.nextInt(charset.length)],
+    ).join();
   }
 
   /// Sign in con Google para Android/iOS usando Google Sign In nativo
@@ -262,7 +284,8 @@ class AuthService {
       }
 
       final googleSignIn = GoogleSignIn(
-        clientId: '1001566261860-lompbgfudrufjrcgt2sabmq1lopnu3ur.apps.googleusercontent.com',
+        clientId:
+            '1001566261860-lompbgfudrufjrcgt2sabmq1lopnu3ur.apps.googleusercontent.com',
         serverClientId: webClientId,
         scopes: ['email', 'profile'],
       );
@@ -377,7 +400,8 @@ class AuthService {
       subscription = appLinks.uriLinkStream.listen(processCallback);
 
       // Construir URL con prompt=select_account y login_hint si disponible
-      var authUrlStr = 'https://gkqcrkqaijwhiksyjekv.supabase.co/auth/v1/authorize'
+      var authUrlStr =
+          'https://gkqcrkqaijwhiksyjekv.supabase.co/auth/v1/authorize'
           '?provider=google'
           '&redirect_to=${Uri.encodeComponent(redirectUrl)}'
           '&prompt=select_account';
@@ -428,10 +452,7 @@ class AuthService {
       final authUrl = Uri.https(
         'gkqcrkqaijwhiksyjekv.supabase.co',
         '/auth/v1/authorize',
-        {
-          'provider': 'google',
-          'redirect_to': _desktopCallbackUrl,
-        },
+        {'provider': 'google', 'redirect_to': _desktopCallbackUrl},
       );
 
       // Abrir navegador
@@ -453,7 +474,9 @@ class AuthService {
           // También buscar en el fragment si viene como hash
           String? accessToken;
           if (fullUrl.contains('access_token=')) {
-            final tokenMatch = RegExp(r'access_token=([^&]+)').firstMatch(fullUrl);
+            final tokenMatch = RegExp(
+              r'access_token=([^&]+)',
+            ).firstMatch(fullUrl);
             accessToken = tokenMatch?.group(1);
           }
 
@@ -626,12 +649,17 @@ class AuthService {
       if (uid != null) {
         await _client
             .from(SupabaseConfig.driversTable)
-            .update({'is_online': false}).eq('id', uid);
+            .update({'is_online': false})
+            .eq('id', uid);
       }
-    } catch (_) {/* red caída: la ventana de frescura es la red de seguridad */}
+    } catch (_) {
+      /* red caída: la ventana de frescura es la red de seguridad */
+    }
     try {
       await BackgroundLocationController().stopTracking();
-    } catch (_) {/* ignore */}
+    } catch (_) {
+      /* ignore */
+    }
 
     // Sign out from Google Sign In first (clears cached account)
     try {
@@ -656,9 +684,12 @@ class AuthService {
     if (existing != null) return; // Already exists
 
     final meta = user.userMetadata ?? {};
-    final firstName = meta['first_name'] as String? ??
-        meta['full_name']?.toString().split(' ').first ?? '';
-    final lastName = meta['last_name'] as String? ??
+    final firstName =
+        meta['first_name'] as String? ??
+        meta['full_name']?.toString().split(' ').first ??
+        '';
+    final lastName =
+        meta['last_name'] as String? ??
         (meta['full_name']?.toString().split(' ').skip(1).join(' ') ?? '');
     final fullName = '$firstName $lastName'.trim();
     final phone = meta['phone'] as String? ?? '';
@@ -667,7 +698,11 @@ class AuthService {
     // Detect country: 1) check profiles table, 2) last known GPS, 3) default US
     String countryCode = 'US';
     try {
-      final profile = await _client.from('profiles').select('country_code').eq('id', user.id).maybeSingle();
+      final profile = await _client
+          .from('profiles')
+          .select('country_code')
+          .eq('id', user.id)
+          .maybeSingle();
       if (profile != null && profile['country_code'] != null) {
         countryCode = profile['country_code'];
       }
@@ -675,11 +710,10 @@ class AuthService {
     try {
       final position = await Geolocator.getLastKnownPosition();
       if (position != null) {
-        if (position.latitude < 33 && position.longitude > -118 && position.longitude < -86) {
-          countryCode = 'MX';
-        } else {
-          countryCode = 'US';
-        }
+        countryCode = GeoUtils.countryCode(
+          position.latitude,
+          position.longitude,
+        );
       }
     } catch (_) {}
 
@@ -687,7 +721,9 @@ class AuthService {
       'id': user.id,
       'user_id': user.id,
       'email': user.email ?? '',
-      'name': fullName.isNotEmpty ? fullName : (user.email?.split('@').first ?? 'Driver'),
+      'name': fullName.isNotEmpty
+          ? fullName
+          : (user.email?.split('@').first ?? 'Driver'),
       'first_name': firstName.isNotEmpty ? firstName : null,
       'last_name': lastName.isNotEmpty ? lastName : null,
       'phone': phone,
@@ -706,7 +742,11 @@ class AuthService {
     debugPrint('AUTH -> ensureDriverProfile created for ${user.email}');
 
     // Sync to waitlist so admin panel shows all app signups
-    await _ensureWaitlistEntry(user.email ?? '', source: 'app_google');
+    await _ensureWaitlistEntry(
+      user.email ?? '',
+      source: 'app_google',
+      countryCode: countryCode,
+    );
   }
 
   // Reset password
@@ -721,9 +761,10 @@ class AuthService {
   /// Mobile: deep link scheme, Desktop: localhost callback, Web: origin
   static String _getEmailRedirectUrl() {
     if (kIsWeb) {
-      final isProduction = Uri.base.host.contains('pages.dev') ||
-                           Uri.base.host.contains('toro-ride.com') ||
-                           Uri.base.host.contains('toro-driver');
+      final isProduction =
+          Uri.base.host.contains('pages.dev') ||
+          Uri.base.host.contains('toro-ride.com') ||
+          Uri.base.host.contains('toro-driver');
       return isProduction ? Uri.base.origin : 'https://toro-driver.pages.dev';
     }
     if (!kIsWeb) {
@@ -736,9 +777,7 @@ class AuthService {
 
   // Update password
   Future<UserResponse> updatePassword(String newPassword) async {
-    return await _client.auth.updateUser(
-      UserAttributes(password: newPassword),
-    );
+    return await _client.auth.updateUser(UserAttributes(password: newPassword));
   }
 
   // Create driver profile in database
@@ -769,30 +808,34 @@ class AuthService {
         ).timeout(const Duration(seconds: 5));
         signupLat = position.latitude;
         signupLng = position.longitude;
-        // Mexico bounds: lat 14-33, lng -118 to -86
-        if (position.latitude >= 14 && position.latitude <= 33 &&
-            position.longitude >= -118 && position.longitude <= -86) {
-          countryCode = 'MX';
-        } else {
-          countryCode = 'US';
-        }
+        countryCode = GeoUtils.countryCode(
+          position.latitude,
+          position.longitude,
+        );
       }
     } catch (_) {}
 
     // Fallback: IP geolocation when GPS unavailable
     if (signupLat == null) {
       try {
-        final ipResp = await http.get(
-          Uri.parse('http://ip-api.com/json/?fields=status,countryCode,city,lat,lon'),
-        ).timeout(const Duration(seconds: 4));
+        final ipResp = await http
+            .get(
+              Uri.parse(
+                'https://ipwho.is/?fields=success,country_code,city,latitude,longitude',
+              ),
+            )
+            .timeout(const Duration(seconds: 4));
         if (ipResp.statusCode == 200) {
           final ipData = jsonDecode(ipResp.body) as Map<String, dynamic>;
-          if (ipData['status'] == 'success') {
-            signupLat = (ipData['lat'] as num?)?.toDouble();
-            signupLng = (ipData['lon'] as num?)?.toDouble();
-            final ipCC = ipData['countryCode'] as String?;
+          if (ipData['success'] == true) {
+            signupLat = (ipData['latitude'] as num?)?.toDouble();
+            signupLng = (ipData['longitude'] as num?)?.toDouble();
+            final ipCC = ipData['country_code'] as String?;
             if (ipCC == 'MX' || ipCC == 'US') countryCode = ipCC!;
-            await DebugLogger.log('IP_GEO', detail: 'Fallback: $countryCode, ${ipData['city']}');
+            await DebugLogger.log(
+              'IP_GEO',
+              detail: 'Fallback: $countryCode, ${ipData['city']}',
+            );
           }
         }
       } catch (_) {}
@@ -823,20 +866,26 @@ class AuthService {
 
     // Also update profiles table with signup coordinates
     try {
-      final profileUpdate = <String, dynamic>{
-        'country_code': countryCode,
-      };
+      final profileUpdate = <String, dynamic>{'country_code': countryCode};
       if (signupLat != null) profileUpdate['signup_lat'] = signupLat;
       if (signupLng != null) profileUpdate['signup_lng'] = signupLng;
       await _client.from('profiles').update(profileUpdate).eq('id', userId);
     } catch (_) {}
 
     // Sync to waitlist so admin panel shows all app signups
-    await _ensureWaitlistEntry(email, source: 'app_signup');
+    await _ensureWaitlistEntry(
+      email,
+      source: 'app_signup',
+      countryCode: countryCode,
+    );
   }
 
   /// Ensures user appears in waitlist table for admin visibility
-  Future<void> _ensureWaitlistEntry(String email, {String source = 'app'}) async {
+  Future<void> _ensureWaitlistEntry(
+    String email, {
+    String source = 'app',
+    String countryCode = 'US',
+  }) async {
     if (email.isEmpty) return;
     try {
       // Check if already in waitlist
@@ -850,7 +899,7 @@ class AuthService {
       await _client.from('waitlist').insert({
         'email': email,
         'type': 'driver',
-        'country': 'MX',
+        'country': countryCode.toUpperCase() == 'MX' ? 'MX' : 'US',
         'city': '',
         'source': source,
         'status': 'registered',
@@ -889,15 +938,19 @@ class AuthService {
 
       if (profile['signup_lat'] != null) {
         // Already has location, just update driver_app tracking + version
-        await _client.from('profiles').update({
-          'driver_app_installed': true,
-          'driver_app_last_open': DateTime.now().toIso8601String(),
-          'driver_app_version': appVersion,
-        }).eq('id', userId);
+        await _client
+            .from('profiles')
+            .update({
+              'driver_app_installed': true,
+              'driver_app_last_open': DateTime.now().toIso8601String(),
+              'driver_app_version': appVersion,
+            })
+            .eq('id', userId);
         // Also update drivers.app_version
-        await _client.from('drivers').update({
-          'app_version': appVersion,
-        }).eq('id', userId);
+        await _client
+            .from('drivers')
+            .update({'app_version': appVersion})
+            .eq('id', userId);
         return;
       }
 
@@ -912,30 +965,32 @@ class AuthService {
           desiredAccuracy: LocationAccuracy.low,
         ).timeout(const Duration(seconds: 5));
 
-        String countryCode = 'US';
-        if (position.latitude >= 14 && position.latitude <= 33 &&
-            position.longitude >= -118 && position.longitude <= -86) {
-          countryCode = 'MX';
-        } else {
-          countryCode = 'US';
-        }
+        final countryCode = GeoUtils.countryCode(
+          position.latitude,
+          position.longitude,
+        );
 
-        await _client.from('profiles').update({
-          'signup_lat': position.latitude,
-          'signup_lng': position.longitude,
-          'country_code': countryCode,
-          'driver_app_installed': true,
-          'driver_app_last_open': DateTime.now().toIso8601String(),
-          'driver_app_version': appVersion,
-        }).eq('id', userId);
+        await _client
+            .from('profiles')
+            .update({
+              'signup_lat': position.latitude,
+              'signup_lng': position.longitude,
+              'country_code': countryCode,
+              'driver_app_installed': true,
+              'driver_app_last_open': DateTime.now().toIso8601String(),
+              'driver_app_version': appVersion,
+            })
+            .eq('id', userId);
 
         // Also update drivers table country_code + version
-        await _client.from('drivers').update({
-          'country_code': countryCode,
-          'app_version': appVersion,
-        }).eq('id', userId);
+        await _client
+            .from('drivers')
+            .update({'country_code': countryCode, 'app_version': appVersion})
+            .eq('id', userId);
 
-        AppLogger.log('AUTH_SERVICE -> Backfilled GPS: ${position.latitude}, ${position.longitude} -> $countryCode (v$appVersion)');
+        AppLogger.log(
+          'AUTH_SERVICE -> Backfilled GPS: ${position.latitude}, ${position.longitude} -> $countryCode (v$appVersion)',
+        );
       } else {
         // No GPS — try IP geolocation fallback
         final updateProfiles = <String, dynamic>{
@@ -943,23 +998,27 @@ class AuthService {
           'driver_app_last_open': DateTime.now().toIso8601String(),
           'driver_app_version': appVersion,
         };
-        final updateDrivers = <String, dynamic>{
-          'app_version': appVersion,
-        };
+        final updateDrivers = <String, dynamic>{'app_version': appVersion};
         try {
-          final ipResp = await http.get(
-            Uri.parse('http://ip-api.com/json/?fields=status,countryCode,city,lat,lon'),
-          ).timeout(const Duration(seconds: 4));
+          final ipResp = await http
+              .get(
+                Uri.parse(
+                  'https://ipwho.is/?fields=success,country_code,city,latitude,longitude',
+                ),
+              )
+              .timeout(const Duration(seconds: 4));
           if (ipResp.statusCode == 200) {
             final ipData = jsonDecode(ipResp.body) as Map<String, dynamic>;
-            if (ipData['status'] == 'success') {
-              final ipCC = ipData['countryCode'] as String?;
+            if (ipData['success'] == true) {
+              final ipCC = ipData['country_code'] as String?;
               if (ipCC == 'MX' || ipCC == 'US') {
                 updateProfiles['country_code'] = ipCC;
                 updateDrivers['country_code'] = ipCC;
               }
-              updateProfiles['signup_lat'] = (ipData['lat'] as num?)?.toDouble();
-              updateProfiles['signup_lng'] = (ipData['lon'] as num?)?.toDouble();
+              updateProfiles['signup_lat'] = (ipData['latitude'] as num?)
+                  ?.toDouble();
+              updateProfiles['signup_lng'] = (ipData['longitude'] as num?)
+                  ?.toDouble();
               final ipCity = ipData['city'] as String?;
               if (ipCity != null && ipCity.isNotEmpty) {
                 updateProfiles['city'] = ipCity;
@@ -973,6 +1032,8 @@ class AuthService {
       }
     } catch (e) {
       AppLogger.log('AUTH_SERVICE -> Backfill GPS failed: $e');
+    } finally {
+      await AppInstallationService.instance.identifyAuthenticatedDriver();
     }
   }
 
@@ -999,7 +1060,9 @@ class AuthService {
 
     // If not found by ID, try to find by email (fallback for legacy registrations)
     if (response == null && currentUser?.email != null) {
-      AppLogger.log('AUTH_SERVICE -> Trying fallback query by email: ${currentUser!.email}');
+      AppLogger.log(
+        'AUTH_SERVICE -> Trying fallback query by email: ${currentUser!.email}',
+      );
       response = await _client
           .from(SupabaseConfig.driversTable)
           .select()
@@ -1034,27 +1097,57 @@ class AuthService {
     if (currentUserId == null) return;
 
     try {
+      final user = currentUser;
+      final providers = user?.appMetadata['providers'];
+      final usesApple =
+          user?.appMetadata['provider'] == 'apple' ||
+          providers is List && providers.contains('apple') ||
+          user?.identities?.any((identity) => identity.provider == 'apple') ==
+              true;
+      final body = <String, dynamic>{};
+      if (usesApple) {
+        if (kIsWeb || !Platform.isIOS) {
+          throw StateError(
+            'Sign in with Apple account deletion must be completed on iOS',
+          );
+        }
+        final rawNonce = _generateNonce();
+        final hashedNonce = sha256.convert(utf8.encode(rawNonce)).toString();
+        final credential = await SignInWithApple.getAppleIDCredential(
+          scopes: [
+            AppleIDAuthorizationScopes.email,
+            AppleIDAuthorizationScopes.fullName,
+          ],
+          nonce: hashedNonce,
+        );
+        if (credential.authorizationCode.isEmpty) {
+          throw StateError('Apple did not authorize account deletion');
+        }
+        body['apple_authorization_code'] = credential.authorizationCode;
+        body['apple_client_id'] = 'com.tororide.driver';
+      }
       final response = await _client.functions.invoke(
         'delete-account',
         method: HttpMethod.post,
-        body: {},
+        body: body,
       );
       final data = response.data;
-      if (data is Map && data['ok'] == true) {
-        await DebugLogger.log('DELETE_ACCOUNT', detail: 'Account fully deleted for user: $currentUserId');
-      } else {
-        await DebugLogger.log('DELETE_ACCOUNT', detail: 'Response: $data');
+      if (response.status != 200 || data is! Map || data['ok'] != true) {
+        final message = data is Map
+            ? (data['error'] ?? 'Account deletion was not confirmed').toString()
+            : 'Account deletion was not confirmed';
+        throw Exception(message);
       }
+      await DebugLogger.log(
+        'DELETE_ACCOUNT',
+        detail: 'Account fully deleted for user: $currentUserId',
+      );
     } catch (e) {
-      await DebugLogger.log('DELETE_ACCOUNT_ERROR', detail: '$e — falling back to driver delete');
-      // Fallback: at least delete driver record
-      await _client
-          .from(SupabaseConfig.driversTable)
-          .delete()
-          .eq('id', currentUserId!);
+      await DebugLogger.log('DELETE_ACCOUNT_ERROR', detail: '$e');
+      rethrow;
     }
 
-    // Sign out and clear local state
+    // Sign out only after the server confirms deletion of the auth identity.
     await signOut();
   }
 }

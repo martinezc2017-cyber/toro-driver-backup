@@ -115,7 +115,8 @@ class _HomeScreenState extends State<HomeScreen>
   // === CASH CONTROL ===
   final CashAccountService _cashService = CashAccountService();
   double _cashOwed = 0;
-  double _cashLimit = 0; // límite de crédito de efectivo (para avisar solo cerca del tope)
+  double _cashLimit =
+      0; // límite de crédito de efectivo (para avisar solo cerca del tope)
   String _cashAccountStatus = 'active';
 
   // Navigation mode removed - using NavigationMapScreen on tab 1 instead
@@ -127,11 +128,14 @@ class _HomeScreenState extends State<HomeScreen>
   late AnimationController _particleController;
   static final _rng = math.Random(42);
   static const int _maxStars = 60;
-  static final _particleData = List.generate(_maxStars, (_) => [
-    _rng.nextDouble(), _rng.nextDouble(), // x, y fractions
-    _rng.nextDouble() * 2.5 + 1.5, // base size (1.5-4)
-    _rng.nextDouble(), // phase
-  ]);
+  static final _particleData = List.generate(
+    _maxStars,
+    (_) => [
+      _rng.nextDouble(), _rng.nextDouble(), // x, y fractions
+      _rng.nextDouble() * 2.5 + 1.5, // base size (1.5-4)
+      _rng.nextDouble(), // phase
+    ],
+  );
 
   @override
   void initState() {
@@ -210,7 +214,10 @@ class _HomeScreenState extends State<HomeScreen>
   void _refreshRidesOnResume() {
     try {
       final rideProvider = Provider.of<RideProvider>(context, listen: false);
-      final locationProvider = Provider.of<LocationProvider>(context, listen: false);
+      final locationProvider = Provider.of<LocationProvider>(
+        context,
+        listen: false,
+      );
       final pos = locationProvider.currentPosition;
       rideProvider.refreshAvailableRides(
         latitude: pos?.latitude,
@@ -227,12 +234,17 @@ class _HomeScreenState extends State<HomeScreen>
 
   Future<void> _loadPendingRequestsCount() async {
     try {
-      final driverProvider = Provider.of<DriverProvider>(context, listen: false);
+      final driverProvider = Provider.of<DriverProvider>(
+        context,
+        listen: false,
+      );
       final driver = driverProvider.driver;
 
       if (driver == null) return;
 
-      final requests = await _tourismService.getPendingVehicleRequests(driver.id);
+      final requests = await _tourismService.getPendingVehicleRequests(
+        driver.id,
+      );
 
       if (mounted) {
         setState(() {
@@ -247,7 +259,10 @@ class _HomeScreenState extends State<HomeScreen>
 
   Future<void> _loadUnreadNotificationsCount() async {
     try {
-      final driverProvider = Provider.of<DriverProvider>(context, listen: false);
+      final driverProvider = Provider.of<DriverProvider>(
+        context,
+        listen: false,
+      );
       final driver = driverProvider.driver;
 
       if (driver == null) return;
@@ -267,7 +282,10 @@ class _HomeScreenState extends State<HomeScreen>
 
   Future<void> _loadCashAccountStatus() async {
     try {
-      final driverProvider = Provider.of<DriverProvider>(context, listen: false);
+      final driverProvider = Provider.of<DriverProvider>(
+        context,
+        listen: false,
+      );
       final driver = driverProvider.driver;
       if (driver == null) return;
 
@@ -392,7 +410,9 @@ class _HomeScreenState extends State<HomeScreen>
           ),
           callback: (payload) {
             if (mounted && payload.newRecord.isNotEmpty) {
-              debugPrint('🔔 Received notification from Realtime: ${payload.newRecord}');
+              debugPrint(
+                '🔔 Received notification from Realtime: ${payload.newRecord}',
+              );
               _handleNewNotification(payload.newRecord);
             }
           },
@@ -437,7 +457,9 @@ class _HomeScreenState extends State<HomeScreen>
         )
         .subscribe();
 
-    debugPrint('🔔 Subscribed to tourism chat messages for driver ${driver.id}');
+    debugPrint(
+      '🔔 Subscribed to tourism chat messages for driver ${driver.id}',
+    );
   }
 
   void _handleChatMessage(Map<String, dynamic> record, String currentUserId) {
@@ -463,7 +485,9 @@ class _HomeScreenState extends State<HomeScreen>
     switch (messageType) {
       case 'emergency':
         title = 'ALERTA DE EMERGENCIA';
-        body = message.isNotEmpty ? message : 'Alerta de emergencia en el evento';
+        body = message.isNotEmpty
+            ? message
+            : 'Alerta de emergencia en el evento';
         // Use high-priority channel for emergencies
         _notificationService.showRideRequestNotification(
           rideId: eventId,
@@ -531,25 +555,40 @@ class _HomeScreenState extends State<HomeScreen>
                 color: Colors.red.withOpacity(0.15),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 28),
+              child: const Icon(
+                Icons.warning_amber_rounded,
+                color: Colors.red,
+                size: 28,
+              ),
             ),
             const SizedBox(width: 12),
             const Expanded(
               child: Text(
                 'ALERTA DE EMERGENCIA',
-                style: TextStyle(color: Colors.red, fontWeight: FontWeight.w900, fontSize: 16),
+                style: TextStyle(
+                  color: Colors.red,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 16,
+                ),
               ),
             ),
           ],
         ),
         content: Text(
           body.isNotEmpty ? body : 'Se ha emitido una alerta de emergencia.',
-          style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.4),
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 15,
+            height: 1.4,
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Entendido', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+            child: const Text(
+              'Entendido',
+              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),
@@ -612,7 +651,15 @@ class _HomeScreenState extends State<HomeScreen>
                 children: [
                   const Icon(Icons.emoji_events, color: Colors.amber, size: 28),
                   const SizedBox(width: 12),
-                  Expanded(child: Text(body, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600))),
+                  Expanded(
+                    child: Text(
+                      body,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
                 ],
               ),
               backgroundColor: Colors.green.shade700,
@@ -678,9 +725,20 @@ class _HomeScreenState extends State<HomeScreen>
             SnackBar(
               content: Row(
                 children: [
-                  const Icon(Icons.campaign_rounded, color: Colors.white, size: 20),
+                  const Icon(
+                    Icons.campaign_rounded,
+                    color: Colors.white,
+                    size: 20,
+                  ),
                   const SizedBox(width: 10),
-                  Expanded(child: Text(body, style: const TextStyle(color: Colors.white), maxLines: 2, overflow: TextOverflow.ellipsis)),
+                  Expanded(
+                    child: Text(
+                      body,
+                      style: const TextStyle(color: Colors.white),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 ],
               ),
               backgroundColor: const Color(0xFF1565C0),
@@ -788,26 +846,35 @@ class _HomeScreenState extends State<HomeScreen>
               ),
             ),
             const SizedBox(width: 12),
-            const Expanded(
+            Expanded(
               child: Text(
-                '¡Cuenta Aprobada!',
-                style: TextStyle(color: AppColors.textPrimary, fontSize: 18),
+                'home.account_approved_title'.tr(),
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 18,
+                ),
               ),
             ),
           ],
         ),
-        content: const Column(
+        content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '¡Felicidades! Tu cuenta ha sido aprobada por el equipo de Toro.',
-              style: TextStyle(color: AppColors.textSecondary, height: 1.5),
+              'home.account_approved_message'.tr(),
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                height: 1.5,
+              ),
             ),
             SizedBox(height: 12),
             Text(
-              'Ya puedes ponerte en línea y comenzar a recibir viajes.',
-              style: TextStyle(color: AppColors.textSecondary, height: 1.5),
+              'home.account_approved_ready'.tr(),
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                height: 1.5,
+              ),
             ),
           ],
         ),
@@ -819,7 +886,7 @@ class _HomeScreenState extends State<HomeScreen>
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
-            child: const Text('¡Empezar!'),
+            child: Text('home.start'.tr()),
           ),
         ],
       ),
@@ -834,42 +901,32 @@ class _HomeScreenState extends State<HomeScreen>
 
     switch (reason) {
       case 'documents_incomplete':
-        title = 'Documentos Pendientes';
-        message =
-            'Has sido desconectado porque hay documentos pendientes por completar. '
-            'Por favor completa todos los documentos requeridos para volver a estar online.';
+        title = 'home.documents_pending_title'.tr();
+        message = 'home.documents_pending_message'.tr();
         icon = Icons.description_outlined;
         color = const Color(0xFFFF9500);
         break;
       case 'pending_admin_approval':
-        title = 'Aprobación Pendiente';
-        message =
-            'Has sido desconectado porque tu cuenta está pendiente de aprobación. '
-            'Te notificaremos cuando seas aprobado.';
+        title = 'home.approval_pending_title'.tr();
+        message = 'home.approval_pending_message'.tr();
         icon = Icons.hourglass_top_rounded;
         color = const Color(0xFFFFD60A);
         break;
       case 'account_suspended':
-        title = 'Cuenta Suspendida';
-        message =
-            'Tu cuenta ha sido suspendida. Has sido desconectado automáticamente. '
-            'Contacta a soporte para más información.';
+        title = 'home.account_suspended_title'.tr();
+        message = 'home.account_suspended_message'.tr();
         icon = Icons.block_rounded;
         color = const Color(0xFFFF3B30);
         break;
       case 'account_rejected':
-        title = 'Solicitud Rechazada';
-        message =
-            'Tu solicitud de conductor fue rechazada. Has sido desconectado. '
-            'Contacta a soporte si crees que es un error.';
+        title = 'home.account_rejected_title'.tr();
+        message = 'home.account_rejected_message'.tr();
         icon = Icons.cancel_rounded;
         color = const Color(0xFFFF3B30);
         break;
       default:
-        title = 'Desconectado';
-        message =
-            'Has sido desconectado automáticamente porque ya no cumples los requisitos '
-            'para estar online. Verifica tu cuenta.';
+        title = 'home.disconnected_title'.tr();
+        message = 'home.disconnected_message'.tr();
         icon = Icons.info_outline_rounded;
         color = const Color(0xFFFF9500);
     }
@@ -903,12 +960,12 @@ class _HomeScreenState extends State<HomeScreen>
                 Navigator.pop(context);
                 Navigator.pushNamed(context, '/documents');
               },
-              child: const Text('Ver Documentos'),
+              child: Text('home.view_documents'.tr()),
             ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context),
             style: ElevatedButton.styleFrom(backgroundColor: color),
-            child: const Text('Entendido'),
+            child: Text('understood'.tr()),
           ),
         ],
       ),
@@ -1001,7 +1058,10 @@ class _HomeScreenState extends State<HomeScreen>
   /// Check if current user is an organizer (no driver features needed)
   bool get _isOrganizer {
     try {
-      final driverProvider = Provider.of<DriverProvider>(context, listen: false);
+      final driverProvider = Provider.of<DriverProvider>(
+        context,
+        listen: false,
+      );
       return driverProvider.driver?.role == 'organizer';
     } catch (_) {
       return false;
@@ -1029,11 +1089,19 @@ class _HomeScreenState extends State<HomeScreen>
         child: AnimatedBuilder(
           animation: _particleController,
           builder: (context, child) {
-            final dx = math.sin((_particleController.value + phase) * 2 * math.pi) * 8;
-            final dy = math.cos((_particleController.value + phase * 1.3) * 2 * math.pi) * 10;
-            final opacity = 0.55 + (math.sin(
-              (_particleController.value + phase * 0.7) * 2 * math.pi,
-            ) * 0.35);
+            final dx =
+                math.sin((_particleController.value + phase) * 2 * math.pi) * 8;
+            final dy =
+                math.cos(
+                  (_particleController.value + phase * 1.3) * 2 * math.pi,
+                ) *
+                10;
+            final opacity =
+                0.55 +
+                (math.sin(
+                      (_particleController.value + phase * 0.7) * 2 * math.pi,
+                    ) *
+                    0.35);
             return Transform.translate(
               offset: Offset(dx, dy),
               child: Container(
@@ -1130,13 +1198,15 @@ class _HomeScreenState extends State<HomeScreen>
                           // monto chico. Mostrarlo SOLO cuando la deuda está cerca
                           // del límite (>=80%, ya casi se llena y bloquea) o si la
                           // cuenta está suspendida/bloqueada. Con holgura, no molesta.
-                          if ((_cashLimit > 0 && _cashOwed >= _cashLimit * 0.8) ||
+                          if ((_cashLimit > 0 &&
+                                  _cashOwed >= _cashLimit * 0.8) ||
                               _cashAccountStatus != 'active')
                             _buildCashOwedBanner(),
                           // Banner de viaje activo (antes era codigo muerto, nunca
                           // se llamaba) -> toca para retomar. Marketplace va a su
                           // pantalla dedicada; el resto al mapa.
-                          if (rideProvider.hasActiveRide && rideProvider.activeRide != null)
+                          if (rideProvider.hasActiveRide &&
+                              rideProvider.activeRide != null)
                             _buildActiveRideBanner(rideProvider.activeRide!),
                           _buildIncomingRides(),
                           _buildEarningsCard(),
@@ -1162,12 +1232,16 @@ class _HomeScreenState extends State<HomeScreen>
   /// Profile completion banner for newly registered drivers
   Widget _buildProfileCompletionBanner() {
     try {
-      final driverProvider = Provider.of<DriverProvider>(context, listen: false);
+      final driverProvider = Provider.of<DriverProvider>(
+        context,
+        listen: false,
+      );
       final driver = driverProvider.driver;
       if (driver == null || driver.canGoOnline) return const SizedBox.shrink();
 
       // Check what's missing
-      final hasVehicle = driver.vehicleType != null &&
+      final hasVehicle =
+          driver.vehicleType != null &&
           driver.vehiclePlate != null &&
           driver.vehiclePlate!.isNotEmpty;
       final hasDocs = driver.allDocumentsSigned;
@@ -1185,17 +1259,18 @@ class _HomeScreenState extends State<HomeScreen>
             colors: [Color(0xFF10202B), Color(0xFF0C0C12)],
           ),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: AppColors.primary.withValues(alpha: 0.3),
-          ),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Icon(Icons.assignment_outlined,
-                    color: AppColors.primary, size: 22),
+                Icon(
+                  Icons.assignment_outlined,
+                  color: AppColors.primary,
+                  size: 22,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -1212,10 +1287,7 @@ class _HomeScreenState extends State<HomeScreen>
             const SizedBox(height: 4),
             Text(
               'home_complete_profile_desc'.tr(),
-              style: TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 12,
-              ),
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
             ),
             const SizedBox(height: 12),
             // Checklist
@@ -1260,8 +1332,7 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           ),
           if (!done)
-            Icon(Icons.arrow_forward_ios,
-                color: AppColors.primary, size: 14),
+            Icon(Icons.arrow_forward_ios, color: AppColors.primary, size: 14),
         ],
       ),
     );
@@ -1324,7 +1395,9 @@ class _HomeScreenState extends State<HomeScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    ride.type == RideType.marketplace ? 'ENTREGA ACTIVA' : 'VIAJE ACTIVO',
+                    ride.type == RideType.marketplace
+                        ? 'ENTREGA ACTIVA'
+                        : 'VIAJE ACTIVO',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 12,
@@ -1397,7 +1470,8 @@ class _HomeScreenState extends State<HomeScreen>
             children: [
               // Handle
               Container(
-                width: 40, height: 4,
+                width: 40,
+                height: 4,
                 margin: const EdgeInsets.only(bottom: 20),
                 decoration: BoxDecoration(
                   color: AppColors.border,
@@ -1406,14 +1480,19 @@ class _HomeScreenState extends State<HomeScreen>
               ),
               // Icon
               Container(
-                width: 64, height: 64,
+                width: 64,
+                height: 64,
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     colors: [Color(0xFFFF9500), Color(0xFFFF6B00)],
                   ),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: const Icon(Icons.science_rounded, color: Colors.white, size: 32),
+                child: const Icon(
+                  Icons.science_rounded,
+                  color: Colors.white,
+                  size: 32,
+                ),
               ),
               const SizedBox(height: 16),
               Text(
@@ -1428,7 +1507,11 @@ class _HomeScreenState extends State<HomeScreen>
               const SizedBox(height: 8),
               Text(
                 'trial_subtitle'.tr(),
-                style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, height: 1.4),
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 13,
+                  height: 1.4,
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 20),
@@ -1449,25 +1532,46 @@ class _HomeScreenState extends State<HomeScreen>
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF2196F3).withValues(alpha: 0.15),
+                          color: const Color(
+                            0xFF2196F3,
+                          ).withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: const Icon(Icons.hourglass_top_rounded, color: Color(0xFF2196F3), size: 22),
+                        child: const Icon(
+                          Icons.hourglass_top_rounded,
+                          color: Color(0xFF2196F3),
+                          size: 22,
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('trial_wait_title'.tr(),
-                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14)),
+                            Text(
+                              'trial_wait_title'.tr(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                              ),
+                            ),
                             const SizedBox(height: 2),
-                            Text('trial_wait_desc'.tr(),
-                              style: const TextStyle(color: AppColors.textTertiary, fontSize: 11)),
+                            Text(
+                              'trial_wait_desc'.tr(),
+                              style: const TextStyle(
+                                color: AppColors.textTertiary,
+                                fontSize: 11,
+                              ),
+                            ),
                           ],
                         ),
                       ),
-                      const Icon(Icons.arrow_forward_ios, color: AppColors.textTertiary, size: 14),
+                      const Icon(
+                        Icons.arrow_forward_ios,
+                        color: AppColors.textTertiary,
+                        size: 14,
+                      ),
                     ],
                   ),
                 ),
@@ -1486,7 +1590,9 @@ class _HomeScreenState extends State<HomeScreen>
                     ],
                   ),
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFFFF9500).withValues(alpha: 0.3)),
+                  border: Border.all(
+                    color: const Color(0xFFFF9500).withValues(alpha: 0.3),
+                  ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1496,21 +1602,38 @@ class _HomeScreenState extends State<HomeScreen>
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFF9500).withValues(alpha: 0.15),
+                            color: const Color(
+                              0xFFFF9500,
+                            ).withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: const Icon(Icons.science_rounded, color: Color(0xFFFF9500), size: 22),
+                          child: const Icon(
+                            Icons.science_rounded,
+                            color: Color(0xFFFF9500),
+                            size: 22,
+                          ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('trial_mode_title'.tr(),
-                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14)),
+                              Text(
+                                'trial_mode_title'.tr(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                ),
+                              ),
                               const SizedBox(height: 2),
-                              Text('trial_mode_desc'.tr(),
-                                style: const TextStyle(color: AppColors.textTertiary, fontSize: 11)),
+                              Text(
+                                'trial_mode_desc'.tr(),
+                                style: const TextStyle(
+                                  color: AppColors.textTertiary,
+                                  fontSize: 11,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -1519,29 +1642,43 @@ class _HomeScreenState extends State<HomeScreen>
                     const SizedBox(height: 14),
                     // Checkbox with legal text
                     GestureDetector(
-                      onTap: () => setSheetState(() => trialChecked = !trialChecked),
+                      onTap: () =>
+                          setSheetState(() => trialChecked = !trialChecked),
                       child: Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: trialChecked ? AppColors.success.withValues(alpha: 0.08) : AppColors.background,
+                          color: trialChecked
+                              ? AppColors.success.withValues(alpha: 0.08)
+                              : AppColors.background,
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(
-                            color: trialChecked ? AppColors.success.withValues(alpha: 0.4) : AppColors.border,
+                            color: trialChecked
+                                ? AppColors.success.withValues(alpha: 0.4)
+                                : AppColors.border,
                           ),
                         ),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Container(
-                              width: 20, height: 20,
+                              width: 20,
+                              height: 20,
                               margin: const EdgeInsets.only(top: 1),
                               decoration: BoxDecoration(
-                                color: trialChecked ? AppColors.success : AppColors.surface,
+                                color: trialChecked
+                                    ? AppColors.success
+                                    : AppColors.surface,
                                 borderRadius: BorderRadius.circular(5),
-                                border: trialChecked ? null : Border.all(color: AppColors.border),
+                                border: trialChecked
+                                    ? null
+                                    : Border.all(color: AppColors.border),
                               ),
                               child: trialChecked
-                                  ? const Icon(Icons.check, color: Colors.white, size: 14)
+                                  ? const Icon(
+                                      Icons.check,
+                                      color: Colors.white,
+                                      size: 14,
+                                    )
                                   : null,
                             ),
                             const SizedBox(width: 10),
@@ -1549,7 +1686,9 @@ class _HomeScreenState extends State<HomeScreen>
                               child: Text(
                                 'trial_checkbox'.tr(),
                                 style: TextStyle(
-                                  color: trialChecked ? Colors.white : AppColors.textSecondary,
+                                  color: trialChecked
+                                      ? Colors.white
+                                      : AppColors.textSecondary,
                                   fontSize: 11,
                                   height: 1.5,
                                 ),
@@ -1562,46 +1701,76 @@ class _HomeScreenState extends State<HomeScreen>
                     const SizedBox(height: 14),
                     // Activate button
                     GestureDetector(
-                      onTap: (trialChecked && !isSubmitting) ? () async {
-                        setSheetState(() => isSubmitting = true);
-                        HapticService.mediumImpact();
-                        try {
-                          await _saveTrialModeAcceptance(driver);
-                          if (ctx.mounted) Navigator.pop(ctx, true);
-                        } catch (e) {
-                          setSheetState(() => isSubmitting = false);
-                          if (ctx.mounted) {
-                            ScaffoldMessenger.of(ctx).showSnackBar(
-                              SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
-                            );
-                          }
-                        }
-                      } : null,
+                      onTap: (trialChecked && !isSubmitting)
+                          ? () async {
+                              setSheetState(() => isSubmitting = true);
+                              HapticService.mediumImpact();
+                              try {
+                                await _saveTrialModeAcceptance(driver);
+                                if (ctx.mounted) Navigator.pop(ctx, true);
+                              } catch (e) {
+                                setSheetState(() => isSubmitting = false);
+                                if (ctx.mounted) {
+                                  ScaffoldMessenger.of(ctx).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Error: $e'),
+                                      backgroundColor: AppColors.error,
+                                    ),
+                                  );
+                                }
+                              }
+                            }
+                          : null,
                       child: Container(
                         width: double.infinity,
                         padding: const EdgeInsets.symmetric(vertical: 13),
                         decoration: BoxDecoration(
                           gradient: (trialChecked && !isSubmitting)
-                              ? const LinearGradient(colors: [Color(0xFFFF9500), Color(0xFFFF6B00)])
+                              ? const LinearGradient(
+                                  colors: [
+                                    Color(0xFFFF9500),
+                                    Color(0xFFFF6B00),
+                                  ],
+                                )
                               : null,
-                          color: (trialChecked && !isSubmitting) ? null : AppColors.card,
+                          color: (trialChecked && !isSubmitting)
+                              ? null
+                              : AppColors.card,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             if (isSubmitting)
-                              const SizedBox(width: 18, height: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white)))
+                              const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.white,
+                                  ),
+                                ),
+                              )
                             else ...[
-                              Icon(Icons.check_circle,
-                                color: trialChecked ? Colors.white : AppColors.textTertiary, size: 18),
+                              Icon(
+                                Icons.check_circle,
+                                color: trialChecked
+                                    ? Colors.white
+                                    : AppColors.textTertiary,
+                                size: 18,
+                              ),
                               const SizedBox(width: 8),
-                              Text('trial_activate'.tr(),
+                              Text(
+                                'trial_activate'.tr(),
                                 style: TextStyle(
-                                  color: trialChecked ? Colors.white : AppColors.textTertiary,
-                                  fontSize: 13, fontWeight: FontWeight.bold)),
+                                  color: trialChecked
+                                      ? Colors.white
+                                      : AppColors.textTertiary,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ],
                           ],
                         ),
@@ -1629,15 +1798,19 @@ class _HomeScreenState extends State<HomeScreen>
 
     // Collect audit data in parallel
     try {
-      final ipResp = await http.get(Uri.parse('https://api.ipify.org?format=json'));
+      final ipResp = await http.get(
+        Uri.parse('https://api.ipify.org?format=json'),
+      );
       if (ipResp.statusCode == 200) ipAddress = json.decode(ipResp.body)['ip'];
     } catch (_) {}
 
     try {
       if (await Geolocator.isLocationServiceEnabled()) {
         var perm = await Geolocator.checkPermission();
-        if (perm == LocationPermission.denied) perm = await Geolocator.requestPermission();
-        if (perm != LocationPermission.denied && perm != LocationPermission.deniedForever) {
+        if (perm == LocationPermission.denied)
+          perm = await Geolocator.requestPermission();
+        if (perm != LocationPermission.denied &&
+            perm != LocationPermission.deniedForever) {
           location = await Geolocator.getCurrentPosition(
             desiredAccuracy: LocationAccuracy.high,
             timeLimit: const Duration(seconds: 8),
@@ -1651,7 +1824,13 @@ class _HomeScreenState extends State<HomeScreen>
       appVersion = info.version;
     } catch (_) {}
 
-    final deviceInfo = kIsWeb ? 'Web' : (Platform.isAndroid ? 'Android' : Platform.isIOS ? 'iOS' : 'Unknown');
+    final deviceInfo = kIsWeb
+        ? 'Web'
+        : (Platform.isAndroid
+              ? 'Android'
+              : Platform.isIOS
+              ? 'iOS'
+              : 'Unknown');
     final userAgent = kIsWeb ? 'Flutter Web' : 'Flutter Mobile - $deviceInfo';
     final timezone = DateTime.now().timeZoneName;
     final disclaimerText = 'trial_checkbox'.tr();
@@ -1664,7 +1843,8 @@ class _HomeScreenState extends State<HomeScreen>
     // al chofer: se veia "Conectado y activo" un instante y lo botaba ("se
     // desconecto el driver"). Ahora el trial PERSISTE y el chofer se queda online.
     try {
-      await SupabaseConfig.client.from('drivers')
+      await SupabaseConfig.client
+          .from('drivers')
           .update({'trial_mode_accepted': true})
           .eq('id', driver.id);
     } catch (e) {
@@ -1780,91 +1960,29 @@ class _HomeScreenState extends State<HomeScreen>
                   if (_togglingOnline) return; // debounce: ignora multi-tap
                   setState(() => _togglingOnline = true);
                   try {
-
-                  // Check if driver can go online
-                  final driver = driverProvider.driver;
-                  if (driver != null && !driver.canGoOnline) {
-                    // Hard block: suspended or rejected accounts cannot use trial mode
-                    if (driver.onboardingStage == 'suspended' || driver.onboardingStage == 'rejected') {
-                      final isSuspended = driver.onboardingStage == 'suspended';
-                      showDialog(
-                        context: context,
-                        builder: (ctx) => AlertDialog(
-                          backgroundColor: AppColors.card,
-                          title: Row(children: [
-                            const Icon(Icons.block_rounded, color: Color(0xFFFF3B30)),
-                            const SizedBox(width: 12),
-                            Text(
-                              isSuspended ? 'trial_account_suspended'.tr() : 'trial_account_rejected'.tr(),
-                              style: TextStyle(color: AppColors.textPrimary),
-                            ),
-                          ]),
-                          content: Text(
-                            isSuspended
-                                ? 'trial_suspended_msg'.tr()
-                                : 'trial_rejected_msg'.tr(),
-                            style: TextStyle(color: AppColors.textSecondary, height: 1.5),
-                          ),
-                          actions: [
-                            ElevatedButton(
-                              onPressed: () => Navigator.pop(ctx),
-                              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF3B30)),
-                              child: Text('understood'.tr()),
-                            ),
-                          ],
-                        ),
-                      );
-                      return;
-                    }
-
-                    // Show trial mode bottom sheet
-                    AuditService.instance.logOnlineBlocked(
-                      driverId: driver.id,
-                      reason: 'showing_trial_mode_sheet',
-                      status: {
-                        'admin_approved': driver.adminApproved,
-                        'all_docs_signed': driver.allDocumentsSigned,
-                        'can_receive_rides': driver.canReceiveRides,
-                        'onboarding_stage': driver.onboardingStage,
-                      },
-                    );
-
-                    final accepted = await _showTrialModeSheet(driver);
-                    if (accepted != true) return; // User chose to wait or dismissed
-
-                    // Update local driver state after trial acceptance
-                    driverProvider.setDriver(driver.copyWith(
-                      trialModeAccepted: true,
-                      trialAcceptedAt: DateTime.now().toIso8601String(),
-                    ));
-                    // Now canGoOnline is true, continue to GPS init below
-                  }
-
-                  final locationProvider = Provider.of<LocationProvider>(
-                    context,
-                    listen: false,
-                  );
-
-                  if (!isOnline) {
-                    // Going ONLINE - Initialize GPS and start tracking
-                    final hasLocation = await locationProvider.initialize();
-
-                    if (!hasLocation) {
-                      // Show dialog to enable location
-                      if (context.mounted) {
-                        final shouldOpenSettings = await showDialog<bool>(
+                    // Check if driver can go online
+                    final driver = driverProvider.driver;
+                    if (driver != null && !driver.canGoOnline) {
+                      // Hard block: suspended or rejected accounts cannot use trial mode
+                      if (driver.onboardingStage == 'suspended' ||
+                          driver.onboardingStage == 'rejected') {
+                        final isSuspended =
+                            driver.onboardingStage == 'suspended';
+                        showDialog(
                           context: context,
-                          builder: (context) => AlertDialog(
+                          builder: (ctx) => AlertDialog(
                             backgroundColor: AppColors.card,
                             title: Row(
                               children: [
-                                Icon(
-                                  Icons.location_off_rounded,
-                                  color: const Color(0xFFFF9500),
+                                const Icon(
+                                  Icons.block_rounded,
+                                  color: Color(0xFFFF3B30),
                                 ),
                                 const SizedBox(width: 12),
                                 Text(
-                                  'location_required'.tr(),
+                                  isSuspended
+                                      ? 'trial_account_suspended'.tr()
+                                      : 'trial_account_rejected'.tr(),
                                   style: TextStyle(
                                     color: AppColors.textPrimary,
                                   ),
@@ -1872,91 +1990,181 @@ class _HomeScreenState extends State<HomeScreen>
                               ],
                             ),
                             content: Text(
-                              'location_required_msg'.tr(),
-                              style: TextStyle(color: AppColors.textSecondary),
+                              isSuspended
+                                  ? 'trial_suspended_msg'.tr()
+                                  : 'trial_rejected_msg'.tr(),
+                              style: TextStyle(
+                                color: AppColors.textSecondary,
+                                height: 1.5,
+                              ),
                             ),
                             actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context, false),
-                                child: Text(
-                                  'cancel'.tr(),
-                                  style: TextStyle(
-                                    color: AppColors.textSecondary,
-                                  ),
-                                ),
-                              ),
                               ElevatedButton(
-                                onPressed: () => Navigator.pop(context, true),
+                                onPressed: () => Navigator.pop(ctx),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFFFF9500),
+                                  backgroundColor: const Color(0xFFFF3B30),
                                 ),
-                                child: Text('open_settings'.tr()),
+                                child: Text('understood'.tr()),
                               ),
                             ],
                           ),
                         );
-
-                        if (shouldOpenSettings == true) {
-                          await locationProvider.openLocationSettings();
-                        }
+                        return;
                       }
-                      return; // Don't go online without location
-                    }
 
-                    // Start tracking location
-                    if (driverProvider.driver != null) {
-                      await locationProvider.startTracking(
-                        driverProvider.driver!.id,
+                      // Show trial mode bottom sheet
+                      AuditService.instance.logOnlineBlocked(
+                        driverId: driver.id,
+                        reason: 'showing_trial_mode_sheet',
+                        status: {
+                          'admin_approved': driver.adminApproved,
+                          'all_docs_signed': driver.allDocumentsSigned,
+                          'can_receive_rides': driver.canReceiveRides,
+                          'onboarding_stage': driver.onboardingStage,
+                        },
                       );
 
-                      // Log successful online event to audit
-                      AuditService.instance.logOnlineSuccess(
-                        driverId: driverProvider.driver!.id,
-                        latitude: locationProvider.currentPosition?.latitude,
-                        longitude: locationProvider.currentPosition?.longitude,
-                      );
-                    }
-                  } else {
-                    // Going OFFLINE - Stop tracking
-                    locationProvider.stopTracking();
+                      final accepted = await _showTrialModeSheet(driver);
+                      if (accepted != true)
+                        return; // User chose to wait or dismissed
 
-                    // Log offline event to audit
-                    if (driverProvider.driver != null) {
-                      AuditService.instance.logOffline(
-                        driverId: driverProvider.driver!.id,
-                        reason: 'manual_toggle',
-                      );
-                    }
-                  }
-
-                  try {
-                    await driverProvider.toggleOnlineStatus();
-                  } catch (e) {
-                    // Mostrar error de validación de documentos
-                    if (context.mounted) {
-                      final msg = e.toString().replaceFirst('Exception: ', '');
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Row(
-                            children: [
-                              const Icon(Icons.warning_amber_rounded, color: Colors.white),
-                              const SizedBox(width: 12),
-                              Expanded(child: Text(msg)),
-                            ],
-                          ),
-                          backgroundColor: const Color(0xFFFF3B30),
-                          duration: const Duration(seconds: 4),
-                          action: SnackBarAction(
-                            label: 'Documentos',
-                            textColor: Colors.white,
-                            onPressed: () {
-                              Navigator.pushNamed(context, '/documents');
-                            },
-                          ),
+                      // Update local driver state after trial acceptance
+                      driverProvider.setDriver(
+                        driver.copyWith(
+                          trialModeAccepted: true,
+                          trialAcceptedAt: DateTime.now().toIso8601String(),
                         ),
                       );
+                      // Now canGoOnline is true, continue to GPS init below
                     }
-                  }
+
+                    final locationProvider = Provider.of<LocationProvider>(
+                      context,
+                      listen: false,
+                    );
+
+                    if (!isOnline) {
+                      // Going ONLINE - Initialize GPS and start tracking
+                      final hasLocation = await locationProvider.initialize();
+
+                      if (!hasLocation) {
+                        // Show dialog to enable location
+                        if (context.mounted) {
+                          final shouldOpenSettings = await showDialog<bool>(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              backgroundColor: AppColors.card,
+                              title: Row(
+                                children: [
+                                  Icon(
+                                    Icons.location_off_rounded,
+                                    color: const Color(0xFFFF9500),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    'location_required'.tr(),
+                                    style: TextStyle(
+                                      color: AppColors.textPrimary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              content: Text(
+                                'location_required_msg'.tr(),
+                                style: TextStyle(
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () =>
+                                      Navigator.pop(context, false),
+                                  child: Text(
+                                    'cancel'.tr(),
+                                    style: TextStyle(
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ),
+                                ElevatedButton(
+                                  onPressed: () => Navigator.pop(context, true),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFFFF9500),
+                                  ),
+                                  child: Text('open_settings'.tr()),
+                                ),
+                              ],
+                            ),
+                          );
+
+                          if (shouldOpenSettings == true) {
+                            await locationProvider.openLocationSettings();
+                          }
+                        }
+                        return; // Don't go online without location
+                      }
+
+                      // Start tracking location
+                      if (driverProvider.driver != null) {
+                        await locationProvider.startTracking(
+                          driverProvider.driver!.id,
+                        );
+
+                        // Log successful online event to audit
+                        AuditService.instance.logOnlineSuccess(
+                          driverId: driverProvider.driver!.id,
+                          latitude: locationProvider.currentPosition?.latitude,
+                          longitude:
+                              locationProvider.currentPosition?.longitude,
+                        );
+                      }
+                    } else {
+                      // Going OFFLINE - Stop tracking
+                      locationProvider.stopTracking();
+
+                      // Log offline event to audit
+                      if (driverProvider.driver != null) {
+                        AuditService.instance.logOffline(
+                          driverId: driverProvider.driver!.id,
+                          reason: 'manual_toggle',
+                        );
+                      }
+                    }
+
+                    try {
+                      await driverProvider.toggleOnlineStatus();
+                    } catch (e) {
+                      // Mostrar error de validación de documentos
+                      if (context.mounted) {
+                        final msg = e.toString().replaceFirst(
+                          'Exception: ',
+                          '',
+                        );
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Row(
+                              children: [
+                                const Icon(
+                                  Icons.warning_amber_rounded,
+                                  color: Colors.white,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(child: Text(msg)),
+                              ],
+                            ),
+                            backgroundColor: const Color(0xFFFF3B30),
+                            duration: const Duration(seconds: 4),
+                            action: SnackBarAction(
+                              label: 'Documentos',
+                              textColor: Colors.white,
+                              onPressed: () {
+                                Navigator.pushNamed(context, '/documents');
+                              },
+                            ),
+                          ),
+                        );
+                      }
+                    }
                   } finally {
                     if (mounted) setState(() => _togglingOnline = false);
                   }
@@ -1967,14 +2175,25 @@ class _HomeScreenState extends State<HomeScreen>
               if (driverProvider.driver?.isTrialMode == true) ...[
                 const SizedBox(width: 6),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFFF9500).withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: const Color(0xFFFF9500).withValues(alpha: 0.4)),
+                    border: Border.all(
+                      color: const Color(0xFFFF9500).withValues(alpha: 0.4),
+                    ),
                   ),
-                  child: Text('trial_badge'.tr(),
-                    style: const TextStyle(color: Color(0xFFFF9500), fontSize: 9, fontWeight: FontWeight.w700)),
+                  child: Text(
+                    'trial_badge'.tr(),
+                    style: const TextStyle(
+                      color: Color(0xFFFF9500),
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
               ],
               const SizedBox(width: 6),
@@ -2009,14 +2228,19 @@ class _HomeScreenState extends State<HomeScreen>
                         decoration: BoxDecoration(
                           gradient: !_isTourismMode
                               ? LinearGradient(
-                                  colors: [AppColors.primaryBright, AppColors.primary],
+                                  colors: [
+                                    AppColors.primaryBright,
+                                    AppColors.primary,
+                                  ],
                                 )
                               : null,
                           borderRadius: BorderRadius.circular(7),
                         ),
                         child: Icon(
                           Icons.local_taxi_rounded,
-                          color: !_isTourismMode ? Colors.white : AppColors.textTertiary,
+                          color: !_isTourismMode
+                              ? Colors.white
+                              : AppColors.textTertiary,
                           size: 14,
                         ),
                       ),
@@ -2026,14 +2250,19 @@ class _HomeScreenState extends State<HomeScreen>
                         decoration: BoxDecoration(
                           gradient: _isTourismMode
                               ? LinearGradient(
-                                  colors: [AppColors.warning, AppColors.warningDark],
+                                  colors: [
+                                    AppColors.warning,
+                                    AppColors.warningDark,
+                                  ],
                                 )
                               : null,
                           borderRadius: BorderRadius.circular(7),
                         ),
                         child: Icon(
                           Icons.directions_bus_rounded,
-                          color: _isTourismMode ? Colors.white : AppColors.textTertiary,
+                          color: _isTourismMode
+                              ? Colors.white
+                              : AppColors.textTertiary,
                           size: 14,
                         ),
                       ),
@@ -2233,7 +2462,8 @@ class _HomeScreenState extends State<HomeScreen>
   // ═══════════════════════════════════════════════════════════════════════════
 
   Widget _buildCashOwedBanner() {
-    final isSuspended = _cashAccountStatus == 'suspended' || _cashAccountStatus == 'blocked';
+    final isSuspended =
+        _cashAccountStatus == 'suspended' || _cashAccountStatus == 'blocked';
 
     return GestureDetector(
       onTap: () {
@@ -2256,8 +2486,11 @@ class _HomeScreenState extends State<HomeScreen>
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: (isSuspended ? const Color(0xFFDC2626) : const Color(0xFFF59E0B))
-                  .withOpacity(0.3),
+              color:
+                  (isSuspended
+                          ? const Color(0xFFDC2626)
+                          : const Color(0xFFF59E0B))
+                      .withOpacity(0.3),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -2266,7 +2499,9 @@ class _HomeScreenState extends State<HomeScreen>
         child: Row(
           children: [
             Icon(
-              isSuspended ? Icons.block_rounded : Icons.account_balance_wallet_rounded,
+              isSuspended
+                  ? Icons.block_rounded
+                  : Icons.account_balance_wallet_rounded,
               color: Colors.white,
               size: 32,
             ),
@@ -2286,7 +2521,15 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    formatMoney(_cashOwed, country: Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US'),
+                    formatMoney(
+                      _cashOwed,
+                      country:
+                          Provider.of<DriverProvider>(
+                            context,
+                            listen: false,
+                          ).driver?.countryCode ??
+                          'US',
+                    ),
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 24,
@@ -2420,10 +2663,15 @@ class _HomeScreenState extends State<HomeScreen>
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text(success
-                                    ? 'Oferta enviada: ${formatMoney(proposedPrice, country: Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US')}'
-                                    : rideProvider.error ?? 'Error al enviar oferta'),
-                                backgroundColor: success ? const Color(0xFF1E88E5) : Colors.red,
+                                content: Text(
+                                  success
+                                      ? 'Oferta enviada: ${formatMoney(proposedPrice, country: Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US')}'
+                                      : rideProvider.error ??
+                                            'Error al enviar oferta',
+                                ),
+                                backgroundColor: success
+                                    ? const Color(0xFF1E88E5)
+                                    : Colors.red,
                               ),
                             );
                           }
@@ -2437,12 +2685,19 @@ class _HomeScreenState extends State<HomeScreen>
                       onAccept: () async {
                         HapticService.mediumImpact();
                         final driverId = driverProvider.driver?.id;
-                        debugPrint('🔵 ACEPTAR (preview) tapped: rideId=${ride.id}, driverId=$driverId');
+                        debugPrint(
+                          '🔵 ACEPTAR (preview) tapped: rideId=${ride.id}, driverId=$driverId',
+                        );
                         if (driverId == null) {
-                          debugPrint('🔴 driverId is NULL - cannot accept ride');
+                          debugPrint(
+                            '🔴 driverId is NULL - cannot accept ride',
+                          );
                           return;
                         }
-                        final success = await rideProvider.acceptRide(ride.id, driverId);
+                        final success = await rideProvider.acceptRide(
+                          ride.id,
+                          driverId,
+                        );
                         debugPrint('🔵 acceptRide (preview) result: $success');
                         if (context.mounted) {
                           if (success) {
@@ -2451,7 +2706,12 @@ class _HomeScreenState extends State<HomeScreen>
                             setState(() => _selectedNavIndex = 1);
                           } else {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(rideProvider.error ?? 'Error accepting ride'), backgroundColor: Colors.red),
+                              SnackBar(
+                                content: Text(
+                                  rideProvider.error ?? 'Error accepting ride',
+                                ),
+                                backgroundColor: Colors.red,
+                              ),
                             );
                           }
                         }
@@ -2461,24 +2721,39 @@ class _HomeScreenState extends State<HomeScreen>
                   onAccept: () async {
                     HapticService.mediumImpact();
                     final driverId = driverProvider.driver?.id;
-                    debugPrint('🔵 ACEPTAR VIAJE tapped: rideId=${ride.id}, driverId=$driverId');
+                    debugPrint(
+                      '🔵 ACEPTAR VIAJE tapped: rideId=${ride.id}, driverId=$driverId',
+                    );
                     if (driverId == null) {
                       debugPrint('🔴 driverId is NULL - cannot accept ride');
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Error: Driver profile not loaded'), backgroundColor: Colors.red),
+                          SnackBar(
+                            content: Text('Error: Driver profile not loaded'),
+                            backgroundColor: Colors.red,
+                          ),
                         );
                       }
                       return;
                     }
-                    final success = await rideProvider.acceptRide(ride.id, driverId);
-                    debugPrint('🔵 acceptRide result: $success, error: ${rideProvider.error}');
+                    final success = await rideProvider.acceptRide(
+                      ride.id,
+                      driverId,
+                    );
+                    debugPrint(
+                      '🔵 acceptRide result: $success, error: ${rideProvider.error}',
+                    );
                     if (success && context.mounted) {
                       // Switch to NavigationMapScreen tab
                       setState(() => _selectedNavIndex = 1);
                     } else if (!success && context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(rideProvider.error ?? 'Error accepting ride'), backgroundColor: Colors.red),
+                        SnackBar(
+                          content: Text(
+                            rideProvider.error ?? 'Error accepting ride',
+                          ),
+                          backgroundColor: Colors.red,
+                        ),
                       );
                     }
                   },
@@ -2534,7 +2809,8 @@ class _HomeScreenState extends State<HomeScreen>
     final driver = context.read<DriverProvider>().driver;
     if (driver == null) return const SizedBox.shrink();
 
-    final qrCode = driver.qrCode ?? 'TORO-DRV-${driver.id.substring(0, 5).toUpperCase()}';
+    final qrCode =
+        driver.qrCode ?? 'TORO-DRV-${driver.id.substring(0, 5).toUpperCase()}';
     // Beta cerrada: el QR manda al rider a la landing/waitlist de toro-ride.com
     // (registro de riders aún cerrado) con el ref del driver, no a la app.
     final qrLink = 'https://toro-ride.com/?ref=$qrCode';
@@ -2569,17 +2845,15 @@ class _HomeScreenState extends State<HomeScreen>
             AppColors.card,
           ],
         ),
-        border: Border.all(
-          color: panelBlue.withValues(alpha: 0.5),
-          width: 1.2,
-        ),
+        border: Border.all(color: panelBlue.withValues(alpha: 0.5), width: 1.2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // === HEADER - always visible, tap to expand ===
           InkWell(
-            onTap: () => setState(() => _showQRTierExpanded = !_showQRTierExpanded),
+            onTap: () =>
+                setState(() => _showQRTierExpanded = !_showQRTierExpanded),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -2594,7 +2868,11 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.qr_code_2_rounded, color: Colors.white, size: 20),
+                    child: const Icon(
+                      Icons.qr_code_2_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -2613,16 +2891,25 @@ class _HomeScreenState extends State<HomeScreen>
                             ),
                             const SizedBox(width: 8),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF00FF66).withValues(alpha: 0.55),
+                                color: const Color(
+                                  0xFF00FF66,
+                                ).withValues(alpha: 0.55),
                                 borderRadius: BorderRadius.circular(10),
                                 border: Border.all(
-                                  color: const Color(0xFF00FF66).withValues(alpha: 0.7),
+                                  color: const Color(
+                                    0xFF00FF66,
+                                  ).withValues(alpha: 0.7),
                                 ),
                               ),
                               child: Text(
-                                currentTier > 0 ? 'Tier $currentTier' : '$qrLevel QRs',
+                                currentTier > 0
+                                    ? 'Tier $currentTier'
+                                    : '$qrLevel QRs',
                                 style: const TextStyle(
                                   color: Color(0xFF00FF66),
                                   fontSize: 13,
@@ -2711,14 +2998,21 @@ class _HomeScreenState extends State<HomeScreen>
 
                     return Container(
                       margin: EdgeInsets.only(bottom: i < 4 ? 4 : 0),
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: isCurrent
                             ? const Color(0xFF00FF66).withValues(alpha: 0.12)
                             : Colors.transparent,
                         borderRadius: BorderRadius.circular(8),
                         border: isCurrent
-                            ? Border.all(color: const Color(0xFF00FF66).withValues(alpha: 0.3))
+                            ? Border.all(
+                                color: const Color(
+                                  0xFF00FF66,
+                                ).withValues(alpha: 0.3),
+                              )
                             : null,
                       ),
                       child: Row(
@@ -2729,12 +3023,14 @@ class _HomeScreenState extends State<HomeScreen>
                               'Tier $tierNum',
                               style: TextStyle(
                                 fontSize: 12,
-                                fontWeight: isCurrent ? FontWeight.bold : FontWeight.w500,
+                                fontWeight: isCurrent
+                                    ? FontWeight.bold
+                                    : FontWeight.w500,
                                 color: isCurrent
                                     ? const Color(0xFF00FF66)
                                     : isReached
-                                        ? Colors.white
-                                        : Colors.white54,
+                                    ? Colors.white
+                                    : Colors.white54,
                               ),
                             ),
                           ),
@@ -2743,7 +3039,9 @@ class _HomeScreenState extends State<HomeScreen>
                               '${prevMax + 1}-$maxQR QRs',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: isCurrent ? Colors.white : Colors.white60,
+                                color: isCurrent
+                                    ? Colors.white
+                                    : Colors.white60,
                               ),
                             ),
                           ),
@@ -2755,13 +3053,17 @@ class _HomeScreenState extends State<HomeScreen>
                               color: isCurrent
                                   ? const Color(0xFF00FF66)
                                   : isReached
-                                      ? Colors.greenAccent
-                                      : Colors.white54,
+                                  ? Colors.greenAccent
+                                  : Colors.white54,
                             ),
                           ),
                           if (isCurrent) ...[
                             const SizedBox(width: 6),
-                            const Icon(Icons.arrow_back_rounded, size: 12, color: Color(0xFF00FF66)),
+                            const Icon(
+                              Icons.arrow_back_rounded,
+                              size: 12,
+                              color: Color(0xFF00FF66),
+                            ),
                           ],
                         ],
                       ),
@@ -2866,7 +3168,11 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
                 child: const Row(
                   children: [
-                    Icon(Icons.lightbulb_outline, color: Colors.amber, size: 16),
+                    Icon(
+                      Icons.lightbulb_outline,
+                      color: Colors.amber,
+                      size: 16,
+                    ),
                     SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -2937,7 +3243,8 @@ class _HomeScreenState extends State<HomeScreen>
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 40, height: 4,
+              width: 40,
+              height: 4,
               decoration: BoxDecoration(
                 color: Colors.grey.shade600,
                 borderRadius: BorderRadius.circular(2),
@@ -2946,7 +3253,11 @@ class _HomeScreenState extends State<HomeScreen>
             const SizedBox(height: 20),
             const Text(
               'Comparte tu código QR',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
@@ -2974,8 +3285,14 @@ class _HomeScreenState extends State<HomeScreen>
                 version: QrVersions.auto,
                 size: 220,
                 backgroundColor: Colors.white,
-                eyeStyle: const QrEyeStyle(eyeShape: QrEyeShape.square, color: panelBlue),
-                dataModuleStyle: const QrDataModuleStyle(dataModuleShape: QrDataModuleShape.square, color: panelBlue),
+                eyeStyle: const QrEyeStyle(
+                  eyeShape: QrEyeShape.square,
+                  color: panelBlue,
+                ),
+                dataModuleStyle: const QrDataModuleStyle(
+                  dataModuleShape: QrDataModuleShape.square,
+                  color: panelBlue,
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -2989,8 +3306,10 @@ class _HomeScreenState extends State<HomeScreen>
               child: Text(
                 code,
                 style: const TextStyle(
-                  fontSize: 20, fontWeight: FontWeight.bold,
-                  color: panelBlue, letterSpacing: 2,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: panelBlue,
+                  letterSpacing: 2,
                 ),
               ),
             ),
@@ -3003,16 +3322,18 @@ class _HomeScreenState extends State<HomeScreen>
                     onPressed: () {
                       Clipboard.setData(ClipboardData(text: qrLink));
                       ScaffoldMessenger.of(ctx).showSnackBar(
-                        const SnackBar(content: Text('Link copiado')),
+                        SnackBar(content: Text('tourism_link_copied'.tr())),
                       );
                     },
                     icon: const Icon(Icons.copy, size: 18),
-                    label: const Text('Copiar Link'),
+                    label: Text('home.copy_link'.tr()),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: panelBlue,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                   ),
                 ),
@@ -3021,19 +3342,24 @@ class _HomeScreenState extends State<HomeScreen>
                   child: OutlinedButton.icon(
                     onPressed: () => _shareDriverQR(code, qrLink),
                     icon: const Icon(Icons.share, size: 18),
-                    label: const Text('Compartir'),
+                    label: Text('share'.tr()),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: panelBlue,
                       side: const BorderSide(color: panelBlue),
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
-            Text(qrLink, style: TextStyle(fontSize: 11, color: AppColors.textTertiary)),
+            Text(
+              qrLink,
+              style: TextStyle(fontSize: 11, color: AppColors.textTertiary),
+            ),
             const SizedBox(height: 20),
           ],
         ),
@@ -3042,7 +3368,8 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _shareDriverQR(String code, String link) async {
-    final message = 'Únete a TORO y escanea mi QR. '
+    final message =
+        'Únete a TORO y escanea mi QR. '
         'Ambos ganan puntos: baja el % que te cobra TORO y ganas más.\n'
         'Código: $code\n$link';
     await Clipboard.setData(ClipboardData(text: link));
@@ -3147,7 +3474,15 @@ class _HomeScreenState extends State<HomeScreen>
                             const SizedBox(height: 2),
                             _showDailyEarnings
                                 ? Text(
-                                    formatMoney(availableBalance, country: Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US'),
+                                    formatMoney(
+                                      availableBalance,
+                                      country:
+                                          Provider.of<DriverProvider>(
+                                            context,
+                                            listen: false,
+                                          ).driver?.countryCode ??
+                                          'US',
+                                    ),
                                     style: TextStyle(
                                       color: const Color(0xFFFF9500),
                                       fontSize: 22,
@@ -3206,7 +3541,15 @@ class _HomeScreenState extends State<HomeScreen>
                             const SizedBox(height: 2),
                             _showWeeklyEarnings
                                 ? Text(
-                                    formatMoney(pendingPayout, country: Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US'),
+                                    formatMoney(
+                                      pendingPayout,
+                                      country:
+                                          Provider.of<DriverProvider>(
+                                            context,
+                                            listen: false,
+                                          ).driver?.countryCode ??
+                                          'US',
+                                    ),
                                     style: TextStyle(
                                       color: AppColors.success,
                                       fontSize: 22,
@@ -3242,7 +3585,8 @@ class _HomeScreenState extends State<HomeScreen>
         // Mostrar los viajes de la SEMANA (misma fuente que la pantalla Ganancias:
         // summary.weekRides) para que el home NO diga "0 Viajes" cuando el chofer ya
         // hizo viajes esta semana (Carlos: home decía 0 y Ganancias 2). Fallback a hoy.
-        final weekRides = context.watch<EarningsProvider>().summary?.weekRides ?? todayRides;
+        final weekRides =
+            context.watch<EarningsProvider>().summary?.weekRides ?? todayRides;
         final stats = driverProvider.stats;
         final isMX = driverProvider.driver?.countryCode == 'MX';
         final onlineTime = stats?['active_time_today'] ?? '0h 0m';
@@ -3383,7 +3727,7 @@ class _HomeScreenState extends State<HomeScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Renta tu Vehiculo',
+                          'rental.earn_with_vehicle'.tr(),
                           style: TextStyle(
                             color: AppColors.textPrimary,
                             fontSize: 16,
@@ -3392,7 +3736,7 @@ class _HomeScreenState extends State<HomeScreen>
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'Publica tu vehiculo y gana dinero',
+                          'rental.earn_with_vehicle_desc'.tr(),
                           style: TextStyle(
                             color: AppColors.textTertiary,
                             fontSize: 12,
@@ -3426,8 +3770,8 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
                 _buildRentalActionItem(
                   icon: Icons.directions_car_rounded,
-                  label: 'Publicar Vehiculo',
-                  subtitle: 'Crea un anuncio de renta',
+                  label: 'rental.publish_vehicle'.tr(),
+                  subtitle: 'rental.publish_vehicle_desc'.tr(),
                   onTap: () {
                     HapticService.lightImpact();
                     _showPublishVehicleSheet();
@@ -3440,8 +3784,8 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
                 _buildRentalActionItem(
                   icon: Icons.garage_rounded,
-                  label: 'Mis Vehiculos',
-                  subtitle: 'Ver, editar o eliminar vehiculos',
+                  label: 'rental.my_vehicles'.tr(),
+                  subtitle: 'rental.my_vehicles_desc'.tr(),
                   onTap: () {
                     HapticService.lightImpact();
                     _showMyVehiclesSheet();
@@ -3454,13 +3798,15 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
                 _buildRentalActionItem(
                   icon: Icons.search_rounded,
-                  label: 'Buscar Vehiculo de Renta',
-                  subtitle: 'Encuentra vehiculos disponibles',
+                  label: 'rental.find_vehicle'.tr(),
+                  subtitle: 'rental.find_vehicle_desc'.tr(),
                   onTap: () {
                     HapticService.lightImpact();
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const BrowseRentalsScreen()),
+                      MaterialPageRoute(
+                        builder: (_) => const BrowseRentalsScreen(),
+                      ),
                     );
                   },
                 ),
@@ -3639,7 +3985,8 @@ class _HomeScreenState extends State<HomeScreen>
   Widget _buildBottomNav() {
     return Consumer<RideProvider>(
       builder: (context, rideProvider, child) {
-        final hasActiveRide = rideProvider.hasActiveRide && rideProvider.activeRide != null;
+        final hasActiveRide =
+            rideProvider.hasActiveRide && rideProvider.activeRide != null;
 
         return FireGlowBottomNavBar(
           currentIndex: _selectedNavIndex,
@@ -3655,9 +4002,11 @@ class _HomeScreenState extends State<HomeScreen>
             ),
             FireGlowNavItem(
               icon: Icons.map_outlined,
-              activeIcon: Icons.navigation_rounded, // Navigation icon when active
+              activeIcon:
+                  Icons.navigation_rounded, // Navigation icon when active
               label: hasActiveRide ? 'nav_trip'.tr() : 'nav_map'.tr(),
-              hasActiveGlow: hasActiveRide, // Green glow when there's an active ride
+              hasActiveGlow:
+                  hasActiveRide, // Green glow when there's an active ride
             ),
             FireGlowNavItem(
               icon: Icons.attach_money_outlined,
@@ -3727,7 +4076,9 @@ class _LuxuryToggle extends StatelessWidget {
                   width: 7,
                   height: 7,
                   decoration: BoxDecoration(
-                    color: isOnline ? AppColors.success : AppColors.textTertiary,
+                    color: isOnline
+                        ? AppColors.success
+                        : AppColors.textTertiary,
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -3796,18 +4147,23 @@ class _LuxuryIconButtonState extends State<_LuxuryIconButton> {
                 right: -4,
                 top: -4,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 5,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.error,
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: AppColors.surface,
-                      width: 1.5,
-                    ),
+                    border: Border.all(color: AppColors.surface, width: 1.5),
                   ),
-                  constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                  constraints: const BoxConstraints(
+                    minWidth: 18,
+                    minHeight: 18,
+                  ),
                   child: Text(
-                    widget.badgeCount! > 99 ? '99+' : widget.badgeCount.toString(),
+                    widget.badgeCount! > 99
+                        ? '99+'
+                        : widget.badgeCount.toString(),
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 10,
@@ -4186,14 +4542,22 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
 
   static String _getVehicleTypeLabel(String vehicleType) {
     switch (vehicleType) {
-      case 'moto': return 'Toro Moto';
-      case 'xl': return 'Toro XL';
-      case 'premium': return 'Premium';
-      case 'black': return 'Black';
-      case 'pickup': return 'Pickup';
-      case 'bicycle': return 'Eco';
-      case 'autobus': return 'Bus';
-      default: return vehicleType;
+      case 'moto':
+        return 'Toro Moto';
+      case 'xl':
+        return 'Toro XL';
+      case 'premium':
+        return 'Premium';
+      case 'black':
+        return 'Black';
+      case 'pickup':
+        return 'Pickup';
+      case 'bicycle':
+        return 'Eco';
+      case 'autobus':
+        return 'Bus';
+      default:
+        return vehicleType;
     }
   }
 
@@ -4230,7 +4594,9 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
         return StatefulBuilder(
           builder: (ctx, setModalState) {
             final increase = proposedPrice - baseFare;
-            final increasePercent = baseFare > 0 ? (increase / baseFare) * 100 : 0.0;
+            final increasePercent = baseFare > 0
+                ? (increase / baseFare) * 100
+                : 0.0;
 
             return Container(
               margin: const EdgeInsets.all(16),
@@ -4256,7 +4622,11 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                           ),
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: const Icon(Icons.handshake_rounded, color: Colors.white, size: 20),
+                        child: const Icon(
+                          Icons.handshake_rounded,
+                          color: Colors.white,
+                          size: 20,
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -4284,7 +4654,10 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                       ),
                       IconButton(
                         onPressed: () => Navigator.pop(ctx),
-                        icon: const Icon(Icons.close_rounded, color: AppColors.textSecondary),
+                        icon: const Icon(
+                          Icons.close_rounded,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                     ],
                   ),
@@ -4299,10 +4672,21 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                         children: [
                           const Text(
                             'Precio original',
-                            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
+                            ),
                           ),
                           Text(
-                            formatMoney(baseFare, country: Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US'),
+                            formatMoney(
+                              baseFare,
+                              country:
+                                  Provider.of<DriverProvider>(
+                                    context,
+                                    listen: false,
+                                  ).driver?.countryCode ??
+                                  'US',
+                            ),
                             style: const TextStyle(
                               fontSize: 16,
                               color: AppColors.textSecondary,
@@ -4323,7 +4707,15 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                             ),
                           ),
                           Text(
-                            formatMoney(proposedPrice, country: Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US'),
+                            formatMoney(
+                              proposedPrice,
+                              country:
+                                  Provider.of<DriverProvider>(
+                                    context,
+                                    listen: false,
+                                  ).driver?.countryCode ??
+                                  'US',
+                            ),
                             style: const TextStyle(
                               fontSize: 28,
                               fontWeight: FontWeight.bold,
@@ -4339,7 +4731,10 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                   if (increase > 0)
                     Container(
                       margin: const EdgeInsets.only(top: 8),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFF00FF66).withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(8),
@@ -4360,19 +4755,28 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                   SliderTheme(
                     data: SliderThemeData(
                       activeTrackColor: const Color(0xFF1E88E5),
-                      inactiveTrackColor: const Color(0xFF1E88E5).withValues(alpha: 0.2),
+                      inactiveTrackColor: const Color(
+                        0xFF1E88E5,
+                      ).withValues(alpha: 0.2),
                       thumbColor: const Color(0xFF1E88E5),
-                      overlayColor: const Color(0xFF1E88E5).withValues(alpha: 0.15),
+                      overlayColor: const Color(
+                        0xFF1E88E5,
+                      ).withValues(alpha: 0.15),
                       trackHeight: 6,
                     ),
                     child: Slider(
                       value: proposedPrice,
                       min: baseFare,
                       max: maxPrice,
-                      divisions: ((maxPrice - baseFare) / 0.5).round().clamp(1, 100),
+                      divisions: ((maxPrice - baseFare) / 0.5).round().clamp(
+                        1,
+                        100,
+                      ),
                       onChanged: (value) {
                         setModalState(() {
-                          proposedPrice = double.parse(value.toStringAsFixed(2));
+                          proposedPrice = double.parse(
+                            value.toStringAsFixed(2),
+                          );
                         });
                       },
                     ),
@@ -4384,36 +4788,49 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                     children: [5, 10, 15, 20, 25, 30]
                         .where((p) => p <= maxPercent)
                         .map((percent) {
-                      final price = baseFare * (1 + percent / 100);
-                      final isSelected = (proposedPrice - price).abs() < 0.01;
-                      return GestureDetector(
-                        onTap: () {
-                          setModalState(() {
-                            proposedPrice = double.parse(price.toStringAsFixed(2));
-                          });
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? const Color(0xFF1E88E5)
-                                : const Color(0xFF1E88E5).withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: const Color(0xFF1E88E5).withValues(alpha: isSelected ? 1 : 0.3),
+                          final price = baseFare * (1 + percent / 100);
+                          final isSelected =
+                              (proposedPrice - price).abs() < 0.01;
+                          return GestureDetector(
+                            onTap: () {
+                              setModalState(() {
+                                proposedPrice = double.parse(
+                                  price.toStringAsFixed(2),
+                                );
+                              });
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? const Color(0xFF1E88E5)
+                                    : const Color(
+                                        0xFF1E88E5,
+                                      ).withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: const Color(
+                                    0xFF1E88E5,
+                                  ).withValues(alpha: isSelected ? 1 : 0.3),
+                                ),
+                              ),
+                              child: Text(
+                                '+$percent%',
+                                style: TextStyle(
+                                  color: isSelected
+                                      ? Colors.white
+                                      : const Color(0xFF1E88E5),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
-                          ),
-                          child: Text(
-                            '+$percent%',
-                            style: TextStyle(
-                              color: isSelected ? Colors.white : const Color(0xFF1E88E5),
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
+                          );
+                        })
+                        .toList(),
                   ),
 
                   const SizedBox(height: 8),
@@ -4444,7 +4861,9 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                           borderRadius: BorderRadius.circular(12),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF1E88E5).withValues(alpha: 0.4),
+                              color: const Color(
+                                0xFF1E88E5,
+                              ).withValues(alpha: 0.4),
                               blurRadius: 12,
                               spreadRadius: 1,
                             ),
@@ -4453,7 +4872,11 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(Icons.send_rounded, color: Colors.white, size: 18),
+                            const Icon(
+                              Icons.send_rounded,
+                              color: Colors.white,
+                              size: 18,
+                            ),
                             const SizedBox(width: 8),
                             Text(
                               'ENVIAR OFERTA ${formatMoney(proposedPrice, country: Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US')}',
@@ -4535,12 +4958,19 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                     if (widget.ride.vehicleType != 'standard') ...[
                       const SizedBox(width: 4),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 5,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFA855F7).withValues(alpha: 0.15),
+                          color: const Color(
+                            0xFFA855F7,
+                          ).withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(6),
                           border: Border.all(
-                            color: const Color(0xFFA855F7).withValues(alpha: 0.4),
+                            color: const Color(
+                              0xFFA855F7,
+                            ).withValues(alpha: 0.4),
                           ),
                         ),
                         child: Text(
@@ -4702,7 +5132,9 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                       if (widget.ride.scheduledTime != null)
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 3),
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
                           decoration: BoxDecoration(
                             color: const Color(0xFF4FC3F7),
                             borderRadius: BorderRadius.circular(6),
@@ -4720,7 +5152,9 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                       if (widget.ride.waypoints?.isNotEmpty ?? false)
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 3),
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.14),
                             borderRadius: BorderRadius.circular(6),
@@ -4773,7 +5207,15 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                             ),
                           ),
                           Text(
-                            formatMoney(widget.ride.fare, country: Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US'),
+                            formatMoney(
+                              widget.ride.fare,
+                              country:
+                                  Provider.of<DriverProvider>(
+                                    context,
+                                    listen: false,
+                                  ).driver?.countryCode ??
+                                  'US',
+                            ),
                             style: TextStyle(
                               color: AppColors.textSecondary,
                               fontSize: 18,
@@ -4801,7 +5243,15 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                             ),
                           ),
                           Text(
-                            formatMoney(widget.ride.driverEarnings, country: Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US'),
+                            formatMoney(
+                              widget.ride.driverEarnings,
+                              country:
+                                  Provider.of<DriverProvider>(
+                                    context,
+                                    listen: false,
+                                  ).driver?.countryCode ??
+                                  'US',
+                            ),
                             style: TextStyle(
                               color: AppColors.success,
                               fontSize: 26,
@@ -4815,64 +5265,76 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                 ),
                 const SizedBox(height: 8),
                 // Distance + Time row (pickup distance + trip distance + trip time)
-                Builder(builder: (ctx) {
-                  final cc = Provider.of<DriverProvider>(ctx, listen: false).driver?.countryCode ?? 'US';
-                  return Row(
-                  children: [
-                    // Pickup distance (away from driver)
-                    if (widget.pickupDistanceMiles != null) ...[
-                      Icon(Icons.near_me, color: Colors.cyan, size: 18),
-                      const SizedBox(width: 4),
-                      Text(
-                        formatDistanceFromMiles(widget.pickupDistanceMiles!, country: cc),
-                        style: TextStyle(
-                          color: Colors.cyan,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
+                Builder(
+                  builder: (ctx) {
+                    final cc =
+                        Provider.of<DriverProvider>(
+                          ctx,
+                          listen: false,
+                        ).driver?.countryCode ??
+                        'US';
+                    return Row(
+                      children: [
+                        // Pickup distance (away from driver)
+                        if (widget.pickupDistanceMiles != null) ...[
+                          Icon(Icons.near_me, color: Colors.cyan, size: 18),
+                          const SizedBox(width: 4),
+                          Text(
+                            formatDistanceFromMiles(
+                              widget.pickupDistanceMiles!,
+                              country: cc,
+                            ),
+                            style: TextStyle(
+                              color: Colors.cyan,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Container(
+                            width: 1,
+                            height: 16,
+                            color: AppColors.textTertiary.withValues(
+                              alpha: 0.3,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                        ],
+                        // Trip distance
+                        Icon(
+                          Icons.route_outlined,
+                          color: AppColors.textTertiary,
+                          size: 18,
                         ),
-                      ),
-                      const SizedBox(width: 10),
-                      Container(
-                        width: 1,
-                        height: 16,
-                        color: AppColors.textTertiary.withValues(alpha: 0.3),
-                      ),
-                      const SizedBox(width: 10),
-                    ],
-                    // Trip distance
-                    Icon(
-                      Icons.route_outlined,
-                      color: AppColors.textTertiary,
-                      size: 18,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      formatDistance(widget.ride.distanceKm, country: cc),
-                      style: TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    // Trip time
-                    Icon(
-                      Icons.schedule_outlined,
-                      color: AppColors.textTertiary,
-                      size: 18,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '~${widget.ride.estimatedMinutes} min',
-                      style: TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                );
-                }),
+                        const SizedBox(width: 4),
+                        Text(
+                          formatDistance(widget.ride.distanceKm, country: cc),
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        // Trip time
+                        Icon(
+                          Icons.schedule_outlined,
+                          color: AppColors.textTertiary,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '~${widget.ride.estimatedMinutes} min',
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
                 // Carpool info: recurring days + seats (only for carpool type)
                 if (widget.ride.type == RideType.carpool &&
                     widget.ride.recurringDays.isNotEmpty) ...[
@@ -4970,11 +5432,15 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                   ),
                 ],
                 // Rider notes
-                if (widget.ride.riderNotes != null && widget.ride.riderNotes!.isNotEmpty) ...[
+                if (widget.ride.riderNotes != null &&
+                    widget.ride.riderNotes!.isNotEmpty) ...[
                   const SizedBox(height: 8),
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.cardSecondary,
                       borderRadius: BorderRadius.circular(8),
@@ -5064,7 +5530,8 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                       ),
                     ),
                     // Negotiate button - only for QR Tier 1+
-                    if (widget.driverQrTier >= 1 && widget.onNegotiate != null) ...[
+                    if (widget.driverQrTier >= 1 &&
+                        widget.onNegotiate != null) ...[
                       const SizedBox(width: 8),
                       GestureDetector(
                         behavior: HitTestBehavior.opaque,
@@ -5107,82 +5574,93 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                     // AGENDADO: se libera 20 min antes de la hora (el candado
                     // real también vive en la BD — trigger).
                     Expanded(
-                      child: Builder(builder: (context) {
-                        final st = widget.ride.scheduledTime;
-                        final locked = st != null &&
-                            st.isAfter(DateTime.now()
-                                .add(const Duration(minutes: 20)));
-                        return GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTap: () {
-                            if (locked) {
-                              ScaffoldMessenger.of(context)
-                                  .showSnackBar(SnackBar(
-                                content: Text(
-                                    'Viaje agendado para ${_fmtSchedHome(st)} — se puede aceptar 20 min antes.'),
-                              ));
-                              return;
-                            }
-                            widget.onAccept();
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
-                            ),
-                            decoration: BoxDecoration(
-                              gradient: locked
-                                  ? const LinearGradient(colors: [
-                                      Color(0xFF25566B),
-                                      Color(0xFF1B3D4D),
-                                    ])
-                                  : const LinearGradient(colors: [
-                                      Color(0xFF22C55E),
-                                      Color(0xFF16A34A),
-                                    ]),
-                              borderRadius: BorderRadius.circular(10),
-                              boxShadow: locked
-                                  ? null
-                                  : [
-                                      BoxShadow(
-                                        color: AppColors.success
-                                            .withValues(alpha: 0.5),
-                                        blurRadius: 10,
-                                        spreadRadius: 1,
+                      child: Builder(
+                        builder: (context) {
+                          final st = widget.ride.scheduledTime;
+                          final locked =
+                              st != null &&
+                              st.isAfter(
+                                DateTime.now().add(const Duration(minutes: 20)),
+                              );
+                          return GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () {
+                              if (locked) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Viaje agendado para ${_fmtSchedHome(st)} — se puede aceptar 20 min antes.',
+                                    ),
+                                  ),
+                                );
+                                return;
+                              }
+                              widget.onAccept();
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              decoration: BoxDecoration(
+                                gradient: locked
+                                    ? const LinearGradient(
+                                        colors: [
+                                          Color(0xFF25566B),
+                                          Color(0xFF1B3D4D),
+                                        ],
+                                      )
+                                    : const LinearGradient(
+                                        colors: [
+                                          Color(0xFF22C55E),
+                                          Color(0xFF16A34A),
+                                        ],
                                       ),
-                                    ],
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  locked
-                                      ? Icons.lock_clock
-                                      : Icons.check_circle_rounded,
-                                  color: locked
-                                      ? const Color(0xFF4FC3F7)
-                                      : Colors.white,
-                                  size: 18,
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  locked
-                                      ? 'SE LIBERA ${_fmtSchedHome(st.subtract(const Duration(minutes: 20)))}'
-                                      : 'ACEPTAR',
-                                  style: TextStyle(
+                                borderRadius: BorderRadius.circular(10),
+                                boxShadow: locked
+                                    ? null
+                                    : [
+                                        BoxShadow(
+                                          color: AppColors.success.withValues(
+                                            alpha: 0.5,
+                                          ),
+                                          blurRadius: 10,
+                                          spreadRadius: 1,
+                                        ),
+                                      ],
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    locked
+                                        ? Icons.lock_clock
+                                        : Icons.check_circle_rounded,
                                     color: locked
                                         ? const Color(0xFF4FC3F7)
                                         : Colors.white,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 0.5,
+                                    size: 18,
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    locked
+                                        ? 'SE LIBERA ${_fmtSchedHome(st.subtract(const Duration(minutes: 20)))}'
+                                        : 'ACEPTAR',
+                                    style: TextStyle(
+                                      color: locked
+                                          ? const Color(0xFF4FC3F7)
+                                          : Colors.white,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                        );
-                      }),
+                          );
+                        },
+                      ),
                     ),
                   ],
                 ),
@@ -5341,10 +5819,17 @@ class _RoutePreviewSheetState extends State<_RoutePreviewSheet>
         final distanceMeters = route.distance;
         final durationSeconds = route.duration;
 
-        final cc = Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US';
+        final cc =
+            Provider.of<DriverProvider>(
+              context,
+              listen: false,
+            ).driver?.countryCode ??
+            'US';
         _distance = distanceMeters >= 1609
             ? formatDistance(distanceMeters / 1000, country: cc)
-            : (cc == 'MX' ? '${distanceMeters.toInt()} m' : '${(distanceMeters * 3.28084).toInt()} ft');
+            : (cc == 'MX'
+                  ? '${distanceMeters.toInt()} m'
+                  : '${(distanceMeters * 3.28084).toInt()} ft');
 
         final minutes = (durationSeconds / 60).round();
         _duration = minutes >= 60
@@ -5483,7 +5968,13 @@ class _RoutePreviewSheetState extends State<_RoutePreviewSheet>
                   ),
                 ),
                 Text(
-                  '\$${widget.ride.fare.toStringAsFixed(0)}',
+                  formatMoney(
+                    widget.ride.fare,
+                    country: Provider.of<DriverProvider>(
+                      context,
+                      listen: false,
+                    ).driver?.countryCode,
+                  ),
                   style: const TextStyle(
                     color: Color(0xFFFF9500),
                     fontSize: 24,
@@ -5542,7 +6033,15 @@ class _RoutePreviewSheetState extends State<_RoutePreviewSheet>
                             const SizedBox(height: 4),
                             Consumer<EarningsProvider>(
                               builder: (context, ep, _) => Text(
-                                formatMoney(ep.todayEarnings, country: Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US'),
+                                formatMoney(
+                                  ep.todayEarnings,
+                                  country:
+                                      Provider.of<DriverProvider>(
+                                        context,
+                                        listen: false,
+                                      ).driver?.countryCode ??
+                                      'US',
+                                ),
                                 style: const TextStyle(
                                   color: Color(0xFFFF9500),
                                   fontSize: 20,
@@ -5601,7 +6100,15 @@ class _RoutePreviewSheetState extends State<_RoutePreviewSheet>
                             const SizedBox(height: 4),
                             Consumer<EarningsProvider>(
                               builder: (context, ep, _) => Text(
-                                formatMoney(ep.weeklyEarnings, country: Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US'),
+                                formatMoney(
+                                  ep.weeklyEarnings,
+                                  country:
+                                      Provider.of<DriverProvider>(
+                                        context,
+                                        listen: false,
+                                      ).driver?.countryCode ??
+                                      'US',
+                                ),
                                 style: const TextStyle(
                                   color: AppColors.primaryBright,
                                   fontSize: 20,
@@ -6194,10 +6701,7 @@ class _PublishVehicleSheet extends StatefulWidget {
   final String userId;
   final Map<String, dynamic>? existingVehicle; // For editing
 
-  const _PublishVehicleSheet({
-    required this.userId,
-    this.existingVehicle,
-  });
+  const _PublishVehicleSheet({required this.userId, this.existingVehicle});
 
   @override
   State<_PublishVehicleSheet> createState() => _PublishVehicleSheetState();
@@ -6206,9 +6710,28 @@ class _PublishVehicleSheet extends StatefulWidget {
 class _PublishVehicleSheetState extends State<_PublishVehicleSheet> {
   static const _accent = Color(0xFF8B5CF6);
 
+  String _countryCode = 'US';
+  bool get _isMexico => _countryCode == 'MX';
+  String get _currencyCode => _isMexico ? 'MXN' : 'USD';
+
   // Contract text constant (used for display and storage)
   // Generate contract text with vehicle and insurance information
   String get _contractText {
+    if (!_isMexico) {
+      return '''TORO VEHICLE LISTING ACKNOWLEDGMENT
+
+TORO is a technology platform that connects independent vehicle owners, drivers, and trip organizers. TORO does not own, operate, inspect, insure, or rent the listed vehicle.
+
+VEHICLE:
+- Make/Model: ${_makeCtrl.text.trim()} ${_modelCtrl.text.trim()}
+- Year: ${_yearCtrl.text.trim()}
+- Plate: ${_plateCtrl.text.trim()}
+
+By publishing this listing, I confirm that the information and photographs are accurate, I am authorized to list the vehicle, and the vehicle will remain properly registered, maintained, and insured as required by the laws that apply where it operates. I am responsible for the vehicle, assigned drivers, pricing, taxes, insurance, incidents, claims, and compliance with applicable federal, state, and local requirements.
+
+I authorize TORO to display the listing and understand that TORO only facilitates connections and platform records. I accept TORO's current Terms of Service, Privacy Policy, and applicable commercial terms.''';
+    }
+
     final insuranceInfo = _insCompanyCtrl.text.trim().isNotEmpty
         ? '\nINFORMACIÓN DE SEGURO:\n- Compañía: ${_insCompanyCtrl.text.trim()}\n- Póliza: ${_insPolicyCtrl.text.trim()}\n- Vencimiento: ${_insExpiry != null ? "${_insExpiry!.day}/${_insExpiry!.month}/${_insExpiry!.year}" : "No especificado"}\n'
         : '\nINFORMACIÓN DE SEGURO: No proporcionada\n';
@@ -6301,16 +6824,56 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
 
   // Owner document (INE or License - required)
   XFile? _ownerDocument;
-  String _ownerDocumentType = 'ine'; // 'ine' or 'licencia'
+  String _ownerDocumentType = 'licencia';
   bool _isPickingDocument = false;
 
   // Features checklist
   final List<String> _selectedFeatures = [];
   static const _availableFeatures = [
-    'Aire Acondicionado', 'Bluetooth', 'GPS', 'Camara Reversa',
-    'Asientos de Piel', 'Techo Solar', 'USB/AUX', 'Transmision Automatica',
-    'CarPlay/Android Auto', 'Sensores de Estacionamiento',
+    'Aire Acondicionado',
+    'Bluetooth',
+    'GPS',
+    'Camara Reversa',
+    'Asientos de Piel',
+    'Techo Solar',
+    'USB/AUX',
+    'Transmision Automatica',
+    'Integracion con smartphone',
+    'Sensores de Estacionamiento',
   ];
+
+  String _featureLabel(String feature) {
+    const keys = {
+      'Aire Acondicionado': 'rental.feature_air_conditioning',
+      'Bluetooth': 'rental.feature_bluetooth',
+      'GPS': 'rental.feature_gps',
+      'Camara Reversa': 'rental.feature_backup_camera',
+      'Asientos de Piel': 'rental.feature_leather_seats',
+      'Techo Solar': 'rental.feature_sunroof',
+      'USB/AUX': 'rental.feature_usb_aux',
+      'Transmision Automatica': 'rental.feature_automatic',
+      'Integracion con smartphone': 'rental.feature_smartphone',
+      'Sensores de Estacionamiento': 'rental.feature_parking_sensors',
+    };
+    return (keys[feature] ?? feature).tr();
+  }
+
+  String _vehicleTypeLabel(String type) {
+    switch (type.toLowerCase()) {
+      case 'sedan':
+        return 'onb_vehicle_type_sedan'.tr();
+      case 'suv':
+        return 'onb_vehicle_type_suv'.tr();
+      case 'van':
+        return 'onb_vehicle_type_van'.tr();
+      case 'truck':
+        return 'onb_vehicle_type_truck'.tr();
+      case 'autobus':
+        return 'rental.tourism_transport'.tr();
+      default:
+        return type;
+    }
+  }
 
   // Autobus: assigned driver
   final _driverEmailCtrl = TextEditingController();
@@ -6352,6 +6915,11 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
       final vehicle = widget.existingVehicle!;
       final source = vehicle['_source'] ?? 'bus';
       final isRental = source == 'rental';
+      _countryCode =
+          (vehicle['country_code'] ??
+                  (vehicle['currency'] == 'MXN' ? 'MX' : 'US'))
+              .toString()
+              .toUpperCase();
 
       _vehicleType = vehicle['vehicle_type'] ?? 'autobus';
 
@@ -6370,7 +6938,8 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
         _pickupAddressCtrl.text = vehicle['pickup_address'] ?? '';
         _ownerNameCtrl.text = vehicle['owner_name'] ?? '';
         _ownerPhoneCtrl.text = vehicle['owner_phone'] ?? '';
-        _ownerDocumentType = vehicle['owner_document_type'] ?? 'ine';
+        _ownerDocumentType =
+            vehicle['owner_document_type'] ?? (_isMexico ? 'ine' : 'licencia');
         if (vehicle['features'] != null) {
           _selectedFeatures.addAll(List<String>.from(vehicle['features']));
         }
@@ -6408,12 +6977,19 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
     try {
       final result = await SupabaseConfig.client
           .from('drivers')
-          .select('name, phone, email')
+          .select('name, phone, email, country_code')
           .eq('id', widget.userId)
           .single();
 
       if (mounted) {
         setState(() {
+          _countryCode =
+              result['country_code']?.toString().toUpperCase() == 'MX'
+              ? 'MX'
+              : 'US';
+          if (!_isMexico && _ownerDocumentType == 'ine') {
+            _ownerDocumentType = 'licencia';
+          }
           if (_ownerNameCtrl.text.isEmpty) {
             _ownerNameCtrl.text = result['name'] ?? '';
           }
@@ -6475,31 +7051,35 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
       // Autobus: 0=Vehicle+Driver, 1=Insurance, 2=Photos, 3=Contract
       switch (step) {
         case 0:
-          if (_makeCtrl.text.trim().isEmpty) return 'Ingresa la marca';
-          if (_modelCtrl.text.trim().isEmpty) return 'Ingresa el modelo';
-          if (_yearCtrl.text.trim().isEmpty) return 'Ingresa el año';
+          if (_makeCtrl.text.trim().isEmpty) return 'rental.error_make'.tr();
+          if (_modelCtrl.text.trim().isEmpty) return 'rental.error_model'.tr();
+          if (_yearCtrl.text.trim().isEmpty) return 'rental.error_year'.tr();
           final year = int.tryParse(_yearCtrl.text.trim());
-          if (year == null || year < 1990 || year > 2030) return 'Año invalido';
-          if (_plateCtrl.text.trim().isEmpty) return 'Ingresa la placa';
-          if (!_driverVerified) return 'Autobus requiere un chofer aprobado por Toro';
+          if (year == null || year < 1990 || year > 2030)
+            return 'rental.error_invalid_year'.tr();
+          if (_plateCtrl.text.trim().isEmpty) return 'rental.error_plate'.tr();
+          if (!_driverVerified) return 'rental.error_bus_driver'.tr();
           // Validate total seats (required)
-          if (_totalSeatsCtrl.text.trim().isEmpty) return 'Ingresa el total de asientos';
+          if (_totalSeatsCtrl.text.trim().isEmpty)
+            return 'rental.error_seats'.tr();
           final totalSeats = int.tryParse(_totalSeatsCtrl.text.trim());
-          if (totalSeats == null || totalSeats < 1 || totalSeats > 100) return 'Total de asientos invalido (1-100)';
+          if (totalSeats == null || totalSeats < 1 || totalSeats > 100)
+            return 'rental.error_invalid_seats'.tr();
           return null;
         case 1:
           // Insurance is optional but if company is entered, policy is required
-          if (_insCompanyCtrl.text.trim().isNotEmpty && _insPolicyCtrl.text.trim().isEmpty) {
-            return 'Ingresa el numero de poliza';
+          if (_insCompanyCtrl.text.trim().isNotEmpty &&
+              _insPolicyCtrl.text.trim().isEmpty) {
+            return 'rental.error_policy'.tr();
           }
           return null;
         case 2:
           // Photos (minimum 1)
-          if (_busPhotos.isEmpty) return 'Debes tomar al menos 1 foto del autobus';
+          if (_busPhotos.isEmpty) return 'rental.error_bus_photo'.tr();
           return null;
         case 3:
           // Contract
-          if (!_agreedToTerms) return 'Debes aceptar los terminos del contrato';
+          if (!_agreedToTerms) return 'rental.error_contract'.tr();
           return null;
         default:
           return null;
@@ -6508,29 +7088,37 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
       // Others: 0=Vehicle, 1=Photos+Pricing, 2=Insurance+INE, 3=Contract
       switch (step) {
         case 0:
-          if (_makeCtrl.text.trim().isEmpty) return 'Ingresa la marca';
-          if (_modelCtrl.text.trim().isEmpty) return 'Ingresa el modelo';
-          if (_yearCtrl.text.trim().isEmpty) return 'Ingresa el año';
+          if (_makeCtrl.text.trim().isEmpty) return 'rental.error_make'.tr();
+          if (_modelCtrl.text.trim().isEmpty) return 'rental.error_model'.tr();
+          if (_yearCtrl.text.trim().isEmpty) return 'rental.error_year'.tr();
           final year = int.tryParse(_yearCtrl.text.trim());
-          if (year == null || year < 1990 || year > 2030) return 'Año invalido';
-          if (_plateCtrl.text.trim().isEmpty) return 'Ingresa la placa';
+          if (year == null || year < 1990 || year > 2030)
+            return 'rental.error_invalid_year'.tr();
+          if (_plateCtrl.text.trim().isEmpty) return 'rental.error_plate'.tr();
           return null;
         case 1:
           // Photos & Pricing - at least weekly price required
-          if (_weeklyPriceCtrl.text.trim().isEmpty) return 'Ingresa el precio por semana';
+          if (_weeklyPriceCtrl.text.trim().isEmpty)
+            return 'rental.error_weekly_price'.tr();
           final weekly = double.tryParse(_weeklyPriceCtrl.text.trim());
-          if (weekly == null || weekly <= 0) return 'Precio semanal invalido';
+          if (weekly == null || weekly <= 0)
+            return 'rental.error_invalid_weekly_price'.tr();
           return null;
         case 2:
           // Insurance + INE - INE/license is required
-          if (_ownerDocument == null) return 'Debes subir tu INE o licencia';
-          if (_insCompanyCtrl.text.trim().isNotEmpty && _insPolicyCtrl.text.trim().isEmpty) {
-            return 'Ingresa el numero de poliza';
+          if (_ownerDocument == null) {
+            return _isMexico
+                ? 'rental.error_mx_id'.tr()
+                : 'rental.error_us_id'.tr();
+          }
+          if (_insCompanyCtrl.text.trim().isNotEmpty &&
+              _insPolicyCtrl.text.trim().isEmpty) {
+            return 'rental.error_policy'.tr();
           }
           return null;
         case 3:
           // Contract
-          if (!_agreedToTerms) return 'Debes aceptar los terminos del contrato';
+          if (!_agreedToTerms) return 'rental.error_contract'.tr();
           return null;
         default:
           return null;
@@ -6564,10 +7152,13 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
   Future<void> _verifyDriver() async {
     final email = _driverEmailCtrl.text.trim();
     if (email.isEmpty) {
-      setState(() => _error = 'Ingresa el email del chofer');
+      setState(() => _error = 'rental.error_driver_email'.tr());
       return;
     }
-    setState(() { _verifyingDriver = true; _error = null; });
+    setState(() {
+      _verifyingDriver = true;
+      _error = null;
+    });
     try {
       // Look up driver by email in drivers table - must be verified/approved
       final results = await SupabaseConfig.client
@@ -6577,14 +7168,22 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
           .limit(1);
       final list = List<Map<String, dynamic>>.from(results);
       if (list.isEmpty) {
-        setState(() { _verifyingDriver = false; _error = 'Chofer no encontrado. Debe estar registrado en Toro.'; });
+        setState(() {
+          _verifyingDriver = false;
+          _error = 'rental.error_driver_not_found'.tr();
+        });
         return;
       }
       final driver = list.first;
       final status = driver['status']?.toString() ?? '';
       final isVerified = driver['is_verified'] == true;
       if (!isVerified && status != 'approved' && status != 'active') {
-        setState(() { _verifyingDriver = false; _error = 'El chofer no esta aprobado por Toro. Status: $status'; });
+        setState(() {
+          _verifyingDriver = false;
+          _error = 'rental.error_driver_unapproved'.tr(
+            namedArgs: {'status': status},
+          );
+        });
         return;
       }
       setState(() {
@@ -6596,7 +7195,10 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
       });
       HapticService.mediumImpact();
     } catch (e) {
-      setState(() { _verifyingDriver = false; _error = 'Error verificando chofer: $e'; });
+      setState(() {
+        _verifyingDriver = false;
+        _error = 'rental.error_driver_verify'.tr(namedArgs: {'error': '$e'});
+      });
     }
   }
 
@@ -6645,7 +7247,11 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _error = useCamera ? 'Error tomando foto: $e' : 'Error seleccionando fotos: $e');
+        setState(
+          () => _error = useCamera
+              ? 'Error tomando foto: $e'
+              : 'Error seleccionando fotos: $e',
+        );
       }
     } finally {
       if (mounted) {
@@ -6684,14 +7290,24 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
     try {
       for (final photo in _busPhotos) {
         final bytes = await photo.readAsBytes();
-        final fileName = '${DateTime.now().millisecondsSinceEpoch}_${photo.name}';
+        final fileName =
+            '${DateTime.now().millisecondsSinceEpoch}_${photo.name}';
         final path = '${widget.userId}/bus_photos/$fileName';
 
         await SupabaseConfig.client.storage
             .from('vehicle-documents')
-            .uploadBinary(path, bytes, fileOptions: const FileOptions(contentType: 'image/jpeg', upsert: true));
+            .uploadBinary(
+              path,
+              bytes,
+              fileOptions: const FileOptions(
+                contentType: 'image/jpeg',
+                upsert: true,
+              ),
+            );
 
-        final url = SupabaseConfig.client.storage.from('vehicle-documents').getPublicUrl(path);
+        final url = SupabaseConfig.client.storage
+            .from('vehicle-documents')
+            .getPublicUrl(path);
         photoUrls.add(url);
       }
     } catch (e) {
@@ -6719,7 +7335,9 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
       Position? signPos;
       try {
         signPos = await Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+          ),
         );
       } catch (_) {}
 
@@ -6729,20 +7347,33 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
         final photoUrls = await _uploadBusPhotos();
 
         final busData = <String, dynamic>{
-          'vehicle_name': '${_makeCtrl.text.trim()} ${_modelCtrl.text.trim()} ${_yearCtrl.text.trim()}',
+          'vehicle_name':
+              '${_makeCtrl.text.trim()} ${_modelCtrl.text.trim()} ${_yearCtrl.text.trim()}',
           'make': _makeCtrl.text.trim(),
           'model': _modelCtrl.text.trim(),
           'year': int.parse(_yearCtrl.text.trim()),
           'plate': _plateCtrl.text.trim(),
-          'color': _colorCtrl.text.trim().isNotEmpty ? _colorCtrl.text.trim() : null,
+          'color': _colorCtrl.text.trim().isNotEmpty
+              ? _colorCtrl.text.trim()
+              : null,
           // Public information (optional for privacy)
           'total_seats': int.parse(_totalSeatsCtrl.text.trim()),
-          'unit_number': _unitNumberCtrl.text.trim().isNotEmpty ? _unitNumberCtrl.text.trim() : null,
-          'owner_name': _ownerNameCtrl.text.trim().isNotEmpty ? _ownerNameCtrl.text.trim() : null,
-          'owner_phone': _ownerPhoneCtrl.text.trim().isNotEmpty ? _ownerPhoneCtrl.text.trim() : null,
+          'unit_number': _unitNumberCtrl.text.trim().isNotEmpty
+              ? _unitNumberCtrl.text.trim()
+              : null,
+          'owner_name': _ownerNameCtrl.text.trim().isNotEmpty
+              ? _ownerNameCtrl.text.trim()
+              : null,
+          'owner_phone': _ownerPhoneCtrl.text.trim().isNotEmpty
+              ? _ownerPhoneCtrl.text.trim()
+              : null,
           // Insurance information
-          'insurance_company': _insCompanyCtrl.text.trim().isNotEmpty ? _insCompanyCtrl.text.trim() : null,
-          'insurance_policy_number': _insPolicyCtrl.text.trim().isNotEmpty ? _insPolicyCtrl.text.trim() : null,
+          'insurance_company': _insCompanyCtrl.text.trim().isNotEmpty
+              ? _insCompanyCtrl.text.trim()
+              : null,
+          'insurance_policy_number': _insPolicyCtrl.text.trim().isNotEmpty
+              ? _insPolicyCtrl.text.trim()
+              : null,
           'insurance_expiry': _insExpiry?.toIso8601String().substring(0, 10),
           'updated_at': DateTime.now().toIso8601String(),
         };
@@ -6766,7 +7397,7 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
           busData['amenities'] = <String>[];
           busData['image_urls'] = photoUrls;
           busData['is_active'] = true;
-          busData['country_code'] = 'MX';
+          busData['country_code'] = _countryCode;
           busData['available_for_tourism'] = false;
           // Contract signing info
           busData['owner_signed_at'] = DateTime.now().toIso8601String();
@@ -6786,15 +7417,36 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
         for (final photo in _vehiclePhotos) {
           try {
             final ext = photo.path.split('.').last.toLowerCase();
-            final fileName = '${DateTime.now().millisecondsSinceEpoch}_${photo.name}';
+            final fileName =
+                '${DateTime.now().millisecondsSinceEpoch}_${photo.name}';
             final path = '${widget.userId}/vehicles/$fileName';
             if (kIsWeb) {
               final bytes = await photo.readAsBytes();
-              await SupabaseConfig.client.storage.from('rental-media').uploadBinary(path, bytes, fileOptions: FileOptions(contentType: 'image/$ext', upsert: true));
+              await SupabaseConfig.client.storage
+                  .from('rental-media')
+                  .uploadBinary(
+                    path,
+                    bytes,
+                    fileOptions: FileOptions(
+                      contentType: 'image/$ext',
+                      upsert: true,
+                    ),
+                  );
             } else {
-              await SupabaseConfig.client.storage.from('rental-media').upload(path, File(photo.path), fileOptions: FileOptions(contentType: 'image/$ext', upsert: true));
+              await SupabaseConfig.client.storage
+                  .from('rental-media')
+                  .upload(
+                    path,
+                    File(photo.path),
+                    fileOptions: FileOptions(
+                      contentType: 'image/$ext',
+                      upsert: true,
+                    ),
+                  );
             }
-            final url = SupabaseConfig.client.storage.from('rental-media').getPublicUrl(path);
+            final url = SupabaseConfig.client.storage
+                .from('rental-media')
+                .getPublicUrl(path);
             photoUrls.add(url);
           } catch (e) {
             debugPrint('Error uploading photo: $e');
@@ -6806,15 +7458,36 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
         if (_ownerDocument != null) {
           try {
             final ext = _ownerDocument!.path.split('.').last.toLowerCase();
-            final fileName = '${DateTime.now().millisecondsSinceEpoch}_document.$ext';
+            final fileName =
+                '${DateTime.now().millisecondsSinceEpoch}_document.$ext';
             final path = '${widget.userId}/documents/$fileName';
             if (kIsWeb) {
               final bytes = await _ownerDocument!.readAsBytes();
-              await SupabaseConfig.client.storage.from('rental-media').uploadBinary(path, bytes, fileOptions: FileOptions(contentType: 'image/$ext', upsert: true));
+              await SupabaseConfig.client.storage
+                  .from('rental-media')
+                  .uploadBinary(
+                    path,
+                    bytes,
+                    fileOptions: FileOptions(
+                      contentType: 'image/$ext',
+                      upsert: true,
+                    ),
+                  );
             } else {
-              await SupabaseConfig.client.storage.from('rental-media').upload(path, File(_ownerDocument!.path), fileOptions: FileOptions(contentType: 'image/$ext', upsert: true));
+              await SupabaseConfig.client.storage
+                  .from('rental-media')
+                  .upload(
+                    path,
+                    File(_ownerDocument!.path),
+                    fileOptions: FileOptions(
+                      contentType: 'image/$ext',
+                      upsert: true,
+                    ),
+                  );
             }
-            documentUrl = SupabaseConfig.client.storage.from('rental-media').getPublicUrl(path);
+            documentUrl = SupabaseConfig.client.storage
+                .from('rental-media')
+                .getPublicUrl(path);
           } catch (e) {
             debugPrint('Error uploading document: $e');
           }
@@ -6830,40 +7503,60 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
           'vehicle_make': make,
           'vehicle_model': model,
           'vehicle_year': int.parse(year),
-          'vehicle_color': _colorCtrl.text.trim().isNotEmpty ? _colorCtrl.text.trim() : null,
+          'vehicle_color': _colorCtrl.text.trim().isNotEmpty
+              ? _colorCtrl.text.trim()
+              : null,
           'vehicle_plate': _plateCtrl.text.trim(),
-          'vehicle_vin': _vinCtrl.text.trim().isNotEmpty ? _vinCtrl.text.trim() : null,
+          'vehicle_vin': _vinCtrl.text.trim().isNotEmpty
+              ? _vinCtrl.text.trim()
+              : null,
           'title': '$make $model $year',
-          'description': _descriptionCtrl.text.trim().isNotEmpty ? _descriptionCtrl.text.trim() : null,
+          'description': _descriptionCtrl.text.trim().isNotEmpty
+              ? _descriptionCtrl.text.trim()
+              : null,
           // Photos
           'image_urls': photoUrls,
           // Owner document
           'owner_document_url': documentUrl,
           'owner_document_type': _ownerDocumentType,
           // Pricing (owner sets prices)
-          'weekly_price_base': double.tryParse(_weeklyPriceCtrl.text.trim()) ?? 0,
+          'weekly_price_base':
+              double.tryParse(_weeklyPriceCtrl.text.trim()) ?? 0,
           'daily_price': double.tryParse(_dailyPriceCtrl.text.trim()) ?? 0,
           'deposit_amount': double.tryParse(_depositCtrl.text.trim()) ?? 0,
           // Features
           'features': _selectedFeatures,
           // Pickup location
-          'pickup_address': _pickupAddressCtrl.text.trim().isNotEmpty ? _pickupAddressCtrl.text.trim() : null,
+          'pickup_address': _pickupAddressCtrl.text.trim().isNotEmpty
+              ? _pickupAddressCtrl.text.trim()
+              : null,
           // Owner contact
-          'owner_name': _ownerNameCtrl.text.trim().isNotEmpty ? _ownerNameCtrl.text.trim() : null,
-          'owner_phone': _ownerPhoneCtrl.text.trim().isNotEmpty ? _ownerPhoneCtrl.text.trim() : null,
+          'owner_name': _ownerNameCtrl.text.trim().isNotEmpty
+              ? _ownerNameCtrl.text.trim()
+              : null,
+          'owner_phone': _ownerPhoneCtrl.text.trim().isNotEmpty
+              ? _ownerPhoneCtrl.text.trim()
+              : null,
           // Insurance
-          'insurance_company': _insCompanyCtrl.text.trim().isNotEmpty ? _insCompanyCtrl.text.trim() : null,
-          'insurance_policy_number': _insPolicyCtrl.text.trim().isNotEmpty ? _insPolicyCtrl.text.trim() : null,
+          'insurance_company': _insCompanyCtrl.text.trim().isNotEmpty
+              ? _insCompanyCtrl.text.trim()
+              : null,
+          'insurance_policy_number': _insPolicyCtrl.text.trim().isNotEmpty
+              ? _insPolicyCtrl.text.trim()
+              : null,
           'insurance_expiry': _insExpiry?.toIso8601String().substring(0, 10),
           // Contract signing
           'owner_signed_at': DateTime.now().toIso8601String(),
           'owner_sign_lat': signPos?.latitude,
           'owner_sign_lng': signPos?.longitude,
           'status': 'active',
-          'currency': 'MXN',
+          'currency': _currencyCode,
+          'country_code': _countryCode,
         };
 
-        final isEditing = widget.existingVehicle != null && (widget.existingVehicle!['_source'] == 'rental');
+        final isEditing =
+            widget.existingVehicle != null &&
+            (widget.existingVehicle!['_source'] == 'rental');
         if (isEditing) {
           // Keep existing photos if no new ones uploaded
           if (photoUrls.isEmpty) {
@@ -6879,7 +7572,9 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
               .update(data)
               .eq('id', widget.existingVehicle!['id']);
         } else {
-          await SupabaseConfig.client.from('rental_vehicle_listings').insert(data);
+          await SupabaseConfig.client
+              .from('rental_vehicle_listings')
+              .insert(data);
         }
       }
 
@@ -6887,12 +7582,16 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
         Navigator.of(context).pop(true); // true = refresh
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(_vehicleType == 'autobus'
-              ? 'Autobus publicado exitosamente para turismo'
-              : 'Vehiculo publicado exitosamente'),
+            content: Text(
+              _vehicleType == 'autobus'
+                  ? 'Autobus publicado exitosamente para turismo'
+                  : 'Vehiculo publicado exitosamente',
+            ),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
         );
       }
@@ -6913,8 +7612,18 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
   @override
   Widget build(BuildContext context) {
     final stepTitles = _vehicleType == 'autobus'
-        ? ['Vehiculo', 'Seguro', 'Fotos', 'Contrato']
-        : ['Vehiculo', 'Fotos y Precio', 'Seguro e ID', 'Contrato'];
+        ? [
+            'vehicle'.tr(),
+            'rental.insurance'.tr(),
+            'rental.photos'.tr(),
+            'rental.contract'.tr(),
+          ]
+        : [
+            'vehicle'.tr(),
+            'rental.photos_pricing'.tr(),
+            'rental.insurance_id'.tr(),
+            'rental.contract'.tr(),
+          ];
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
@@ -6928,12 +7637,22 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
           children: [
             const Icon(Icons.directions_car_rounded, color: _accent, size: 24),
             const SizedBox(width: 12),
-            Text('Publicar Vehiculo', style: TextStyle(color: AppColors.textPrimary, fontSize: 20, fontWeight: FontWeight.w700)),
+            Text(
+              'rental.publish_vehicle'.tr(),
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ],
         ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
-          child: Divider(color: AppColors.border.withValues(alpha: 0.5), height: 1),
+          child: Divider(
+            color: AppColors.border.withValues(alpha: 0.5),
+            height: 1,
+          ),
         ),
       ),
       body: Column(
@@ -6947,13 +7666,19 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
                 final isDone = i < _currentStep;
                 return Expanded(
                   child: Padding(
-                    padding: EdgeInsets.only(right: i < stepTitles.length - 1 ? 4 : 0),
+                    padding: EdgeInsets.only(
+                      right: i < stepTitles.length - 1 ? 4 : 0,
+                    ),
                     child: Column(
                       children: [
                         Container(
                           height: 3,
                           decoration: BoxDecoration(
-                            color: isDone ? AppColors.success : isActive ? _accent : AppColors.border,
+                            color: isDone
+                                ? AppColors.success
+                                : isActive
+                                ? _accent
+                                : AppColors.border,
                             borderRadius: BorderRadius.circular(2),
                           ),
                         ),
@@ -6961,8 +7686,15 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
                         Text(
                           stepTitles[i],
                           style: TextStyle(
-                            color: isActive ? _accent : isDone ? AppColors.success : AppColors.textDisabled,
-                            fontSize: 10, fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                            color: isActive
+                                ? _accent
+                                : isDone
+                                ? AppColors.success
+                                : AppColors.textDisabled,
+                            fontSize: 10,
+                            fontWeight: isActive
+                                ? FontWeight.w700
+                                : FontWeight.w500,
                           ),
                         ),
                       ],
@@ -6982,13 +7714,20 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
                 decoration: BoxDecoration(
                   color: AppColors.error.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                  border: Border.all(
+                    color: AppColors.error.withValues(alpha: 0.3),
+                  ),
                 ),
                 child: Row(
                   children: [
                     Icon(Icons.error_outline, color: AppColors.error, size: 18),
                     const SizedBox(width: 8),
-                    Expanded(child: Text(_error!, style: TextStyle(color: AppColors.error, fontSize: 13))),
+                    Expanded(
+                      child: Text(
+                        _error!,
+                        style: TextStyle(color: AppColors.error, fontSize: 13),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -7013,9 +7752,17 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
                         onPressed: _prevStep,
                         style: OutlinedButton.styleFrom(
                           side: BorderSide(color: AppColors.border),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
                         ),
-                        child: Text('Atras', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+                        child: Text(
+                          'rental.back'.tr(),
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -7025,19 +7772,37 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
                   child: SizedBox(
                     height: 50,
                     child: ElevatedButton(
-                      onPressed: _isSubmitting ? null : (_isLastStep() ? _submitListing : _nextStep),
+                      onPressed: _isSubmitting
+                          ? null
+                          : (_isLastStep() ? _submitListing : _nextStep),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _isLastStep() ? AppColors.success : _accent,
+                        backgroundColor: _isLastStep()
+                            ? AppColors.success
+                            : _accent,
                         disabledBackgroundColor: _accent.withValues(alpha: 0.3),
                         foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
                         elevation: 0,
                       ),
                       child: _isSubmitting
-                          ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2.5,
+                              ),
+                            )
                           : Text(
-                              _isLastStep() ? 'Firmar y Publicar' : 'Siguiente',
-                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                              _isLastStep()
+                                  ? 'rental.sign_publish'.tr()
+                                  : 'rental.next'.tr(),
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                     ),
                   ),
@@ -7056,19 +7821,29 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
 
     if (_vehicleType == 'autobus') {
       switch (_currentStep) {
-        case 0: return _buildVehicleStep();
-        case 1: return _buildInsuranceStep();
-        case 2: return _buildPhotosStep();
-        case 3: return _buildContractStep();
-        default: return const SizedBox.shrink();
+        case 0:
+          return _buildVehicleStep();
+        case 1:
+          return _buildInsuranceStep();
+        case 2:
+          return _buildPhotosStep();
+        case 3:
+          return _buildContractStep();
+        default:
+          return const SizedBox.shrink();
       }
     } else {
       switch (_currentStep) {
-        case 0: return _buildVehicleStep();
-        case 1: return _buildPhotosPricingStep();
-        case 2: return _buildInsuranceDocumentStep();
-        case 3: return _buildContractStep();
-        default: return const SizedBox.shrink();
+        case 0:
+          return _buildVehicleStep();
+        case 1:
+          return _buildPhotosPricingStep();
+        case 2:
+          return _buildInsuranceDocumentStep();
+        case 3:
+          return _buildContractStep();
+        default:
+          return const SizedBox.shrink();
       }
     }
   }
@@ -7079,9 +7854,12 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // PHOTOS SECTION
-        _sectionLabel('Fotos del Vehiculo'),
+        _sectionLabel('rental.vehicle_photos'.tr()),
         const SizedBox(height: 4),
-        Text('Agrega fotos claras de tu vehiculo (minimo 3)', style: TextStyle(color: AppColors.textTertiary, fontSize: 12)),
+        Text(
+          'rental.vehicle_photos_desc'.tr(),
+          style: TextStyle(color: AppColors.textTertiary, fontSize: 12),
+        ),
         const SizedBox(height: 12),
         // Photo grid
         GridView.builder(
@@ -7103,14 +7881,32 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
                   decoration: BoxDecoration(
                     color: AppColors.cardSecondary,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: _accent.withValues(alpha: 0.3), style: BorderStyle.solid),
+                    border: Border.all(
+                      color: _accent.withValues(alpha: 0.3),
+                      style: BorderStyle.solid,
+                    ),
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(_isPickingPhotos ? Icons.hourglass_top_rounded : Icons.add_a_photo_rounded, color: _accent, size: 28),
+                      Icon(
+                        _isPickingPhotos
+                            ? Icons.hourglass_top_rounded
+                            : Icons.add_a_photo_rounded,
+                        color: _accent,
+                        size: 28,
+                      ),
                       const SizedBox(height: 6),
-                      Text(_isPickingPhotos ? 'Cargando...' : 'Agregar', style: TextStyle(color: _accent, fontSize: 11, fontWeight: FontWeight.w600)),
+                      Text(
+                        _isPickingPhotos
+                            ? 'rental.loading'.tr()
+                            : 'rental.add'.tr(),
+                        style: TextStyle(
+                          color: _accent,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -7122,27 +7918,59 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
                 ClipRRect(
                   borderRadius: BorderRadius.circular(12),
                   child: kIsWeb
-                      ? Image.network(_vehiclePhotos[i].path, fit: BoxFit.cover, width: double.infinity, height: double.infinity)
-                      : Image.file(File(_vehiclePhotos[i].path), fit: BoxFit.cover, width: double.infinity, height: double.infinity),
+                      ? Image.network(
+                          _vehiclePhotos[i].path,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: double.infinity,
+                        )
+                      : Image.file(
+                          File(_vehiclePhotos[i].path),
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: double.infinity,
+                        ),
                 ),
                 Positioned(
-                  top: 4, right: 4,
+                  top: 4,
+                  right: 4,
                   child: GestureDetector(
                     onTap: () => setState(() => _vehiclePhotos.removeAt(i)),
                     child: Container(
                       padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.6), shape: BoxShape.circle),
-                      child: const Icon(Icons.close_rounded, color: Colors.white, size: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.6),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.close_rounded,
+                        color: Colors.white,
+                        size: 16,
+                      ),
                     ),
                   ),
                 ),
                 if (i == 0)
                   Positioned(
-                    bottom: 4, left: 4,
+                    bottom: 4,
+                    left: 4,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(color: _accent, borderRadius: BorderRadius.circular(4)),
-                      child: const Text('Principal', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700)),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _accent,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        'rental.primary'.tr(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ),
                   ),
               ],
@@ -7152,38 +7980,65 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
 
         // DESCRIPTION
         const SizedBox(height: 24),
-        _sectionLabel('Descripcion (opcional)'),
+        _sectionLabel('rental.description_optional'.tr()),
         const SizedBox(height: 8),
-        _field(_descriptionCtrl, 'Describe tu vehiculo...', 'Vehiculo en excelente estado, bien cuidado...', maxLines: 3),
+        _field(
+          _descriptionCtrl,
+          'rental.description_label'.tr(),
+          'rental.description_hint'.tr(),
+          maxLines: 3,
+        ),
 
         // FEATURES
         const SizedBox(height: 24),
-        _sectionLabel('Caracteristicas'),
+        _sectionLabel('rental.features'.tr()),
         const SizedBox(height: 8),
         Wrap(
-          spacing: 8, runSpacing: 8,
+          spacing: 8,
+          runSpacing: 8,
           children: _availableFeatures.map((f) {
             final sel = _selectedFeatures.contains(f);
             return GestureDetector(
               onTap: () {
                 HapticService.lightImpact();
                 setState(() {
-                  if (sel) { _selectedFeatures.remove(f); } else { _selectedFeatures.add(f); }
+                  if (sel) {
+                    _selectedFeatures.remove(f);
+                  } else {
+                    _selectedFeatures.add(f);
+                  }
                 });
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: sel ? _accent.withValues(alpha: 0.15) : AppColors.card,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: sel ? _accent.withValues(alpha: 0.5) : AppColors.border),
+                  border: Border.all(
+                    color: sel
+                        ? _accent.withValues(alpha: 0.5)
+                        : AppColors.border,
+                  ),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(sel ? Icons.check_circle_rounded : Icons.circle_outlined, color: sel ? _accent : AppColors.textDisabled, size: 16),
+                    Icon(
+                      sel ? Icons.check_circle_rounded : Icons.circle_outlined,
+                      color: sel ? _accent : AppColors.textDisabled,
+                      size: 16,
+                    ),
                     const SizedBox(width: 6),
-                    Text(f, style: TextStyle(color: sel ? _accent : AppColors.textSecondary, fontSize: 12)),
+                    Text(
+                      _featureLabel(f),
+                      style: TextStyle(
+                        color: sel ? _accent : AppColors.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -7193,19 +8048,45 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
 
         // PRICING
         const SizedBox(height: 24),
-        _sectionLabel('Precios (tu defines los precios)'),
+        _sectionLabel('rental.pricing_title'.tr()),
         const SizedBox(height: 12),
         Row(
           children: [
-            Expanded(child: _field(_dailyPriceCtrl, 'Precio/Dia', '500', isNumber: true, prefix: '\$')),
+            Expanded(
+              child: _field(
+                _dailyPriceCtrl,
+                'rental.price_day'.tr(),
+                _isMexico ? '500' : '45',
+                isNumber: true,
+                prefix: '\$',
+              ),
+            ),
             const SizedBox(width: 12),
-            Expanded(child: _field(_weeklyPriceCtrl, 'Precio/Semana', '2500', isNumber: true, prefix: '\$')),
+            Expanded(
+              child: _field(
+                _weeklyPriceCtrl,
+                'rental.price_week'.tr(),
+                _isMexico ? '2500' : '250',
+                isNumber: true,
+                prefix: '\$',
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 12),
-        _field(_depositCtrl, 'Deposito (opcional)', '5000', isNumber: true, prefix: '\$'),
+        _field(
+          _depositCtrl,
+          'rental.deposit_optional'.tr(),
+          _isMexico ? '5000' : '500',
+          isNumber: true,
+          prefix: '\$',
+        ),
         const SizedBox(height: 12),
-        _field(_pickupAddressCtrl, 'Direccion de Entrega', 'Av. Reforma 123, CDMX'),
+        _field(
+          _pickupAddressCtrl,
+          'rental.pickup_address'.tr(),
+          _isMexico ? 'Av. Reforma 123, CDMX' : '123 Main St, Phoenix, AZ',
+        ),
       ],
     );
   }
@@ -7233,22 +8114,34 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Insurance section (same as existing)
-        _sectionLabel('Seguro del Vehiculo'),
+        _sectionLabel('rental.vehicle_insurance'.tr()),
         const SizedBox(height: 12),
-        _field(_insCompanyCtrl, 'Compania de Seguro', 'GNP, Qualitas, AXA...'),
+        _field(
+          _insCompanyCtrl,
+          'rental.insurance_company'.tr(),
+          _isMexico
+              ? 'GNP, Qualitas, AXA...'
+              : 'State Farm, GEICO, Progressive...',
+        ),
         const SizedBox(height: 12),
-        _field(_insPolicyCtrl, 'Numero de Poliza', 'POL-123456'),
+        _field(_insPolicyCtrl, 'rental.policy_number'.tr(), 'POL-123456'),
         const SizedBox(height: 12),
         // Expiry date picker
         GestureDetector(
           onTap: () async {
             final d = await showDatePicker(
               context: context,
-              initialDate: _insExpiry ?? DateTime.now().add(const Duration(days: 180)),
+              initialDate:
+                  _insExpiry ?? DateTime.now().add(const Duration(days: 180)),
               firstDate: DateTime.now(),
               lastDate: DateTime.now().add(const Duration(days: 365 * 3)),
               builder: (ctx, child) => Theme(
-                data: Theme.of(ctx).copyWith(colorScheme: ColorScheme.dark(primary: _accent, surface: AppColors.card)),
+                data: Theme.of(ctx).copyWith(
+                  colorScheme: ColorScheme.dark(
+                    primary: _accent,
+                    surface: AppColors.card,
+                  ),
+                ),
                 child: child!,
               ),
             );
@@ -7263,14 +8156,20 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
             ),
             child: Row(
               children: [
-                Icon(Icons.calendar_today_rounded, color: AppColors.textTertiary, size: 18),
+                Icon(
+                  Icons.calendar_today_rounded,
+                  color: AppColors.textTertiary,
+                  size: 18,
+                ),
                 const SizedBox(width: 12),
                 Text(
                   _insExpiry != null
                       ? '${_insExpiry!.day}/${_insExpiry!.month}/${_insExpiry!.year}'
-                      : 'Fecha de Vencimiento del Seguro',
+                      : 'rental.insurance_expiry'.tr(),
                   style: TextStyle(
-                    color: _insExpiry != null ? AppColors.textPrimary : AppColors.textDisabled,
+                    color: _insExpiry != null
+                        ? AppColors.textPrimary
+                        : AppColors.textDisabled,
                     fontSize: 14,
                   ),
                 ),
@@ -7286,30 +8185,45 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
           decoration: BoxDecoration(
             color: const Color(0xFFEF4444).withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFFEF4444).withValues(alpha: 0.3)),
+            border: Border.all(
+              color: const Color(0xFFEF4444).withValues(alpha: 0.3),
+            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  Icon(Icons.badge_rounded, color: const Color(0xFFEF4444), size: 20),
+                  Icon(
+                    Icons.badge_rounded,
+                    color: const Color(0xFFEF4444),
+                    size: 20,
+                  ),
                   const SizedBox(width: 8),
-                  Text('Identificacion Oficial (Obligatorio)', style: TextStyle(color: const Color(0xFFEF4444), fontSize: 14, fontWeight: FontWeight.w700)),
+                  Text(
+                    'rental.official_id_required'.tr(),
+                    style: TextStyle(
+                      color: const Color(0xFFEF4444),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 8),
               Text(
-                'Sube una foto de tu INE o Licencia de Conducir. Es requerido para verificar tu identidad como propietario.',
+                _isMexico ? 'rental.mx_id_desc'.tr() : 'rental.us_id_desc'.tr(),
                 style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
               ),
               const SizedBox(height: 12),
               // Document type selector
               Row(
                 children: [
-                  _docTypeChip('INE', 'ine'),
-                  const SizedBox(width: 8),
-                  _docTypeChip('Licencia', 'licencia'),
+                  if (_isMexico) ...[
+                    _docTypeChip('INE', 'ine'),
+                    const SizedBox(width: 8),
+                  ],
+                  _docTypeChip('rental.driver_license'.tr(), 'licencia'),
                 ],
               ),
               const SizedBox(height: 12),
@@ -7323,7 +8237,9 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
                     color: AppColors.card,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: _ownerDocument != null ? AppColors.success.withValues(alpha: 0.5) : AppColors.border,
+                      color: _ownerDocument != null
+                          ? AppColors.success.withValues(alpha: 0.5)
+                          : AppColors.border,
                       width: _ownerDocument != null ? 2 : 1,
                     ),
                   ),
@@ -7333,31 +8249,70 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
                             ClipRRect(
                               borderRadius: BorderRadius.circular(11),
                               child: kIsWeb
-                                  ? Image.network(_ownerDocument!.path, fit: BoxFit.cover, width: double.infinity, height: double.infinity)
-                                  : Image.file(File(_ownerDocument!.path), fit: BoxFit.cover, width: double.infinity, height: double.infinity),
+                                  ? Image.network(
+                                      _ownerDocument!.path,
+                                      fit: BoxFit.cover,
+                                      width: double.infinity,
+                                      height: double.infinity,
+                                    )
+                                  : Image.file(
+                                      File(_ownerDocument!.path),
+                                      fit: BoxFit.cover,
+                                      width: double.infinity,
+                                      height: double.infinity,
+                                    ),
                             ),
                             Positioned(
-                              top: 8, right: 8,
+                              top: 8,
+                              right: 8,
                               child: GestureDetector(
-                                onTap: () => setState(() => _ownerDocument = null),
+                                onTap: () =>
+                                    setState(() => _ownerDocument = null),
                                 child: Container(
                                   padding: const EdgeInsets.all(6),
-                                  decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.6), shape: BoxShape.circle),
-                                  child: const Icon(Icons.close_rounded, color: Colors.white, size: 16),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withValues(alpha: 0.6),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.close_rounded,
+                                    color: Colors.white,
+                                    size: 16,
+                                  ),
                                 ),
                               ),
                             ),
                             Positioned(
-                              bottom: 8, left: 8,
+                              bottom: 8,
+                              left: 8,
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(color: AppColors.success, borderRadius: BorderRadius.circular(6)),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.success,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    const Icon(Icons.check_circle_rounded, color: Colors.white, size: 14),
+                                    const Icon(
+                                      Icons.check_circle_rounded,
+                                      color: Colors.white,
+                                      size: 14,
+                                    ),
                                     const SizedBox(width: 4),
-                                    Text(_ownerDocumentType == 'ine' ? 'INE' : 'Licencia', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+                                    Text(
+                                      _ownerDocumentType == 'ine'
+                                          ? 'INE'
+                                          : 'rental.driver_license'.tr(),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
@@ -7367,12 +8322,23 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
                       : Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(_isPickingDocument ? Icons.hourglass_top_rounded : Icons.add_photo_alternate_rounded,
-                                color: _accent, size: 36),
+                            Icon(
+                              _isPickingDocument
+                                  ? Icons.hourglass_top_rounded
+                                  : Icons.add_photo_alternate_rounded,
+                              color: _accent,
+                              size: 36,
+                            ),
                             const SizedBox(height: 8),
                             Text(
-                              _isPickingDocument ? 'Cargando...' : 'Tomar foto o seleccionar',
-                              style: TextStyle(color: _accent, fontSize: 13, fontWeight: FontWeight.w600),
+                              _isPickingDocument
+                                  ? 'rental.loading'.tr()
+                                  : 'rental.take_or_select'.tr(),
+                              style: TextStyle(
+                                color: _accent,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ],
                         ),
@@ -7384,11 +8350,15 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
 
         // Owner contact info
         const SizedBox(height: 24),
-        _sectionLabel('Informacion de Contacto'),
+        _sectionLabel('rental.contact_information'.tr()),
         const SizedBox(height: 12),
-        _field(_ownerNameCtrl, 'Nombre Completo', 'Juan Perez'),
+        _field(_ownerNameCtrl, 'rental.full_name'.tr(), 'John Doe'),
         const SizedBox(height: 12),
-        _field(_ownerPhoneCtrl, 'Telefono', '+52 55 1234 5678'),
+        _field(
+          _ownerPhoneCtrl,
+          'rental.phone'.tr(),
+          _isMexico ? '+52 55 1234 5678' : '+1 602 555 0100',
+        ),
       ],
     );
   }
@@ -7396,15 +8366,27 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
   Widget _docTypeChip(String label, String type) {
     final sel = _ownerDocumentType == type;
     return GestureDetector(
-      onTap: () { HapticService.lightImpact(); setState(() => _ownerDocumentType = type); },
+      onTap: () {
+        HapticService.lightImpact();
+        setState(() => _ownerDocumentType = type);
+      },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
           color: sel ? _accent.withValues(alpha: 0.15) : AppColors.card,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: sel ? _accent.withValues(alpha: 0.5) : AppColors.border),
+          border: Border.all(
+            color: sel ? _accent.withValues(alpha: 0.5) : AppColors.border,
+          ),
         ),
-        child: Text(label, style: TextStyle(color: sel ? _accent : AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w600)),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: sel ? _accent : AppColors.textSecondary,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ),
     );
   }
@@ -7432,25 +8414,47 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionLabel('Tipo de Vehiculo'),
+        _sectionLabel('rental.vehicle_type'.tr()),
         const SizedBox(height: 8),
         Wrap(
-          spacing: 8, runSpacing: 8,
+          spacing: 8,
+          runSpacing: 8,
           children: _vehicleTypes.map((t) {
             final sel = _vehicleType == t;
             return GestureDetector(
-              onTap: () { HapticService.lightImpact(); setState(() { _vehicleType = t; _driverVerified = false; _assignedDriverId = null; _assignedDriverName = null; _driverEmailCtrl.clear(); }); },
+              onTap: () {
+                HapticService.lightImpact();
+                setState(() {
+                  _vehicleType = t;
+                  _driverVerified = false;
+                  _assignedDriverId = null;
+                  _assignedDriverName = null;
+                  _driverEmailCtrl.clear();
+                });
+              },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: sel ? _accent.withValues(alpha: 0.15) : AppColors.card,
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: sel ? _accent.withValues(alpha: 0.6) : AppColors.border, width: sel ? 1.5 : 1),
+                  border: Border.all(
+                    color: sel
+                        ? _accent.withValues(alpha: 0.6)
+                        : AppColors.border,
+                    width: sel ? 1.5 : 1,
+                  ),
                 ),
                 child: Text(
-                  t == 'autobus' ? 'TRANSPORTE\nTURISMO' : t.toUpperCase(),
-                  style: TextStyle(color: sel ? _accent : AppColors.textSecondary, fontSize: t == 'autobus' ? 12 : 13, fontWeight: FontWeight.w600),
+                  _vehicleTypeLabel(t),
+                  style: TextStyle(
+                    color: sel ? _accent : AppColors.textSecondary,
+                    fontSize: t == 'autobus' ? 12 : 13,
+                    fontWeight: FontWeight.w600,
+                  ),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -7458,27 +8462,40 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
           }).toList(),
         ),
         const SizedBox(height: 20),
-        _sectionLabel('Informacion del Vehiculo'),
+        _sectionLabel('rental.vehicle_information'.tr()),
         const SizedBox(height: 12),
         Row(
           children: [
-            Expanded(child: _field(_makeCtrl, 'Marca', 'Toyota')),
+            Expanded(child: _field(_makeCtrl, 'rental.make'.tr(), 'Toyota')),
             const SizedBox(width: 12),
-            Expanded(child: _field(_modelCtrl, 'Modelo', 'Camry')),
+            Expanded(child: _field(_modelCtrl, 'rental.model'.tr(), 'Camry')),
           ],
         ),
         const SizedBox(height: 12),
         Row(
           children: [
-            Expanded(child: _field(_yearCtrl, 'Año', '2024', isNumber: true)),
+            Expanded(
+              child: _field(
+                _yearCtrl,
+                'rental.year'.tr(),
+                '2024',
+                isNumber: true,
+              ),
+            ),
             const SizedBox(width: 12),
-            Expanded(child: _field(_colorCtrl, 'Color', 'Blanco')),
+            Expanded(
+              child: _field(
+                _colorCtrl,
+                'rental.color'.tr(),
+                _isMexico ? 'Blanco' : 'White',
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 12),
-        _field(_plateCtrl, 'Placa', 'ABC-1234'),
+        _field(_plateCtrl, 'rental.plate'.tr(), 'ABC-1234'),
         const SizedBox(height: 12),
-        _field(_vinCtrl, 'VIN (opcional)', '1HGBH41JXMN109186'),
+        _field(_vinCtrl, 'rental.vin_optional'.tr(), '1HGBH41JXMN109186'),
         // ── Autobus: Chofer obligatorio ──
         if (_vehicleType == 'autobus') ...[
           const SizedBox(height: 24),
@@ -7487,39 +8504,77 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
             decoration: BoxDecoration(
               color: const Color(0xFFFEF3C7).withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFEAB308).withValues(alpha: 0.4)),
+              border: Border.all(
+                color: const Color(0xFFEAB308).withValues(alpha: 0.4),
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    Icon(Icons.warning_amber_rounded, color: const Color(0xFFEAB308), size: 20),
+                    Icon(
+                      Icons.warning_amber_rounded,
+                      color: const Color(0xFFEAB308),
+                      size: 20,
+                    ),
                     const SizedBox(width: 8),
-                    const Text('Chofer Requerido', style: TextStyle(color: Color(0xFFEAB308), fontSize: 14, fontWeight: FontWeight.bold)),
+                    Text(
+                      'rental.driver_required'.tr(),
+                      style: const TextStyle(
+                        color: Color(0xFFEAB308),
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'La renta de autobus requiere un chofer aprobado por Toro. Ingresa el email del chofer para verificarlo.',
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                  'rental.driver_required_desc'.tr(),
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    Expanded(child: _field(_driverEmailCtrl, 'Email del Chofer', 'chofer@email.com')),
+                    Expanded(
+                      child: _field(
+                        _driverEmailCtrl,
+                        'rental.driver_email'.tr(),
+                        'driver@email.com',
+                      ),
+                    ),
                     const SizedBox(width: 8),
                     GestureDetector(
                       onTap: _verifyingDriver ? null : _verifyDriver,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
                         decoration: BoxDecoration(
-                          color: _driverVerified ? const Color(0xFF22C55E) : _accent,
+                          color: _driverVerified
+                              ? const Color(0xFF22C55E)
+                              : _accent,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: _verifyingDriver
-                            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                            : Icon(_driverVerified ? Icons.check : Icons.search, color: Colors.white, size: 20),
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : Icon(
+                                _driverVerified ? Icons.check : Icons.search,
+                                color: Colors.white,
+                                size: 20,
+                              ),
                       ),
                     ),
                   ],
@@ -7531,16 +8586,28 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
                     decoration: BoxDecoration(
                       color: const Color(0xFF22C55E).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFF22C55E).withValues(alpha: 0.3)),
+                      border: Border.all(
+                        color: const Color(0xFF22C55E).withValues(alpha: 0.3),
+                      ),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.verified, color: Color(0xFF22C55E), size: 18),
+                        const Icon(
+                          Icons.verified,
+                          color: Color(0xFF22C55E),
+                          size: 18,
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            'Chofer verificado: $_assignedDriverName',
-                            style: const TextStyle(color: Color(0xFF22C55E), fontSize: 13, fontWeight: FontWeight.w600),
+                            'rental.driver_verified'.tr(
+                              namedArgs: {'name': _assignedDriverName!},
+                            ),
+                            style: const TextStyle(
+                              color: Color(0xFF22C55E),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ],
@@ -7557,39 +8624,76 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
             decoration: BoxDecoration(
               color: AppColors.primary.withValues(alpha: 0.05),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.2),
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    Icon(Icons.info_outline, color: AppColors.primary, size: 20),
+                    Icon(
+                      Icons.info_outline,
+                      color: AppColors.primary,
+                      size: 20,
+                    ),
                     const SizedBox(width: 8),
-                    const Text('Información Pública', style: TextStyle(color: AppColors.primary, fontSize: 14, fontWeight: FontWeight.bold)),
+                    Text(
+                      'rental.public_information'.tr(),
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Esta información se mostrará públicamente a otros organizadores. Déjala vacía si prefieres privacidad.',
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                  'rental.public_information_desc'.tr(),
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 // Total seats (required)
-                _field(_totalSeatsCtrl, 'Total de Asientos *', '30', isNumber: true),
+                _field(
+                  _totalSeatsCtrl,
+                  'rental.total_seats_required'.tr(),
+                  '30',
+                  isNumber: true,
+                ),
                 const SizedBox(height: 12),
                 // Unit number (optional - for fleet management)
-                _field(_unitNumberCtrl, 'Número de Unidad (opcional)', 'Unidad 1'),
+                _field(
+                  _unitNumberCtrl,
+                  'rental.unit_number_optional'.tr(),
+                  'rental.unit_example'.tr(),
+                ),
                 const SizedBox(height: 12),
                 // Owner name (optional)
-                _field(_ownerNameCtrl, 'Nombre del Dueño (opcional)', 'Juan Pérez'),
+                _field(
+                  _ownerNameCtrl,
+                  'rental.owner_name_optional'.tr(),
+                  'John Doe',
+                ),
                 const SizedBox(height: 12),
                 // Owner phone (optional)
-                _field(_ownerPhoneCtrl, 'Teléfono del Dueño (opcional)', '686-123-4567'),
+                _field(
+                  _ownerPhoneCtrl,
+                  'rental.owner_phone_optional'.tr(),
+                  _isMexico ? '686-123-4567' : '602-555-0100',
+                ),
                 const SizedBox(height: 8),
                 Text(
-                  '💡 Los campos opcionales se pueden dejar vacíos para mantener tu privacidad.',
-                  style: TextStyle(color: AppColors.textTertiary, fontSize: 11, fontStyle: FontStyle.italic),
+                  'rental.optional_privacy'.tr(),
+                  style: TextStyle(
+                    color: AppColors.textTertiary,
+                    fontSize: 11,
+                    fontStyle: FontStyle.italic,
+                  ),
                 ),
               ],
             ),
@@ -7605,16 +8709,20 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _sectionLabel('Fotos del Autobus *'),
+          _sectionLabel('rental.bus_photos_required'.tr()),
           const SizedBox(height: 4),
           Text(
-            'Minimo 1 foto (obligatorio), maximo 10. La primera foto sera la principal publicada.',
+            'rental.bus_photos_desc'.tr(),
             style: TextStyle(color: AppColors.textDisabled, fontSize: 12),
           ),
           const SizedBox(height: 4),
           Text(
-            '⚠️ Las fotos seran publicas y visibles para los turistas. Puedes reordenarlas.',
-            style: TextStyle(color: Colors.orange, fontSize: 11, fontWeight: FontWeight.w500),
+            'rental.bus_photos_public'.tr(),
+            style: TextStyle(
+              color: Colors.orange,
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+            ),
           ),
           const SizedBox(height: 12),
 
@@ -7630,14 +8738,24 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
                       decoration: BoxDecoration(
                         color: AppColors.card,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.border, style: BorderStyle.solid),
+                        border: Border.all(
+                          color: AppColors.border,
+                          style: BorderStyle.solid,
+                        ),
                       ),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(Icons.camera_alt, color: _accent, size: 32),
                           const SizedBox(height: 6),
-                          Text('Tomar Foto', style: TextStyle(color: _accent, fontSize: 13, fontWeight: FontWeight.w600)),
+                          Text(
+                            'home.take_photo'.tr(),
+                            style: TextStyle(
+                              color: _accent,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -7652,14 +8770,24 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
                       decoration: BoxDecoration(
                         color: AppColors.card,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.border, style: BorderStyle.solid),
+                        border: Border.all(
+                          color: AppColors.border,
+                          style: BorderStyle.solid,
+                        ),
                       ),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(Icons.photo_library, color: _accent, size: 32),
                           const SizedBox(height: 6),
-                          Text('Galería', style: TextStyle(color: _accent, fontSize: 13, fontWeight: FontWeight.w600)),
+                          Text(
+                            'home.select_gallery'.tr(),
+                            style: TextStyle(
+                              color: _accent,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -7679,7 +8807,8 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
                     mainAxisSpacing: 8,
                     childAspectRatio: 1,
                   ),
-                  itemCount: _busPhotos.length + (_busPhotos.length < 10 ? 1 : 0),
+                  itemCount:
+                      _busPhotos.length + (_busPhotos.length < 10 ? 1 : 0),
                   itemBuilder: (ctx, index) {
                     if (index == _busPhotos.length) {
                       // Add photo button - shows menu to choose camera or gallery
@@ -7693,16 +8822,22 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   ListTile(
-                                    leading: Icon(Icons.camera_alt, color: _accent),
-                                    title: const Text('Tomar Foto'),
+                                    leading: Icon(
+                                      Icons.camera_alt,
+                                      color: _accent,
+                                    ),
+                                    title: Text('home.take_photo'.tr()),
                                     onTap: () {
                                       Navigator.pop(ctx);
                                       _pickBusPhotos(useCamera: true);
                                     },
                                   ),
                                   ListTile(
-                                    leading: Icon(Icons.photo_library, color: _accent),
-                                    title: const Text('Seleccionar de Galería'),
+                                    leading: Icon(
+                                      Icons.photo_library,
+                                      color: _accent,
+                                    ),
+                                    title: Text('home.select_gallery'.tr()),
                                     onTap: () {
                                       Navigator.pop(ctx);
                                       _pickBusPhotos(useCamera: false);
@@ -7724,7 +8859,10 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
                             children: [
                               Icon(Icons.add, color: _accent, size: 24),
                               const SizedBox(height: 4),
-                              Text('Agregar', style: TextStyle(color: _accent, fontSize: 11)),
+                              Text(
+                                'rental.add'.tr(),
+                                style: TextStyle(color: _accent, fontSize: 11),
+                              ),
                             ],
                           ),
                         ),
@@ -7748,14 +8886,23 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
                           top: 4,
                           left: 4,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
-                              color: index == 0 ? Colors.green : Colors.black.withValues(alpha: 0.7),
+                              color: index == 0
+                                  ? Colors.green
+                                  : Colors.black.withValues(alpha: 0.7),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
                               '${index + 1}',
-                              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ),
@@ -7771,7 +8918,11 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
                                 color: Colors.red.withValues(alpha: 0.8),
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(Icons.close, color: Colors.white, size: 14),
+                              child: const Icon(
+                                Icons.close,
+                                color: Colors.white,
+                                size: 14,
+                              ),
                             ),
                           ),
                         ),
@@ -7789,23 +8940,36 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
                                   child: Container(
                                     padding: const EdgeInsets.all(4),
                                     decoration: BoxDecoration(
-                                      color: Colors.black.withValues(alpha: 0.7),
+                                      color: Colors.black.withValues(
+                                        alpha: 0.7,
+                                      ),
                                       borderRadius: BorderRadius.circular(4),
                                     ),
-                                    child: const Icon(Icons.arrow_back, color: Colors.white, size: 14),
+                                    child: const Icon(
+                                      Icons.arrow_back,
+                                      color: Colors.white,
+                                      size: 14,
+                                    ),
                                   ),
                                 ),
-                              if (index > 0 && index < _busPhotos.length - 1) const SizedBox(width: 4),
+                              if (index > 0 && index < _busPhotos.length - 1)
+                                const SizedBox(width: 4),
                               if (index < _busPhotos.length - 1)
                                 GestureDetector(
                                   onTap: () => _moveBusPhotoDown(index),
                                   child: Container(
                                     padding: const EdgeInsets.all(4),
                                     decoration: BoxDecoration(
-                                      color: Colors.black.withValues(alpha: 0.7),
+                                      color: Colors.black.withValues(
+                                        alpha: 0.7,
+                                      ),
                                       borderRadius: BorderRadius.circular(4),
                                     ),
-                                    child: const Icon(Icons.arrow_forward, color: Colors.white, size: 14),
+                                    child: const Icon(
+                                      Icons.arrow_forward,
+                                      color: Colors.white,
+                                      size: 14,
+                                    ),
                                   ),
                                 ),
                             ],
@@ -7817,9 +8981,13 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '${_busPhotos.length}/10 fotos (minimo 1)',
+                  'rental.photo_count'.tr(
+                    namedArgs: {'count': '${_busPhotos.length}'},
+                  ),
                   style: TextStyle(
-                    color: _busPhotos.isNotEmpty ? const Color(0xFF22C55E) : const Color(0xFFEAB308),
+                    color: _busPhotos.isNotEmpty
+                        ? const Color(0xFF22C55E)
+                        : const Color(0xFFEAB308),
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
@@ -7838,28 +9006,37 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionLabel('Seguro del Vehiculo'),
+        _sectionLabel('rental.vehicle_insurance'.tr()),
         const SizedBox(height: 4),
         Text(
-          'Si tu vehiculo tiene seguro, ingresa los datos para proteccion adicional',
+          'rental.insurance_optional_desc'.tr(),
           style: TextStyle(color: AppColors.textDisabled, fontSize: 12),
         ),
         const SizedBox(height: 16),
-        _field(_insCompanyCtrl, 'Compañia de Seguro', 'Qualitas, HDI, GNP...'),
+        _field(
+          _insCompanyCtrl,
+          'rental.insurance_company'.tr(),
+          _isMexico
+              ? 'Qualitas, HDI, GNP...'
+              : 'State Farm, GEICO, Progressive...',
+        ),
         const SizedBox(height: 12),
-        _field(_insPolicyCtrl, 'Numero de Poliza', 'POL-123456'),
+        _field(_insPolicyCtrl, 'rental.policy_number'.tr(), 'POL-123456'),
         const SizedBox(height: 12),
-        _sectionLabel('Vencimiento de Poliza'),
+        _sectionLabel('rental.policy_expiry'.tr()),
         const SizedBox(height: 8),
         GestureDetector(
           onTap: () async {
             final picked = await showDatePicker(
               context: context,
-              initialDate: _insExpiry ?? DateTime.now().add(const Duration(days: 180)),
+              initialDate:
+                  _insExpiry ?? DateTime.now().add(const Duration(days: 180)),
               firstDate: DateTime.now(),
               lastDate: DateTime.now().add(const Duration(days: 730)),
               builder: (ctx, child) => Theme(
-                data: ThemeData.dark().copyWith(colorScheme: const ColorScheme.dark(primary: _accent)),
+                data: ThemeData.dark().copyWith(
+                  colorScheme: const ColorScheme.dark(primary: _accent),
+                ),
                 child: child!,
               ),
             );
@@ -7879,8 +9056,13 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
                 Text(
                   _insExpiry != null
                       ? '${_insExpiry!.day}/${_insExpiry!.month}/${_insExpiry!.year}'
-                      : 'Seleccionar fecha',
-                  style: TextStyle(color: _insExpiry != null ? AppColors.textPrimary : AppColors.textDisabled, fontSize: 15),
+                      : 'rental.select_date'.tr(),
+                  style: TextStyle(
+                    color: _insExpiry != null
+                        ? AppColors.textPrimary
+                        : AppColors.textDisabled,
+                    fontSize: 15,
+                  ),
                 ),
               ],
             ),
@@ -7900,7 +9082,7 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionLabel('Resumen del Vehiculo'),
+        _sectionLabel('rental.vehicle_summary'.tr()),
         const SizedBox(height: 12),
         Container(
           padding: const EdgeInsets.all(16),
@@ -7911,18 +9093,30 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
           ),
           child: Column(
             children: [
-              _summaryRow('Tipo', _vehicleType == 'autobus' ? 'TRANSPORTE TURISMO' : _vehicleType.toUpperCase()),
-              _summaryRow('Vehiculo', '$year $make $model'),
-              _summaryRow('Placa', plate),
-              if (_colorCtrl.text.trim().isNotEmpty) _summaryRow('Color', _colorCtrl.text.trim()),
-              if (_vinCtrl.text.trim().isNotEmpty) _summaryRow('VIN', _vinCtrl.text.trim()),
-              if (_insCompanyCtrl.text.trim().isNotEmpty) _summaryRow('Seguro', _insCompanyCtrl.text.trim()),
-              if (_vehicleType == 'autobus') _summaryRow('Fotos', '${_busPhotos.length} fotos'),
+              _summaryRow('common.type'.tr(), _vehicleTypeLabel(_vehicleType)),
+              _summaryRow('vehicle'.tr(), '$year $make $model'),
+              _summaryRow('rental.plate'.tr(), plate),
+              if (_colorCtrl.text.trim().isNotEmpty)
+                _summaryRow('rental.color'.tr(), _colorCtrl.text.trim()),
+              if (_vinCtrl.text.trim().isNotEmpty)
+                _summaryRow('VIN', _vinCtrl.text.trim()),
+              if (_insCompanyCtrl.text.trim().isNotEmpty)
+                _summaryRow(
+                  'rental.insurance'.tr(),
+                  _insCompanyCtrl.text.trim(),
+                ),
+              if (_vehicleType == 'autobus')
+                _summaryRow(
+                  'rental.photos'.tr(),
+                  'rental.photos_value'.tr(
+                    namedArgs: {'count': '${_busPhotos.length}'},
+                  ),
+                ),
             ],
           ),
         ),
         const SizedBox(height: 20),
-        _sectionLabel('Contrato de Publicacion'),
+        _sectionLabel('rental.listing_contract'.tr()),
         const SizedBox(height: 12),
         Container(
           padding: const EdgeInsets.all(14),
@@ -7933,29 +9127,50 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
           ),
           child: Text(
             _contractText,
-            style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, height: 1.5),
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 13,
+              height: 1.5,
+            ),
           ),
         ),
         const SizedBox(height: 16),
         GestureDetector(
-          onTap: () { HapticService.lightImpact(); setState(() => _agreedToTerms = !_agreedToTerms); },
+          onTap: () {
+            HapticService.lightImpact();
+            setState(() => _agreedToTerms = !_agreedToTerms);
+          },
           child: Row(
             children: [
               AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                width: 24, height: 24,
+                width: 24,
+                height: 24,
                 decoration: BoxDecoration(
                   color: _agreedToTerms ? _accent : Colors.transparent,
                   borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: _agreedToTerms ? _accent : AppColors.border, width: 2),
+                  border: Border.all(
+                    color: _agreedToTerms ? _accent : AppColors.border,
+                    width: 2,
+                  ),
                 ),
-                child: _agreedToTerms ? const Icon(Icons.check_rounded, color: Colors.white, size: 18) : null,
+                child: _agreedToTerms
+                    ? const Icon(
+                        Icons.check_rounded,
+                        color: Colors.white,
+                        size: 18,
+                      )
+                    : null,
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'Acepto los terminos y firmo digitalmente este contrato',
-                  style: TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w500),
+                  'rental.accept_contract'.tr(),
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
             ],
@@ -7968,13 +9183,26 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
   // ── Helpers ──
   Widget _sectionLabel(String text) => Text(
     text,
-    style: TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w600),
+    style: TextStyle(
+      color: AppColors.textSecondary,
+      fontSize: 13,
+      fontWeight: FontWeight.w600,
+    ),
   );
 
-  Widget _field(TextEditingController ctrl, String label, String hint, {bool isNumber = false, String? prefix, int maxLines = 1}) {
+  Widget _field(
+    TextEditingController ctrl,
+    String label,
+    String hint, {
+    bool isNumber = false,
+    String? prefix,
+    int maxLines = 1,
+  }) {
     return TextField(
       controller: ctrl,
-      keyboardType: isNumber ? TextInputType.number : (maxLines > 1 ? TextInputType.multiline : TextInputType.text),
+      keyboardType: isNumber
+          ? TextInputType.number
+          : (maxLines > 1 ? TextInputType.multiline : TextInputType.text),
       maxLines: maxLines,
       style: TextStyle(color: AppColors.textPrimary, fontSize: 15),
       decoration: InputDecoration(
@@ -7983,12 +9211,29 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
         hintText: hint,
         hintStyle: TextStyle(color: AppColors.textDisabled),
         prefixText: prefix,
-        prefixStyle: TextStyle(color: AppColors.textSecondary, fontSize: 15, fontWeight: FontWeight.w600),
-        filled: true, fillColor: AppColors.card,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.border)),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.border)),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _accent, width: 1.5)),
+        prefixStyle: TextStyle(
+          color: AppColors.textSecondary,
+          fontSize: 15,
+          fontWeight: FontWeight.w600,
+        ),
+        filled: true,
+        fillColor: AppColors.card,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: AppColors.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: AppColors.border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: _accent, width: 1.5),
+        ),
       ),
     );
   }
@@ -8001,10 +9246,22 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
         children: [
           SizedBox(
             width: 110,
-            child: Text(label, style: TextStyle(color: AppColors.textTertiary, fontSize: 13)),
+            child: Text(
+              label,
+              style: TextStyle(color: AppColors.textTertiary, fontSize: 13),
+            ),
           ),
           Expanded(
-            child: Text(value, style: TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w500), maxLines: 2, overflow: TextOverflow.ellipsis),
+            child: Text(
+              value,
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ],
       ),
@@ -8101,7 +9358,10 @@ class _MyRentalsSheetState extends State<_MyRentalsSheet> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: AppColors.error,
+          ),
         );
       }
     }
@@ -8110,7 +9370,9 @@ class _MyRentalsSheetState extends State<_MyRentalsSheet> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.85),
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.85,
+      ),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
@@ -8123,8 +9385,12 @@ class _MyRentalsSheetState extends State<_MyRentalsSheet> {
           Center(
             child: Container(
               margin: const EdgeInsets.only(top: 12),
-              width: 40, height: 4,
-              decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
           ),
           // Title
@@ -8132,11 +9398,28 @@ class _MyRentalsSheetState extends State<_MyRentalsSheet> {
             padding: const EdgeInsets.fromLTRB(20, 16, 12, 0),
             child: Row(
               children: [
-                const Icon(Icons.receipt_long_rounded, color: _accent, size: 24),
+                const Icon(
+                  Icons.receipt_long_rounded,
+                  color: _accent,
+                  size: 24,
+                ),
                 const SizedBox(width: 12),
-                Text('Mis Rentas', style: TextStyle(color: AppColors.textPrimary, fontSize: 20, fontWeight: FontWeight.w700)),
+                Text(
+                  'Mis Rentas',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
                 const Spacer(),
-                IconButton(onPressed: () => Navigator.of(context).pop(), icon: Icon(Icons.close_rounded, color: AppColors.textTertiary)),
+                IconButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: Icon(
+                    Icons.close_rounded,
+                    color: AppColors.textTertiary,
+                  ),
+                ),
               ],
             ),
           ),
@@ -8145,43 +9428,78 @@ class _MyRentalsSheetState extends State<_MyRentalsSheet> {
           // Content
           Flexible(
             child: _isLoading
-                ? const Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator(color: _accent)))
+                ? const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(40),
+                      child: CircularProgressIndicator(color: _accent),
+                    ),
+                  )
                 : _error != null
-                    ? Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(40),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.error_outline, color: AppColors.error, size: 40),
-                              const SizedBox(height: 12),
-                              Text(_error!, style: TextStyle(color: AppColors.textTertiary, fontSize: 14), textAlign: TextAlign.center),
-                            ],
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(40),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.error_outline,
+                            color: AppColors.error,
+                            size: 40,
                           ),
-                        ),
-                      )
-                    : _listings.isEmpty
-                        ? Center(
-                            child: Padding(
-                              padding: const EdgeInsets.all(40),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.car_rental_rounded, color: AppColors.textDisabled, size: 48),
-                                  const SizedBox(height: 16),
-                                  Text('No tienes vehiculos publicados', style: TextStyle(color: AppColors.textTertiary, fontSize: 15, fontWeight: FontWeight.w500)),
-                                  const SizedBox(height: 6),
-                                  Text('Publica un vehiculo para comenzar a rentar', style: TextStyle(color: AppColors.textDisabled, fontSize: 13), textAlign: TextAlign.center),
-                                ],
-                              ),
+                          const SizedBox(height: 12),
+                          Text(
+                            _error!,
+                            style: TextStyle(
+                              color: AppColors.textTertiary,
+                              fontSize: 14,
                             ),
-                          )
-                        : ListView.separated(
-                            padding: const EdgeInsets.all(16),
-                            itemCount: _listings.length,
-                            separatorBuilder: (_, _) => const SizedBox(height: 12),
-                            itemBuilder: (context, index) => _buildListingCard(_listings[index]),
+                            textAlign: TextAlign.center,
                           ),
+                        ],
+                      ),
+                    ),
+                  )
+                : _listings.isEmpty
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(40),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.car_rental_rounded,
+                            color: AppColors.textDisabled,
+                            size: 48,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'No tienes vehiculos publicados',
+                            style: TextStyle(
+                              color: AppColors.textTertiary,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Publica un vehiculo para comenzar a rentar',
+                            style: TextStyle(
+                              color: AppColors.textDisabled,
+                              fontSize: 13,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                : ListView.separated(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _listings.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) =>
+                        _buildListingCard(_listings[index]),
+                  ),
           ),
         ],
       ),
@@ -8212,7 +9530,11 @@ class _MyRentalsSheetState extends State<_MyRentalsSheet> {
           color: AppColors.card,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: hasRenter ? AppColors.warning.withValues(alpha: 0.5) : isActive ? _accent.withValues(alpha: 0.3) : AppColors.border,
+            color: hasRenter
+                ? AppColors.warning.withValues(alpha: 0.5)
+                : isActive
+                ? _accent.withValues(alpha: 0.3)
+                : AppColors.border,
             width: hasRenter ? 1.5 : 1,
           ),
         ),
@@ -8223,14 +9545,25 @@ class _MyRentalsSheetState extends State<_MyRentalsSheet> {
             Row(
               children: [
                 Container(
-                  width: 44, height: 44,
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
-                    color: hasRenter ? AppColors.warning.withValues(alpha: 0.15) : isActive ? _accent.withValues(alpha: 0.15) : AppColors.cardHover,
+                    color: hasRenter
+                        ? AppColors.warning.withValues(alpha: 0.15)
+                        : isActive
+                        ? _accent.withValues(alpha: 0.15)
+                        : AppColors.cardHover,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
-                    hasRenter ? Icons.person_rounded : Icons.directions_car_rounded,
-                    color: hasRenter ? AppColors.warning : isActive ? _accent : AppColors.textDisabled,
+                    hasRenter
+                        ? Icons.person_rounded
+                        : Icons.directions_car_rounded,
+                    color: hasRenter
+                        ? AppColors.warning
+                        : isActive
+                        ? _accent
+                        : AppColors.textDisabled,
                     size: 22,
                   ),
                 ),
@@ -8239,21 +9572,48 @@ class _MyRentalsSheetState extends State<_MyRentalsSheet> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('$year $make $model', style: TextStyle(color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.w600)),
+                      Text(
+                        '$year $make $model',
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                       const SizedBox(height: 4),
                       Row(
                         children: [
-                          _statusBadge(hasRenter ? 'Rentado' : isActive ? 'Publicado' : 'Inactivo',
-                            hasRenter ? AppColors.warning : isActive ? AppColors.success : AppColors.textDisabled),
+                          _statusBadge(
+                            hasRenter
+                                ? 'Rentado'
+                                : isActive
+                                ? 'Publicado'
+                                : 'Inactivo',
+                            hasRenter
+                                ? AppColors.warning
+                                : isActive
+                                ? AppColors.success
+                                : AppColors.textDisabled,
+                          ),
                           const SizedBox(width: 8),
-                          Text('\$$weeklyPrice/sem', style: TextStyle(color: AppColors.textTertiary, fontSize: 12)),
+                          Text(
+                            '\$$weeklyPrice/sem',
+                            style: TextStyle(
+                              color: AppColors.textTertiary,
+                              fontSize: 12,
+                            ),
+                          ),
                         ],
                       ),
                     ],
                   ),
                 ),
                 if (hasRenter)
-                  Icon(Icons.chevron_right_rounded, color: AppColors.textTertiary, size: 22)
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    color: AppColors.textTertiary,
+                    size: 22,
+                  )
                 else
                   // Toggle active/inactive
                   GestureDetector(
@@ -8261,11 +9621,15 @@ class _MyRentalsSheetState extends State<_MyRentalsSheet> {
                     child: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: isActive ? AppColors.error.withValues(alpha: 0.1) : AppColors.success.withValues(alpha: 0.1),
+                        color: isActive
+                            ? AppColors.error.withValues(alpha: 0.1)
+                            : AppColors.success.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Icon(
-                        isActive ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                        isActive
+                            ? Icons.pause_rounded
+                            : Icons.play_arrow_rounded,
                         color: isActive ? AppColors.error : AppColors.success,
                         size: 20,
                       ),
@@ -8277,10 +9641,13 @@ class _MyRentalsSheetState extends State<_MyRentalsSheet> {
             if (type.isNotEmpty || plate.isNotEmpty || color.isNotEmpty) ...[
               const SizedBox(height: 10),
               Wrap(
-                spacing: 8, runSpacing: 6,
+                spacing: 8,
+                runSpacing: 6,
                 children: [
-                  if (type.isNotEmpty) _infoPill(Icons.category_rounded, type.toUpperCase()),
-                  if (plate.isNotEmpty) _infoPill(Icons.confirmation_number_rounded, plate),
+                  if (type.isNotEmpty)
+                    _infoPill(Icons.category_rounded, type.toUpperCase()),
+                  if (plate.isNotEmpty)
+                    _infoPill(Icons.confirmation_number_rounded, plate),
                   if (color.isNotEmpty) _infoPill(Icons.palette_rounded, color),
                 ],
               ),
@@ -8290,10 +9657,22 @@ class _MyRentalsSheetState extends State<_MyRentalsSheet> {
               const SizedBox(height: 8),
               Row(
                 children: [
-                  Icon(Icons.location_on_rounded, color: AppColors.textDisabled, size: 14),
+                  Icon(
+                    Icons.location_on_rounded,
+                    color: AppColors.textDisabled,
+                    size: 14,
+                  ),
                   const SizedBox(width: 6),
                   Expanded(
-                    child: Text(pickupAddr, style: TextStyle(color: AppColors.textDisabled, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    child: Text(
+                      pickupAddr,
+                      style: TextStyle(
+                        color: AppColors.textDisabled,
+                        fontSize: 12,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ],
               ),
@@ -8306,15 +9685,34 @@ class _MyRentalsSheetState extends State<_MyRentalsSheet> {
                 decoration: BoxDecoration(
                   color: AppColors.warning.withValues(alpha: 0.06),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppColors.warning.withValues(alpha: 0.2)),
+                  border: Border.all(
+                    color: AppColors.warning.withValues(alpha: 0.2),
+                  ),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.person_outline_rounded, color: AppColors.warning, size: 18),
+                    Icon(
+                      Icons.person_outline_rounded,
+                      color: AppColors.warning,
+                      size: 18,
+                    ),
                     const SizedBox(width: 8),
-                    Text('Vehiculo en uso', style: TextStyle(color: AppColors.warning, fontSize: 13, fontWeight: FontWeight.w600)),
+                    Text(
+                      'Vehiculo en uso',
+                      style: TextStyle(
+                        color: AppColors.warning,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     const Spacer(),
-                    Text('Ver actividad →', style: TextStyle(color: AppColors.warning.withValues(alpha: 0.7), fontSize: 12)),
+                    Text(
+                      'Ver actividad →',
+                      style: TextStyle(
+                        color: AppColors.warning.withValues(alpha: 0.7),
+                        fontSize: 12,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -8332,7 +9730,14 @@ class _MyRentalsSheetState extends State<_MyRentalsSheet> {
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(6),
       ),
-      child: Text(text, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600)),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 
@@ -8348,13 +9753,23 @@ class _MyRentalsSheetState extends State<_MyRentalsSheet> {
         children: [
           Icon(icon, color: AppColors.textDisabled, size: 12),
           const SizedBox(width: 4),
-          Text(text, style: TextStyle(color: AppColors.textTertiary, fontSize: 11, fontWeight: FontWeight.w500)),
+          Text(
+            text,
+            style: TextStyle(
+              color: AppColors.textTertiary,
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  void _showActivityDetail(Map<String, dynamic> listing, Map<String, dynamic> agreement) {
+  void _showActivityDetail(
+    Map<String, dynamic> listing,
+    Map<String, dynamic> agreement,
+  ) {
     final make = listing['vehicle_make'] ?? listing['make'] ?? '';
     final model = listing['vehicle_model'] ?? listing['model'] ?? '';
     final year = (listing['vehicle_year'] ?? listing['year'])?.toString() ?? '';
@@ -8370,7 +9785,9 @@ class _MyRentalsSheetState extends State<_MyRentalsSheet> {
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (ctx) => Container(
-        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.7),
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.7,
+        ),
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
@@ -8383,8 +9800,12 @@ class _MyRentalsSheetState extends State<_MyRentalsSheet> {
             Center(
               child: Container(
                 margin: const EdgeInsets.only(top: 12),
-                width: 40, height: 4,
-                decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
             ),
             Padding(
@@ -8393,9 +9814,22 @@ class _MyRentalsSheetState extends State<_MyRentalsSheet> {
                 children: [
                   const Icon(Icons.analytics_rounded, color: _accent, size: 24),
                   const SizedBox(width: 12),
-                  Text('Actividad del Vehiculo', style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w700)),
+                  Text(
+                    'Actividad del Vehiculo',
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                   const Spacer(),
-                  IconButton(onPressed: () => Navigator.pop(ctx), icon: Icon(Icons.close_rounded, color: AppColors.textTertiary)),
+                  IconButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    icon: Icon(
+                      Icons.close_rounded,
+                      color: AppColors.textTertiary,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -8408,16 +9842,27 @@ class _MyRentalsSheetState extends State<_MyRentalsSheet> {
                   // Vehicle
                   Container(
                     padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.border)),
+                    decoration: BoxDecoration(
+                      color: AppColors.card,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.border),
+                    ),
                     child: Column(
                       children: [
                         _detailRow('Vehiculo', '$year $make $model'),
                         _detailRow('Placa', plate),
-                        _detailRow('Estado', agrStatus == 'active' ? 'En uso' : agrStatus),
-                        if (startDate != null) _detailRow('Inicio', startDate.substring(0, 10)),
-                        if (endDate != null) _detailRow('Fin', endDate.substring(0, 10)),
-                        if (totalCost != null) _detailRow('Costo Total', '\$$totalCost'),
-                        if (renterId != null) _detailRow('Renter ID', renterId.substring(0, 8)),
+                        _detailRow(
+                          'Estado',
+                          agrStatus == 'active' ? 'En uso' : agrStatus,
+                        ),
+                        if (startDate != null)
+                          _detailRow('Inicio', startDate.substring(0, 10)),
+                        if (endDate != null)
+                          _detailRow('Fin', endDate.substring(0, 10)),
+                        if (totalCost != null)
+                          _detailRow('Costo Total', '\$$totalCost'),
+                        if (renterId != null)
+                          _detailRow('Renter ID', renterId.substring(0, 8)),
                       ],
                     ),
                   ),
@@ -8435,8 +9880,23 @@ class _MyRentalsSheetState extends State<_MyRentalsSheet> {
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
         children: [
-          SizedBox(width: 100, child: Text(label, style: TextStyle(color: AppColors.textTertiary, fontSize: 13))),
-          Expanded(child: Text(value, style: TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w500))),
+          SizedBox(
+            width: 100,
+            child: Text(
+              label,
+              style: TextStyle(color: AppColors.textTertiary, fontSize: 13),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -8457,8 +9917,10 @@ class _GpsTrackingSheet extends StatefulWidget {
 
 class _GpsTrackingSheetState extends State<_GpsTrackingSheet> {
   static const _accent = Color(0xFF8B5CF6);
-  List<Map<String, dynamic>> _rentedVehicles = []; // listings with active agreements
-  Map<String, List<Map<String, dynamic>>> _checkins = {}; // listing_id → checkins
+  List<Map<String, dynamic>> _rentedVehicles =
+      []; // listings with active agreements
+  Map<String, List<Map<String, dynamic>>> _checkins =
+      {}; // listing_id → checkins
   bool _isLoading = true;
   String? _error;
 
@@ -8500,7 +9962,9 @@ class _GpsTrackingSheetState extends State<_GpsTrackingSheet> {
       }
 
       // Filter listings to only those with active agreements
-      final rentedListings = listingsList.where((l) => activeListingIds.contains(l['id'])).toList();
+      final rentedListings = listingsList
+          .where((l) => activeListingIds.contains(l['id']))
+          .toList();
 
       // 3. Load recent checkins for rented vehicles
       Map<String, List<Map<String, dynamic>>> checkinMap = {};
@@ -8538,7 +10002,9 @@ class _GpsTrackingSheetState extends State<_GpsTrackingSheet> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.8),
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.8,
+      ),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
@@ -8551,8 +10017,12 @@ class _GpsTrackingSheetState extends State<_GpsTrackingSheet> {
           Center(
             child: Container(
               margin: const EdgeInsets.only(top: 12),
-              width: 40, height: 4,
-              decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
           ),
           // Title
@@ -8562,9 +10032,22 @@ class _GpsTrackingSheetState extends State<_GpsTrackingSheet> {
               children: [
                 const Icon(Icons.gps_fixed_rounded, color: _accent, size: 24),
                 const SizedBox(width: 12),
-                Text('GPS Tracking', style: TextStyle(color: AppColors.textPrimary, fontSize: 20, fontWeight: FontWeight.w700)),
+                Text(
+                  'GPS Tracking',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
                 const Spacer(),
-                IconButton(onPressed: () => Navigator.of(context).pop(), icon: Icon(Icons.close_rounded, color: AppColors.textTertiary)),
+                IconButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: Icon(
+                    Icons.close_rounded,
+                    color: AppColors.textTertiary,
+                  ),
+                ),
               ],
             ),
           ),
@@ -8573,46 +10056,80 @@ class _GpsTrackingSheetState extends State<_GpsTrackingSheet> {
           // Content
           Flexible(
             child: _isLoading
-                ? const Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator(color: _accent)))
+                ? const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(40),
+                      child: CircularProgressIndicator(color: _accent),
+                    ),
+                  )
                 : _error != null
-                    ? Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(40),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.error_outline, color: AppColors.error, size: 40),
-                              const SizedBox(height: 12),
-                              Text(_error!, style: TextStyle(color: AppColors.textTertiary, fontSize: 14), textAlign: TextAlign.center),
-                            ],
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(40),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.error_outline,
+                            color: AppColors.error,
+                            size: 40,
                           ),
-                        ),
-                      )
-                    : _rentedVehicles.isEmpty
-                        ? Center(
-                            child: Padding(
-                              padding: const EdgeInsets.all(40),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.gps_off_rounded, color: AppColors.textDisabled, size: 48),
-                                  const SizedBox(height: 16),
-                                  Text('Sin vehiculos rastreados', style: TextStyle(color: AppColors.textTertiary, fontSize: 15, fontWeight: FontWeight.w500)),
-                                  const SizedBox(height: 6),
-                                  Text('El rastreo GPS se activa cuando un vehiculo esta rentado', style: TextStyle(color: AppColors.textDisabled, fontSize: 13), textAlign: TextAlign.center),
-                                ],
-                              ),
+                          const SizedBox(height: 12),
+                          Text(
+                            _error!,
+                            style: TextStyle(
+                              color: AppColors.textTertiary,
+                              fontSize: 14,
                             ),
-                          )
-                        : ListView.separated(
-                            padding: const EdgeInsets.all(16),
-                            itemCount: _rentedVehicles.length,
-                            separatorBuilder: (_, _) => const SizedBox(height: 14),
-                            itemBuilder: (context, index) {
-                              final vehicle = _rentedVehicles[index];
-                              return _buildTrackedVehicle(vehicle);
-                            },
+                            textAlign: TextAlign.center,
                           ),
+                        ],
+                      ),
+                    ),
+                  )
+                : _rentedVehicles.isEmpty
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(40),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.gps_off_rounded,
+                            color: AppColors.textDisabled,
+                            size: 48,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Sin vehiculos rastreados',
+                            style: TextStyle(
+                              color: AppColors.textTertiary,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'El rastreo GPS se activa cuando un vehiculo esta rentado',
+                            style: TextStyle(
+                              color: AppColors.textDisabled,
+                              fontSize: 13,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                : ListView.separated(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _rentedVehicles.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 14),
+                    itemBuilder: (context, index) {
+                      final vehicle = _rentedVehicles[index];
+                      return _buildTrackedVehicle(vehicle);
+                    },
+                  ),
           ),
         ],
       ),
@@ -8627,6 +10144,8 @@ class _GpsTrackingSheetState extends State<_GpsTrackingSheet> {
     final plate = vehicle['vehicle_plate'] ?? vehicle['plate_number'] ?? '';
     final checkins = _checkins[id] ?? [];
     final lastCheckin = checkins.isNotEmpty ? checkins.first : null;
+    final countryCode =
+        vehicle['country_code']?.toString().toUpperCase() == 'MX' ? 'MX' : 'US';
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -8642,7 +10161,8 @@ class _GpsTrackingSheetState extends State<_GpsTrackingSheet> {
           Row(
             children: [
               Container(
-                width: 44, height: 44,
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
                   color: AppColors.success.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
@@ -8650,15 +10170,26 @@ class _GpsTrackingSheetState extends State<_GpsTrackingSheet> {
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    Icon(Icons.gps_fixed_rounded, color: AppColors.success, size: 22),
+                    Icon(
+                      Icons.gps_fixed_rounded,
+                      color: AppColors.success,
+                      size: 22,
+                    ),
                     Positioned(
-                      right: 8, top: 8,
+                      right: 8,
+                      top: 8,
                       child: Container(
-                        width: 8, height: 8,
+                        width: 8,
+                        height: 8,
                         decoration: BoxDecoration(
                           color: AppColors.success,
                           shape: BoxShape.circle,
-                          boxShadow: [BoxShadow(color: AppColors.success.withValues(alpha: 0.5), blurRadius: 4)],
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.success.withValues(alpha: 0.5),
+                              blurRadius: 4,
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -8670,25 +10201,58 @@ class _GpsTrackingSheetState extends State<_GpsTrackingSheet> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('$year $make $model', style: TextStyle(color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.w600)),
+                    Text(
+                      '$year $make $model',
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     const SizedBox(height: 4),
                     Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(color: AppColors.success.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(6)),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.success.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Container(width: 6, height: 6, decoration: BoxDecoration(color: AppColors.success, shape: BoxShape.circle)),
+                              Container(
+                                width: 6,
+                                height: 6,
+                                decoration: BoxDecoration(
+                                  color: AppColors.success,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
                               const SizedBox(width: 5),
-                              Text('GPS Activo', style: TextStyle(color: AppColors.success, fontSize: 11, fontWeight: FontWeight.w600)),
+                              Text(
+                                'GPS Activo',
+                                style: TextStyle(
+                                  color: AppColors.success,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                             ],
                           ),
                         ),
                         if (plate.isNotEmpty) ...[
                           const SizedBox(width: 8),
-                          Text(plate, style: TextStyle(color: AppColors.textTertiary, fontSize: 12)),
+                          Text(
+                            plate,
+                            style: TextStyle(
+                              color: AppColors.textTertiary,
+                              fontSize: 12,
+                            ),
+                          ),
                         ],
                       ],
                     ),
@@ -8709,16 +10273,30 @@ class _GpsTrackingSheetState extends State<_GpsTrackingSheet> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Ultimo Check-in', style: TextStyle(color: AppColors.textTertiary, fontSize: 11, fontWeight: FontWeight.w600)),
+                  Text(
+                    'Ultimo Check-in',
+                    style: TextStyle(
+                      color: AppColors.textTertiary,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   const SizedBox(height: 8),
                   if (lastCheckin['lat'] != null && lastCheckin['lng'] != null)
                     Row(
                       children: [
-                        Icon(Icons.location_on_rounded, color: _accent, size: 14),
+                        Icon(
+                          Icons.location_on_rounded,
+                          color: _accent,
+                          size: 14,
+                        ),
                         const SizedBox(width: 6),
                         Text(
                           '${(lastCheckin['lat'] as num).toStringAsFixed(5)}, ${(lastCheckin['lng'] as num).toStringAsFixed(5)}',
-                          style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 12,
+                          ),
                         ),
                       ],
                     ),
@@ -8728,7 +10306,16 @@ class _GpsTrackingSheetState extends State<_GpsTrackingSheet> {
                       children: [
                         Icon(Icons.speed_rounded, color: _accent, size: 14),
                         const SizedBox(width: 6),
-                        Text('${lastCheckin['mileage']} mi', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                        Text(
+                          formatDistance(
+                            lastCheckin['mileage'] as num?,
+                            country: countryCode,
+                          ),
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
                       ],
                     ),
                   ],
@@ -8736,9 +10323,19 @@ class _GpsTrackingSheetState extends State<_GpsTrackingSheet> {
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        Icon(Icons.local_gas_station_rounded, color: _accent, size: 14),
+                        Icon(
+                          Icons.local_gas_station_rounded,
+                          color: _accent,
+                          size: 14,
+                        ),
                         const SizedBox(width: 6),
-                        Text('${lastCheckin['fuel_level']}%', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                        Text(
+                          '${lastCheckin['fuel_level']}%',
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
                       ],
                     ),
                   ],
@@ -8746,11 +10343,20 @@ class _GpsTrackingSheetState extends State<_GpsTrackingSheet> {
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        Icon(Icons.access_time_rounded, color: AppColors.textDisabled, size: 14),
+                        Icon(
+                          Icons.access_time_rounded,
+                          color: AppColors.textDisabled,
+                          size: 14,
+                        ),
                         const SizedBox(width: 6),
                         Text(
-                          (lastCheckin['created_at'] as String).substring(0, 16).replaceAll('T', ' '),
-                          style: TextStyle(color: AppColors.textDisabled, fontSize: 11),
+                          (lastCheckin['created_at'] as String)
+                              .substring(0, 16)
+                              .replaceAll('T', ' '),
+                          style: TextStyle(
+                            color: AppColors.textDisabled,
+                            fontSize: 11,
+                          ),
                         ),
                       ],
                     ),
@@ -8762,7 +10368,10 @@ class _GpsTrackingSheetState extends State<_GpsTrackingSheet> {
           // Checkin history
           if (checkins.length > 1) ...[
             const SizedBox(height: 8),
-            Text('Historial (${checkins.length})', style: TextStyle(color: AppColors.textDisabled, fontSize: 11)),
+            Text(
+              'Historial (${checkins.length})',
+              style: TextStyle(color: AppColors.textDisabled, fontSize: 11),
+            ),
           ],
         ],
       ),
@@ -8838,21 +10447,27 @@ class _MyVehiclesSheetState extends State<_MyVehiclesSheet> {
     }
   }
 
-  Future<void> _deleteVehicle(String vehicleId, String vehicleName, {String source = 'bus'}) async {
+  Future<void> _deleteVehicle(
+    String vehicleId,
+    String vehicleName, {
+    String source = 'bus',
+  }) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Eliminar Vehiculo'),
-        content: Text('¿Estas seguro de eliminar "$vehicleName"?'),
+        title: Text('home.delete_vehicle_title'.tr()),
+        content: Text(
+          'home.delete_vehicle_confirm'.tr(namedArgs: {'name': vehicleName}),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancelar'),
+            child: Text('cancel'.tr()),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: AppColors.error),
-            child: const Text('Eliminar'),
+            child: Text('delete'.tr()),
           ),
         ],
       ),
@@ -8876,8 +10491,8 @@ class _MyVehiclesSheetState extends State<_MyVehiclesSheet> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Vehiculo eliminado'),
+          SnackBar(
+            content: Text('home.vehicle_deleted'.tr()),
             backgroundColor: AppColors.success,
           ),
         );
@@ -8887,7 +10502,9 @@ class _MyVehiclesSheetState extends State<_MyVehiclesSheet> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error al eliminar: $e'),
+            content: Text(
+              'home.vehicle_delete_error'.tr(namedArgs: {'error': '$e'}),
+            ),
             backgroundColor: AppColors.error,
           ),
         );
@@ -8908,7 +10525,11 @@ class _MyVehiclesSheetState extends State<_MyVehiclesSheet> {
         ),
         title: Row(
           children: [
-            const Icon(Icons.garage_rounded, color: AppColors.primary, size: 24),
+            const Icon(
+              Icons.garage_rounded,
+              color: AppColors.primary,
+              size: 24,
+            ),
             const SizedBox(width: 12),
             Text(
               'Mis Vehiculos',
@@ -8931,10 +10552,10 @@ class _MyVehiclesSheetState extends State<_MyVehiclesSheet> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? _buildError()
-              : _vehicles.isEmpty
-                  ? _buildEmpty()
-                  : _buildVehiclesList(),
+          ? _buildError()
+          : _vehicles.isEmpty
+          ? _buildEmpty()
+          : _buildVehiclesList(),
     );
   }
 
@@ -8948,14 +10569,14 @@ class _MyVehiclesSheetState extends State<_MyVehiclesSheet> {
             const Icon(Icons.error_outline, size: 64, color: AppColors.error),
             const SizedBox(height: 16),
             Text(
-              _error ?? 'Error desconocido',
+              _error ?? 'common.unknown_error'.tr(),
               style: const TextStyle(fontSize: 16),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: _loadVehicles,
-              child: const Text('Reintentar'),
+              child: Text('common.retry'.tr()),
             ),
           ],
         ),
@@ -8970,8 +10591,11 @@ class _MyVehiclesSheetState extends State<_MyVehiclesSheet> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.directions_bus_rounded,
-                size: 80, color: AppColors.textTertiary.withValues(alpha: 0.5)),
+            Icon(
+              Icons.directions_bus_rounded,
+              size: 80,
+              color: AppColors.textTertiary.withValues(alpha: 0.5),
+            ),
             const SizedBox(height: 16),
             const Text(
               'No tienes vehiculos publicados',
@@ -9027,11 +10651,17 @@ class _MyVehiclesSheetState extends State<_MyVehiclesSheet> {
     final weeklyPrice = vehicle['weekly_price_base'];
     final dailyPrice = vehicle['daily_price'];
     final status = vehicle['status'] as String?;
-    final isActive = isRental ? status == 'active' : (vehicle['is_active'] ?? false);
+    final isActive = isRental
+        ? status == 'active'
+        : (vehicle['is_active'] ?? false);
     final vehicleType = vehicle['vehicle_type'] as String?;
+    final countryCode =
+        vehicle['country_code']?.toString().toUpperCase() == 'MX' ? 'MX' : 'US';
 
     final accentColor = isRental ? const Color(0xFF8B5CF6) : AppColors.primary;
-    final typeIcon = isRental ? Icons.directions_car_rounded : Icons.directions_bus_rounded;
+    final typeIcon = isRental
+        ? Icons.directions_car_rounded
+        : Icons.directions_bus_rounded;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -9055,13 +10685,15 @@ class _MyVehiclesSheetState extends State<_MyVehiclesSheet> {
                       height: 85,
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => Container(
-                        width: 85, height: 85,
+                        width: 85,
+                        height: 85,
                         color: accentColor.withValues(alpha: 0.1),
                         child: Icon(typeIcon, color: accentColor, size: 32),
                       ),
                     )
                   : Container(
-                      width: 85, height: 85,
+                      width: 85,
+                      height: 85,
                       color: accentColor.withValues(alpha: 0.1),
                       child: Icon(typeIcon, color: accentColor, size: 32),
                     ),
@@ -9078,20 +10710,34 @@ class _MyVehiclesSheetState extends State<_MyVehiclesSheet> {
                       Expanded(
                         child: Text(
                           vehicleName,
-                          style: TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w700),
-                          maxLines: 1, overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       Container(
                         margin: const EdgeInsets.only(left: 6),
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: accentColor.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
-                          isRental ? (vehicleType ?? 'Renta').toUpperCase() : (unitNumber ?? 'BUS'),
-                          style: TextStyle(color: accentColor, fontSize: 9, fontWeight: FontWeight.w700),
+                          isRental
+                              ? (vehicleType ?? 'Renta').toUpperCase()
+                              : (unitNumber ?? 'BUS'),
+                          style: TextStyle(
+                            color: accentColor,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ],
@@ -9099,36 +10745,71 @@ class _MyVehiclesSheetState extends State<_MyVehiclesSheet> {
                   const SizedBox(height: 4),
                   Text(
                     '$make $model ${year != null ? "($year)" : ""}',
-                    style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                    ),
                   ),
                   const SizedBox(height: 6),
                   Row(
                     children: [
                       if (isRental && weeklyPrice != null) ...[
-                        Icon(Icons.attach_money_rounded, size: 14, color: AppColors.success),
+                        Icon(
+                          Icons.attach_money_rounded,
+                          size: 14,
+                          color: AppColors.success,
+                        ),
                         const SizedBox(width: 2),
                         Text(
-                          '\$${(weeklyPrice as num).toStringAsFixed(0)}/sem',
-                          style: const TextStyle(color: AppColors.success, fontSize: 12, fontWeight: FontWeight.w600),
+                          '${formatMoney(weeklyPrice as num, country: countryCode)}/${'rental.week_short'.tr()}',
+                          style: const TextStyle(
+                            color: AppColors.success,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
-                        if (dailyPrice != null && dailyPrice is num && dailyPrice > 0) ...[
-                          Text(' · ', style: TextStyle(color: AppColors.textDisabled, fontSize: 12)),
+                        if (dailyPrice != null &&
+                            dailyPrice is num &&
+                            dailyPrice > 0) ...[
                           Text(
-                            '\$${dailyPrice.toStringAsFixed(0)}/dia',
-                            style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                            ' · ',
+                            style: TextStyle(
+                              color: AppColors.textDisabled,
+                              fontSize: 12,
+                            ),
+                          ),
+                          Text(
+                            '${formatMoney(dailyPrice, country: countryCode)}/${'rental.day_short'.tr()}',
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 11,
+                            ),
                           ),
                         ],
                       ] else if (!isRental) ...[
-                        Icon(Icons.event_seat, size: 14, color: AppColors.success),
+                        Icon(
+                          Icons.event_seat,
+                          size: 14,
+                          color: AppColors.success,
+                        ),
                         const SizedBox(width: 4),
                         Text(
-                          '$totalSeats asientos',
-                          style: const TextStyle(color: AppColors.success, fontSize: 12, fontWeight: FontWeight.w600),
+                          'rental.seat_count'.tr(
+                            namedArgs: {'count': '$totalSeats'},
+                          ),
+                          style: const TextStyle(
+                            color: AppColors.success,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ],
                       const SizedBox(width: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: isActive
                               ? AppColors.success.withValues(alpha: 0.15)
@@ -9136,10 +10817,13 @@ class _MyVehiclesSheetState extends State<_MyVehiclesSheet> {
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
-                          isActive ? 'Activo' : 'Inactivo',
+                          isActive ? 'active'.tr() : 'inactive'.tr(),
                           style: TextStyle(
-                            color: isActive ? AppColors.success : AppColors.error,
-                            fontSize: 10, fontWeight: FontWeight.w600,
+                            color: isActive
+                                ? AppColors.success
+                                : AppColors.error,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
@@ -9220,26 +10904,36 @@ class _MyVehiclesSheetState extends State<_MyVehiclesSheet> {
                 backgroundColor: AppColors.card,
                 title: Row(
                   children: [
-                    Icon(Icons.info_outline, color: AppColors.primary, size: 20),
+                    Icon(
+                      Icons.info_outline,
+                      color: AppColors.primary,
+                      size: 20,
+                    ),
                     const SizedBox(width: 8),
-                    const Text('Visibilidad', style: TextStyle(fontSize: 16)),
+                    Text(
+                      'home.visibility_title'.tr(),
+                      style: const TextStyle(fontSize: 16),
+                    ),
                   ],
                 ),
-                content: const Text(
-                  'Publico: Organizadores de eventos pueden ver tu vehiculo e invitarte a eventos de turismo.\n\n'
-                  'Privado: Solo tu puedes ver este vehiculo. Nadie mas lo vera en la lista de vehiculos disponibles.',
-                  style: TextStyle(fontSize: 13),
+                content: Text(
+                  'home.visibility_message'.tr(),
+                  style: const TextStyle(fontSize: 13),
                 ),
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.pop(ctx),
-                    child: const Text('Entendido'),
+                    child: Text('understood'.tr()),
                   ),
                 ],
               ),
             );
           },
-          child: Icon(Icons.help_outline, size: 14, color: AppColors.textTertiary),
+          child: Icon(
+            Icons.help_outline,
+            size: 14,
+            color: AppColors.textTertiary,
+          ),
         ),
         const Spacer(),
         SizedBox(
@@ -9257,7 +10951,10 @@ class _MyVehiclesSheetState extends State<_MyVehiclesSheet> {
               } catch (e) {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
+                    SnackBar(
+                      content: Text('Error: $e'),
+                      backgroundColor: AppColors.error,
+                    ),
                   );
                 }
               }

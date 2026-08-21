@@ -31,7 +31,8 @@ import 'marketplace_confirm_screen.dart';
 import '../widgets/ride_chat_popup.dart';
 import 'report_ride_screen.dart';
 
-const String _mapboxToken = 'pk.eyJ1IjoibWFydGluZXpjMjAxNyIsImEiOiJjbWtocWtoZHIwbW1iM2dvdXZ3bmp0ZjBiIn0.MjYgv6DuvLTkrBVbrhtFbg';
+const String _mapboxToken =
+    'pk.eyJ1IjoibWFydGluZXpjMjAxNyIsImEiOiJjbWtocWtoZHIwbW1iM2dvdXZ3bmp0ZjBiIn0.MjYgv6DuvLTkrBVbrhtFbg';
 
 class NavigationMapScreen extends StatefulWidget {
   final VoidCallback? onBack;
@@ -70,13 +71,13 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
   String? _lastMarkerRideId; // Track which ride's marker is shown
   String? _lastRiderMarkerId; // Track rider marker state
   // Pin bitmaps (rendered once) + nombres reales del lugar para marketplace.
-  Uint8List? _pinStoreImg;   // pin recogida MARKETPLACE (tienda, ambar)
-  Uint8List? _pinRiderImg;   // pin recogida VIAJE/carpool (pasajero, ambar)
+  Uint8List? _pinStoreImg; // pin recogida MARKETPLACE (tienda, ambar)
+  Uint8List? _pinRiderImg; // pin recogida VIAJE/carpool (pasajero, ambar)
   Uint8List? _pinPackageImg; // pin recogida PAQUETE (caja, ambar)
-  Uint8List? _pinClientImg;  // pin cliente/destino (rojo)
-  String? _mktVendorName;    // nombre del vendedor (ej. PALOMA)
-  String? _mktBuyerName;     // nombre del comprador
-  String? _mktNamesRideId;   // ride id para el que ya buscamos nombres
+  Uint8List? _pinClientImg; // pin cliente/destino (rojo)
+  String? _mktVendorName; // nombre del vendedor (ej. PALOMA)
+  String? _mktBuyerName; // nombre del comprador
+  String? _mktNamesRideId; // ride id para el que ya buscamos nombres
 
   // Asistencia de navegación
   List<ParkingPlace> _nearbyParkings = [];
@@ -91,8 +92,8 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
 
   // Zoom y pitch - 2D plano para mejor rendimiento
   double _currentZoom = 17.0;
-  double _currentPitch = 0.0;  // 0 = 2D plano, 45 = 3D navegación
-  DateTime? _lastZoomUpdate;  // Throttle para adaptive zoom
+  double _currentPitch = 0.0; // 0 = 2D plano, 45 = 3D navegación
+  DateTime? _lastZoomUpdate; // Throttle para adaptive zoom
 
   // Speed-based pitch: < 10 km/h = flat (0°), >= 10 km/h = navigation (45°)
   static const double _speedThresholdForPitch = 2.78; // 10 km/h in m/s
@@ -111,7 +112,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
   // Control de ride actual
   String? _currentRideId;
   String? _currentTargetType; // 'pickup' o 'dropoff'
-  String? _lastCheckedRideId;  // Para evitar re-checks innecesarios
+  String? _lastCheckedRideId; // Para evitar re-checks innecesarios
   RideStatus? _lastCheckedStatus;
 
   // Wait timer at pickup.
@@ -235,7 +236,9 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
         _tollAlertShown = true;
         if (!_isMuted) {
           if (tollCost != null && tollCost > 0) {
-            _tts.speak('Esta ruta tiene peajes. Costo estimado: ${tollCost.toStringAsFixed(0)} dólares');
+            _tts.speak(
+              'Esta ruta tiene peajes. Costo estimado: ${tollCost.toStringAsFixed(0)} dólares',
+            );
           } else {
             _tts.speak('Atención: esta ruta tiene peajes');
           }
@@ -258,7 +261,9 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
         });
         _showParkingMarkers(parkings);
         if (!_isMuted) {
-          _tts.speak('Hay ${parkings.length} estacionamientos cerca del destino');
+          _tts.speak(
+            'Hay ${parkings.length} estacionamientos cerca del destino',
+          );
         }
       }
     };
@@ -274,36 +279,42 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
     await map.logo.updateSettings(LogoSettings(enabled: false));
 
     // Habilitar gestos para cámara libre
-    await map.gestures.updateSettings(GesturesSettings(
-      scrollEnabled: true,
-      rotateEnabled: true,
-      pitchEnabled: true,
-      doubleTapToZoomInEnabled: true,
-      doubleTouchToZoomOutEnabled: true,
-      quickZoomEnabled: true,
-      pinchToZoomEnabled: true,
-      pinchPanEnabled: true,
-    ));
+    await map.gestures.updateSettings(
+      GesturesSettings(
+        scrollEnabled: true,
+        rotateEnabled: true,
+        pitchEnabled: true,
+        doubleTapToZoomInEnabled: true,
+        doubleTouchToZoomOutEnabled: true,
+        quickZoomEnabled: true,
+        pinchToZoomEnabled: true,
+        pinchPanEnabled: true,
+      ),
+    );
 
-    await map.location.updateSettings(LocationComponentSettings(
-      enabled: true,
-      puckBearingEnabled: true,
-      pulsingEnabled: false,
-      showAccuracyRing: false,
-      puckBearing: PuckBearing.COURSE,
-      locationPuck: LocationPuck(
-        locationPuck2D: DefaultLocationPuck2D(
-          topImage: null,
-          bearingImage: null,
-          shadowImage: null,
-          scaleExpression: '1.5',  // Puck 50% más grande
+    await map.location.updateSettings(
+      LocationComponentSettings(
+        enabled: true,
+        puckBearingEnabled: true,
+        pulsingEnabled: false,
+        showAccuracyRing: false,
+        puckBearing: PuckBearing.COURSE,
+        locationPuck: LocationPuck(
+          locationPuck2D: DefaultLocationPuck2D(
+            topImage: null,
+            bearingImage: null,
+            shadowImage: null,
+            scaleExpression: '1.5', // Puck 50% más grande
+          ),
         ),
       ),
-    ));
+    );
 
     _routeLineManager = await map.annotations.createPolylineAnnotationManager();
-    _parkingMarkersManager = await map.annotations.createPointAnnotationManager();
-    _destinationMarkerManager = await map.annotations.createPointAnnotationManager();
+    _parkingMarkersManager = await map.annotations
+        .createPointAnnotationManager();
+    _destinationMarkerManager = await map.annotations
+        .createPointAnnotationManager();
     _riderMarkerManager = await map.annotations.createPointAnnotationManager();
 
     setState(() => _isMapReady = true);
@@ -334,12 +345,17 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
       _logMockSignal(pos);
       if (mounted) setState(() {});
     }
-    final heading = (pos.heading.isFinite && pos.heading >= 0) ? pos.heading : _lastUpdateBearing;
-    final speed = (pos.speed.isFinite && pos.speed >= 0) ? pos.speed : _currentSpeed;
+    final heading = (pos.heading.isFinite && pos.heading >= 0)
+        ? pos.heading
+        : _lastUpdateBearing;
+    final speed = (pos.speed.isFinite && pos.speed >= 0)
+        ? pos.speed
+        : _currentSpeed;
 
     // Throttle GPS a 1 Hz máximo para UI
     final now = DateTime.now();
-    if (_lastGpsTime != null && now.difference(_lastGpsTime!).inMilliseconds < 1000) {
+    if (_lastGpsTime != null &&
+        now.difference(_lastGpsTime!).inMilliseconds < 1000) {
       return;
     }
 
@@ -349,7 +365,12 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
     }
 
     // Deadband thresholds - ignorar cambios pequeños
-    final distMoved = _quickDistance(_lastUpdateLat, _lastUpdateLng, pos.latitude, pos.longitude);
+    final distMoved = _quickDistance(
+      _lastUpdateLat,
+      _lastUpdateLng,
+      pos.latitude,
+      pos.longitude,
+    );
     final bearingChange = (heading - _lastUpdateBearing).abs();
     final speedChange = (speed - _currentSpeed).abs();
 
@@ -359,7 +380,10 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
       // but we must still detect arrival within 30m threshold
       if (_navigationService.isNavigating) {
         _navigationService.updateLocation(
-          pos.latitude, pos.longitude, pos.speed, pos.heading,
+          pos.latitude,
+          pos.longitude,
+          pos.speed,
+          pos.heading,
         );
       }
       return;
@@ -379,9 +403,14 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
     }
 
     // En navegacion siempre inclinado (45°); fuera de nav, plano cuando va lento.
-    final newPitch = (_navigationService.isNavigating || speed >= _speedThresholdForPitch) ? 45.0 : 0.0;
+    final newPitch =
+        (_navigationService.isNavigating || speed >= _speedThresholdForPitch)
+        ? 45.0
+        : 0.0;
     if (newPitch != _currentPitch) {
-      debugPrint('🎥 PITCH: ${_currentPitch.toStringAsFixed(0)}° → ${newPitch.toStringAsFixed(0)}° (${(speed*3.6).toStringAsFixed(1)} km/h)');
+      debugPrint(
+        '🎥 PITCH: ${_currentPitch.toStringAsFixed(0)}° → ${newPitch.toStringAsFixed(0)}° (${(speed * 3.6).toStringAsFixed(1)} km/h)',
+      );
       _currentPitch = newPitch;
       // Trigger rebuild to update FollowPuckViewportState pitch
       if (mounted) setState(() {});
@@ -390,7 +419,9 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
     // FollowPuckViewportState maneja el seguimiento de cámara automáticamente
 
     // LOG PUCK: posición actual
-    debugPrint('📍 PUCK: ${pos.latitude.toStringAsFixed(5)}, ${pos.longitude.toStringAsFixed(5)} | spd:${(speed*3.6).toStringAsFixed(0)}km/h | hdg:${heading.toStringAsFixed(0)}°');
+    debugPrint(
+      '📍 PUCK: ${pos.latitude.toStringAsFixed(5)}, ${pos.longitude.toStringAsFixed(5)} | spd:${(speed * 3.6).toStringAsFixed(0)}km/h | hdg:${heading.toStringAsFixed(0)}°',
+    );
 
     if (_navigationService.isNavigating) {
       _navigationService.updateLocation(
@@ -404,7 +435,9 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
       final stepIdx = _navState.currentStepIndex;
       final distNext = _navState.distanceToNextManeuver;
       final instruction = _navState.currentInstruction;
-      debugPrint('🎯 BANNER: step=$stepIdx | dist=${distNext.toStringAsFixed(0)}m | "$instruction"');
+      debugPrint(
+        '🎯 BANNER: step=$stepIdx | dist=${distNext.toStringAsFixed(0)}m | "$instruction"',
+      );
 
       // PLAYBOOK: Nombre de calle solo cada 10 segundos
       if (_lastStreetUpdate == null ||
@@ -431,15 +464,15 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
 
     double targetZoom;
     if (kmh < 10) {
-      targetZoom = 19.0;  // Parado/muy lento - muy cerca
+      targetZoom = 19.0; // Parado/muy lento - muy cerca
     } else if (kmh < 30) {
-      targetZoom = 19.0 - ((kmh - 10) / 20) * 1.0;  // 19 → 18
+      targetZoom = 19.0 - ((kmh - 10) / 20) * 1.0; // 19 → 18
     } else if (kmh < 60) {
-      targetZoom = 18.0 - ((kmh - 30) / 30) * 1.0;  // 18 → 17
+      targetZoom = 18.0 - ((kmh - 30) / 30) * 1.0; // 18 → 17
     } else if (kmh < 100) {
-      targetZoom = 17.0 - ((kmh - 60) / 40) * 1.0;  // 17 → 16
+      targetZoom = 17.0 - ((kmh - 60) / 40) * 1.0; // 17 → 16
     } else {
-      targetZoom = 16.0;  // Muy rápido
+      targetZoom = 16.0; // Muy rápido
     }
 
     // Solo actualizar si el cambio es significativo (> 0.2)
@@ -469,7 +502,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
             'road-label', 'road-street-label', 'road-primary-label',
             'road-secondary-tertiary-label', 'road-motorway-label',
             // Roads (fallback)
-            'road', 'road-street', 'road-primary', 'road-secondary-tertiary'
+            'road', 'road-street', 'road-primary', 'road-secondary-tertiary',
           ],
         ),
       );
@@ -478,12 +511,15 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
       String? shield;
 
       for (final feature in features) {
-        final props = feature?.queriedFeature.feature['properties'] as Map<String, dynamic>?;
+        final props =
+            feature?.queriedFeature.feature['properties']
+                as Map<String, dynamic>?;
         if (props != null) {
           // Buscar nombre de calle
-          final name = props['name'] as String? ??
-                       props['name_en'] as String? ??
-                       props['name_es'] as String?;
+          final name =
+              props['name'] as String? ??
+              props['name_en'] as String? ??
+              props['name_es'] as String?;
           if (name != null && name.isNotEmpty) {
             streetName = name;
           }
@@ -522,10 +558,12 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
   void _syncWaitTimer(RideModel? ride) {
     // ESPERA: en el pickup (arrivedAtPickup) -> ancla a picked_up_at.
     // MANEJANDO: viaje en curso (inProgress) -> ancla a started_at.
-    final waiting = ride != null &&
+    final waiting =
+        ride != null &&
         ride.status == RideStatus.arrivedAtPickup &&
         ride.arrivedAt != null;
-    final driving = ride != null &&
+    final driving =
+        ride != null &&
         ride.status == RideStatus.inProgress &&
         ride.startedAt != null;
     if (!waiting && !driving) {
@@ -546,14 +584,19 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
     // Carga la ventana gratis de pricing_config una sola vez (no hardcodear).
     if (waiting && !_waitConfigLoaded) {
       _waitConfigLoaded = true;
-      PricingConfigService.instance.getConfig().then((c) {
-        if (mounted) {
-          setState(() {
-            _freeWaitSeconds = c.waitTimeFreeMinutes * 60;
-            _noShowSeconds = c.noShowDetectionMinutes * 60;
+      PricingConfigService.instance
+          .getConfig()
+          .then((c) {
+            if (mounted) {
+              setState(() {
+                _freeWaitSeconds = c.waitTimeFreeMinutes * 60;
+                _noShowSeconds = c.noShowDetectionMinutes * 60;
+              });
+            }
+          })
+          .catchError((_) {
+            /* deja los defaults */
           });
-        }
-      }).catchError((_) {/* deja los defaults */});
     }
     // CRÍTICO: el setState por segundo lo maneja SOLO el Timer. NO llamar
     // _recomputeWait() aquí en cada invocación: _syncWaitTimer corre desde el
@@ -563,7 +606,10 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
     if (_waitTimer == null || !_waitTimer!.isActive) {
       _waitTimer?.cancel();
       _recomputeWait();
-      _waitTimer = Timer.periodic(const Duration(seconds: 1), (_) => _recomputeWait());
+      _waitTimer = Timer.periodic(
+        const Duration(seconds: 1),
+        (_) => _recomputeWait(),
+      );
     }
   }
 
@@ -597,7 +643,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
 
     // OPTIMIZACIÓN: Evitar re-checks si nada cambió
     if (ride?.id == _lastCheckedRideId && ride?.status == _lastCheckedStatus) {
-      return;  // Ya verificamos este ride con este status
+      return; // Ya verificamos este ride con este status
     }
 
     // Detect illegal status jumps within the same ride.
@@ -654,7 +700,8 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
     // "RECOGÍ"). Solo en inProgress va al cliente. En viaje de pasajero, arrivedAtPickup
     // ya apunta al destino (el chofer está estacionado esperando al rider).
     final isMarket = ride.type == RideType.marketplace;
-    final goingToPickup = ride.status == RideStatus.accepted ||
+    final goingToPickup =
+        ride.status == RideStatus.accepted ||
         ride.status == RideStatus.pending ||
         (isMarket && ride.status == RideStatus.arrivedAtPickup);
     if (goingToPickup) {
@@ -663,7 +710,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
       targetLng = ride.pickupLocation.longitude;
       targetName = ride.pickupLocation.address ?? 'Punto de recogida';
     } else if (ride.status == RideStatus.inProgress ||
-               ride.status == RideStatus.arrivedAtPickup) {
+        ride.status == RideStatus.arrivedAtPickup) {
       targetType = 'dropoff';
       targetLat = ride.dropoffLocation.latitude;
       targetLng = ride.dropoffLocation.longitude;
@@ -687,7 +734,12 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
     _startNavigationTo(targetLat, targetLng, targetName, targetType);
   }
 
-  Future<void> _startNavigationTo(double lat, double lng, String name, String targetType) async {
+  Future<void> _startNavigationTo(
+    double lat,
+    double lng,
+    String name,
+    String targetType,
+  ) async {
     // Reset street tracking for new navigation
     _lastStepIndex = -1;
 
@@ -718,7 +770,8 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
     if (mounted) setState(() => _isLoadingRoute = false);
 
     if (success && _navigationService.currentRoute != null) {
-      _currentPitch = 45.0; // arranca inclinado (el boton de centrar lo respeta)
+      _currentPitch =
+          45.0; // arranca inclinado (el boton de centrar lo respeta)
       _drawRoute(_navigationService.currentRoute!);
 
       // Start periodic arrival check for pickup (covers stationary GPS gaps)
@@ -732,12 +785,20 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
             _arrivalCheckTimer = null;
             return;
           }
-          final dist = _quickDistance(_currentLat, _currentLng, pickupLat, pickupLng);
+          final dist = _quickDistance(
+            _currentLat,
+            _currentLng,
+            pickupLat,
+            pickupLng,
+          );
           if (dist < 50) {
             // Within 50m - force NavigationService check with current position
             if (_navigationService.isNavigating) {
               _navigationService.updateLocation(
-                _currentLat, _currentLng, _currentSpeed, _currentBearing,
+                _currentLat,
+                _currentLng,
+                _currentSpeed,
+                _currentBearing,
               );
             }
           }
@@ -768,14 +829,22 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
     // skipped the accept→at_pickup→started flow.
     if (_currentTargetType == 'pickup') {
       if (!_isMuted) {
-        _tts.speak('Has llegado al punto de recogida. Toca "He llegado" cuando estes con el pasajero.');
+        _tts.speak(
+          'Has llegado al punto de recogida. Toca "He llegado" cuando estes con el pasajero.',
+        );
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Has llegado al pickup — toca "He llegado" para confirmar')),
+        const SnackBar(
+          content: Text(
+            'Has llegado al pickup — toca "He llegado" para confirmar',
+          ),
+        ),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Has llegado al destino — toca "Completar viaje"')),
+        const SnackBar(
+          content: Text('Has llegado al destino — toca "Completar viaje"'),
+        ),
       );
     }
 
@@ -817,7 +886,9 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
         debugPrint('⚠️ _handleArriveAtPickup ignored: status=${ride?.status}');
         return;
       }
-      debugPrint('🟦 SLIDE -> llamando arriveAtPickup() status_actual=${ride.status}');
+      debugPrint(
+        '🟦 SLIDE -> llamando arriveAtPickup() status_actual=${ride.status}',
+      );
       final success = await rideProvider.arriveAtPickup();
       debugPrint('🟦 SLIDE -> arriveAtPickup RESULTADO success=$success');
       if (success) {
@@ -842,12 +913,14 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
             if (mounted) {
               final confirmed = await Navigator.push<bool>(
                 context,
-                MaterialPageRoute(builder: (_) => MarketplaceConfirmScreen(
-                  orderId: orderId,
-                  mode: 'pickup',
-                  vendorBusinessName: _mktVendorName,
-                  address: ride.pickupLocation.address,
-                )),
+                MaterialPageRoute(
+                  builder: (_) => MarketplaceConfirmScreen(
+                    orderId: orderId,
+                    mode: 'pickup',
+                    vendorBusinessName: _mktVendorName,
+                    address: ride.pickupLocation.address,
+                  ),
+                ),
               );
               if (confirmed == true) {
                 // Código correcto -> recogido -> arrancar la entrega al cliente.
@@ -855,15 +928,20 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                 if (started) {
                   _waitTimer?.cancel();
                   _waitSeconds = 0;
-                  if (!_isMuted) _tts.speak('Paquete recogido. Navegando al cliente.');
+                  if (!_isMuted)
+                    _tts.speak('Paquete recogido. Navegando al cliente.');
                 }
               } else if (!_isMuted) {
-                _tts.speak('Cuando tengas el código del vendedor, desliza Recogí el paquete.');
+                _tts.speak(
+                  'Cuando tengas el código del vendedor, desliza Recogí el paquete.',
+                );
               }
             }
           }
         } else if (!_isMuted) {
-          _tts.speak('Has llegado al punto de recogida. Esperando al pasajero.');
+          _tts.speak(
+            'Has llegado al punto de recogida. Esperando al pasajero.',
+          );
         }
       }
     } finally {
@@ -886,9 +964,14 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
 
       // CANDADO #4: GPS falso -> no se puede iniciar (ya quedó en fraud_signals).
       if (_mockDetected) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('GPS falso detectado. Desactiva la ubicación simulada para continuar.'),
-          backgroundColor: Color(0xFFEF4444)));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'GPS falso detectado. Desactiva la ubicación simulada para continuar.',
+            ),
+            backgroundColor: Color(0xFFEF4444),
+          ),
+        );
         return;
       }
 
@@ -897,18 +980,23 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
         final orderId = await _fetchMarketplaceOrderIdByDeliveryId(ride.id);
         if (orderId == null) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('No se encontro el pedido marketplace'), backgroundColor: Colors.red),
+            const SnackBar(
+              content: Text('No se encontro el pedido marketplace'),
+              backgroundColor: Colors.red,
+            ),
           );
           return;
         }
         final confirmed = await Navigator.push<bool>(
           context,
-          MaterialPageRoute(builder: (_) => MarketplaceConfirmScreen(
-            orderId: orderId,
-            mode: 'pickup',
-            vendorBusinessName: _mktVendorName,
-            address: ride.pickupLocation.address,
-          )),
+          MaterialPageRoute(
+            builder: (_) => MarketplaceConfirmScreen(
+              orderId: orderId,
+              mode: 'pickup',
+              vendorBusinessName: _mktVendorName,
+              address: ride.pickupLocation.address,
+            ),
+          ),
         );
         if (confirmed != true) return; // driver canceled or RPC rejected
       }
@@ -937,71 +1025,122 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
 
   /// Handshake de feria (candado #2): el chofer captura con cuánto paga el cliente,
   /// el app calcula el cambio y confirma. Loguea efectivo_declarado + confirmado.
-  Future<bool?> _confirmCashFeria(RideModel ride, double total, String cc) async {
+  Future<bool?> _confirmCashFeria(
+    RideModel ride,
+    double total,
+    String cc,
+  ) async {
     final ctrl = TextEditingController();
     final result = await showDialog<bool>(
       context: context,
-      builder: (ctx) => StatefulBuilder(builder: (ctx, setSt) {
-        final paid = double.tryParse(ctrl.text) ?? 0;
-        final change = paid - total;
-        return AlertDialog(
-          backgroundColor: const Color(0xFF0D0E13),
-          title: const Text('Cobro en efectivo', style: TextStyle(color: Colors.white)),
-          content: Column(mainAxisSize: MainAxisSize.min, children: [
-            Text('Total: ${formatMoney(total, country: cc)}',
-                style: const TextStyle(color: Color(0xFF22D3EE), fontSize: 19, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 12),
-            const Text('¿Con cuánto paga el cliente?', style: TextStyle(color: Colors.white70, fontSize: 13)),
-            const SizedBox(height: 6),
-            TextField(
-              controller: ctrl,
-              keyboardType: TextInputType.number,
-              autofocus: true,
-              style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
-              decoration: const InputDecoration(prefixText: '\$ ', prefixStyle: TextStyle(color: Colors.white54, fontSize: 22)),
-              onChanged: (_) => setSt(() {}),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSt) {
+          final paid = double.tryParse(ctrl.text) ?? 0;
+          final change = paid - total;
+          return AlertDialog(
+            backgroundColor: const Color(0xFF0D0E13),
+            title: const Text(
+              'Cobro en efectivo',
+              style: TextStyle(color: Colors.white),
             ),
-            const SizedBox(height: 12),
-            if (paid > 0)
-              Text(
-                change >= 0
-                    ? 'Devuélvele de cambio: ${formatMoney(change, country: cc)}'
-                    : 'Falta: ${formatMoney(-change, country: cc)}',
-                style: TextStyle(
-                    color: change >= 0 ? const Color(0xFF22D3EE) : const Color(0xFFEF4444),
-                    fontSize: 16, fontWeight: FontWeight.bold),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Total: ${formatMoney(total, country: cc)}',
+                  style: const TextStyle(
+                    color: Color(0xFF22D3EE),
+                    fontSize: 19,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  '¿Con cuánto paga el cliente?',
+                  style: TextStyle(color: Colors.white70, fontSize: 13),
+                ),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: ctrl,
+                  keyboardType: TextInputType.number,
+                  autofocus: true,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                  decoration: const InputDecoration(
+                    prefixText: '\$ ',
+                    prefixStyle: TextStyle(color: Colors.white54, fontSize: 22),
+                  ),
+                  onChanged: (_) => setSt(() {}),
+                ),
+                const SizedBox(height: 12),
+                if (paid > 0)
+                  Text(
+                    change >= 0
+                        ? 'Devuélvele de cambio: ${formatMoney(change, country: cc)}'
+                        : 'Falta: ${formatMoney(-change, country: cc)}',
+                    style: TextStyle(
+                      color: change >= 0
+                          ? const Color(0xFF22D3EE)
+                          : const Color(0xFFEF4444),
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancelar'),
               ),
-          ]),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF22D3EE)),
-              onPressed: paid >= total ? () => Navigator.pop(ctx, true) : null,
-              child: const Text('Confirmar recibido'),
-            ),
-          ],
-        );
-      }),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF22D3EE),
+                ),
+                onPressed: paid >= total
+                    ? () => Navigator.pop(ctx, true)
+                    : null,
+                child: const Text('Confirmar recibido'),
+              ),
+            ],
+          );
+        },
+      ),
     );
     if (result != true) return false;
     final paid = double.tryParse(ctrl.text) ?? total;
     final change = paid - total;
     try {
       final c = Supabase.instance.client;
-      await c.rpc('log_forensic_event', params: {
-        'p_event_type': 'efectivo_declarado',
-        'p_delivery_id': ride.id, 'p_actor_role': 'driver',
-        'p_lat': _currentLat, 'p_lng': _currentLng,
-        'p_metadata': {'monto': paid, 'total': total},
-      });
-      await c.rpc('log_forensic_event', params: {
-        'p_event_type': 'efectivo_confirmado',
-        'p_delivery_id': ride.id, 'p_actor_role': 'driver',
-        'p_lat': _currentLat, 'p_lng': _currentLng,
-        'p_metadata': {'recibido': total, 'pago_con': paid, 'cambio': change},
-      });
-    } catch (_) {/* el cierre no se bloquea por el log */}
+      await c.rpc(
+        'log_forensic_event',
+        params: {
+          'p_event_type': 'efectivo_declarado',
+          'p_delivery_id': ride.id,
+          'p_actor_role': 'driver',
+          'p_lat': _currentLat,
+          'p_lng': _currentLng,
+          'p_metadata': {'monto': paid, 'total': total},
+        },
+      );
+      await c.rpc(
+        'log_forensic_event',
+        params: {
+          'p_event_type': 'efectivo_confirmado',
+          'p_delivery_id': ride.id,
+          'p_actor_role': 'driver',
+          'p_lat': _currentLat,
+          'p_lng': _currentLng,
+          'p_metadata': {'recibido': total, 'pago_con': paid, 'cambio': change},
+        },
+      );
+    } catch (_) {
+      /* el cierre no se bloquea por el log */
+    }
     return true;
   }
 
@@ -1010,20 +1149,31 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
     final ride = context.read<RideProvider>().activeRide;
     final driverId = context.read<DriverProvider>().driver?.id;
     try {
-      await Supabase.instance.client.rpc('log_fraud_signal', params: {
-        'p_signal': 'mock_location',
-        'p_reference': ride?.id ?? driverId ?? '',
-        'p_details': {'driver_id': driverId, 'ride_id': ride?.id, 'lat': pos.latitude, 'lng': pos.longitude},
-      });
+      await Supabase.instance.client.rpc(
+        'log_fraud_signal',
+        params: {
+          'p_signal': 'mock_location',
+          'p_reference': ride?.id ?? driverId ?? '',
+          'p_details': {
+            'driver_id': driverId,
+            'ride_id': ride?.id,
+            'lat': pos.latitude,
+            'lng': pos.longitude,
+          },
+        },
+      );
       if (ride != null) {
-        await Supabase.instance.client.rpc('log_forensic_event', params: {
-          'p_event_type': 'mock_location_detectado',
-          'p_delivery_id': ride.id,
-          'p_actor_role': 'driver',
-          'p_lat': pos.latitude,
-          'p_lng': pos.longitude,
-          'p_metadata': {'driver_id': driverId},
-        });
+        await Supabase.instance.client.rpc(
+          'log_forensic_event',
+          params: {
+            'p_event_type': 'mock_location_detectado',
+            'p_delivery_id': ride.id,
+            'p_actor_role': 'driver',
+            'p_lat': pos.latitude,
+            'p_lng': pos.longitude,
+            'p_metadata': {'driver_id': driverId},
+          },
+        );
       }
       debugPrint('🚨 MOCK LOCATION detectado y registrado');
     } catch (e) {
@@ -1039,27 +1189,46 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF0D0E13),
-        title: const Text('Código de abordaje', style: TextStyle(color: Colors.white)),
-        content: Column(mainAxisSize: MainAxisSize.min, children: [
-          const Text(
-            'Pídele al pasajero su código de 4 dígitos para iniciar el viaje.',
-            style: TextStyle(color: Colors.white70, fontSize: 13),
-          ),
-          const SizedBox(height: 14),
-          TextField(
-            controller: ctrl,
-            keyboardType: TextInputType.number,
-            maxLength: 4,
-            autofocus: true,
-            style: const TextStyle(color: Colors.white, fontSize: 26, letterSpacing: 10, fontWeight: FontWeight.bold),
-            textAlign: TextAlign.center,
-            decoration: const InputDecoration(hintText: '••••', counterText: ''),
-          ),
-        ]),
+        title: const Text(
+          'Código de abordaje',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Pídele al pasajero su código de 4 dígitos para iniciar el viaje.',
+              style: TextStyle(color: Colors.white70, fontSize: 13),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: ctrl,
+              keyboardType: TextInputType.number,
+              maxLength: 4,
+              autofocus: true,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 26,
+                letterSpacing: 10,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+              decoration: const InputDecoration(
+                hintText: '••••',
+                counterText: '',
+              ),
+            ),
+          ],
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF22D3EE)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF22D3EE),
+            ),
             onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
             child: const Text('Verificar'),
           ),
@@ -1068,18 +1237,23 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
     );
     if (entered == null || entered.isEmpty) return null;
     try {
-      final res = await Supabase.instance.client.rpc('verify_pickup_otp', params: {
-        'p_delivery_id': ride.id,
-        'p_otp': entered,
-        'p_lat': _currentLat,
-        'p_lng': _currentLng,
-      });
+      final res = await Supabase.instance.client.rpc(
+        'verify_pickup_otp',
+        params: {
+          'p_delivery_id': ride.id,
+          'p_otp': entered,
+          'p_lat': _currentLat,
+          'p_lng': _currentLng,
+        },
+      );
       final ok = res == true;
       if (!ok && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Código incorrecto. Pídeselo de nuevo al pasajero.'),
-          backgroundColor: Color(0xFFEF4444),
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Código incorrecto. Pídeselo de nuevo al pasajero.'),
+            backgroundColor: Color(0xFFEF4444),
+          ),
+        );
       }
       return ok;
     } catch (e) {
@@ -1089,7 +1263,9 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
   }
 
   /// Looks up marketplace_orders.id from a delivery_id (one row).
-  Future<String?> _fetchMarketplaceOrderIdByDeliveryId(String deliveryId) async {
+  Future<String?> _fetchMarketplaceOrderIdByDeliveryId(
+    String deliveryId,
+  ) async {
     try {
       final res = await Supabase.instance.client
           .from('marketplace_orders')
@@ -1131,18 +1307,23 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
       final orderId = await _fetchMarketplaceOrderIdByDeliveryId(ride.id);
       if (orderId == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No se encontro el pedido marketplace'), backgroundColor: Colors.red),
+          const SnackBar(
+            content: Text('No se encontro el pedido marketplace'),
+            backgroundColor: Colors.red,
+          ),
         );
         return;
       }
       final confirmed = await Navigator.push<bool>(
         context,
-        MaterialPageRoute(builder: (_) => MarketplaceConfirmScreen(
-          orderId: orderId,
-          mode: 'delivery',
-          buyerName: _mktBuyerName,
-          address: ride.dropoffLocation.address,
-        )),
+        MaterialPageRoute(
+          builder: (_) => MarketplaceConfirmScreen(
+            orderId: orderId,
+            mode: 'delivery',
+            buyerName: _mktBuyerName,
+            address: ride.dropoffLocation.address,
+          ),
+        ),
       );
       if (confirmed != true) return;
       // ── CAPTURA del cobro con TARJETA al entregar (auth → capture). El PI se
@@ -1162,11 +1343,16 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
       // hay sync de regreso a deliveries (se queda en in_progress) -> marcamos la
       // entrega como completada para que el viaje activo se limpie y no quede fantasma.
       try {
-        await Supabase.instance.client.from('deliveries').update({
-          'status': 'completed',
-          'delivered_at': DateTime.now().toUtc().toIso8601String(),
-        }).eq('id', ride.id);
-      } catch (_) {/* la fila ya está terminal o RLS -> no es fatal */}
+        await Supabase.instance.client
+            .from('deliveries')
+            .update({
+              'status': 'completed',
+              'delivered_at': DateTime.now().toUtc().toIso8601String(),
+            })
+            .eq('id', ride.id);
+      } catch (_) {
+        /* la fila ya está terminal o RLS -> no es fatal */
+      }
       _waitTimer?.cancel();
       _waitSeconds = 0;
       _clearRoute();
@@ -1180,16 +1366,21 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
     if (rideProvider.isCashPayment) {
       // CANDADO #4: GPS falso -> no se puede cerrar el viaje.
       if (_mockDetected) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('GPS falso detectado. No puedes cerrar el viaje.'),
-          backgroundColor: Color(0xFFEF4444)));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('GPS falso detectado. No puedes cerrar el viaje.'),
+            backgroundColor: Color(0xFFEF4444),
+          ),
+        );
         return;
       }
       final cc = context.read<DriverProvider>().driver?.countryCode ?? 'US';
       final total = rideProvider.cashAmountToCollect;
       final confirmed = await _confirmCashFeria(ride, total, cc);
       if (confirmed != true) return;
-      final success = await rideProvider.completeRideWithCashConfirmation(driverId: driverId);
+      final success = await rideProvider.completeRideWithCashConfirmation(
+        driverId: driverId,
+      );
       if (!success) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -1273,7 +1464,8 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
               // Total earnings (big number)
               Builder(
                 builder: (ctx) {
-                  final cc = ctx.read<DriverProvider>().driver?.countryCode ?? 'US';
+                  final cc =
+                      ctx.read<DriverProvider>().driver?.countryCode ?? 'US';
                   return Column(
                     children: [
                       Text(
@@ -1315,7 +1507,8 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                               Icons.business,
                               color: Colors.white38,
                             ),
-                            if (ride.fare - baseEarnings - ride.platformFee > 0.01)
+                            if (ride.fare - baseEarnings - ride.platformFee >
+                                0.01)
                               _earningsRow(
                                 // TORO NO ofrece seguro -> solo impuestos (IVA).
                                 'Impuestos',
@@ -1392,7 +1585,10 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
   }
 
   /// Build a row for the earnings breakdown
-  Widget _earningsRow(String label, String amount, IconData icon, {
+  Widget _earningsRow(
+    String label,
+    String amount,
+    IconData icon, {
     bool highlight = false,
     Color? color,
   }) {
@@ -1427,8 +1623,10 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1E1E1E),
-        title: const Text('¿Cancelar viaje?',
-            style: TextStyle(color: Colors.white)),
+        title: const Text(
+          '¿Cancelar viaje?',
+          style: TextStyle(color: Colors.white),
+        ),
         content: const Text(
           'El viaje será liberado para que otro conductor lo tome.',
           style: TextStyle(color: Colors.white70),
@@ -1455,7 +1653,8 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
           // Generic cancelRide() sets status=pending and writes NULL to driver_id,
           // which the trigger rejects silently — leaving the row stuck in_progress.
           await DeliveryService().cancelMarketplaceDelivery(
-            ride.id, reason: 'driver_cancelled',
+            ride.id,
+            reason: 'driver_cancelled',
           );
           rideProvider.clearActiveRide();
         } else {
@@ -1464,7 +1663,10 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('No se pudo cancelar: $e'), backgroundColor: Colors.red),
+            SnackBar(
+              content: Text('No se pudo cancelar: $e'),
+              backgroundColor: Colors.red,
+            ),
           );
         }
         return;
@@ -1514,8 +1716,10 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1E1E1E),
-        title: const Text('¿El pasajero no llegó?',
-            style: TextStyle(color: Colors.white)),
+        title: const Text(
+          '¿El pasajero no llegó?',
+          style: TextStyle(color: Colors.white),
+        ),
         content: const Text(
           'Se cerrará el viaje y se cobrará al pasajero la tarifa de no-show '
           'más el tiempo que esperaste. Tú cobras tu parte.',
@@ -1545,19 +1749,26 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
       _waitSeconds = 0;
       _clearRoute();
       final total = (res['total'] as num?)?.toStringAsFixed(2) ?? '0';
-      final driverShare = (res['driver_share'] as num?)?.toStringAsFixed(2) ?? '0';
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('No-show registrado · cobrado \$$total · tu parte \$$driverShare'),
-        backgroundColor: const Color(0xFF22D3EE),
-        duration: const Duration(seconds: 5),
-      ));
+      final driverShare =
+          (res['driver_share'] as num?)?.toStringAsFixed(2) ?? '0';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'No-show registrado · cobrado \$$total · tu parte \$$driverShare',
+          ),
+          backgroundColor: const Color(0xFF22D3EE),
+          duration: const Duration(seconds: 5),
+        ),
+      );
       if (widget.onBack != null) widget.onBack!();
     } else {
       final err = res?['error']?.toString() ?? 'desconocido';
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('No se pudo registrar el no-show: $err'),
-        backgroundColor: const Color(0xFFEF4444),
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No se pudo registrar el no-show: $err'),
+          backgroundColor: const Color(0xFFEF4444),
+        ),
+      );
     }
   }
 
@@ -1567,7 +1778,8 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
     if (ride == null) return;
 
     double targetLat, targetLng;
-    if (ride.status == RideStatus.accepted || ride.status == RideStatus.pending) {
+    if (ride.status == RideStatus.accepted ||
+        ride.status == RideStatus.pending) {
       targetLat = ride.pickupLocation.latitude;
       targetLng = ride.pickupLocation.longitude;
     } else {
@@ -1577,11 +1789,14 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
 
     // Try Google Maps first, then Waze, then generic geo
     final googleMapsUrl = Uri.parse(
-        'google.navigation:q=$targetLat,$targetLng&mode=d');
+      'google.navigation:q=$targetLat,$targetLng&mode=d',
+    );
     final wazeUrl = Uri.parse(
-        'https://waze.com/ul?ll=$targetLat,$targetLng&navigate=yes');
+      'https://waze.com/ul?ll=$targetLat,$targetLng&navigate=yes',
+    );
     final genericUrl = Uri.parse(
-        'geo:$targetLat,$targetLng?q=$targetLat,$targetLng');
+      'geo:$targetLat,$targetLng?q=$targetLat,$targetLng',
+    );
 
     try {
       if (await canLaunchUrl(googleMapsUrl)) {
@@ -1664,7 +1879,8 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
     final newCoords = _simplifyRoute(route.coordinates, targetCount: 500);
 
     // PATCH: Evitar redraw si ruta similar
-    if (_fullRouteCoords.isNotEmpty && _areRoutesSimilar(_fullRouteCoords, newCoords)) {
+    if (_fullRouteCoords.isNotEmpty &&
+        _areRoutesSimilar(_fullRouteCoords, newCoords)) {
       return;
     }
 
@@ -1696,9 +1912,19 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
     final newFirst = newRoute.first;
     final oldLast = old.last;
     final newLast = newRoute.last;
-    final distFirst = _quickDistance(oldFirst[1], oldFirst[0], newFirst[1], newFirst[0]);
-    final distLast = _quickDistance(oldLast[1], oldLast[0], newLast[1], newLast[0]);
-    return distFirst < 50 && distLast < 50;  // Menos de 50m de diferencia
+    final distFirst = _quickDistance(
+      oldFirst[1],
+      oldFirst[0],
+      newFirst[1],
+      newFirst[0],
+    );
+    final distLast = _quickDistance(
+      oldLast[1],
+      oldLast[0],
+      newLast[1],
+      newLast[0],
+    );
+    return distFirst < 50 && distLast < 50; // Menos de 50m de diferencia
   }
 
   Future<void> _drawRouteWithVanish() async {
@@ -1729,12 +1955,14 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
         _fullRouteCoords.sublist(closestIdx).map((c) => Position(c[0], c[1])),
       );
       if (points.length >= 2) {
-        await _routeLineManager!.create(PolylineAnnotationOptions(
-          geometry: LineString(coordinates: points),
-          lineColor: 0xFF4285F4,
-          lineWidth: 10.0,
-          lineOpacity: 0.9,
-        ));
+        await _routeLineManager!.create(
+          PolylineAnnotationOptions(
+            geometry: LineString(coordinates: points),
+            lineColor: 0xFF4285F4,
+            lineWidth: 10.0,
+            lineOpacity: 0.9,
+          ),
+        );
       }
       return;
     }
@@ -1752,16 +1980,20 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
     }
     if (_fullRouteCoords.length < 6 || totalLen < 80) {
       final points = _fullRouteCoords
-          .sublist(closestIdx) // desde el punto más cercano al puck hacia el destino
+          .sublist(
+            closestIdx,
+          ) // desde el punto más cercano al puck hacia el destino
           .map((c) => Position(c[0], c[1]))
           .toList();
       if (points.length >= 2) {
-        await _routeLineManager!.create(PolylineAnnotationOptions(
-          geometry: LineString(coordinates: points),
-          lineColor: 0xFF4285F4,
-          lineWidth: 10.0,
-          lineOpacity: 1.0,
-        ));
+        await _routeLineManager!.create(
+          PolylineAnnotationOptions(
+            geometry: LineString(coordinates: points),
+            lineColor: 0xFF4285F4,
+            lineWidth: 10.0,
+            lineOpacity: 1.0,
+          ),
+        );
       }
       return;
     }
@@ -1784,10 +2016,10 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
     int fadeStartIdx = gapEndIdx;
     double fadeDist = 0.0;
     final fadeSteps = [
-      {'dist': 5.0, 'opacity': 0.2},   // 5-10m: 20%
-      {'dist': 5.0, 'opacity': 0.4},   // 10-15m: 40%
-      {'dist': 5.0, 'opacity': 0.6},   // 15-20m: 60%
-      {'dist': 5.0, 'opacity': 0.8},   // 20-25m: 80%
+      {'dist': 5.0, 'opacity': 0.2}, // 5-10m: 20%
+      {'dist': 5.0, 'opacity': 0.4}, // 10-15m: 40%
+      {'dist': 5.0, 'opacity': 0.6}, // 15-20m: 60%
+      {'dist': 5.0, 'opacity': 0.8}, // 20-25m: 80%
     ];
 
     for (final step in fadeSteps) {
@@ -1824,15 +2056,20 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
       final opacity = seg['opacity'] as double;
 
       if (end > start && end <= _fullRouteCoords.length) {
-        final coords = _fullRouteCoords.sublist(start, end + 1 > _fullRouteCoords.length ? _fullRouteCoords.length : end + 1);
+        final coords = _fullRouteCoords.sublist(
+          start,
+          end + 1 > _fullRouteCoords.length ? _fullRouteCoords.length : end + 1,
+        );
         if (coords.length >= 2) {
           final points = coords.map((c) => Position(c[0], c[1])).toList();
-          await _routeLineManager!.create(PolylineAnnotationOptions(
-            geometry: LineString(coordinates: points),
-            lineColor: 0xFF4285F4,
-            lineWidth: 10.0,
-            lineOpacity: opacity,
-          ));
+          await _routeLineManager!.create(
+            PolylineAnnotationOptions(
+              geometry: LineString(coordinates: points),
+              lineColor: 0xFF4285F4,
+              lineWidth: 10.0,
+              lineOpacity: opacity,
+            ),
+          );
         }
       }
     }
@@ -1843,13 +2080,17 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
       final coords = _fullRouteCoords.sublist(mainStartIdx);
       if (coords.length >= 2) {
         final points = coords.map((c) => Position(c[0], c[1])).toList();
-        await _routeLineManager!.create(PolylineAnnotationOptions(
-          geometry: LineString(coordinates: points),
-          lineColor: 0xFF4285F4,
-          lineWidth: 10.0,
-          lineOpacity: 1.0,
-        ));
-        debugPrint('🗺️ VANISH: gap5m→fade${fadeSegments.length}segs→main${coords.length}pts (closest=$closestIdx dist=${minDist.toStringAsFixed(0)}m)');
+        await _routeLineManager!.create(
+          PolylineAnnotationOptions(
+            geometry: LineString(coordinates: points),
+            lineColor: 0xFF4285F4,
+            lineWidth: 10.0,
+            lineOpacity: 1.0,
+          ),
+        );
+        debugPrint(
+          '🗺️ VANISH: gap5m→fade${fadeSegments.length}segs→main${coords.length}pts (closest=$closestIdx dist=${minDist.toStringAsFixed(0)}m)',
+        );
       }
     }
   }
@@ -1884,37 +2125,46 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
         currentLevel = level;
         segmentStart = i;
       } else if (level != currentLevel) {
-        segments.add(_CongestionSegment(
-          startIdx: segmentStart,
-          endIdx: i,
-          level: currentLevel,
-        ));
+        segments.add(
+          _CongestionSegment(
+            startIdx: segmentStart,
+            endIdx: i,
+            level: currentLevel,
+          ),
+        );
         currentLevel = level;
         segmentStart = i;
       }
     }
 
     if (currentLevel != null) {
-      segments.add(_CongestionSegment(
-        startIdx: segmentStart,
-        endIdx: coords.length - 1,
-        level: currentLevel,
-      ));
+      segments.add(
+        _CongestionSegment(
+          startIdx: segmentStart,
+          endIdx: coords.length - 1,
+          level: currentLevel,
+        ),
+      );
     }
 
     for (final segment in segments) {
-      final segmentCoords = coords.sublist(segment.startIdx, segment.endIdx + 1);
+      final segmentCoords = coords.sublist(
+        segment.startIdx,
+        segment.endIdx + 1,
+      );
       if (segmentCoords.length < 2) continue;
 
       final points = segmentCoords.map((c) => Position(c[0], c[1])).toList();
       final color = _getCongestionColor(segment.level);
 
-      await _routeLineManager!.create(PolylineAnnotationOptions(
-        geometry: LineString(coordinates: points),
-        lineColor: color,
-        lineWidth: 12.0,
-        lineOpacity: 0.95,
-      ));
+      await _routeLineManager!.create(
+        PolylineAnnotationOptions(
+          geometry: LineString(coordinates: points),
+          lineColor: color,
+          lineWidth: 12.0,
+          lineOpacity: 0.95,
+        ),
+      );
     }
   }
 
@@ -1943,7 +2193,10 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
 
   /// PLAYBOOK SECRETO #3: Douglas-Peucker simplification
   /// Reduce puntos de ruta a máximo targetCount (default 500)
-  List<List<double>> _simplifyRoute(List<List<double>> coords, {int targetCount = 500}) {
+  List<List<double>> _simplifyRoute(
+    List<List<double>> coords, {
+    int targetCount = 500,
+  }) {
     if (coords.length <= targetCount) return coords;
 
     // Simplificación por sampling uniforme (rápido y efectivo)
@@ -1964,7 +2217,8 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
 
   Future<void> _updateVanishingRoute() async {
     if (_routeLineManager == null) return;
-    if (_fullRouteCoords.length < 2) return; // Mismo requisito que _drawRouteWithVanish
+    if (_fullRouteCoords.length < 2)
+      return; // Mismo requisito que _drawRouteWithVanish
     await _drawRouteWithVanish();
   }
 
@@ -1984,7 +2238,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
     _tollAlertShown = false;
     // Reset street name tracking
     _lastStepIndex = -1;
-        _currentStreetName = null;
+    _currentStreetName = null;
     _currentHighwayShield = null;
     if (mounted) setState(() => _navState = NavigationState.idle());
   }
@@ -1995,15 +2249,17 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
     await _parkingMarkersManager!.deleteAll();
 
     for (final parking in parkings) {
-      await _parkingMarkersManager!.create(PointAnnotationOptions(
-        geometry: Point(coordinates: Position(parking.lng, parking.lat)),
-        iconSize: 0.8,
-        textField: 'P',
-        textSize: 12,
-        textColor: 0xFFFFFFFF,
-        textHaloColor: 0xFF1565C0,
-        textHaloWidth: 2,
-      ));
+      await _parkingMarkersManager!.create(
+        PointAnnotationOptions(
+          geometry: Point(coordinates: Position(parking.lng, parking.lat)),
+          iconSize: 0.8,
+          textField: 'P',
+          textSize: 12,
+          textColor: 0xFFFFFFFF,
+          textHaloColor: 0xFF1565C0,
+          textHaloWidth: 2,
+        ),
+      );
     }
   }
 
@@ -2013,10 +2269,12 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
 
     // Misma lógica que la ruta: en marketplace la recogida abarca arrivedAtPickup.
     final isMarket = ride.type == RideType.marketplace;
-    final isPickup = ride.status == RideStatus.accepted ||
+    final isPickup =
+        ride.status == RideStatus.accepted ||
         ride.status == RideStatus.pending ||
         (isMarket && ride.status == RideStatus.arrivedAtPickup);
-    final isDropoff = ride.status == RideStatus.inProgress ||
+    final isDropoff =
+        ride.status == RideStatus.inProgress ||
         (!isMarket && ride.status == RideStatus.arrivedAtPickup);
 
     if (!isPickup && !isDropoff) {
@@ -2048,16 +2306,20 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
       await _loadMarketplaceNames(ride.id);
     }
     final label = isMarket
-        ? (isPickup ? (_mktVendorName ?? 'Tienda') : (_mktBuyerName ?? 'Cliente'))
+        ? (isPickup
+              ? (_mktVendorName ?? 'Tienda')
+              : (_mktBuyerName ?? 'Cliente'))
         : (isPickup
-            ? (ride.pickupLocation.address ?? 'Recogida')
-            : (ride.dropoffLocation.address ?? 'Destino'));
+              ? (ride.pickupLocation.address ?? 'Recogida')
+              : (ride.dropoffLocation.address ?? 'Destino'));
 
     // Pin de IMAGEN nítido (no emoji): teardrop con ícono. Ámbar=recogida, rojo=destino.
     // El glyph depende del SERVICIO (antes: siempre 'storefront' en la recogida,
     // hacia ver un viaje normal como pedido de tienda). Mercado=tienda,
     // paquete=caja, viaje/carpool=pasajero. El destino siempre es ubicacion.
-    final pinColor = isPickup ? const Color(0xFFFFB300) : const Color(0xFFEF4444);
+    final pinColor = isPickup
+        ? const Color(0xFFFFB300)
+        : const Color(0xFFEF4444);
     Uint8List? pin;
     if (!isPickup) {
       pin = _pinClientImg ??= await _renderPin(pinColor, Icons.location_on);
@@ -2066,28 +2328,35 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
     } else if (ride.type == RideType.package) {
       pin = _pinPackageImg ??= await _renderPin(pinColor, Icons.inventory_2);
     } else {
-      pin = _pinRiderImg ??= await _renderPin(pinColor, Icons.person_pin_circle);
+      pin = _pinRiderImg ??= await _renderPin(
+        pinColor,
+        Icons.person_pin_circle,
+      );
     }
 
     // El pin se ancla por su PUNTA (abajo) en la coordenada exacta.
-    await _destinationMarkerManager!.create(PointAnnotationOptions(
-      geometry: Point(coordinates: Position(lng, lat)),
-      image: pin,
-      iconSize: 1.0,
-      iconAnchor: IconAnchor.BOTTOM,
-    ));
+    await _destinationMarkerManager!.create(
+      PointAnnotationOptions(
+        geometry: Point(coordinates: Position(lng, lat)),
+        image: pin,
+        iconSize: 1.0,
+        iconAnchor: IconAnchor.BOTTOM,
+      ),
+    );
     // Etiqueta con el nombre, anclada ARRIBA del punto -> cae justo DEBAJO de la
     // punta del pin (que crece hacia arriba), así no se encima con el ícono.
-    await _destinationMarkerManager!.create(PointAnnotationOptions(
-      geometry: Point(coordinates: Position(lng, lat)),
-      textField: label.length > 24 ? '${label.substring(0, 22)}…' : label,
-      textSize: 14,
-      textColor: 0xFFFFFFFF,
-      textHaloColor: 0xFF000000,
-      textHaloWidth: 2.5,
-      textAnchor: TextAnchor.TOP,
-      textOffset: [0.0, 0.7],
-    ));
+    await _destinationMarkerManager!.create(
+      PointAnnotationOptions(
+        geometry: Point(coordinates: Position(lng, lat)),
+        textField: label.length > 24 ? '${label.substring(0, 22)}…' : label,
+        textSize: 14,
+        textColor: 0xFFFFFFFF,
+        textHaloColor: 0xFF000000,
+        textHaloWidth: 2.5,
+        textAnchor: TextAnchor.TOP,
+        textOffset: [0.0, 0.7],
+      ),
+    );
   }
 
   /// Busca el nombre del vendedor + comprador para etiquetar los pines del
@@ -2110,7 +2379,9 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
             .maybeSingle();
         _mktVendorName = (v?['business_name'] as String?)?.trim();
       }
-    } catch (_) {/* no fatal: cae a "Tienda"/"Cliente" */}
+    } catch (_) {
+      /* no fatal: cae a "Tienda"/"Cliente" */
+    }
   }
 
   /// Dibuja un pin de mapa (teardrop) con un ícono dentro y borde blanco,
@@ -2120,10 +2391,14 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
     final cx = w / 2;
-    final r = w / 2 - 3;       // radio del círculo superior
-    final cy = r + 3;          // centro del círculo
-    final fill = Paint()..color = color..isAntiAlias = true;
-    final white = Paint()..color = Colors.white..isAntiAlias = true;
+    final r = w / 2 - 3; // radio del círculo superior
+    final cy = r + 3; // centro del círculo
+    final fill = Paint()
+      ..color = color
+      ..isAntiAlias = true;
+    final white = Paint()
+      ..color = Colors.white
+      ..isAntiAlias = true;
     // Punta (triángulo) hacia abajo
     final tail = Path()
       ..moveTo(cx - r * 0.66, cy + r * 0.5)
@@ -2133,8 +2408,15 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
     canvas.drawPath(tail, fill);
     // Círculo de color + borde blanco
     canvas.drawCircle(Offset(cx, cy), r, fill);
-    canvas.drawCircle(Offset(cx, cy), r,
-        Paint()..color = Colors.white..style = PaintingStyle.stroke..strokeWidth = 4..isAntiAlias = true);
+    canvas.drawCircle(
+      Offset(cx, cy),
+      r,
+      Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 4
+        ..isAntiAlias = true,
+    );
     // Disco blanco interior para el ícono
     canvas.drawCircle(Offset(cx, cy), r * 0.6, white);
     // Ícono al centro
@@ -2166,21 +2448,26 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
     // - Ya pasó pickup (inProgress, arrivedAtPickup, completed, cancelled)
     // - No hay ubicación del rider
     // - Es booking para otra persona (isBookingForSomeoneElse)
-    final isGoingToPickup = ride != null &&
-        (ride.status == RideStatus.accepted || ride.status == RideStatus.pending);
+    final isGoingToPickup =
+        ride != null &&
+        (ride.status == RideStatus.accepted ||
+            ride.status == RideStatus.pending);
 
     if (!isGoingToPickup || !ride.hasRiderGps) {
       // Limpiar marcador si no aplica
       if (_lastRiderMarkerId != null) {
         await _riderMarkerManager!.deleteAll();
         _lastRiderMarkerId = null;
-        debugPrint('🧑 RIDER_MARKER: Cleared (status=${ride?.status}, hasGps=${ride?.hasRiderGps})');
+        debugPrint(
+          '🧑 RIDER_MARKER: Cleared (status=${ride?.status}, hasGps=${ride?.hasRiderGps})',
+        );
       }
       return;
     }
 
     // Crear ID único basado en ubicación para evitar recrear innecesariamente
-    final markerId = '${ride.id}_rider_${ride.riderGpsLat!.toStringAsFixed(5)}_${ride.riderGpsLng!.toStringAsFixed(5)}';
+    final markerId =
+        '${ride.id}_rider_${ride.riderGpsLat!.toStringAsFixed(5)}_${ride.riderGpsLng!.toStringAsFixed(5)}';
 
     // No recrear si es la misma ubicación
     if (_lastRiderMarkerId == markerId) return;
@@ -2190,25 +2477,35 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
 
     // Marcador VERDE brillante con persona - muy visible
     // Distinct from driver (blue car) and pickup pin (red/cyan)
-    await _riderMarkerManager!.create(PointAnnotationOptions(
-      geometry: Point(coordinates: Position(ride.riderGpsLng!, ride.riderGpsLat!)),
-      textField: '●',  // Large solid circle
-      textSize: 36,
-      textColor: 0xFF4CAF50,  // Green (same as rider app)
-      textHaloColor: 0xFFFFFFFF,
-      textHaloWidth: 4,
-      textOffset: [0.0, 0.0],
-    ));
+    await _riderMarkerManager!.create(
+      PointAnnotationOptions(
+        geometry: Point(
+          coordinates: Position(ride.riderGpsLng!, ride.riderGpsLat!),
+        ),
+        textField: '●', // Large solid circle
+        textSize: 36,
+        textColor: 0xFF4CAF50, // Green (same as rider app)
+        textHaloColor: 0xFFFFFFFF,
+        textHaloWidth: 4,
+        textOffset: [0.0, 0.0],
+      ),
+    );
 
     // Add person label above the circle
-    await _riderMarkerManager!.create(PointAnnotationOptions(
-      geometry: Point(coordinates: Position(ride.riderGpsLng!, ride.riderGpsLat!)),
-      textField: '🧑',  // Person emoji
-      textSize: 18,
-      textOffset: [0.0, 0.0],
-    ));
+    await _riderMarkerManager!.create(
+      PointAnnotationOptions(
+        geometry: Point(
+          coordinates: Position(ride.riderGpsLng!, ride.riderGpsLat!),
+        ),
+        textField: '🧑', // Person emoji
+        textSize: 18,
+        textOffset: [0.0, 0.0],
+      ),
+    );
 
-    debugPrint('🧑 RIDER_MARKER: Updated at ${ride.riderGpsLat!.toStringAsFixed(5)}, ${ride.riderGpsLng!.toStringAsFixed(5)}');
+    debugPrint(
+      '🧑 RIDER_MARKER: Updated at ${ride.riderGpsLat!.toStringAsFixed(5)}, ${ride.riderGpsLng!.toStringAsFixed(5)}',
+    );
   }
 
   void _toggleOverviewMode() async {
@@ -2230,15 +2527,16 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
         if (c[0] > maxLng) maxLng = c[0];
       }
 
-      await _map!.setCamera(CameraOptions(
-        center: Point(coordinates: Position(
-          (minLng + maxLng) / 2,
-          (minLat + maxLat) / 2,
-        )),
-        zoom: 11.0,
-        pitch: 0,
-        bearing: 0,
-      ));
+      await _map!.setCamera(
+        CameraOptions(
+          center: Point(
+            coordinates: Position((minLng + maxLng) / 2, (minLat + maxLat) / 2),
+          ),
+          zoom: 11.0,
+          pitch: 0,
+          bearing: 0,
+        ),
+      );
     }
   }
 
@@ -2291,7 +2589,10 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                     final isCurrentStep = index == _navState.currentStepIndex;
 
                     return Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 12,
+                        horizontal: 8,
+                      ),
                       decoration: BoxDecoration(
                         color: isCurrentStep ? Colors.blue.withAlpha(50) : null,
                         borderRadius: BorderRadius.circular(8),
@@ -2302,7 +2603,9 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                             width: 32,
                             height: 32,
                             decoration: BoxDecoration(
-                              color: isCurrentStep ? Colors.blue : Colors.grey[700],
+                              color: isCurrentStep
+                                  ? Colors.blue
+                                  : Colors.grey[700],
                               borderRadius: BorderRadius.circular(16),
                             ),
                             child: Center(
@@ -2323,15 +2626,23 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                                 Text(
                                   step.instruction ?? step.name ?? 'Continúa',
                                   style: TextStyle(
-                                    color: isCurrentStep ? Colors.white : Colors.white70,
-                                    fontWeight: isCurrentStep ? FontWeight.w600 : FontWeight.normal,
+                                    color: isCurrentStep
+                                        ? Colors.white
+                                        : Colors.white70,
+                                    fontWeight: isCurrentStep
+                                        ? FontWeight.w600
+                                        : FontWeight.normal,
                                   ),
                                 ),
                                 if (step.distance > 0)
                                   Text(
-                                    step.distance < 1000
-                                        ? '${step.distance.round()} m'
-                                        : '${(step.distance / 1000).toStringAsFixed(1)} km',
+                                    formatDistanceFromMeters(
+                                      step.distance,
+                                      country: context
+                                          .read<DriverProvider>()
+                                          .driver
+                                          ?.countryCode,
+                                    ),
                                     style: TextStyle(
                                       color: Colors.grey[500],
                                       fontSize: 12,
@@ -2413,7 +2724,9 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
         }
 
         return Scaffold(
-          backgroundColor: const Color(0xFF1E1E1E), // Dark background to match map
+          backgroundColor: const Color(
+            0xFF1E1E1E,
+          ), // Dark background to match map
           body: Stack(
             children: [
               // Mapa de navegación - ocupa toda la pantalla
@@ -2483,7 +2796,9 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                 ),
 
               // Panel Uber-style - siempre visible cuando hay ride activa (navegando o no)
-              if (!_isLoadingRoute && rideProvider.activeRide != null && _isMapReady)
+              if (!_isLoadingRoute &&
+                  rideProvider.activeRide != null &&
+                  _isMapReady)
                 Positioned(
                   bottom: 0,
                   left: 0,
@@ -2499,7 +2814,10 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                   right: 0,
                   child: Center(
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 12,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFF1E1E1E).withOpacity(0.92),
                         borderRadius: BorderRadius.circular(30),
@@ -2519,7 +2837,10 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                           SizedBox(width: 10),
                           Text(
                             'Calculando ruta...',
-                            style: TextStyle(color: Colors.white54, fontSize: 14),
+                            style: TextStyle(
+                              color: Colors.white54,
+                              fontSize: 14,
+                            ),
                           ),
                         ],
                       ),
@@ -2528,7 +2849,9 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                 ),
 
               // Available rides panel (cuando no hay ride activo ni navegación)
-              if (!_navState.isNavigating && !_isLoadingRoute && rideProvider.activeRide == null)
+              if (!_navState.isNavigating &&
+                  !_isLoadingRoute &&
+                  rideProvider.activeRide == null)
                 Positioned(
                   bottom: 20,
                   left: 12,
@@ -2569,7 +2892,6 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                     ),
                   ),
                 ),
-
             ],
           ),
         );
@@ -2692,22 +3014,22 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
     switch (ride.type) {
       case RideType.passenger:
         typeIcon = Icons.person;
-        typeColor = const Color(0xFF1E88E5);  // Blue
+        typeColor = const Color(0xFF1E88E5); // Blue
         typeLabel = 'RIDE';
         break;
       case RideType.package:
         typeIcon = Icons.inventory_2;
-        typeColor = const Color(0xFF78909C);  // Blue-gray
+        typeColor = const Color(0xFF78909C); // Blue-gray
         typeLabel = 'PKG';
         break;
       case RideType.carpool:
         typeIcon = Icons.groups;
-        typeColor = const Color(0xFF42A5F5);  // Light blue
+        typeColor = const Color(0xFF42A5F5); // Light blue
         typeLabel = 'POOL';
         break;
       case RideType.marketplace:
         typeIcon = Icons.shopping_bag;
-        typeColor = const Color(0xFFFFD700);  // Gold for marketplace
+        typeColor = const Color(0xFFFFD700); // Gold for marketplace
         typeLabel = 'MARKET';
         break;
     }
@@ -2737,11 +3059,14 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                   children: [
                     Icon(typeIcon, color: typeColor, size: 12),
                     const SizedBox(width: 3),
-                    Text(typeLabel,
-                        style: TextStyle(
-                            color: typeColor,
-                            fontSize: 9,
-                            fontWeight: FontWeight.bold)),
+                    Text(
+                      typeLabel,
+                      style: TextStyle(
+                        color: typeColor,
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -2755,21 +3080,29 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                 child: Text(
                   ride.displayName,
                   style: const TextStyle(
-                      color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
               if (ride.passengerRating > 0) ...[
                 const Icon(Icons.star, color: Colors.white54, size: 12),
-                Text(ride.passengerRating.toStringAsFixed(1),
-                    style: const TextStyle(color: Colors.white54, fontSize: 11)),
+                Text(
+                  ride.passengerRating.toStringAsFixed(1),
+                  style: const TextStyle(color: Colors.white54, fontSize: 11),
+                ),
                 const SizedBox(width: 6),
               ],
               // Amount display - CASH: show total to collect, CARD: show driver earnings
               if (ride.paymentMethod == PaymentMethod.cash) ...[
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.green.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(4),
@@ -2793,7 +3126,10 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                 ),
               ] else ...[
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.blue.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(4),
@@ -2801,10 +3137,22 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.check_circle, color: Colors.blue, size: 12),
+                      const Icon(
+                        Icons.check_circle,
+                        color: Colors.blue,
+                        size: 12,
+                      ),
                       const SizedBox(width: 4),
                       Text(
-                        formatMoney(ride.driverEarnings, country: context.read<DriverProvider>().driver?.countryCode ?? 'US'),
+                        formatMoney(
+                          ride.driverEarnings,
+                          country:
+                              context
+                                  .read<DriverProvider>()
+                                  .driver
+                                  ?.countryCode ??
+                              'US',
+                        ),
                         style: const TextStyle(
                           color: Colors.blue,
                           fontSize: 14,
@@ -2825,7 +3173,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                 width: 7,
                 height: 7,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1E88E5),  // Blue
+                  color: const Color(0xFF1E88E5), // Blue
                   shape: BoxShape.circle,
                 ),
               ),
@@ -2840,7 +3188,11 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
               ),
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 4),
-                child: Icon(Icons.arrow_forward, color: Colors.white30, size: 12),
+                child: Icon(
+                  Icons.arrow_forward,
+                  color: Colors.white30,
+                  size: 12,
+                ),
               ),
               Expanded(
                 child: Text(
@@ -2860,7 +3212,12 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
               const Icon(Icons.route, color: Colors.white38, size: 12),
               const SizedBox(width: 2),
               Text(
-                formatDistance(ride.distanceKm, country: context.read<DriverProvider>().driver?.countryCode ?? 'US'),
+                formatDistance(
+                  ride.distanceKm,
+                  country:
+                      context.read<DriverProvider>().driver?.countryCode ??
+                      'US',
+                ),
                 style: const TextStyle(color: Colors.white54, fontSize: 10),
               ),
               const SizedBox(width: 8),
@@ -2891,13 +3248,20 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                   }
                 },
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withAlpha(15),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: Colors.white24),
                   ),
-                  child: const Icon(Icons.close, color: Colors.white54, size: 16),
+                  child: const Icon(
+                    Icons.close,
+                    color: Colors.white54,
+                    size: 16,
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
@@ -2907,7 +3271,10 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                   final driverProvider = context.read<DriverProvider>();
                   final driverId = driverProvider.driver?.id;
                   if (driverId == null) return;
-                  final success = await rideProvider.acceptRide(ride.id, driverId);
+                  final success = await rideProvider.acceptRide(
+                    ride.id,
+                    driverId,
+                  );
                   if (!success && mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
@@ -2918,10 +3285,16 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                   }
                 },
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [Color(0xFF1E88E5), Color(0xFF1565C0)],  // Blue gradient
+                      colors: [
+                        Color(0xFF1E88E5),
+                        Color(0xFF1565C0),
+                      ], // Blue gradient
                     ),
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -2930,11 +3303,14 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                     children: [
                       Icon(Icons.check, color: Colors.white, size: 16),
                       SizedBox(width: 4),
-                      Text('ACEPTAR',
-                          style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold)),
+                      Text(
+                        'ACEPTAR',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -2951,8 +3327,8 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
   // ============================================================================
 
   Widget _buildUberStylePanel(RideModel ride) {
-    final isGoingToPickup = ride.status == RideStatus.accepted ||
-        ride.status == RideStatus.pending;
+    final isGoingToPickup =
+        ride.status == RideStatus.accepted || ride.status == RideStatus.pending;
     final isWaiting = ride.status == RideStatus.arrivedAtPickup;
     final isInProgress = ride.status == RideStatus.inProgress;
     // Marketplace = entrega de pedido (recoger en tienda -> entregar al cliente),
@@ -2975,12 +3351,14 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
       }
     } else if (isWaiting) {
       statusLabel = isMarket ? 'Recoge el paquete' : 'Esperando pasajero';
-      statusColor = const Color(0xFF3B82F6);  // admin blue
+      statusColor = const Color(0xFF3B82F6); // admin blue
       statusIcon = isMarket ? Icons.shopping_bag : Icons.place;
-      statusSubtitle = isMarket ? 'Pide el código al vendedor' : 'En el punto de recogida';
+      statusSubtitle = isMarket
+          ? 'Pide el código al vendedor'
+          : 'En el punto de recogida';
     } else if (isInProgress) {
       statusLabel = isMarket ? 'Entregando al cliente' : 'Viaje en curso';
-      statusColor = const Color(0xFF22D3EE);  // admin cyan
+      statusColor = const Color(0xFF22D3EE); // admin cyan
       statusIcon = isMarket ? Icons.delivery_dining : Icons.navigation;
     } else {
       statusLabel = '';
@@ -2988,7 +3366,8 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
       statusIcon = Icons.info;
     }
 
-    final hasPhone = ride.passengerPhone != null && ride.passengerPhone!.isNotEmpty;
+    final hasPhone =
+        ride.passengerPhone != null && ride.passengerPhone!.isNotEmpty;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
@@ -3061,7 +3440,10 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                   // Wait timer inline (when waiting)
                   if (isWaiting && _waitSeconds > 0)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8),
@@ -3072,7 +3454,9 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: _waitSeconds <= _freeWaitSeconds ? Colors.white : Colors.white70,
+                          color: _waitSeconds <= _freeWaitSeconds
+                              ? Colors.white
+                              : Colors.white70,
                           fontFamily: 'monospace',
                         ),
                       ),
@@ -3118,8 +3502,8 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                               // a ser el comprador.
                               isMarket
                                   ? ((isGoingToPickup || isWaiting)
-                                      ? (_mktVendorName ?? 'Tienda')
-                                      : (_mktBuyerName ?? ride.displayName))
+                                        ? (_mktVendorName ?? 'Tienda')
+                                        : (_mktBuyerName ?? ride.displayName))
                                   : ride.displayName,
                               style: const TextStyle(
                                 color: Colors.white,
@@ -3131,10 +3515,14 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                             ),
                           ),
                           if (ride.passengerRating > 0 &&
-                              !(isMarket && (isGoingToPickup || isWaiting))) ...[
+                              !(isMarket &&
+                                  (isGoingToPickup || isWaiting))) ...[
                             const SizedBox(width: 8),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
                               decoration: BoxDecoration(
                                 color: Colors.white.withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(8),
@@ -3142,7 +3530,11 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(Icons.star, size: 14, color: Colors.white70),
+                                  const Icon(
+                                    Icons.star,
+                                    size: 14,
+                                    color: Colors.white70,
+                                  ),
                                   const SizedBox(width: 2),
                                   Text(
                                     ride.passengerRating.toStringAsFixed(1),
@@ -3165,11 +3557,17 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                               child: Container(
                                 padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF12121A),  // admin surfaceHi
+                                  color: const Color(
+                                    0xFF12121A,
+                                  ), // admin surfaceHi
                                   shape: BoxShape.circle,
                                   border: Border.all(color: Colors.white24),
                                 ),
-                                child: const Icon(Icons.phone, size: 20, color: Colors.white),
+                                child: const Icon(
+                                  Icons.phone,
+                                  size: 20,
+                                  color: Colors.white,
+                                ),
                               ),
                             ),
                           if (hasPhone) const SizedBox(width: 8),
@@ -3182,11 +3580,17 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                                 Container(
                                   padding: const EdgeInsets.all(10),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF3B82F6),  // admin blue
+                                    color: const Color(
+                                      0xFF3B82F6,
+                                    ), // admin blue
                                     shape: BoxShape.circle,
                                     border: Border.all(color: Colors.white24),
                                   ),
-                                  child: const Icon(Icons.chat_bubble, size: 20, color: Colors.white),
+                                  child: const Icon(
+                                    Icons.chat_bubble,
+                                    size: 20,
+                                    color: Colors.white,
+                                  ),
                                 ),
                                 // Badge de mensajes no leídos del pasajero.
                                 if (_unreadMessages > 0)
@@ -3195,16 +3599,29 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                                     top: -3,
                                     child: Container(
                                       padding: const EdgeInsets.all(3),
-                                      constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                                      constraints: const BoxConstraints(
+                                        minWidth: 18,
+                                        minHeight: 18,
+                                      ),
                                       decoration: BoxDecoration(
                                         color: const Color(0xFFEF4444),
                                         shape: BoxShape.circle,
-                                        border: Border.all(color: Colors.white, width: 1.5),
+                                        border: Border.all(
+                                          color: Colors.white,
+                                          width: 1.5,
+                                        ),
                                       ),
                                       child: Text(
-                                        _unreadMessages > 9 ? '9+' : '$_unreadMessages',
+                                        _unreadMessages > 9
+                                            ? '9+'
+                                            : '$_unreadMessages',
                                         textAlign: TextAlign.center,
-                                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold, height: 1.0),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          height: 1.0,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -3220,7 +3637,10 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                         (isGoingToPickup || (isMarket && isWaiting))
                             ? (ride.pickupLocation.address ?? 'Recogida')
                             : (ride.dropoffLocation.address ?? 'Destino'),
-                        style: TextStyle(color: Colors.white.withOpacity(0.88), fontSize: 13.5),
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.88),
+                          fontSize: 13.5,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -3255,22 +3675,50 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                               // (lo que pidió Carlos). El tiempo corre desde started_at;
                               // los km salen del odómetro real (actual_distance_km).
                               if (isInProgress) ...[
-                                _buildTripDetailChip(Icons.timer, '${_fmtWait(_tripSeconds)} manejando'),
+                                _buildTripDetailChip(
+                                  Icons.timer,
+                                  '${_fmtWait(_tripSeconds)} manejando',
+                                ),
                                 const SizedBox(width: 6),
-                                _buildTripDetailChip(Icons.straighten,
-                                    '${(ride.actualDistanceKm ?? 0).toStringAsFixed(1)} km recorridos'),
+                                _buildTripDetailChip(
+                                  Icons.straighten,
+                                  '${formatDistance(ride.actualDistanceKm, country: context.read<DriverProvider>().driver?.countryCode)} recorridos',
+                                ),
                                 const SizedBox(width: 6),
                               ],
                               if (_navState.isNavigating) ...[
-                                _buildTripDetailChip(Icons.access_time_filled, _navState.formattedETA),
+                                _buildTripDetailChip(
+                                  Icons.access_time_filled,
+                                  _navState.formattedETA,
+                                ),
                                 const SizedBox(width: 6),
-                                _buildTripDetailChip(Icons.route, _navState.formattedDistanceRemaining),
+                                _buildTripDetailChip(
+                                  Icons.route,
+                                  _navState.formattedDistanceRemaining,
+                                ),
                                 const SizedBox(width: 6),
-                                _buildTripDetailChip(Icons.schedule, _navState.formattedDurationRemaining),
+                                _buildTripDetailChip(
+                                  Icons.schedule,
+                                  _navState.formattedDurationRemaining,
+                                ),
                               ] else ...[
-                                _buildTripDetailChip(Icons.route, formatDistance(ride.distanceKm, country: context.read<DriverProvider>().driver?.countryCode ?? 'US')),
+                                _buildTripDetailChip(
+                                  Icons.route,
+                                  formatDistance(
+                                    ride.distanceKm,
+                                    country:
+                                        context
+                                            .read<DriverProvider>()
+                                            .driver
+                                            ?.countryCode ??
+                                        'US',
+                                  ),
+                                ),
                                 const SizedBox(width: 6),
-                                _buildTripDetailChip(Icons.schedule, '~${ride.estimatedMinutes} min'),
+                                _buildTripDetailChip(
+                                  Icons.schedule,
+                                  '~${ride.estimatedMinutes} min',
+                                ),
                               ],
                             ],
                           ),
@@ -3301,7 +3749,10 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                   // Row 2: payment pill (full-width, no overlap)
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFF1C1C28),
                       borderRadius: BorderRadius.circular(8),
@@ -3327,8 +3778,24 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                         Text(
                           // CASH: show fare (what to collect), CARD: show driver earnings
                           ride.paymentMethod == PaymentMethod.cash
-                              ? formatMoney(ride.fare, country: context.read<DriverProvider>().driver?.countryCode ?? 'US')
-                              : formatMoney(ride.driverEarnings, country: context.read<DriverProvider>().driver?.countryCode ?? 'US'),
+                              ? formatMoney(
+                                  ride.fare,
+                                  country:
+                                      context
+                                          .read<DriverProvider>()
+                                          .driver
+                                          ?.countryCode ??
+                                      'US',
+                                )
+                              : formatMoney(
+                                  ride.driverEarnings,
+                                  country:
+                                      context
+                                          .read<DriverProvider>()
+                                          .driver
+                                          ?.countryCode ??
+                                      'US',
+                                ),
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w900,
@@ -3345,11 +3812,11 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                           // pedido al entregar (no solo el envío).
                           ride.paymentMethod == PaymentMethod.cash
                               ? (ride.type == RideType.marketplace
-                                  ? 'COBRA EL TOTAL AL ENTREGAR'
-                                  : 'COBRAR EN EFECTIVO')
+                                    ? 'COBRA EL TOTAL AL ENTREGAR'
+                                    : 'COBRAR EN EFECTIVO')
                               : (ride.type == RideType.marketplace
-                                  ? 'PAGADO EN LA APP'
-                                  : 'YA PAGADO'),
+                                    ? 'PAGADO EN LA APP'
+                                    : 'YA PAGADO'),
                           style: TextStyle(
                             color: ride.paymentMethod == PaymentMethod.cash
                                 ? const Color(0xFF22D3EE).withOpacity(0.9)
@@ -3387,7 +3854,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                 _buildBottomAction(
                   icon: Icons.navigation,
                   label: 'Navegar',
-                  color: const Color(0xFF22D3EE),  // admin cyan
+                  color: const Color(0xFF22D3EE), // admin cyan
                   onTap: _launchExternalNav,
                 ),
                 const SizedBox(width: 8),
@@ -3395,7 +3862,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                 _buildBottomAction(
                   icon: Icons.flag_rounded,
                   label: 'Reportar',
-                  color: const Color(0xFF3B82F6),  // admin blue
+                  color: const Color(0xFF3B82F6), // admin blue
                   onTap: () {
                     Navigator.push(
                       context,
@@ -3405,8 +3872,8 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                           rideType: ride.type == RideType.carpool
                               ? 'carpool'
                               : ride.type == RideType.package
-                                  ? 'delivery'
-                                  : 'ride',
+                              ? 'delivery'
+                              : 'ride',
                           reportedUserId: ride.passengerId,
                           reportedUserName: ride.displayName,
                         ),
@@ -3419,7 +3886,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                 _buildBottomAction(
                   icon: Icons.close,
                   label: 'Cancelar',
-                  color: const Color(0xFFEF4444),  // admin red
+                  color: const Color(0xFFEF4444), // admin red
                   onTap: _handleCancelRide,
                 ),
               ],
@@ -3443,7 +3910,14 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
         children: [
           Icon(icon, color: Colors.white54, size: 14),
           const SizedBox(width: 4),
-          Text(text, style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500)),
+          Text(
+            text,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ],
       ),
     );
@@ -3470,7 +3944,14 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
             children: [
               Icon(icon, color: color, size: 20),
               const SizedBox(height: 3),
-              Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600)),
+              Text(
+                label,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
           ),
         ),
@@ -3488,20 +3969,26 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
     switch (ride.status) {
       case RideStatus.accepted:
       case RideStatus.pending:
-        label = isMarket ? '🏪  DESLIZA → LLEGUÉ A LA TIENDA' : '📍  DESLIZA → LLEGUÉ';
-        color = const Color(0xFF22D3EE);  // admin cyan
+        label = isMarket
+            ? '🏪  DESLIZA → LLEGUÉ A LA TIENDA'
+            : '📍  DESLIZA → LLEGUÉ';
+        color = const Color(0xFF22D3EE); // admin cyan
         onConfirm = _handleArriveAtPickup;
         break;
       case RideStatus.arrivedAtPickup:
         // Marketplace: al deslizar pide el CÓDIGO DE RECOGIDA al vendedor (OTP+foto+GPS).
-        label = isMarket ? '📦  DESLIZA → RECOGÍ EL PAQUETE' : '▶  DESLIZA → INICIAR VIAJE';
-        color = const Color(0xFF22D3EE);  // admin cyan
+        label = isMarket
+            ? '📦  DESLIZA → RECOGÍ EL PAQUETE'
+            : '▶  DESLIZA → INICIAR VIAJE';
+        color = const Color(0xFF22D3EE); // admin cyan
         onConfirm = _handleStartRide;
         break;
       case RideStatus.inProgress:
         // Marketplace: al deslizar pide el CÓDIGO DE ENTREGA al comprador (OTP+foto+GPS).
-        label = isMarket ? '🔑  DESLIZA → ENTREGAR (PIDE EL CÓDIGO)' : '🏁  DESLIZA → FINALIZAR';
-        color = const Color(0xFF22D3EE);  // admin cyan
+        label = isMarket
+            ? '🔑  DESLIZA → ENTREGAR (PIDE EL CÓDIGO)'
+            : '🏁  DESLIZA → FINALIZAR';
+        color = const Color(0xFF22D3EE); // admin cyan
         onConfirm = _handleCompleteRide;
         break;
       default:
@@ -3554,7 +4041,10 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
 
   /// Cuenta no leídos del pasajero y escucha nuevos para el badge del botón.
   void _setupUnreadBadge(RideModel ride) {
-    final driverId = Provider.of<DriverProvider>(context, listen: false).driver?.id;
+    final driverId = Provider.of<DriverProvider>(
+      context,
+      listen: false,
+    ).driver?.id;
     if (driverId == null || _unreadRideId == ride.id) return;
     _unreadRideId = ride.id;
     // Conteo inicial de no leídos.
@@ -3565,8 +4055,8 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
         .neq('sender_id', driverId)
         .isFilter('read_at', null)
         .then((rows) {
-      if (mounted) setState(() => _unreadMessages = (rows as List).length);
-    }, onError: (_) {});
+          if (mounted) setState(() => _unreadMessages = (rows as List).length);
+        }, onError: (_) {});
     // Realtime: mensaje nuevo del pasajero -> +1 (canal propio, no choca con el popup).
     if (_unreadChannel != null) {
       Supabase.instance.client.removeChannel(_unreadChannel!);
@@ -3597,10 +4087,14 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: isFreeTime ? Colors.blue.withAlpha(30) : Colors.red.withAlpha(30),
+        color: isFreeTime
+            ? Colors.blue.withAlpha(30)
+            : Colors.red.withAlpha(30),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: isFreeTime ? Colors.blue.withAlpha(80) : Colors.red.withAlpha(80),
+          color: isFreeTime
+              ? Colors.blue.withAlpha(80)
+              : Colors.red.withAlpha(80),
         ),
       ),
       child: Row(
@@ -3702,7 +4196,11 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                       const SizedBox(height: 2),
                       Row(
                         children: [
-                          const Icon(Icons.location_on, color: Colors.white54, size: 12),
+                          const Icon(
+                            Icons.location_on,
+                            color: Colors.white54,
+                            size: 12,
+                          ),
                           const SizedBox(width: 2),
                           Expanded(
                             child: Text(
@@ -3779,9 +4277,10 @@ class _SlideToConfirmButtonState extends State<_SlideToConfirmButton>
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
-    _resetAnimation = Tween<double>(begin: 0, end: 0).animate(
-      CurvedAnimation(parent: _resetController, curve: Curves.easeOut),
-    );
+    _resetAnimation = Tween<double>(
+      begin: 0,
+      end: 0,
+    ).animate(CurvedAnimation(parent: _resetController, curve: Curves.easeOut));
     _resetController.addListener(() {
       setState(() => _dragPosition = _resetAnimation.value);
     });
@@ -3797,15 +4296,21 @@ class _SlideToConfirmButtonState extends State<_SlideToConfirmButton>
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final maxDrag = constraints.maxWidth - _thumbSize - (_horizontalPadding * 2);
-        final progress = maxDrag > 0 ? (_dragPosition / maxDrag).clamp(0.0, 1.0) : 0.0;
+        final maxDrag =
+            constraints.maxWidth - _thumbSize - (_horizontalPadding * 2);
+        final progress = maxDrag > 0
+            ? (_dragPosition / maxDrag).clamp(0.0, 1.0)
+            : 0.0;
 
         return Container(
           height: 60,
           decoration: BoxDecoration(
             color: const Color(0xFF16161F),
             borderRadius: BorderRadius.circular(30),
-            border: Border.all(color: widget.color.withOpacity(0.55), width: 1.5),
+            border: Border.all(
+              color: widget.color.withOpacity(0.55),
+              width: 1.5,
+            ),
           ),
           child: Stack(
             children: [
@@ -3850,7 +4355,10 @@ class _SlideToConfirmButtonState extends State<_SlideToConfirmButton>
                   onHorizontalDragUpdate: (details) {
                     if (_confirmed) return;
                     setState(() {
-                      _dragPosition = (_dragPosition + details.delta.dx).clamp(0.0, maxDrag);
+                      _dragPosition = (_dragPosition + details.delta.dx).clamp(
+                        0.0,
+                        maxDrag,
+                      );
                     });
                   },
                   onHorizontalDragEnd: (details) {
@@ -3874,13 +4382,13 @@ class _SlideToConfirmButtonState extends State<_SlideToConfirmButton>
                       });
                     } else {
                       // Snap back
-                      _resetAnimation = Tween<double>(
-                        begin: _dragPosition,
-                        end: 0,
-                      ).animate(CurvedAnimation(
-                        parent: _resetController,
-                        curve: Curves.easeOut,
-                      ));
+                      _resetAnimation =
+                          Tween<double>(begin: _dragPosition, end: 0).animate(
+                            CurvedAnimation(
+                              parent: _resetController,
+                              curve: Curves.easeOut,
+                            ),
+                          );
                       _resetController.forward(from: 0);
                     }
                   },
@@ -3917,17 +4425,22 @@ class _SlideToConfirmButtonState extends State<_SlideToConfirmButton>
                   onHorizontalDragUpdate: (details) {
                     if (_confirmed) return;
                     setState(() {
-                      _dragPosition =
-                          (_dragPosition + details.delta.dx).clamp(0.0, maxDrag);
+                      _dragPosition = (_dragPosition + details.delta.dx).clamp(
+                        0.0,
+                        maxDrag,
+                      );
                     });
                   },
                   onHorizontalDragEnd: (details) {
                     debugPrint(
-                        '👉 SLIDE -> drag END pos=${_dragPosition.toStringAsFixed(0)} '
-                        'max=${maxDrag.toStringAsFixed(0)} umbral=${(maxDrag * 0.85).toStringAsFixed(0)}');
+                      '👉 SLIDE -> drag END pos=${_dragPosition.toStringAsFixed(0)} '
+                      'max=${maxDrag.toStringAsFixed(0)} umbral=${(maxDrag * 0.85).toStringAsFixed(0)}',
+                    );
                     if (_confirmed) return;
                     if (_dragPosition >= maxDrag * 0.85) {
-                      debugPrint('👉 SLIDE -> 85% alcanzado, llamando onConfirm()');
+                      debugPrint(
+                        '👉 SLIDE -> 85% alcanzado, llamando onConfirm()',
+                      );
                       setState(() {
                         _confirmed = true;
                         _dragPosition = maxDrag;
@@ -3943,10 +4456,13 @@ class _SlideToConfirmButtonState extends State<_SlideToConfirmButton>
                         }
                       });
                     } else {
-                      _resetAnimation = Tween<double>(
-                              begin: _dragPosition, end: 0)
-                          .animate(CurvedAnimation(
-                              parent: _resetController, curve: Curves.easeOut));
+                      _resetAnimation =
+                          Tween<double>(begin: _dragPosition, end: 0).animate(
+                            CurvedAnimation(
+                              parent: _resetController,
+                              curve: Curves.easeOut,
+                            ),
+                          );
                       _resetController.forward(from: 0);
                     }
                   },

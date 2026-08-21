@@ -10,6 +10,29 @@ class StripeConnectService {
   static StripeConnectService get instance => _instance;
   StripeConnectService._();
 
+  String _normalizeProvider(String? provider) =>
+      provider?.toLowerCase() == 'mx' ? 'mx' : 'us';
+
+  String _accountsTable(String provider) =>
+      SupabaseConfig.stripeAccountsTableForCountry(
+        provider == 'mx' ? 'MX' : 'US',
+      );
+
+  Future<String> _resolveProvider(String driverId, String? provider) async {
+    try {
+      final driver = await SupabaseConfig.client
+          .from(SupabaseConfig.driversTable)
+          .select('country_code')
+          .eq('id', driverId)
+          .maybeSingle();
+      return driver?['country_code']?.toString().toUpperCase() == 'MX'
+          ? 'mx'
+          : 'us';
+    } catch (_) {
+      return _normalizeProvider(provider);
+    }
+  }
+
   /// Crear cuenta de Stripe Connect y obtener link de onboarding
   /// Retorna el URL para que el driver complete su registro
   /// provider: 'us' para Estados Unidos, 'mx' para México
@@ -18,10 +41,11 @@ class StripeConnectService {
     required String email,
     String? firstName,
     String? lastName,
-    String provider = 'us',
+    String? provider,
   }) async {
     try {
       final supabase = SupabaseConfig.client;
+      final resolvedProvider = await _resolveProvider(driverId, provider);
 
       // Llamar a la Edge Function que crea la cuenta en Stripe
       final response = await supabase.functions.invoke(
@@ -31,7 +55,7 @@ class StripeConnectService {
           'email': email,
           'first_name': firstName,
           'last_name': lastName,
-          'provider': provider,
+          'provider': resolvedProvider,
         },
       );
 
@@ -45,27 +69,9 @@ class StripeConnectService {
       final accountId = data['account_id'] as String?;
 
       if (accountId != null) {
-        // Guardar el account_id en driver_stripe_accounts_mx (la tabla real;
-        // 'driver_stripe_accounts' no existe -> el upsert tiraba y este metodo
-        // retornaba null aunque la cuenta SI se creo). Sin columna 'provider';
-        // unique en driver_id.
-        await supabase.from('driver_stripe_accounts_mx').upsert({
-          'driver_id': driverId,
-          'stripe_account_id': accountId,
-          'is_active': true,
-        }, onConflict: 'driver_id');
-
-        // Sync drivers.stripe_account_id for BOTH providers. stripe-process-split reads the
-        // payout account from drivers.stripe_account_id; gating this to 'us' left MX drivers'
-        // accounts ONLY in driver_stripe_accounts_mx, so their payout transfers found no
-        // account ('no_stripe_account') and the money stayed stuck in TORO's balance. Mirror
-        // it always so MX driver payouts actually land.
-        await supabase
-            .from('drivers')
-            .update({'stripe_account_id': accountId})
-            .eq('id', driverId);
-
-        AppLogger.log('STRIPE CONNECT -> Account created: $accountId ($provider)');
+        AppLogger.log(
+          'STRIPE CONNECT -> Account created: $accountId ($resolvedProvider)',
+        );
       }
 
       return onboardingUrl;
@@ -78,16 +84,17 @@ class StripeConnectService {
   /// Obtener link de onboarding para cuenta existente
   /// Usar cuando el driver no completo el onboarding
   /// provider: 'us' para Estados Unidos, 'mx' para México
-  Future<String?> getOnboardingLink(String driverId, {String provider = 'us'}) async {
+  Future<String?> getOnboardingLink(String driverId, {String? provider}) async {
     try {
       final supabase = SupabaseConfig.client;
+      final resolvedProvider = await _resolveProvider(driverId, provider);
 
       final response = await supabase.functions.invoke(
         'stripe-connect-onboarding',
         body: {
           'driver_id': driverId,
           'refresh': true, // Solo generar nuevo link
-          'provider': provider,
+          'provider': resolvedProvider,
         },
       );
 
@@ -105,48 +112,66 @@ class StripeConnectService {
 
   /// Verificar estado de la cuenta de Stripe Connect
   /// provider: 'us' para Estados Unidos, 'mx' para México
-  Future<StripeAccountStatus> getAccountStatus(String driverId, {String provider = 'us'}) async {
+  Future<StripeAccountStatus> getAccountStatus(
+    String driverId, {
+    String? provider,
+  }) async {
     try {
       final supabase = SupabaseConfig.client;
+      final resolvedProvider = await _resolveProvider(driverId, provider);
 
-      // Obtener stripe_account_id de driver_stripe_accounts_mx (tabla real,
-      // col account_status, sin 'provider', unique en driver_id).
       final account = await supabase
-          .from('driver_stripe_accounts_mx')
-          .select('stripe_account_id, account_status')
+          .from(_accountsTable(resolvedProvider))
+          .select('stripe_account_id')
           .eq('driver_id', driverId)
           .maybeSingle();
 
-      if (account == null) {
-        // Fallback: revisar en drivers si es US
-        if (provider == 'us') {
-          final driver = await supabase
-              .from('drivers')
-              .select('stripe_account_id, stripe_account_status')
-              .eq('id', driverId)
-              .maybeSingle();
-
-          if (driver == null) {
-            return StripeAccountStatus.notFound;
-          }
-
-          final accountId = driver['stripe_account_id'];
-          if (accountId == null || accountId.toString().isEmpty) {
-            return StripeAccountStatus.notCreated;
-          }
-
-          // Verificar estado con Edge Function
-          return _checkAccountStatus(supabase, driverId, accountId, provider);
-        }
-        return StripeAccountStatus.notCreated;
+      final canonicalAccountId = account?['stripe_account_id']?.toString();
+      if (canonicalAccountId != null && canonicalAccountId.isNotEmpty) {
+        return _checkAccountStatus(
+          supabase,
+          driverId,
+          canonicalAccountId,
+          resolvedProvider,
+        );
       }
+
+      final driver = await supabase
+          .from('drivers')
+          .select('stripe_account_id, stripe_account_status, stripe_country')
+          .eq('id', driverId)
+          .maybeSingle();
+
+      final driverAccountId = driver?['stripe_account_id'];
+      final legacyCountry = driver?['stripe_country']?.toString().toUpperCase();
+      final expectedCountry = resolvedProvider == 'mx' ? 'MX' : 'US';
+      if (legacyCountry == expectedCountry &&
+          driverAccountId != null &&
+          driverAccountId.toString().isNotEmpty) {
+        return _checkAccountStatus(
+          supabase,
+          driverId,
+          driverAccountId.toString(),
+          resolvedProvider,
+        );
+      }
+
+      if (driver == null && account == null) {
+        return StripeAccountStatus.notFound;
+      }
+      if (account == null) return StripeAccountStatus.notCreated;
 
       final accountId = account['stripe_account_id'];
       if (accountId == null || accountId.toString().isEmpty) {
         return StripeAccountStatus.notCreated;
       }
 
-      return _checkAccountStatus(supabase, driverId, accountId, provider);
+      return _checkAccountStatus(
+        supabase,
+        driverId,
+        accountId.toString(),
+        resolvedProvider,
+      );
     } catch (e) {
       AppLogger.log('STRIPE CONNECT -> Error checking status: $e');
       return StripeAccountStatus.error;
@@ -162,7 +187,11 @@ class StripeConnectService {
     // Verificar estado con Edge Function
     final response = await supabase.functions.invoke(
       'stripe-connect-status',
-      body: {'account_id': accountId, 'provider': provider},
+      body: {
+        'driver_id': driverId,
+        'account_id': accountId,
+        'provider': provider,
+      },
     );
 
     if (response.status != 200) {
@@ -184,21 +213,6 @@ class StripeConnectService {
       status = 'pending';
     } else {
       status = 'incomplete';
-    }
-
-    // Actualizar en driver_stripe_accounts_mx (col account_status, sin provider)
-    await supabase.from('driver_stripe_accounts_mx').upsert({
-      'driver_id': driverId,
-      'stripe_account_id': accountId,
-      'account_status': status,
-    }, onConflict: 'driver_id');
-
-    // También actualizar en drivers si es US
-    if (provider == 'us') {
-      await supabase
-          .from('drivers')
-          .update({'stripe_account_status': status})
-          .eq('id', driverId);
     }
 
     if (ready) {
@@ -232,13 +246,14 @@ class StripeConnectService {
 
   /// Obtener link del dashboard de Stripe para el driver
   /// provider: 'us' para Estados Unidos, 'mx' para México
-  Future<String?> getDashboardLink(String driverId, {String provider = 'us'}) async {
+  Future<String?> getDashboardLink(String driverId, {String? provider}) async {
     try {
       final supabase = SupabaseConfig.client;
+      final resolvedProvider = await _resolveProvider(driverId, provider);
 
       final response = await supabase.functions.invoke(
         'stripe-connect-dashboard',
-        body: {'driver_id': driverId, 'provider': provider},
+        body: {'driver_id': driverId, 'provider': resolvedProvider},
       );
 
       if (response.status != 200) {
@@ -255,9 +270,10 @@ class StripeConnectService {
 
   /// Obtener balance disponible del driver
   /// provider: 'us' para Estados Unidos, 'mx' para México
-  Future<DriverBalance?> getBalance(String driverId, {String provider = 'us'}) async {
+  Future<DriverBalance?> getBalance(String driverId, {String? provider}) async {
     try {
       final supabase = SupabaseConfig.client;
+      final resolvedProvider = await _resolveProvider(driverId, provider);
 
       try {
         final sync = await supabase.functions.invoke(
@@ -268,16 +284,22 @@ class StripeConnectService {
             ? Map<String, dynamic>.from(sync.data as Map)
             : <String, dynamic>{};
         if (sync.status == 200 && data['success'] == true) {
-          final availablePesos = (data['available_balance'] as num?)?.toDouble() ?? 0;
-          final pendingPesos = (data['pending_balance'] as num?)?.toDouble() ?? 0;
+          final availablePesos =
+              (data['available_balance'] as num?)?.toDouble() ?? 0;
+          final pendingPesos =
+              (data['pending_balance'] as num?)?.toDouble() ?? 0;
           return DriverBalance(
             availableCents: (availablePesos * 100).round(),
             pendingCents: (pendingPesos * 100).round(),
-            currency: (data['currency'] ?? (provider == 'mx' ? 'mxn' : 'usd')).toString(),
+            currency:
+                (data['currency'] ?? (resolvedProvider == 'mx' ? 'mxn' : 'usd'))
+                    .toString(),
           );
         }
       } catch (e) {
-        AppLogger.log('STRIPE CONNECT -> Balance sync unavailable, using DB balance: $e');
+        AppLogger.log(
+          'STRIPE CONNECT -> Balance sync unavailable, using DB balance: $e',
+        );
       }
 
       // Rewire: TORO mantiene el balance canónico en drivers.available_balance
@@ -292,7 +314,8 @@ class StripeConnectService {
       if (row == null) return null;
 
       // Columnas en pesos → modelo espera centavos.
-      final availablePesos = (row['available_balance'] as num?)?.toDouble() ?? 0;
+      final availablePesos =
+          (row['available_balance'] as num?)?.toDouble() ?? 0;
       final pendingPesos = (row['pending_balance'] as num?)?.toDouble() ?? 0;
       return DriverBalance(
         availableCents: (availablePesos * 100).round(),
@@ -307,27 +330,29 @@ class StripeConnectService {
 
   /// Obtener todas las cuentas conectadas del driver
   Future<List<ConnectedAccount>> getConnectedAccounts(String driverId) async {
-    try {
-      final supabase = SupabaseConfig.client;
-
-      final response = await supabase
-          .from('driver_stripe_accounts_mx')
-          .select()
-          .eq('driver_id', driverId)
-          .eq('is_active', true);
-
-      return (response as List).map((data) {
-        return ConnectedAccount(
-          provider: 'mx', // table is MX-specific (no 'provider' column)
-          stripeAccountId: data['stripe_account_id'] as String,
-          status: data['account_status'] as String? ?? 'unknown',
-          isDefault: data['is_default'] as bool? ?? false,
+    final accounts = <ConnectedAccount>[];
+    for (final provider in const ['us', 'mx']) {
+      try {
+        final response = await SupabaseConfig.client
+            .from(_accountsTable(provider))
+            .select()
+            .eq('driver_id', driverId)
+            .eq('is_active', true);
+        accounts.addAll(
+          (response as List).map((data) {
+            return ConnectedAccount(
+              provider: provider,
+              stripeAccountId: data['stripe_account_id'] as String,
+              status: data['account_status'] as String? ?? 'unknown',
+              isDefault: data['is_default'] as bool? ?? false,
+            );
+          }),
         );
-      }).toList();
-    } catch (e) {
-      AppLogger.log('STRIPE CONNECT -> Error getting connected accounts: $e');
-      return [];
+      } catch (e) {
+        AppLogger.log('STRIPE CONNECT -> Could not load $provider account: $e');
+      }
     }
+    return accounts;
   }
 
   /// Solicitar retiro de fondos (payout)
@@ -336,8 +361,8 @@ class StripeConnectService {
   Future<PayoutResult> requestPayout({
     required String driverId,
     required int amountCents,
-    String currency = 'mxn',
-    String provider = 'us',
+    String? currency,
+    String? provider,
   }) async {
     try {
       final supabase = SupabaseConfig.client;
@@ -351,7 +376,10 @@ class StripeConnectService {
           });
         } catch (_) {}
       }
-      await plog('START amountCents=$amountCents amount=${amountCents / 100.0}');
+
+      await plog(
+        'START amountCents=$amountCents amount=${amountCents / 100.0}',
+      );
 
       // SIN pre-checks en el app (getBalance/payouts_enabled tronaban o bloqueaban
       // con falsos negativos -> "Error de conexión"). stripe-instant-payout es la
@@ -359,10 +387,7 @@ class StripeConnectService {
       // Connect y paga al banco. Si algo falla, devuelve un error claro.
       final response = await supabase.functions.invoke(
         'stripe-instant-payout',
-        body: {
-          'driver_id': driverId,
-          'amount': amountCents / 100.0,
-        },
+        body: {'driver_id': driverId, 'amount': amountCents / 100.0},
       );
 
       await plog('INVOKE status=${response.status} data=${response.data}');
@@ -371,7 +396,8 @@ class StripeConnectService {
           ? Map<String, dynamic>.from(response.data as Map)
           : <String, dynamic>{};
       if (response.status != 200 || data['success'] != true) {
-        final errorMessage = (data['error'] ?? 'Error al procesar retiro').toString();
+        final errorMessage = (data['error'] ?? 'Error al procesar retiro')
+            .toString();
         await plog('ERROR: $errorMessage');
         return PayoutResult(success: false, error: errorMessage);
       }
@@ -410,9 +436,14 @@ class StripeConnectService {
 
   /// Obtener historial de payouts
   /// provider: 'us' para Estados Unidos, 'mx' para México
-  Future<List<PayoutRecord>> getPayoutHistory(String driverId, {int limit = 20, String provider = 'us'}) async {
+  Future<List<PayoutRecord>> getPayoutHistory(
+    String driverId, {
+    int limit = 20,
+    String? provider,
+  }) async {
     try {
       final supabase = SupabaseConfig.client;
+      final resolvedProvider = await _resolveProvider(driverId, provider);
 
       // Rewire: TORO mantiene driver_payouts canónica (escrita por
       // stripe-instant-payout / stripe-weekly-payout y sincronizada por
@@ -427,16 +458,22 @@ class StripeConnectService {
 
       return (rows as List).map((data) {
         final amountPesos = (data['amount'] as num?)?.toDouble() ?? 0;
-        final createdAt = DateTime.tryParse(data['created_at']?.toString() ?? '') ?? DateTime.now();
+        final createdAt =
+            DateTime.tryParse(data['created_at']?.toString() ?? '') ??
+            DateTime.now();
         final meta = data['metadata'] as Map<String, dynamic>?;
         final arrivalStr = meta?['arrival_date']?.toString();
         return PayoutRecord(
           id: (data['stripe_payout_id'] ?? data['id'] ?? '').toString(),
           amountCents: (amountPesos * 100).round(),
-          currency: (meta?['currency'] ?? 'mxn').toString(),
+          currency:
+              (meta?['currency'] ?? (resolvedProvider == 'mx' ? 'mxn' : 'usd'))
+                  .toString(),
           status: (data['status'] ?? 'unknown').toString(),
           createdAt: createdAt,
-          arrivalDate: arrivalStr != null ? DateTime.tryParse(arrivalStr) : null,
+          arrivalDate: arrivalStr != null
+              ? DateTime.tryParse(arrivalStr)
+              : null,
         );
       }).toList();
     } catch (e) {
@@ -527,7 +564,7 @@ class DriverBalance {
     return DriverBalance(
       availableCents: json['available'] ?? 0,
       pendingCents: json['pending'] ?? 0,
-      currency: json['currency'] ?? 'mxn',
+      currency: json['currency'] ?? 'unknown',
     );
   }
 
@@ -535,7 +572,8 @@ class DriverBalance {
   double get pendingAmount => pendingCents / 100;
 
   @override
-  String toString() => 'Balance: \$${availableAmount.toStringAsFixed(2)} disponible, \$${pendingAmount.toStringAsFixed(2)} pendiente';
+  String toString() =>
+      'Balance: \$${availableAmount.toStringAsFixed(2)} disponible, \$${pendingAmount.toStringAsFixed(2)} pendiente';
 }
 
 /// Resultado de solicitud de payout
@@ -553,9 +591,8 @@ class PayoutResult {
   });
 
   @override
-  String toString() => success
-      ? 'Payout $payoutId - Llegará: $arrivalDate'
-      : 'Error: $error';
+  String toString() =>
+      success ? 'Payout $payoutId - Llegará: $arrivalDate' : 'Error: $error';
 }
 
 /// Registro de payout en historial
@@ -580,7 +617,7 @@ class PayoutRecord {
     return PayoutRecord(
       id: json['id'] ?? '',
       amountCents: json['amount'] ?? 0,
-      currency: json['currency'] ?? 'mxn',
+      currency: json['currency'] ?? 'unknown',
       status: json['status'] ?? 'unknown',
       createdAt: json['created'] != null
           ? DateTime.fromMillisecondsSinceEpoch(json['created'] * 1000)

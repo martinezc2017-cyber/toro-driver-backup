@@ -10,8 +10,16 @@ class PaymentService {
 
   // Initialize Stripe
   static Future<void> initialize() async {
-    Stripe.publishableKey = StripeConfig.publishableKey;
-    await Stripe.instance.applySettings();
+    await StripeConfig.initialize();
+  }
+
+  Future<String> _stripeProvider(String driverId) async {
+    final row = await _client
+        .from(SupabaseConfig.driversTable)
+        .select('country_code')
+        .eq('id', driverId)
+        .maybeSingle();
+    return row?['country_code']?.toString().toUpperCase() == 'MX' ? 'mx' : 'us';
   }
 
   // Helper to safely extract earnings from a delivery record
@@ -38,26 +46,30 @@ class PaymentService {
   // Helper to get base fare from delivery
   double _getBaseFare(Map<String, dynamic> item) {
     return (item['base_fare'] as num?)?.toDouble() ??
-           (item['base_price'] as num?)?.toDouble() ?? 0;
+        (item['base_price'] as num?)?.toDouble() ??
+        0;
   }
 
   // Helper to get surge from delivery
   double _getSurgeAmount(Map<String, dynamic> item) {
     return (item['surge_amount'] as num?)?.toDouble() ??
-           (item['surge_bonus'] as num?)?.toDouble() ?? 0;
+        (item['surge_bonus'] as num?)?.toDouble() ??
+        0;
   }
 
   // Helper to get promotions from delivery
   double _getPromotions(Map<String, dynamic> item) {
     return (item['promotion_amount'] as num?)?.toDouble() ??
-           (item['promo_discount'] as num?)?.toDouble() ?? 0;
+        (item['promo_discount'] as num?)?.toDouble() ??
+        0;
   }
 
   // Helper to get platform fee from delivery
   double _getPlatformFee(Map<String, dynamic> item) {
     return (item['platform_fee'] as num?)?.toDouble() ??
-           (item['service_fee'] as num?)?.toDouble() ??
-           (item['commission'] as num?)?.toDouble() ?? 0;
+        (item['service_fee'] as num?)?.toDouble() ??
+        (item['commission'] as num?)?.toDouble() ??
+        0;
   }
 
   // Helper to get QR boost from delivery
@@ -87,20 +99,26 @@ class PaymentService {
     if (miles != null && miles > 0) return miles;
 
     // Try km fields and convert
-    final km = (item['distance_km'] as num?)?.toDouble() ??
-               (item['distance'] as num?)?.toDouble() ??
-               (item['estimated_distance'] as num?)?.toDouble();
+    final km =
+        (item['distance_km'] as num?)?.toDouble() ??
+        (item['distance'] as num?)?.toDouble() ??
+        (item['estimated_distance'] as num?)?.toDouble();
     if (km != null && km > 0) return km * 0.621371;
 
     // Calculate from coordinates using Haversine
     final pickupLat = (item['pickup_lat'] as num?)?.toDouble();
     final pickupLng = (item['pickup_lng'] as num?)?.toDouble();
-    final destLat = (item['destination_lat'] as num?)?.toDouble() ??
-                    (item['dropoff_lat'] as num?)?.toDouble();
-    final destLng = (item['destination_lng'] as num?)?.toDouble() ??
-                    (item['dropoff_lng'] as num?)?.toDouble();
+    final destLat =
+        (item['destination_lat'] as num?)?.toDouble() ??
+        (item['dropoff_lat'] as num?)?.toDouble();
+    final destLng =
+        (item['destination_lng'] as num?)?.toDouble() ??
+        (item['dropoff_lng'] as num?)?.toDouble();
 
-    if (pickupLat != null && pickupLng != null && destLat != null && destLng != null) {
+    if (pickupLat != null &&
+        pickupLng != null &&
+        destLat != null &&
+        destLng != null) {
       return _haversineDistance(pickupLat, pickupLng, destLat, destLng);
     }
 
@@ -109,13 +127,21 @@ class PaymentService {
   }
 
   // Haversine formula to calculate distance in miles
-  double _haversineDistance(double lat1, double lon1, double lat2, double lon2) {
+  double _haversineDistance(
+    double lat1,
+    double lon1,
+    double lat2,
+    double lon2,
+  ) {
     const double earthRadiusMiles = 3958.8;
     final dLat = _toRadians(lat2 - lat1);
     final dLon = _toRadians(lon2 - lon1);
-    final a = (sin(dLat / 2) * sin(dLat / 2)) +
-              (cos(_toRadians(lat1)) * cos(_toRadians(lat2)) *
-               sin(dLon / 2) * sin(dLon / 2));
+    final a =
+        (sin(dLat / 2) * sin(dLat / 2)) +
+        (cos(_toRadians(lat1)) *
+            cos(_toRadians(lat2)) *
+            sin(dLon / 2) *
+            sin(dLon / 2));
     final c = 2 * atan2(sqrt(a), sqrt(1 - a));
     return earthRadiusMiles * c * 1.3; // * 1.3 for road distance approximation
   }
@@ -125,15 +151,17 @@ class PaymentService {
   // Helper to get duration minutes from delivery
   double _getDurationMinutes(Map<String, dynamic> item) {
     // Try direct duration fields first
-    final directDuration = (item['duration_minutes'] as num?)?.toDouble() ??
-                          (item['duration'] as num?)?.toDouble() ??
-                          (item['estimated_duration'] as num?)?.toDouble();
+    final directDuration =
+        (item['duration_minutes'] as num?)?.toDouble() ??
+        (item['duration'] as num?)?.toDouble() ??
+        (item['estimated_duration'] as num?)?.toDouble();
     if (directDuration != null && directDuration > 0) return directDuration;
 
     // Calculate from timestamps
     final startedAt = DateTime.tryParse(item['started_at'] as String? ?? '');
-    final deliveredAt = DateTime.tryParse(item['delivered_at'] as String? ?? '') ??
-                        DateTime.tryParse(item['completed_at'] as String? ?? '');
+    final deliveredAt =
+        DateTime.tryParse(item['delivered_at'] as String? ?? '') ??
+        DateTime.tryParse(item['completed_at'] as String? ?? '');
     if (startedAt != null && deliveredAt != null) {
       return deliveredAt.difference(startedAt).inMinutes.toDouble();
     }
@@ -154,14 +182,23 @@ class PaymentService {
     final startOfMonth = DateTime(now.year, now.month, 1);
 
     // Initialize all counters
-    double todayEarnings = 0, weekEarnings = 0, monthEarnings = 0, totalBalance = 0;
+    double todayEarnings = 0,
+        weekEarnings = 0,
+        monthEarnings = 0,
+        totalBalance = 0;
     double availableForPayout = 0, pendingPayout = 0;
     double todayTips = 0, weekTips = 0, monthTips = 0;
     int todayRides = 0, weekRides = 0, monthRides = 0;
 
     // Week breakdown
-    double weekBaseFare = 0, weekSurgeBonus = 0, weekPromotions = 0, weekPlatformFees = 0;
-    double weekQRBoost = 0, weekPeakHoursBonus = 0, weekDamageFee = 0, weekExtraBonus = 0;
+    double weekBaseFare = 0,
+        weekSurgeBonus = 0,
+        weekPromotions = 0,
+        weekPlatformFees = 0;
+    double weekQRBoost = 0,
+        weekPeakHoursBonus = 0,
+        weekDamageFee = 0,
+        weekExtraBonus = 0;
     double weekOnlineMinutes = 0, weekDrivingMinutes = 0, weekTotalMiles = 0;
 
     // Driver stats
@@ -199,7 +236,12 @@ class PaymentService {
         final itemDamageFee = _getDamageFee(item);
         final itemExtraBonus = _getExtraBonus(item);
 
-        final totalForToday = earnings + itemQRBoost + itemPeakHours + itemDamageFee + itemExtraBonus;
+        final totalForToday =
+            earnings +
+            itemQRBoost +
+            itemPeakHours +
+            itemDamageFee +
+            itemExtraBonus;
         todayEarnings += totalForToday;
         todayTips += tips;
       }
@@ -233,7 +275,12 @@ class PaymentService {
         weekDamageFee += itemDamageFee;
         weekExtraBonus += itemExtraBonus;
 
-        final totalEarningsForTrip = earnings + itemQRBoost + itemPeakHours + itemDamageFee + itemExtraBonus;
+        final totalEarningsForTrip =
+            earnings +
+            itemQRBoost +
+            itemPeakHours +
+            itemDamageFee +
+            itemExtraBonus;
         weekEarnings += totalEarningsForTrip;
         weekTips += tips;
 
@@ -259,7 +306,12 @@ class PaymentService {
         final itemDamageFee = _getDamageFee(item);
         final itemExtraBonus = _getExtraBonus(item);
 
-        final totalForMonth = earnings + itemQRBoost + itemPeakHours + itemDamageFee + itemExtraBonus;
+        final totalForMonth =
+            earnings +
+            itemQRBoost +
+            itemPeakHours +
+            itemDamageFee +
+            itemExtraBonus;
         monthEarnings += totalForMonth;
         monthTips += tips;
       }
@@ -280,23 +332,33 @@ class PaymentService {
         final itemDamageFee = _getDamageFee(item);
         final itemExtraBonus = _getExtraBonus(item);
 
-        final totalForTrip = earnings + itemQRBoost + itemPeakHours + itemDamageFee + itemExtraBonus;
+        final totalForTrip =
+            earnings +
+            itemQRBoost +
+            itemPeakHours +
+            itemDamageFee +
+            itemExtraBonus;
         totalBalance += totalForTrip;
       }
 
       // Get driver stats from drivers table
       final driverStats = await _client
           .from('drivers')
-          .select('acceptance_rate, weekly_goal, available_balance, pending_balance')
+          .select(
+            'acceptance_rate, weekly_goal, available_balance, pending_balance',
+          )
           .eq('id', driverId)
           .maybeSingle();
 
       if (driverStats != null) {
-        final rateFromDb = (driverStats['acceptance_rate'] as num?)?.toDouble() ?? 0;
+        final rateFromDb =
+            (driverStats['acceptance_rate'] as num?)?.toDouble() ?? 0;
         acceptanceRate = rateFromDb > 0 ? rateFromDb * 100 : 95.0;
         weeklyGoal = (driverStats['weekly_goal'] as num?)?.toDouble() ?? 500.0;
-        availableForPayout = (driverStats['available_balance'] as num?)?.toDouble() ?? 0.0;
-        pendingPayout = (driverStats['pending_balance'] as num?)?.toDouble() ?? 0.0;
+        availableForPayout =
+            (driverStats['available_balance'] as num?)?.toDouble() ?? 0.0;
+        pendingPayout =
+            (driverStats['pending_balance'] as num?)?.toDouble() ?? 0.0;
       }
 
       // Get online minutes from driver_sessions table (real tracking)
@@ -326,10 +388,12 @@ class PaymentService {
             .maybeSingle();
 
         if (rankings != null) {
-          final rankAcceptance = (rankings['acceptance_rate'] as num?)?.toDouble() ?? 0;
+          final rankAcceptance =
+              (rankings['acceptance_rate'] as num?)?.toDouble() ?? 0;
           if (rankAcceptance > 0) acceptanceRate = rankAcceptance;
 
-          final rankCancellation = (rankings['cancellation_rate'] as num?)?.toDouble() ?? 0;
+          final rankCancellation =
+              (rankings['cancellation_rate'] as num?)?.toDouble() ?? 0;
           if (rankCancellation > 0) cancellationRate = rankCancellation;
 
           final rankMiles = (rankings['week_miles'] as num?)?.toDouble() ?? 0;
@@ -337,7 +401,8 @@ class PaymentService {
 
           // Only use rankings online hours if sessions are empty
           if (weekOnlineMinutes == 0) {
-            final rankOnlineHours = (rankings['week_online_hours'] as num?)?.toDouble() ?? 0;
+            final rankOnlineHours =
+                (rankings['week_online_hours'] as num?)?.toDouble() ?? 0;
             if (rankOnlineHours > 0) weekOnlineMinutes = rankOnlineHours * 60;
           }
         }
@@ -370,10 +435,11 @@ class PaymentService {
           .maybeSingle();
 
       if (qrPoints != null) {
-        weekPoints = (qrPoints['qrs_accepted'] as num?)?.toInt() ??
-                     (qrPoints['current_level'] as num?)?.toInt() ?? 0;
+        weekPoints =
+            (qrPoints['qrs_accepted'] as num?)?.toInt() ??
+            (qrPoints['current_level'] as num?)?.toInt() ??
+            0;
       }
-
     } catch (e) {
       // Error getting earnings
     }
@@ -420,7 +486,9 @@ class PaymentService {
     try {
       var query = _client
           .from('driver_earnings')
-          .select('id, driver_id, ride_id, delivery_id, carpool_id, amount, net_fare, tip_amount, type, earning_type, description, created_at, completed_at')
+          .select(
+            'id, driver_id, ride_id, delivery_id, carpool_id, amount, net_fare, tip_amount, type, earning_type, description, created_at, completed_at',
+          )
           .eq('driver_id', driverId)
           .eq('status', 'completed');
 
@@ -438,22 +506,32 @@ class PaymentService {
       return (response as List).map((raw) {
         final earning = Map<String, dynamic>.from(raw as Map);
         final amount = _getEarningsFromLedger(earning);
-        final serviceType = (earning['earning_type'] ?? earning['type'] ?? 'ride').toString();
-        final dateStr = earning['completed_at']?.toString() ?? earning['created_at']?.toString() ?? '';
+        final serviceType =
+            (earning['earning_type'] ?? earning['type'] ?? 'ride').toString();
+        final dateStr =
+            earning['completed_at']?.toString() ??
+            earning['created_at']?.toString() ??
+            '';
 
         return EarningModel(
           id: earning['id'] as String,
           driverId: driverId,
-          rideId: (earning['ride_id'] ?? earning['delivery_id'] ?? earning['carpool_id'])?.toString(),
-          type: serviceType == 'package' ? TransactionType.rideEarning : TransactionType.rideEarning,
+          rideId:
+              (earning['ride_id'] ??
+                      earning['delivery_id'] ??
+                      earning['carpool_id'])
+                  ?.toString(),
+          type: serviceType == 'package'
+              ? TransactionType.rideEarning
+              : TransactionType.rideEarning,
           amount: amount,
           description: serviceType == 'package'
               ? 'Entrega de paquete'
               : serviceType == 'carpool'
-                  ? 'Viaje compartido'
-                  : serviceType == 'marketplace'
-                      ? 'Pedido marketplace'
-                      : 'Viaje completado',
+              ? 'Viaje compartido'
+              : serviceType == 'marketplace'
+              ? 'Pedido marketplace'
+              : 'Viaje completado',
           createdAt: DateTime.tryParse(dateStr) ?? DateTime.now(),
         );
       }).toList();
@@ -465,8 +543,11 @@ class PaymentService {
   // Get weekly earnings breakdown - reads from canonical driver_earnings ledger
   Future<List<DailyEarning>> getWeeklyBreakdown(String driverId) async {
     final now = DateTime.now();
-    final startOfWeek = DateTime(now.year, now.month, now.day)
-        .subtract(Duration(days: now.weekday - 1));
+    final startOfWeek = DateTime(
+      now.year,
+      now.month,
+      now.day,
+    ).subtract(Duration(days: now.weekday - 1));
 
     List<DailyEarning> weeklyEarnings = [];
 
@@ -485,20 +566,22 @@ class PaymentService {
 
         double dayTotal = 0;
         for (var item in (response as List)) {
-          dayTotal += _getEarningsFromLedger(Map<String, dynamic>.from(item as Map));
+          dayTotal += _getEarningsFromLedger(
+            Map<String, dynamic>.from(item as Map),
+          );
         }
 
-        weeklyEarnings.add(DailyEarning(
-          date: dayStart,
-          amount: dayTotal,
-          ridesCount: response.length,
-        ));
+        weeklyEarnings.add(
+          DailyEarning(
+            date: dayStart,
+            amount: dayTotal,
+            ridesCount: response.length,
+          ),
+        );
       } catch (e) {
-        weeklyEarnings.add(DailyEarning(
-          date: dayStart,
-          amount: 0,
-          ridesCount: 0,
-        ));
+        weeklyEarnings.add(
+          DailyEarning(date: dayStart, amount: 0, ridesCount: 0),
+        );
       }
     }
 
@@ -555,10 +638,7 @@ class PaymentService {
   }) async {
     final response = await _client.functions.invoke(
       'stripe-instant-payout',
-      body: {
-        'driver_id': driverId,
-        'amount': amount,
-      },
+      body: {'driver_id': driverId, 'amount': amount},
     );
 
     if (response.status != 200) {
@@ -590,12 +670,10 @@ class PaymentService {
     String? routingNumber,
     String? accountHolderName,
   }) async {
+    final provider = await _stripeProvider(driverId);
     final response = await _client.functions.invoke(
       'stripe-connect-onboarding',
-      body: {
-        'driver_id': driverId,
-        'provider': 'mx',
-      },
+      body: {'driver_id': driverId, 'provider': provider},
     );
 
     if (response.status != 200) {
@@ -640,9 +718,10 @@ class PaymentService {
   // Get Stripe Connect onboarding link — fn canónica desplegada.
   // (Antes invocaba 'create-stripe-connect-link' que NO existe.)
   Future<String> getStripeOnboardingLink(String driverId) async {
+    final provider = await _stripeProvider(driverId);
     final response = await _client.functions.invoke(
       'stripe-connect-onboarding',
-      body: {'driver_id': driverId, 'provider': 'mx'},
+      body: {'driver_id': driverId, 'provider': provider},
     );
 
     if (response.status != 200) {
@@ -654,22 +733,57 @@ class PaymentService {
 
   // Check Stripe Connect status
   Future<StripeConnectStatus> getStripeConnectStatus(String driverId) async {
-    final response = await _client
-        .from(SupabaseConfig.stripeAccountsTable)
-        .select()
+    final provider = await _stripeProvider(driverId);
+    final account = await _client
+        .from(
+          SupabaseConfig.stripeAccountsTableForCountry(
+            provider == 'mx' ? 'MX' : 'US',
+          ),
+        )
+        .select('stripe_account_id,payouts_enabled,account_status')
         .eq('driver_id', driverId)
         .maybeSingle();
 
-    if (response == null) {
-      return StripeConnectStatus.notConnected;
+    if (account != null) {
+      if (account['payouts_enabled'] == true ||
+          account['account_status']?.toString().toLowerCase() == 'active') {
+        return StripeConnectStatus.active;
+      }
+      if (account['stripe_account_id'] != null) {
+        return StripeConnectStatus.pending;
+      }
     }
 
-    final chargesEnabled = response['charges_enabled'] as bool? ?? false;
-    final payoutsEnabled = response['payouts_enabled'] as bool? ?? false;
+    final driver = await _client
+        .from(SupabaseConfig.driversTable)
+        .select(
+          'country_code,stripe_account_id,stripe_account_status,stripe_country,payouts_enabled,charges_enabled',
+        )
+        .eq('id', driverId)
+        .maybeSingle();
 
-    if (chargesEnabled && payoutsEnabled) {
+    if (driver != null) {
+      final payoutsEnabled = driver['payouts_enabled'] as bool? ?? false;
+      final accountId = driver['stripe_account_id'] as String?;
+      final status = driver['stripe_account_status']?.toString().toLowerCase();
+      final expectedCountry = provider == 'mx' ? 'MX' : 'US';
+      final legacyCountry = driver['stripe_country']?.toString().toUpperCase();
+      if (legacyCountry == expectedCountry &&
+          (payoutsEnabled || status == 'active' || status == 'enabled')) {
+        return StripeConnectStatus.active;
+      }
+      if (legacyCountry == expectedCountry &&
+          accountId != null &&
+          accountId.isNotEmpty) {
+        return StripeConnectStatus.pending;
+      }
+    }
+
+    if (account == null) return StripeConnectStatus.notConnected;
+    if (account['payouts_enabled'] == true) {
       return StripeConnectStatus.active;
-    } else if (response['stripe_account_id'] != null) {
+    }
+    if (account['stripe_account_id'] != null) {
       return StripeConnectStatus.pending;
     }
 
@@ -805,18 +919,10 @@ class DailyEarning {
   final double amount;
   final int ridesCount;
 
-  DailyEarning({
-    required this.date,
-    required this.amount,
-    this.ridesCount = 0,
-  });
+  DailyEarning({required this.date, required this.amount, this.ridesCount = 0});
 }
 
-enum StripeConnectStatus {
-  notConnected,
-  pending,
-  active,
-}
+enum StripeConnectStatus { notConnected, pending, active }
 
 // Driver ranking model for leaderboard
 class DriverRanking {
@@ -848,7 +954,10 @@ class DriverRanking {
     this.driverState,
   });
 
-  factory DriverRanking.fromJson(Map<String, dynamic> json, {Map<String, dynamic>? driver}) {
+  factory DriverRanking.fromJson(
+    Map<String, dynamic> json, {
+    Map<String, dynamic>? driver,
+  }) {
     return DriverRanking(
       driverId: json['driver_id'] as String,
       driverName: driver?['name'] as String?,

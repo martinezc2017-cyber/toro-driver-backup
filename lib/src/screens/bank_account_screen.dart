@@ -20,6 +20,11 @@ class _BankAccountScreenState extends State<BankAccountScreen> {
   Map<String, dynamic>? _driverData;
   StripeAccountStatus _accountStatus = StripeAccountStatus.notCreated;
 
+  String get _stripeProvider =>
+      _driverData?['country_code']?.toString().toUpperCase() == 'MX'
+      ? 'mx'
+      : 'us';
+
   @override
   void initState() {
     super.initState();
@@ -46,13 +51,10 @@ class _BankAccountScreenState extends State<BankAccountScreen> {
       if (driverResponse != null) {
         _driverData = Map<String, dynamic>.from(driverResponse);
 
-        final stripeAccountId = _driverData!['stripe_account_id'];
-        if (stripeAccountId != null && stripeAccountId.toString().isNotEmpty) {
-          _accountStatus = await StripeConnectService.instance
-              .getAccountStatus(_driverData!['id']);
-        } else {
-          _accountStatus = StripeAccountStatus.notCreated;
-        }
+        _accountStatus = await StripeConnectService.instance.getAccountStatus(
+          _driverData!['id'],
+          provider: _stripeProvider,
+        );
       }
 
       setState(() => _isLoading = false);
@@ -74,37 +76,55 @@ class _BankAccountScreenState extends State<BankAccountScreen> {
       String? onboardingUrl;
 
       if (_accountStatus == StripeAccountStatus.notCreated) {
-        onboardingUrl = await StripeConnectService.instance.createConnectAccount(
-          driverId: _driverData!['id'],
-          email: user?.email ?? '',
-          firstName: _driverData!['first_name'],
-          lastName: _driverData!['last_name'],
-        );
-      } else if (_accountStatus == StripeAccountStatus.incomplete) {
         onboardingUrl = await StripeConnectService.instance
-            .getOnboardingLink(_driverData!['id']);
+            .createConnectAccount(
+              driverId: _driverData!['id'],
+              email: user?.email ?? '',
+              firstName: _driverData!['first_name'],
+              lastName: _driverData!['last_name'],
+              provider: _stripeProvider,
+            );
+      } else if (_accountStatus == StripeAccountStatus.incomplete) {
+        onboardingUrl = await StripeConnectService.instance.getOnboardingLink(
+          _driverData!['id'],
+          provider: _stripeProvider,
+        );
       }
 
       if (onboardingUrl != null) {
-        final opened = await StripeConnectService.instance
-            .openOnboardingLink(onboardingUrl);
+        final opened = await StripeConnectService.instance.openOnboardingLink(
+          onboardingUrl,
+        );
 
         if (!opened && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('no_open_link'.tr()), backgroundColor: AppColors.error),
+            SnackBar(
+              content: Text('no_open_link'.tr()),
+              backgroundColor: AppColors.error,
+            ),
           );
         }
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('stripe_connect_error'.tr()), backgroundColor: AppColors.error),
+            SnackBar(
+              content: Text('stripe_connect_error'.tr()),
+              backgroundColor: AppColors.error,
+            ),
           );
         }
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('screens.bank_account.error_generic'.tr(namedArgs: {'error': e.toString()})), backgroundColor: AppColors.error),
+          SnackBar(
+            content: Text(
+              'screens.bank_account.error_generic'.tr(
+                namedArgs: {'error': e.toString()},
+              ),
+            ),
+            backgroundColor: AppColors.error,
+          ),
         );
       }
     } finally {
@@ -121,8 +141,10 @@ class _BankAccountScreenState extends State<BankAccountScreen> {
     setState(() => _isConnecting = true);
 
     try {
-      final url = await StripeConnectService.instance
-          .getDashboardLink(_driverData!['id']);
+      final url = await StripeConnectService.instance.getDashboardLink(
+        _driverData!['id'],
+        provider: _stripeProvider,
+      );
 
       if (url != null) {
         await StripeConnectService.instance.openOnboardingLink(url);
@@ -149,7 +171,10 @@ class _BankAccountScreenState extends State<BankAccountScreen> {
           children: [
             Icon(Icons.account_balance, size: 18, color: AppColors.primary),
             const SizedBox(width: 8),
-            Text('receive_payments'.tr(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            Text(
+              'receive_payments'.tr(),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
           ],
         ),
         actions: [
@@ -162,8 +187,8 @@ class _BankAccountScreenState extends State<BankAccountScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _driverData == null
-              ? _buildNotDriverMessage()
-              : _buildMainContent(),
+          ? _buildNotDriverMessage()
+          : _buildMainContent(),
     );
   }
 
@@ -178,7 +203,11 @@ class _BankAccountScreenState extends State<BankAccountScreen> {
             const SizedBox(height: 16),
             Text(
               'not_a_driver'.tr(),
-              style: const TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
@@ -201,8 +230,7 @@ class _BankAccountScreenState extends State<BankAccountScreen> {
         const SizedBox(height: 16),
 
         // Balance Card
-        if (_accountStatus == StripeAccountStatus.active)
-          _buildBalanceCard(),
+        if (_accountStatus == StripeAccountStatus.active) _buildBalanceCard(),
 
         if (_accountStatus == StripeAccountStatus.active)
           const SizedBox(height: 16),
@@ -277,9 +305,22 @@ class _BankAccountScreenState extends State<BankAccountScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.bold)),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 const SizedBox(height: 2),
-                Text(subtitle, style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                  ),
+                ),
               ],
             ),
           ),
@@ -289,9 +330,15 @@ class _BankAccountScreenState extends State<BankAccountScreen> {
   }
 
   Widget _buildBalanceCard() {
-    final available = (_driverData?['available_balance'] as num?)?.toDouble() ?? 0;
+    final available =
+        (_driverData?['available_balance'] as num?)?.toDouble() ?? 0;
     final pending = (_driverData?['pending_balance'] as num?)?.toDouble() ?? 0;
-    final countryCode = Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US';
+    final countryCode =
+        Provider.of<DriverProvider>(
+          context,
+          listen: false,
+        ).driver?.countryCode ??
+        'US';
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -302,11 +349,18 @@ class _BankAccountScreenState extends State<BankAccountScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('available_balance'.tr(), style: const TextStyle(color: Colors.white70, fontSize: 12)),
+          Text(
+            'available_balance'.tr(),
+            style: const TextStyle(color: Colors.white70, fontSize: 12),
+          ),
           const SizedBox(height: 4),
           Text(
             formatMoney(available, country: countryCode),
-            style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 8),
           Row(
@@ -356,12 +410,23 @@ class _BankAccountScreenState extends State<BankAccountScreen> {
       child: ElevatedButton.icon(
         onPressed: _isConnecting ? null : onPressed,
         icon: _isConnecting
-            ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
             : Icon(buttonIcon, size: 18),
         label: Text(buttonText),
         style: ElevatedButton.styleFrom(
-          backgroundColor: _accountStatus == StripeAccountStatus.active ? AppColors.card : AppColors.primary,
-          foregroundColor: _accountStatus == StripeAccountStatus.active ? AppColors.primary : Colors.black,
+          backgroundColor: _accountStatus == StripeAccountStatus.active
+              ? AppColors.card
+              : AppColors.primary,
+          foregroundColor: _accountStatus == StripeAccountStatus.active
+              ? AppColors.primary
+              : Colors.black,
           disabledBackgroundColor: AppColors.card,
           padding: const EdgeInsets.symmetric(vertical: 14),
           shape: RoundedRectangleBorder(
@@ -377,10 +442,26 @@ class _BankAccountScreenState extends State<BankAccountScreen> {
 
   Widget _buildBenefitsList() {
     final benefits = [
-      {'icon': Icons.flash_on, 'title': 'instant_payments'.tr(), 'subtitle': 'receive_money_minutes'.tr()},
-      {'icon': Icons.security, 'title': 'secure_reliable'.tr(), 'subtitle': 'protected_by_stripe'.tr()},
-      {'icon': Icons.account_balance, 'title': 'direct_to_bank'.tr(), 'subtitle': 'no_intermediaries'.tr()},
-      {'icon': Icons.receipt_long, 'title': 'tax_reports'.tr(), 'subtitle': 'automatic_1099'.tr()},
+      {
+        'icon': Icons.flash_on,
+        'title': 'instant_payments'.tr(),
+        'subtitle': 'receive_money_minutes'.tr(),
+      },
+      {
+        'icon': Icons.security,
+        'title': 'secure_reliable'.tr(),
+        'subtitle': 'protected_by_stripe'.tr(),
+      },
+      {
+        'icon': Icons.account_balance,
+        'title': 'direct_to_bank'.tr(),
+        'subtitle': 'no_intermediaries'.tr(),
+      },
+      {
+        'icon': Icons.receipt_long,
+        'title': 'tax_reports'.tr(),
+        'subtitle': 'automatic_1099'.tr(),
+      },
     ];
 
     return Container(
@@ -392,34 +473,60 @@ class _BankAccountScreenState extends State<BankAccountScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('benefits'.tr(), style: const TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 12),
-          ...benefits.map((b) => Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Row(
-              children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(b['icon'] as IconData, color: AppColors.primary, size: 16),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(b['title'] as String, style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 13)),
-                      Text(b['subtitle'] as String, style: TextStyle(color: AppColors.textTertiary, fontSize: 11)),
-                    ],
-                  ),
-                ),
-              ],
+          Text(
+            'benefits'.tr(),
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
             ),
-          )),
+          ),
+          const SizedBox(height: 12),
+          ...benefits.map(
+            (b) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Row(
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      b['icon'] as IconData,
+                      color: AppColors.primary,
+                      size: 16,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          b['title'] as String,
+                          style: const TextStyle(
+                            color: AppColors.textPrimary,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
+                        Text(
+                          b['subtitle'] as String,
+                          style: TextStyle(
+                            color: AppColors.textTertiary,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -432,7 +539,9 @@ class _BankAccountScreenState extends State<BankAccountScreen> {
         decoration: BoxDecoration(
           color: AppColors.card,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xFF635BFF).withValues(alpha: 0.3)),
+          border: Border.all(
+            color: const Color(0xFF635BFF).withValues(alpha: 0.3),
+          ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -441,7 +550,11 @@ class _BankAccountScreenState extends State<BankAccountScreen> {
             const SizedBox(width: 6),
             const Text(
               'Powered by Stripe',
-              style: TextStyle(color: Color(0xFF635BFF), fontWeight: FontWeight.w600, fontSize: 12),
+              style: TextStyle(
+                color: Color(0xFF635BFF),
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+              ),
             ),
           ],
         ),

@@ -36,7 +36,8 @@ import 'organizer_profile_screen.dart';
 import 'organizer_vehicle_selection_screen.dart';
 import 'organizer_bidding_screen.dart';
 
-String _fmtPrice(double v) => intl.NumberFormat('#,##0', 'es_MX').format(v.round());
+String _fmtPrice(double v) =>
+    intl.NumberFormat('#,##0', intl.Intl.getCurrentLocale()).format(v.round());
 
 /// Main event management dashboard for organizers.
 ///
@@ -45,10 +46,7 @@ String _fmtPrice(double v) => intl.NumberFormat('#,##0', 'es_MX').format(v.round
 class OrganizerEventDashboardScreen extends StatefulWidget {
   final String eventId;
 
-  const OrganizerEventDashboardScreen({
-    super.key,
-    required this.eventId,
-  });
+  const OrganizerEventDashboardScreen({super.key, required this.eventId});
 
   @override
   State<OrganizerEventDashboardScreen> createState() =>
@@ -56,8 +54,7 @@ class OrganizerEventDashboardScreen extends StatefulWidget {
 }
 
 class _OrganizerEventDashboardScreenState
-    extends State<OrganizerEventDashboardScreen>
-    {
+    extends State<OrganizerEventDashboardScreen> {
   final TourismEventService _eventService = TourismEventService();
   final TourismInvitationService _invitationService =
       TourismInvitationService();
@@ -126,13 +123,16 @@ class _OrganizerEventDashboardScreenState
     if (userId == null) return;
 
     // Load initial unread count
-    _chatService.getMessages(widget.eventId).then((messages) {
-      if (!mounted) return;
-      final unread = messages
-          .where((m) => m.senderId != userId && !m.readBy.contains(userId))
-          .length;
-      setState(() => _chatUnreadCount = unread);
-    }).catchError((_) {});
+    _chatService
+        .getMessages(widget.eventId)
+        .then((messages) {
+          if (!mounted) return;
+          final unread = messages
+              .where((m) => m.senderId != userId && !m.readBy.contains(userId))
+              .length;
+          setState(() => _chatUnreadCount = unread);
+        })
+        .catchError((_) {});
 
     // Real-time: use keyed subscription to avoid overwriting parent's channel
     _chatService.subscribeWithKey('dashboard', widget.eventId, (newMessage) {
@@ -217,7 +217,9 @@ class _OrganizerEventDashboardScreenState
 
   Future<void> _loadPickupRequests() async {
     final requests = await _invitationService.getPickupRequests(widget.eventId);
-    final pending = await _invitationService.countPendingPickups(widget.eventId);
+    final pending = await _invitationService.countPendingPickups(
+      widget.eventId,
+    );
     if (mounted) {
       setState(() {
         _pickupRequests = requests;
@@ -227,7 +229,9 @@ class _OrganizerEventDashboardScreenState
   }
 
   Future<void> _loadAllInvitations() async {
-    final invitations = await _invitationService.getEventInvitations(widget.eventId);
+    final invitations = await _invitationService.getEventInvitations(
+      widget.eventId,
+    );
     if (mounted) {
       setState(() => _allInvitations = invitations);
     }
@@ -239,7 +243,8 @@ class _OrganizerEventDashboardScreenState
     debugPrint('LOAD_EVENT -> drivers: ${event?['drivers']}');
     debugPrint('LOAD_EVENT -> driver_id: ${event?['driver_id']}');
     if (mounted && event != null) {
-      final currentPricePerKm = (event['price_per_km'] as num?)?.toDouble() ?? 1.0;
+      final currentPricePerKm =
+          (event['price_per_km'] as num?)?.toDouble() ?? 1.0;
       _pricePerKmController.text = currentPricePerKm.toStringAsFixed(2);
       setState(() => _event = event);
       _eventService.validateEventCompleteness(widget.eventId);
@@ -262,11 +267,14 @@ class _OrganizerEventDashboardScreenState
 
   Future<void> _loadPassengerLocations() async {
     debugPrint('DASH_GPS -> Loading passenger locations...');
-    final locations =
-        await _invitationService.getPassengerLocations(widget.eventId);
+    final locations = await _invitationService.getPassengerLocations(
+      widget.eventId,
+    );
     debugPrint('DASH_GPS -> Got ${locations.length} locations');
     for (final loc in locations) {
-      debugPrint('DASH_GPS -> ${loc['invitee_name']}: lat=${loc['lat']}, lng=${loc['lng']}');
+      debugPrint(
+        'DASH_GPS -> ${loc['invitee_name']}: lat=${loc['lat']}, lng=${loc['lng']}',
+      );
     }
     if (mounted) {
       setState(() => _passengerLocations = locations);
@@ -289,35 +297,32 @@ class _OrganizerEventDashboardScreenState
   }
 
   void _subscribeToUpdates() {
-    _eventChannel = _eventService.subscribeToEvent(
-      widget.eventId,
-      (event) {
+    _eventChannel = _eventService.subscribeToEvent(widget.eventId, (event) {
+      if (!mounted) return;
+      // Use addPostFrameCallback to avoid setState during build/layout phase
+      WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        // Use addPostFrameCallback to avoid setState during build/layout phase
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!mounted) return;
-          // Preserve joined data (drivers, organizers, vehicles) when merging realtime updates
-          final currentDrivers = _event?['drivers'];
-          final currentOrganizers = _event?['organizers'];
-          final currentVehicles = _event?['bus_vehicles'];
+        // Preserve joined data (drivers, organizers, vehicles) when merging realtime updates
+        final currentDrivers = _event?['drivers'];
+        final currentOrganizers = _event?['organizers'];
+        final currentVehicles = _event?['bus_vehicles'];
 
-          setState(() {
-            _event = {...?_event, ...event};
+        setState(() {
+          _event = {...?_event, ...event};
 
-            // Restore joined data if not present in realtime update
-            if (_event?['drivers'] == null && currentDrivers != null) {
-              _event!['drivers'] = currentDrivers;
-            }
-            if (_event?['organizers'] == null && currentOrganizers != null) {
-              _event!['organizers'] = currentOrganizers;
-            }
-            if (_event?['bus_vehicles'] == null && currentVehicles != null) {
-              _event!['bus_vehicles'] = currentVehicles;
-            }
-          });
+          // Restore joined data if not present in realtime update
+          if (_event?['drivers'] == null && currentDrivers != null) {
+            _event!['drivers'] = currentDrivers;
+          }
+          if (_event?['organizers'] == null && currentOrganizers != null) {
+            _event!['organizers'] = currentOrganizers;
+          }
+          if (_event?['bus_vehicles'] == null && currentVehicles != null) {
+            _event!['bus_vehicles'] = currentVehicles;
+          }
         });
-      },
-    );
+      });
+    });
 
     _locationChannel = _invitationService.subscribeToPassengerLocations(
       eventId: widget.eventId,
@@ -484,93 +489,107 @@ class _OrganizerEventDashboardScreenState
         ),
         child: SingleChildScrollView(
           child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Handle bar
-            Container(
-              width: 48,
-              height: 5,
-              decoration: BoxDecoration(
-                color: AppColors.border,
-                borderRadius: BorderRadius.circular(3),
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle bar
+              Container(
+                width: 48,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(3),
+                ),
               ),
-            ),
-            const SizedBox(height: 24),
-            _buildMenuItem(
-              icon: Icons.qr_code_2,
-              label: 'Mostrar QR del Evento',
-              onTap: () {
-                Navigator.pop(ctx);
-                _showEventQR();
-              },
-            ),
-            _buildMenuItem(
-              icon: Icons.share_outlined,
-              label: 'Compartir Evento',
-              onTap: () {
-                Navigator.pop(ctx);
-                _shareEvent();
-              },
-            ),
-            // Toggle chat for driver
-            Builder(builder: (_) {
-              final chatEnabled = _event?['chat_enabled_for_driver'] != false;
-              return _buildMenuItem(
-                icon: chatEnabled ? Icons.chat_bubble : Icons.chat_bubble_outline,
-                label: chatEnabled ? 'Desactivar Chat al Chofer' : 'Activar Chat al Chofer',
-                color: chatEnabled ? AppColors.warning : AppColors.success,
+              const SizedBox(height: 24),
+              _buildMenuItem(
+                icon: Icons.qr_code_2,
+                label: 'Mostrar QR del Evento',
                 onTap: () {
                   Navigator.pop(ctx);
-                  _toggleChatForDriver();
+                  _showEventQR();
                 },
-              );
-            }),
-            // Toggle fare visibility to riders
-            Builder(builder: (_) {
-              final fareVisible = _event?['show_fare_to_riders'] != false;
-              return _buildMenuItem(
-                icon: fareVisible ? Icons.attach_money : Icons.money_off,
-                label: fareVisible ? 'Ocultar Tarifa al Pasajero' : 'Mostrar Tarifa al Pasajero',
-                color: fareVisible ? AppColors.warning : AppColors.success,
+              ),
+              _buildMenuItem(
+                icon: Icons.share_outlined,
+                label: 'Compartir Evento',
                 onTap: () {
                   Navigator.pop(ctx);
-                  _toggleFareVisibility();
+                  _shareEvent();
                 },
-              );
-            }),
-            const SizedBox(height: 8),
-            Divider(color: AppColors.border.withValues(alpha: 0.5), height: 1),
-            const SizedBox(height: 8),
-            _buildMenuItem(
-              icon: Icons.play_circle_outline,
-              label: 'Iniciar Evento',
-              color: AppColors.success,
-              onTap: () async {
-                Navigator.pop(ctx);
-                await _startEvent();
-              },
-            ),
-            _buildMenuItem(
-              icon: Icons.stop_circle_outlined,
-              label: 'Finalizar Evento',
-              color: AppColors.primary,
-              onTap: () async {
-                Navigator.pop(ctx);
-                await _completeEvent();
-              },
-            ),
-            _buildMenuItem(
-              icon: Icons.delete_forever,
-              label: 'Eliminar Evento',
-              color: AppColors.error,
-              onTap: () async {
-                Navigator.pop(ctx);
-                await _cancelEvent();
-              },
-            ),
-            SizedBox(height: MediaQuery.of(ctx).padding.bottom + 8),
-          ],
-        ),
+              ),
+              // Toggle chat for driver
+              Builder(
+                builder: (_) {
+                  final chatEnabled =
+                      _event?['chat_enabled_for_driver'] != false;
+                  return _buildMenuItem(
+                    icon: chatEnabled
+                        ? Icons.chat_bubble
+                        : Icons.chat_bubble_outline,
+                    label: chatEnabled
+                        ? 'Desactivar Chat al Chofer'
+                        : 'Activar Chat al Chofer',
+                    color: chatEnabled ? AppColors.warning : AppColors.success,
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _toggleChatForDriver();
+                    },
+                  );
+                },
+              ),
+              // Toggle fare visibility to riders
+              Builder(
+                builder: (_) {
+                  final fareVisible = _event?['show_fare_to_riders'] != false;
+                  return _buildMenuItem(
+                    icon: fareVisible ? Icons.attach_money : Icons.money_off,
+                    label: fareVisible
+                        ? 'Ocultar Tarifa al Pasajero'
+                        : 'Mostrar Tarifa al Pasajero',
+                    color: fareVisible ? AppColors.warning : AppColors.success,
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _toggleFareVisibility();
+                    },
+                  );
+                },
+              ),
+              const SizedBox(height: 8),
+              Divider(
+                color: AppColors.border.withValues(alpha: 0.5),
+                height: 1,
+              ),
+              const SizedBox(height: 8),
+              _buildMenuItem(
+                icon: Icons.play_circle_outline,
+                label: 'Iniciar Evento',
+                color: AppColors.success,
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  await _startEvent();
+                },
+              ),
+              _buildMenuItem(
+                icon: Icons.stop_circle_outlined,
+                label: 'Finalizar Evento',
+                color: AppColors.primary,
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  await _completeEvent();
+                },
+              ),
+              _buildMenuItem(
+                icon: Icons.delete_forever,
+                label: 'Eliminar Evento',
+                color: AppColors.error,
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  await _cancelEvent();
+                },
+              ),
+              SizedBox(height: MediaQuery.of(ctx).padding.bottom + 8),
+            ],
+          ),
         ),
       ),
     );
@@ -598,7 +617,9 @@ class _OrganizerEventDashboardScreenState
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: (color ?? AppColors.textSecondary).withValues(alpha: 0.12),
+                  color: (color ?? AppColors.textSecondary).withValues(
+                    alpha: 0.12,
+                  ),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
@@ -651,7 +672,9 @@ class _OrganizerEventDashboardScreenState
         context: context,
         builder: (ctx) => AlertDialog(
           backgroundColor: AppColors.card,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           title: Row(
             children: [
               Container(
@@ -660,25 +683,39 @@ class _OrganizerEventDashboardScreenState
                   color: AppColors.success.withValues(alpha: 0.2),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.flag, color: AppColors.success, size: 24),
+                child: const Icon(
+                  Icons.flag,
+                  color: AppColors.success,
+                  size: 24,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   'tourism_finalize_event'.tr(),
-                  style: const TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w700),
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ],
           ),
           content: Text(
             'tourism_finalize_event_confirm'.tr(),
-            style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 14,
+            ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: Text('tourism_cancel'.tr(), style: const TextStyle(color: AppColors.textSecondary)),
+              child: Text(
+                'tourism_cancel'.tr(),
+                style: const TextStyle(color: AppColors.textSecondary),
+              ),
             ),
             ElevatedButton.icon(
               onPressed: () => Navigator.pop(ctx, true),
@@ -687,7 +724,9 @@ class _OrganizerEventDashboardScreenState
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.success,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
           ],
@@ -748,10 +787,7 @@ class _OrganizerEventDashboardScreenState
         ),
         content: const Text(
           'Se eliminara permanentemente este evento. Esta accion no se puede deshacer.',
-          style: TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 15,
-          ),
+          style: TextStyle(color: AppColors.textSecondary, fontSize: 15),
         ),
         actions: [
           TextButton(
@@ -800,7 +836,9 @@ class _OrganizerEventDashboardScreenState
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('tourism_error_delete'.tr(namedArgs: {'error': e.toString()})),
+              content: Text(
+                'tourism_error_delete'.tr(namedArgs: {'error': e.toString()}),
+              ),
               backgroundColor: AppColors.error,
               duration: const Duration(seconds: 5),
             ),
@@ -865,9 +903,7 @@ class _OrganizerEventDashboardScreenState
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => OrganizerInviteScreen(
-          eventId: widget.eventId,
-        ),
+        builder: (context) => OrganizerInviteScreen(eventId: widget.eventId),
       ),
     );
   }
@@ -876,9 +912,8 @@ class _OrganizerEventDashboardScreenState
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => OrganizerPassengersScreen(
-          eventId: widget.eventId,
-        ),
+        builder: (context) =>
+            OrganizerPassengersScreen(eventId: widget.eventId),
       ),
     );
   }
@@ -1000,10 +1035,7 @@ class _OrganizerEventDashboardScreenState
             const SizedBox(height: 16),
             Text(
               'Los invitados pueden escanear este codigo\npara unirse al evento',
-              style: TextStyle(
-                color: AppColors.textTertiary,
-                fontSize: 14,
-              ),
+              style: TextStyle(color: AppColors.textTertiary, fontSize: 14),
               textAlign: TextAlign.center,
             ),
             SizedBox(height: MediaQuery.of(ctx).padding.bottom + 16),
@@ -1021,7 +1053,8 @@ class _OrganizerEventDashboardScreenState
 
     HapticService.lightImpact();
 
-    final shareText = '''
+    final shareText =
+        '''
 $eventName
 
 Fecha: $eventDate
@@ -1034,10 +1067,7 @@ Enviado desde TORO
 ''';
 
     try {
-      await Share.share(
-        shareText,
-        subject: eventName,
-      );
+      await Share.share(shareText, subject: eventName);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1064,19 +1094,19 @@ Enviado desde TORO
                     child: CircularProgressIndicator(color: AppColors.primary),
                   )
                 : _error != null
-                    ? _buildErrorState()
-                    : RefreshIndicator(
-                        color: AppColors.primary,
-                        backgroundColor: AppColors.surface,
-                        onRefresh: _loadData,
-                        child: CustomScrollView(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          slivers: [
-                            _buildSliverAppBar(),
-                            SliverToBoxAdapter(child: _buildContent()),
-                          ],
-                        ),
-                      ),
+                ? _buildErrorState()
+                : RefreshIndicator(
+                    color: AppColors.primary,
+                    backgroundColor: AppColors.surface,
+                    onRefresh: _loadData,
+                    child: CustomScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      slivers: [
+                        _buildSliverAppBar(),
+                        SliverToBoxAdapter(child: _buildContent()),
+                      ],
+                    ),
+                  ),
           ),
         ],
       ),
@@ -1089,7 +1119,9 @@ Enviado desde TORO
     final status = _event?['status'] ?? 'draft';
     final visibility = _event?['passenger_visibility'] ?? 'private';
     final isPublic = visibility == 'public';
-    final isBlackRose = _event?['is_black_rose'] == true || eventName.toUpperCase().contains('BLACK ROSE');
+    final isBlackRose =
+        _event?['is_black_rose'] == true ||
+        eventName.toUpperCase().contains('BLACK ROSE');
 
     return SliverAppBar(
       backgroundColor: AppColors.surface,
@@ -1102,7 +1134,11 @@ Enviado desde TORO
             color: AppColors.card,
             borderRadius: BorderRadius.circular(12),
           ),
-          child: const Icon(Icons.arrow_back, color: AppColors.textPrimary, size: 22),
+          child: const Icon(
+            Icons.arrow_back,
+            color: AppColors.textPrimary,
+            size: 22,
+          ),
         ),
         onPressed: () => Navigator.pop(context),
       ),
@@ -1137,7 +1173,11 @@ Enviado desde TORO
               color: AppColors.card,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(Icons.more_horiz, color: AppColors.textPrimary, size: 22),
+            child: const Icon(
+              Icons.more_horiz,
+              color: AppColors.textPrimary,
+              size: 22,
+            ),
           ),
           onPressed: _showMenu,
         ),
@@ -1171,23 +1211,41 @@ Enviado desde TORO
                           Flexible(
                             child: isBlackRose
                                 ? ShaderMask(
-                                    shaderCallback: (bounds) => AppColors.blackRoseGradient.createShader(bounds),
+                                    shaderCallback: (bounds) => AppColors
+                                        .blackRoseGradient
+                                        .createShader(bounds),
                                     child: Text(
                                       eventName,
-                                      style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.5),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: -0.5,
+                                      ),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   )
                                 : Text(
                                     eventName,
-                                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.5),
+                                    style: const TextStyle(
+                                      color: AppColors.textPrimary,
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: -0.5,
+                                    ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
                           ),
                           const SizedBox(width: 6),
-                          Icon(Icons.edit_rounded, color: isBlackRose ? AppColors.blackRose.withValues(alpha: 0.5) : AppColors.textTertiary, size: 16),
+                          Icon(
+                            Icons.edit_rounded,
+                            color: isBlackRose
+                                ? AppColors.blackRose.withValues(alpha: 0.5)
+                                : AppColors.textTertiary,
+                            size: 16,
+                          ),
                         ],
                       ),
                     ),
@@ -1197,7 +1255,10 @@ Enviado desde TORO
                     children: [
                       if (isBlackRose)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
                           margin: const EdgeInsets.only(right: 8),
                           decoration: BoxDecoration(
                             gradient: AppColors.blackRoseGradient,
@@ -1206,17 +1267,39 @@ Enviado desde TORO
                           child: const Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.diamond, color: Colors.white, size: 12),
+                              Icon(
+                                Icons.diamond,
+                                color: Colors.white,
+                                size: 12,
+                              ),
                               SizedBox(width: 4),
-                              Text('BLACK ROSE', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1)),
+                              Text(
+                                'BLACK ROSE',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 1,
+                                ),
+                              ),
                             ],
                           ),
                         ),
                       _buildStatusBadge(status),
                       const Spacer(),
-                      _buildTopActionBtn(Icons.map, 'Mapa', AppColors.success, _openLiveMap),
+                      _buildTopActionBtn(
+                        Icons.map,
+                        'Mapa',
+                        AppColors.success,
+                        _openLiveMap,
+                      ),
                       const SizedBox(width: 8),
-                      _buildTopActionBtn(Icons.person_add, 'Invitar', AppColors.primary, _navigateToInvite),
+                      _buildTopActionBtn(
+                        Icons.person_add,
+                        'Invitar',
+                        AppColors.primary,
+                        _navigateToInvite,
+                      ),
                     ],
                   ),
                 ],
@@ -1238,7 +1321,11 @@ Enviado desde TORO
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text(
           'Nombre del Evento',
-          style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w700),
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+          ),
         ),
         content: TextField(
           controller: controller,
@@ -1247,7 +1334,10 @@ Enviado desde TORO
           maxLength: 80,
           decoration: InputDecoration(
             hintText: 'Ej: Frida Turismo Y Transporte',
-            hintStyle: const TextStyle(color: AppColors.textTertiary, fontSize: 14),
+            hintStyle: const TextStyle(
+              color: AppColors.textTertiary,
+              fontSize: 14,
+            ),
             filled: true,
             fillColor: AppColors.background,
             border: OutlineInputBorder(
@@ -1260,7 +1350,10 @@ Enviado desde TORO
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('tourism_cancel'.tr(), style: const TextStyle(color: AppColors.textTertiary)),
+            child: Text(
+              'tourism_cancel'.tr(),
+              style: const TextStyle(color: AppColors.textTertiary),
+            ),
           ),
           TextButton(
             onPressed: () async {
@@ -1268,29 +1361,47 @@ Enviado desde TORO
               if (newName.isEmpty) return;
               Navigator.pop(ctx);
               try {
-                await _eventService.updateEvent(widget.eventId, {'event_name': newName});
+                await _eventService.updateEvent(widget.eventId, {
+                  'event_name': newName,
+                });
                 if (mounted) {
                   setState(() {
                     _event?['event_name'] = newName;
                   });
                   HapticService.success();
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('tourism_name_updated'.tr()), backgroundColor: AppColors.success),
+                    SnackBar(
+                      content: Text('tourism_name_updated'.tr()),
+                      backgroundColor: AppColors.success,
+                    ),
                   );
                 }
               } catch (e) {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('tourism_error_generic'.tr(namedArgs: {'error': '$e'})), backgroundColor: AppColors.error),
+                    SnackBar(
+                      content: Text(
+                        'tourism_error_generic'.tr(namedArgs: {'error': '$e'}),
+                      ),
+                      backgroundColor: AppColors.error,
+                    ),
                   );
                 }
               }
             },
             style: TextButton.styleFrom(
               backgroundColor: AppColors.primary.withValues(alpha: 0.15),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
-            child: Text('tourism_save'.tr(), style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
+            child: Text(
+              'tourism_save'.tr(),
+              style: const TextStyle(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),
@@ -1309,7 +1420,10 @@ Enviado desde TORO
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
           newValue == 'public' ? 'Hacer Público' : 'Hacer Privado',
-          style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w700),
+          style: const TextStyle(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w700,
+          ),
         ),
         content: Text(
           newValue == 'public'
@@ -1320,15 +1434,26 @@ Enviado desde TORO
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text('tourism_cancel'.tr(), style: const TextStyle(color: AppColors.textTertiary)),
+            child: Text(
+              'tourism_cancel'.tr(),
+              style: const TextStyle(color: AppColors.textTertiary),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(
               backgroundColor: AppColors.primary.withValues(alpha: 0.15),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
-            child: Text('tourism_confirm'.tr(), style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
+            child: Text(
+              'tourism_confirm'.tr(),
+              style: TextStyle(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),
@@ -1336,7 +1461,9 @@ Enviado desde TORO
 
     if (confirmed == true) {
       try {
-        await _eventService.updateEvent(widget.eventId, {'passenger_visibility': newValue});
+        await _eventService.updateEvent(widget.eventId, {
+          'passenger_visibility': newValue,
+        });
         if (mounted) {
           setState(() {
             _event?['passenger_visibility'] = newValue;
@@ -1344,7 +1471,9 @@ Enviado desde TORO
           HapticService.success();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('tourism_event_now_is'.tr(namedArgs: {'status': label})),
+              content: Text(
+                'tourism_event_now_is'.tr(namedArgs: {'status': label}),
+              ),
               backgroundColor: AppColors.success,
             ),
           );
@@ -1352,7 +1481,12 @@ Enviado desde TORO
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('tourism_error_generic'.tr(namedArgs: {'error': '$e'})), backgroundColor: AppColors.error),
+            SnackBar(
+              content: Text(
+                'tourism_error_generic'.tr(namedArgs: {'error': '$e'}),
+              ),
+              backgroundColor: AppColors.error,
+            ),
           );
         }
       }
@@ -1365,7 +1499,9 @@ Enviado desde TORO
     final label = newValue ? 'activado' : 'desactivado';
 
     try {
-      await _eventService.updateEvent(widget.eventId, {'chat_enabled_for_driver': newValue});
+      await _eventService.updateEvent(widget.eventId, {
+        'chat_enabled_for_driver': newValue,
+      });
       if (mounted) {
         setState(() {
           _event?['chat_enabled_for_driver'] = newValue;
@@ -1373,7 +1509,9 @@ Enviado desde TORO
         HapticService.success();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('tourism_driver_chat'.tr(namedArgs: {'status': label})),
+            content: Text(
+              'tourism_driver_chat'.tr(namedArgs: {'status': label}),
+            ),
             backgroundColor: newValue ? AppColors.success : AppColors.warning,
             behavior: SnackBarBehavior.floating,
           ),
@@ -1382,7 +1520,12 @@ Enviado desde TORO
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('tourism_error_generic'.tr(namedArgs: {'error': '$e'})), backgroundColor: AppColors.error),
+          SnackBar(
+            content: Text(
+              'tourism_error_generic'.tr(namedArgs: {'error': '$e'}),
+            ),
+            backgroundColor: AppColors.error,
+          ),
         );
       }
     }
@@ -1394,7 +1537,9 @@ Enviado desde TORO
     final label = newValue ? 'visible' : 'oculta';
 
     try {
-      await _eventService.updateEvent(widget.eventId, {'show_fare_to_riders': newValue});
+      await _eventService.updateEvent(widget.eventId, {
+        'show_fare_to_riders': newValue,
+      });
       if (mounted) {
         setState(() {
           _event?['show_fare_to_riders'] = newValue;
@@ -1402,7 +1547,9 @@ Enviado desde TORO
         HapticService.success();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('tourism_fare_status'.tr(namedArgs: {'status': label})),
+            content: Text(
+              'tourism_fare_status'.tr(namedArgs: {'status': label}),
+            ),
             backgroundColor: newValue ? AppColors.success : AppColors.warning,
             behavior: SnackBarBehavior.floating,
           ),
@@ -1411,7 +1558,12 @@ Enviado desde TORO
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('tourism_error_generic'.tr(namedArgs: {'error': '$e'})), backgroundColor: AppColors.error),
+          SnackBar(
+            content: Text(
+              'tourism_error_generic'.tr(namedArgs: {'error': '$e'}),
+            ),
+            backgroundColor: AppColors.error,
+          ),
         );
       }
     }
@@ -1436,10 +1588,7 @@ Enviado desde TORO
               color: color,
               shape: BoxShape.circle,
               boxShadow: [
-                BoxShadow(
-                  color: color.withValues(alpha: 0.5),
-                  blurRadius: 6,
-                ),
+                BoxShadow(color: color.withValues(alpha: 0.5), blurRadius: 6),
               ],
             ),
           ),
@@ -1551,9 +1700,11 @@ Enviado desde TORO
               const SizedBox(height: 12),
 
               // 4.1 Botón Finalizar Evento (visible solo cuando el evento está activo)
-              if (_event?['status'] == 'in_progress' || _event?['status'] == 'active')
+              if (_event?['status'] == 'in_progress' ||
+                  _event?['status'] == 'active')
                 _buildFinalizeEventButton(),
-              if (_event?['status'] == 'in_progress' || _event?['status'] == 'active')
+              if (_event?['status'] == 'in_progress' ||
+                  _event?['status'] == 'active')
                 const SizedBox(height: 12),
 
               // 4.5 Notificaciones: Emergencia + Anuncios
@@ -1600,7 +1751,8 @@ Enviado desde TORO
     final currentStatus = _event?['status'] as String? ?? '';
     final isInLimbo = hasDriver && !hasVehicle && currentStatus != 'draft';
     final bidVisibility = _event?['bid_visibility'] as String? ?? 'public';
-    final isInBroadcast = currentStatus == 'draft' && !hasDriver && bidVisibility == 'public';
+    final isInBroadcast =
+        currentStatus == 'draft' && !hasDriver && bidVisibility == 'public';
 
     String message;
     IconData icon;
@@ -1638,7 +1790,8 @@ Enviado desde TORO
         children: [
           Row(
             children: [
-              Icon(icon,
+              Icon(
+                icon,
                 color: isInBroadcast ? AppColors.success : AppColors.warning,
                 size: 24,
               ),
@@ -1660,7 +1813,10 @@ Enviado desde TORO
                     const SizedBox(height: 2),
                     Text(
                       message,
-                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ],
                 ),
@@ -1681,14 +1837,18 @@ Enviado desde TORO
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => OrganizerBiddingScreen(eventId: widget.eventId),
+                            builder: (_) =>
+                                OrganizerBiddingScreen(eventId: widget.eventId),
                           ),
                         ).then((_) => _loadData());
                       },
                       icon: const Icon(Icons.visibility, size: 16),
                       label: Text(
                         'event_history.view_bids'.tr(),
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.success,
@@ -1715,7 +1875,10 @@ Enviado desde TORO
                     icon: const Icon(Icons.cell_tower, size: 16),
                     label: Text(
                       'event_history.republish'.tr(),
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blue,
@@ -1739,7 +1902,9 @@ Enviado desde TORO
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => OrganizerBiddingScreen(eventId: widget.eventId),
+                                builder: (_) => OrganizerBiddingScreen(
+                                  eventId: widget.eventId,
+                                ),
                               ),
                             ).then((_) => _loadData());
                           },
@@ -1768,7 +1933,9 @@ Enviado desde TORO
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => OrganizerVehicleSelectionScreen(eventId: widget.eventId),
+                                builder: (_) => OrganizerVehicleSelectionScreen(
+                                  eventId: widget.eventId,
+                                ),
                               ),
                             ).then((_) => _loadData());
                           },
@@ -1804,14 +1971,18 @@ Enviado desde TORO
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => OrganizerBiddingScreen(eventId: widget.eventId),
+                            builder: (_) =>
+                                OrganizerBiddingScreen(eventId: widget.eventId),
                           ),
                         ).then((_) => _loadData());
                       },
                       icon: const Icon(Icons.gavel, size: 16),
                       label: Text(
                         'event_history.search_driver'.tr(),
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.gold,
@@ -1833,7 +2004,9 @@ Enviado desde TORO
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => OrganizerVehicleSelectionScreen(eventId: widget.eventId),
+                          builder: (_) => OrganizerVehicleSelectionScreen(
+                            eventId: widget.eventId,
+                          ),
                         ),
                       ).then((_) => _loadData());
                     },
@@ -1869,10 +2042,16 @@ Enviado desde TORO
           children: [
             const Icon(Icons.cell_tower, color: Colors.blue, size: 24),
             const SizedBox(width: 10),
-            Expanded(child: Text(
-              'event_history.republish_title'.tr(),
-              style: const TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w700),
-            )),
+            Expanded(
+              child: Text(
+                'event_history.republish_title'.tr(),
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
           ],
         ),
         content: Text(
@@ -1882,19 +2061,25 @@ Enviado desde TORO
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text('event_history.cancel'.tr(),
-              style: const TextStyle(color: AppColors.textTertiary)),
+            child: Text(
+              'event_history.cancel'.tr(),
+              style: const TextStyle(color: AppColors.textTertiary),
+            ),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.blue,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
               elevation: 0,
             ),
-            child: Text('event_history.republish'.tr(),
-              style: const TextStyle(fontWeight: FontWeight.w600)),
+            child: Text(
+              'event_history.republish'.tr(),
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
           ),
         ],
       ),
@@ -1938,9 +2123,17 @@ Enviado desde TORO
     return Row(
       children: [
         // Cupo: confirmed/max
-        _buildStatChip(Icons.event_seat, '$confirmed${maxPassengers > 0 ? '/$maxPassengers' : ''}', AppColors.success),
+        _buildStatChip(
+          Icons.event_seat,
+          '$confirmed${maxPassengers > 0 ? '/$maxPassengers' : ''}',
+          AppColors.success,
+        ),
         const SizedBox(width: 6),
-        _buildStatChip(Icons.directions_bus, '${checkedIn + boarded}', Colors.orange),
+        _buildStatChip(
+          Icons.directions_bus,
+          '${checkedIn + boarded}',
+          Colors.orange,
+        ),
         const SizedBox(width: 6),
         _buildStatChip(Icons.gps_fixed, '$gpsActive', AppColors.primary),
         if (pending > 0) ...[
@@ -1965,7 +2158,11 @@ Enviado desde TORO
           const SizedBox(width: 4),
           Text(
             value,
-            style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.w700),
+            style: TextStyle(
+              color: color,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ],
       ),
@@ -1998,7 +2195,8 @@ Enviado desde TORO
       final startParts = startTime.split(':');
       final endParts = endTime.split(':');
       if (startParts.length >= 2 && endParts.length >= 2) {
-        final startMinutes = int.parse(startParts[0]) * 60 + int.parse(startParts[1]);
+        final startMinutes =
+            int.parse(startParts[0]) * 60 + int.parse(startParts[1]);
         final endMinutes = int.parse(endParts[0]) * 60 + int.parse(endParts[1]);
         final durationMinutes = endMinutes - startMinutes;
         if (durationMinutes > 0) {
@@ -2023,22 +2221,41 @@ Enviado desde TORO
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
             child: Row(
               children: [
-                Icon(Icons.calendar_today, size: 13, color: AppColors.textTertiary),
+                Icon(
+                  Icons.calendar_today,
+                  size: 13,
+                  color: AppColors.textTertiary,
+                ),
                 const SizedBox(width: 5),
                 Text(
                   eventDate != null ? _formatDateShort(eventDate) : '-',
-                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w500),
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
                 const SizedBox(width: 12),
-                Icon(Icons.access_time, size: 13, color: AppColors.textTertiary),
+                Icon(
+                  Icons.access_time,
+                  size: 13,
+                  color: AppColors.textTertiary,
+                ),
                 const SizedBox(width: 5),
                 Text(
                   startTime?.substring(0, 5) ?? '-',
-                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w500),
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
                 const Spacer(),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
@@ -2046,18 +2263,34 @@ Enviado desde TORO
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.straighten, size: 12, color: AppColors.primary),
+                      Icon(
+                        Icons.straighten,
+                        size: 12,
+                        color: AppColors.primary,
+                      ),
                       const SizedBox(width: 4),
                       Text(
-                        '${_fmtPrice(distanceKm)} km',
-                        style: TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w600),
+                        formatDistance(distanceKm, decimals: 0),
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       const SizedBox(width: 8),
-                      Icon(Icons.timer_outlined, size: 12, color: AppColors.primary),
+                      Icon(
+                        Icons.timer_outlined,
+                        size: 12,
+                        color: AppColors.primary,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         durationStr,
-                        style: TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w600),
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ],
                   ),
@@ -2082,7 +2315,11 @@ Enviado desde TORO
                           color: AppColors.success,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.trip_origin, color: Colors.white, size: 14),
+                        child: const Icon(
+                          Icons.trip_origin,
+                          color: Colors.white,
+                          size: 14,
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -2091,16 +2328,25 @@ Enviado desde TORO
                           children: [
                             Text(
                               origin,
-                              style: const TextStyle(color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.w600),
+                              style: const TextStyle(
+                                color: AppColors.textPrimary,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                              ),
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                             ),
-                            if (itinerary.first['address'] != null && (itinerary.first['address'] as String).isNotEmpty)
+                            if (itinerary.first['address'] != null &&
+                                (itinerary.first['address'] as String)
+                                    .isNotEmpty)
                               Padding(
                                 padding: const EdgeInsets.only(top: 2),
                                 child: Text(
                                   itinerary.first['address'] as String,
-                                  style: TextStyle(color: AppColors.textTertiary, fontSize: 11),
+                                  style: TextStyle(
+                                    color: AppColors.textTertiary,
+                                    fontSize: 11,
+                                  ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -2116,7 +2362,11 @@ Enviado desde TORO
                             color: AppColors.primary.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: const Icon(Icons.edit, color: AppColors.primary, size: 16),
+                          child: const Icon(
+                            Icons.edit,
+                            color: AppColors.primary,
+                            size: 16,
+                          ),
                         ),
                       ),
                     ],
@@ -2124,15 +2374,23 @@ Enviado desde TORO
                   // Expandable intermediate stops
                   if (stopsCount > 0) ...[
                     GestureDetector(
-                      onTap: () => setState(() => _isStopsExpanded = !_isStopsExpanded),
+                      onTap: () =>
+                          setState(() => _isStopsExpanded = !_isStopsExpanded),
                       child: Padding(
                         padding: const EdgeInsets.only(left: 10),
                         child: Row(
                           children: [
-                            Container(width: 2, height: _isStopsExpanded ? 6 : 14, color: AppColors.border),
+                            Container(
+                              width: 2,
+                              height: _isStopsExpanded ? 6 : 14,
+                              color: AppColors.border,
+                            ),
                             const SizedBox(width: 18),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
                               decoration: BoxDecoration(
                                 color: AppColors.primary.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(6),
@@ -2142,11 +2400,17 @@ Enviado desde TORO
                                 children: [
                                   Text(
                                     '$stopsCount ${stopsCount == 1 ? 'siguiente parada' : 'paradas'}',
-                                    style: const TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.w600),
+                                    style: const TextStyle(
+                                      color: AppColors.primary,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
                                   const SizedBox(width: 4),
                                   Icon(
-                                    _isStopsExpanded ? Icons.expand_less : Icons.expand_more,
+                                    _isStopsExpanded
+                                        ? Icons.expand_less
+                                        : Icons.expand_more,
                                     size: 14,
                                     color: AppColors.primary,
                                   ),
@@ -2158,102 +2422,176 @@ Enviado desde TORO
                       ),
                     ),
                     if (_isStopsExpanded)
-                      ...itinerary.sublist(1, itinerary.length - 1).asMap().entries.map((entry) {
-                        final stop = entry.value;
-                        final realIndex = entry.key + 1; // offset because we skipped origin
-                        final stopName = stop['name'] as String? ?? 'Parada ${entry.key + 1}';
-                        final stopAddress = stop['address'] as String? ?? '';
-                        final dur = (stop['duration_minutes'] ?? stop['durationMinutes'] ?? 0) as int;
-                        return Padding(
-                          padding: const EdgeInsets.only(left: 10),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Column(
+                      ...itinerary
+                          .sublist(1, itinerary.length - 1)
+                          .asMap()
+                          .entries
+                          .map((entry) {
+                            final stop = entry.value;
+                            final realIndex =
+                                entry.key +
+                                1; // offset because we skipped origin
+                            final stopName =
+                                stop['name'] as String? ??
+                                'Parada ${entry.key + 1}';
+                            final stopAddress =
+                                stop['address'] as String? ?? '';
+                            final dur =
+                                (stop['duration_minutes'] ??
+                                        stop['durationMinutes'] ??
+                                        0)
+                                    as int;
+                            return Padding(
+                              padding: const EdgeInsets.only(left: 10),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Container(width: 2, height: 6, color: AppColors.border),
-                                  Container(
-                                    width: 20,
-                                    height: 20,
-                                    decoration: BoxDecoration(
-                                      color: AppColors.primary.withValues(alpha: 0.8),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Center(
-                                      child: Text(
-                                        '${entry.key + 2}',
-                                        style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
-                                      ),
-                                    ),
-                                  ),
-                                  Container(width: 2, height: 6, color: AppColors.border),
-                                ],
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Padding(
-                                  padding: const EdgeInsets.only(top: 2),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                  Column(
                                     children: [
-                                      Text(
-                                        stopName,
-                                        style: const TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w500),
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
+                                      Container(
+                                        width: 2,
+                                        height: 6,
+                                        color: AppColors.border,
                                       ),
-                                      if (stopAddress.isNotEmpty)
-                                        Text(stopAddress, style: TextStyle(color: AppColors.textTertiary, fontSize: 11), maxLines: 1, overflow: TextOverflow.ellipsis),
-                                      if (dur > 0)
-                                        Padding(
-                                          padding: const EdgeInsets.only(top: 2),
-                                          child: Text('$dur min parada', style: TextStyle(color: AppColors.primary.withValues(alpha: 0.7), fontSize: 11)),
+                                      Container(
+                                        width: 20,
+                                        height: 20,
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primary.withValues(
+                                            alpha: 0.8,
+                                          ),
+                                          shape: BoxShape.circle,
                                         ),
+                                        child: Center(
+                                          child: Text(
+                                            '${entry.key + 2}',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      Container(
+                                        width: 2,
+                                        height: 6,
+                                        color: AppColors.border,
+                                      ),
                                     ],
                                   ),
-                                ),
-                              ),
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  GestureDetector(
-                                    onTap: () => _showEditStopDialog(realIndex),
-                                    child: Container(
-                                      padding: const EdgeInsets.all(5),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.primary.withValues(alpha: 0.1),
-                                        borderRadius: BorderRadius.circular(6),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(top: 2),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            stopName,
+                                            style: const TextStyle(
+                                              color: AppColors.textPrimary,
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          if (stopAddress.isNotEmpty)
+                                            Text(
+                                              stopAddress,
+                                              style: TextStyle(
+                                                color: AppColors.textTertiary,
+                                                fontSize: 11,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          if (dur > 0)
+                                            Padding(
+                                              padding: const EdgeInsets.only(
+                                                top: 2,
+                                              ),
+                                              child: Text(
+                                                '$dur min parada',
+                                                style: TextStyle(
+                                                  color: AppColors.primary
+                                                      .withValues(alpha: 0.7),
+                                                  fontSize: 11,
+                                                ),
+                                              ),
+                                            ),
+                                        ],
                                       ),
-                                      child: const Icon(Icons.edit, color: AppColors.primary, size: 14),
                                     ),
                                   ),
-                                  const SizedBox(width: 6),
-                                  GestureDetector(
-                                    onTap: () => _removeStop(realIndex),
-                                    child: Container(
-                                      padding: const EdgeInsets.all(5),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.error.withValues(alpha: 0.1),
-                                        borderRadius: BorderRadius.circular(6),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      GestureDetector(
+                                        onTap: () =>
+                                            _showEditStopDialog(realIndex),
+                                        child: Container(
+                                          padding: const EdgeInsets.all(5),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.primary.withValues(
+                                              alpha: 0.1,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              6,
+                                            ),
+                                          ),
+                                          child: const Icon(
+                                            Icons.edit,
+                                            color: AppColors.primary,
+                                            size: 14,
+                                          ),
+                                        ),
                                       ),
-                                      child: const Icon(Icons.delete_outline, color: AppColors.error, size: 14),
-                                    ),
+                                      const SizedBox(width: 6),
+                                      GestureDetector(
+                                        onTap: () => _removeStop(realIndex),
+                                        child: Container(
+                                          padding: const EdgeInsets.all(5),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.error.withValues(
+                                              alpha: 0.1,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              6,
+                                            ),
+                                          ),
+                                          child: const Icon(
+                                            Icons.delete_outline,
+                                            color: AppColors.error,
+                                            size: 14,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
-                            ],
-                          ),
-                        );
-                      }),
+                            );
+                          }),
                     if (!_isStopsExpanded)
                       Padding(
                         padding: const EdgeInsets.only(left: 10),
-                        child: Container(width: 2, height: 6, color: AppColors.border),
+                        child: Container(
+                          width: 2,
+                          height: 6,
+                          color: AppColors.border,
+                        ),
                       ),
                   ] else ...[
                     Padding(
                       padding: const EdgeInsets.only(left: 10),
-                      child: Container(width: 2, height: 14, color: AppColors.border),
+                      child: Container(
+                        width: 2,
+                        height: 14,
+                        color: AppColors.border,
+                      ),
                     ),
                   ],
                   // + Agregar parada button (inserts before destination)
@@ -2262,25 +2600,45 @@ Enviado desde TORO
                       padding: const EdgeInsets.only(left: 10),
                       child: Row(
                         children: [
-                          Container(width: 2, height: 6, color: AppColors.border),
+                          Container(
+                            width: 2,
+                            height: 6,
+                            color: AppColors.border,
+                          ),
                           const SizedBox(width: 12),
                           GestureDetector(
-                            onTap: () => _showAddStopDialog(itinerary.length - 1),
+                            onTap: () =>
+                                _showAddStopDialog(itinerary.length - 1),
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 5,
+                              ),
                               decoration: BoxDecoration(
                                 color: AppColors.success.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+                                border: Border.all(
+                                  color: AppColors.success.withValues(
+                                    alpha: 0.3,
+                                  ),
+                                ),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.add_location_alt, color: AppColors.success, size: 14),
+                                  Icon(
+                                    Icons.add_location_alt,
+                                    color: AppColors.success,
+                                    size: 14,
+                                  ),
                                   const SizedBox(width: 4),
                                   Text(
                                     'Agregar parada',
-                                    style: TextStyle(color: AppColors.success, fontSize: 11, fontWeight: FontWeight.w600),
+                                    style: TextStyle(
+                                      color: AppColors.success,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -2300,7 +2658,11 @@ Enviado desde TORO
                             color: AppColors.error,
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(Icons.flag, color: Colors.white, size: 14),
+                          child: const Icon(
+                            Icons.flag,
+                            color: Colors.white,
+                            size: 14,
+                          ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -2309,36 +2671,53 @@ Enviado desde TORO
                             children: [
                               Text(
                                 destination,
-                                style: const TextStyle(color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.w600),
+                                style: const TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                ),
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                              if (itinerary.last['address'] != null && (itinerary.last['address'] as String).isNotEmpty)
+                              if (itinerary.last['address'] != null &&
+                                  (itinerary.last['address'] as String)
+                                      .isNotEmpty)
                                 Padding(
                                   padding: const EdgeInsets.only(top: 2),
                                   child: Text(
                                     itinerary.last['address'] as String,
-                                    style: TextStyle(color: AppColors.textTertiary, fontSize: 11),
+                                    style: TextStyle(
+                                      color: AppColors.textTertiary,
+                                      fontSize: 11,
+                                    ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                               Text(
                                 'Última parada',
-                                style: TextStyle(color: AppColors.error.withValues(alpha: 0.7), fontSize: 11),
+                                style: TextStyle(
+                                  color: AppColors.error.withValues(alpha: 0.7),
+                                  fontSize: 11,
+                                ),
                               ),
                             ],
                           ),
                         ),
                         GestureDetector(
-                          onTap: () => _showEditStopDialog(itinerary.length - 1),
+                          onTap: () =>
+                              _showEditStopDialog(itinerary.length - 1),
                           child: Container(
                             padding: const EdgeInsets.all(6),
                             decoration: BoxDecoration(
                               color: AppColors.primary.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: const Icon(Icons.edit, color: AppColors.primary, size: 16),
+                            child: const Icon(
+                              Icons.edit,
+                              color: AppColors.primary,
+                              size: 16,
+                            ),
                           ),
                         ),
                       ],
@@ -2362,7 +2741,12 @@ Enviado desde TORO
     );
   }
 
-  Widget _buildTopActionBtn(IconData icon, String label, Color color, VoidCallback onTap) {
+  Widget _buildTopActionBtn(
+    IconData icon,
+    String label,
+    Color color,
+    VoidCallback onTap,
+  ) {
     return GestureDetector(
       onTap: () {
         HapticService.lightImpact();
@@ -2393,7 +2777,12 @@ Enviado desde TORO
     );
   }
 
-  Widget _buildCompactActionBtn(IconData icon, String label, Color color, VoidCallback onTap) {
+  Widget _buildCompactActionBtn(
+    IconData icon,
+    String label,
+    Color color,
+    VoidCallback onTap,
+  ) {
     return GestureDetector(
       onTap: () {
         HapticService.lightImpact();
@@ -2452,15 +2841,23 @@ Enviado desde TORO
   /// [stopIndex] is the 0-based index within the itinerary array.
   void _showEditStopDialog(int stopIndex) {
     final itinerary = List<Map<String, dynamic>>.from(
-      (_event?['itinerary'] as List?)?.map((e) => Map<String, dynamic>.from(e)) ?? [],
+      (_event?['itinerary'] as List?)?.map(
+            (e) => Map<String, dynamic>.from(e),
+          ) ??
+          [],
     );
     if (stopIndex < 0 || stopIndex >= itinerary.length) return;
 
     final stop = Map<String, dynamic>.from(itinerary[stopIndex]);
-    final nameController = TextEditingController(text: stop['name'] as String? ?? '');
-    final addressController = TextEditingController(text: stop['address'] as String? ?? '');
+    final nameController = TextEditingController(
+      text: stop['name'] as String? ?? '',
+    );
+    final addressController = TextEditingController(
+      text: stop['address'] as String? ?? '',
+    );
     final durationController = TextEditingController(
-      text: (stop['duration_minutes'] ?? stop['durationMinutes'] ?? 0).toString(),
+      text: (stop['duration_minutes'] ?? stop['durationMinutes'] ?? 0)
+          .toString(),
     );
     double? selectedLat = (stop['lat'] as num?)?.toDouble();
     double? selectedLng = (stop['lng'] as num?)?.toDouble();
@@ -2479,8 +2876,13 @@ Enviado desde TORO
     }
 
     final isOrigin = stopIndex == 0;
-    final isDestination = itinerary.length > 1 && stopIndex == itinerary.length - 1;
-    final label = isOrigin ? 'Origen' : isDestination ? 'Destino final' : 'Parada ${stopIndex + 1}';
+    final isDestination =
+        itinerary.length > 1 && stopIndex == itinerary.length - 1;
+    final label = isOrigin
+        ? 'Origen'
+        : isDestination
+        ? 'Destino final'
+        : 'Parada ${stopIndex + 1}';
 
     HapticService.lightImpact();
 
@@ -2497,7 +2899,9 @@ Enviado desde TORO
             return Padding(
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(context).viewInsets.bottom,
-                left: 20, right: 20, top: 16,
+                left: 20,
+                right: 20,
+                top: 16,
               ),
               child: SingleChildScrollView(
                 child: Column(
@@ -2507,7 +2911,8 @@ Enviado desde TORO
                     // Handle bar
                     Center(
                       child: Container(
-                        width: 40, height: 4,
+                        width: 40,
+                        height: 4,
                         decoration: BoxDecoration(
                           color: AppColors.border,
                           borderRadius: BorderRadius.circular(2),
@@ -2520,31 +2925,55 @@ Enviado desde TORO
                     Row(
                       children: [
                         Container(
-                          width: 28, height: 28,
+                          width: 28,
+                          height: 28,
                           decoration: BoxDecoration(
-                            color: isOrigin ? AppColors.success : isDestination ? AppColors.error : AppColors.primary,
+                            color: isOrigin
+                                ? AppColors.success
+                                : isDestination
+                                ? AppColors.error
+                                : AppColors.primary,
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
-                            isOrigin ? Icons.trip_origin : isDestination ? Icons.flag : Icons.location_on,
-                            color: Colors.white, size: 14,
+                            isOrigin
+                                ? Icons.trip_origin
+                                : isDestination
+                                ? Icons.flag
+                                : Icons.location_on,
+                            color: Colors.white,
+                            size: 14,
                           ),
                         ),
                         const SizedBox(width: 10),
                         Text(
                           'Editar $label',
-                          style: const TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w700),
+                          style: const TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 20),
 
                     // Name field
-                    Text('tourism_stop_name'.tr(), style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
+                    Text(
+                      'tourism_stop_name'.tr(),
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     const SizedBox(height: 6),
                     TextField(
                       controller: nameController,
-                      style: const TextStyle(color: AppColors.textPrimary, fontSize: 15),
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 15,
+                      ),
                       decoration: InputDecoration(
                         hintText: 'ej. Terminal Mexicali',
                         hintStyle: TextStyle(color: AppColors.textTertiary),
@@ -2560,20 +2989,40 @@ Enviado desde TORO
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                          borderSide: const BorderSide(
+                            color: AppColors.primary,
+                            width: 1.5,
+                          ),
                         ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                        prefixIcon: const Icon(Icons.label_outline, color: AppColors.primary, size: 18),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
+                        prefixIcon: const Icon(
+                          Icons.label_outline,
+                          color: AppColors.primary,
+                          size: 18,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
 
                     // Address search with Mapbox
-                    Text('tourism_real_address'.tr(), style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
+                    Text(
+                      'tourism_real_address'.tr(),
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     const SizedBox(height: 6),
                     TextField(
                       controller: addressController,
-                      style: const TextStyle(color: AppColors.textPrimary, fontSize: 15),
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 15,
+                      ),
                       decoration: InputDecoration(
                         hintText: 'Buscar dirección...',
                         hintStyle: TextStyle(color: AppColors.textTertiary),
@@ -2589,50 +3038,74 @@ Enviado desde TORO
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                          borderSide: const BorderSide(
+                            color: AppColors.primary,
+                            width: 1.5,
+                          ),
                         ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                        prefixIcon: const Icon(Icons.search, color: AppColors.primary, size: 18),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
+                        prefixIcon: const Icon(
+                          Icons.search,
+                          color: AppColors.primary,
+                          size: 18,
+                        ),
                         suffixIcon: selectedLat != null
-                            ? const Icon(Icons.check_circle, color: AppColors.success, size: 18)
+                            ? const Icon(
+                                Icons.check_circle,
+                                color: AppColors.success,
+                                size: 18,
+                              )
                             : null,
                       ),
                       onChanged: (query) {
                         debounce?.cancel();
-                        debounce = Timer(const Duration(milliseconds: 400), () async {
-                          if (query.trim().length < 3) {
-                            setModalState(() => suggestions = []);
-                            return;
-                          }
-                          try {
-                            // Nominatim (OpenStreetMap) - better at understanding state/city context
-                            final url = Uri.parse(
-                              'https://nominatim.openstreetmap.org/search'
-                              '?q=${Uri.encodeComponent(query)}'
-                              '&format=jsonv2'
-                              '&countrycodes=mx,us'
-                              '&limit=5'
-                              '&addressdetails=1'
-                              '&accept-language=es',
-                            );
-                            final response = await http.get(url, headers: {'User-Agent': 'TORORide/1.0'});
-                            if (response.statusCode == 200) {
-                              final results = json.decode(response.body) as List;
-                              setModalState(() {
-                                suggestions = results.map((r) {
-                                  final name = (r['name'] as String?) ?? '';
-                                  final displayName = r['display_name'] as String;
-                                  return {
-                                    'place_name': displayName,
-                                    'text': name.isNotEmpty ? name : displayName.split(',').first.trim(),
-                                    'lat': double.parse(r['lat'].toString()),
-                                    'lng': double.parse(r['lon'].toString()),
-                                  };
-                                }).toList();
-                              });
+                        debounce = Timer(
+                          const Duration(milliseconds: 400),
+                          () async {
+                            if (query.trim().length < 3) {
+                              setModalState(() => suggestions = []);
+                              return;
                             }
-                          } catch (_) {}
-                        });
+                            try {
+                              // Nominatim (OpenStreetMap) - better at understanding state/city context
+                              final url = Uri.parse(
+                                'https://nominatim.openstreetmap.org/search'
+                                '?q=${Uri.encodeComponent(query)}'
+                                '&format=jsonv2'
+                                '&countrycodes=mx,us'
+                                '&limit=5'
+                                '&addressdetails=1'
+                                '&accept-language=es',
+                              );
+                              final response = await http.get(
+                                url,
+                                headers: {'User-Agent': 'TORORide/1.0'},
+                              );
+                              if (response.statusCode == 200) {
+                                final results =
+                                    json.decode(response.body) as List;
+                                setModalState(() {
+                                  suggestions = results.map((r) {
+                                    final name = (r['name'] as String?) ?? '';
+                                    final displayName =
+                                        r['display_name'] as String;
+                                    return {
+                                      'place_name': displayName,
+                                      'text': name.isNotEmpty
+                                          ? name
+                                          : displayName.split(',').first.trim(),
+                                      'lat': double.parse(r['lat'].toString()),
+                                      'lng': double.parse(r['lon'].toString()),
+                                    };
+                                  }).toList();
+                                });
+                              }
+                            } catch (_) {}
+                          },
+                        );
                       },
                     ),
 
@@ -2650,25 +3123,40 @@ Enviado desde TORO
                           shrinkWrap: true,
                           padding: EdgeInsets.zero,
                           itemCount: suggestions.length,
-                          separatorBuilder: (_, __) => Divider(height: 1, color: AppColors.border.withValues(alpha: 0.3)),
+                          separatorBuilder: (_, __) => Divider(
+                            height: 1,
+                            color: AppColors.border.withValues(alpha: 0.3),
+                          ),
                           itemBuilder: (context, index) {
                             final s = suggestions[index];
                             return ListTile(
                               dense: true,
-                              leading: const Icon(Icons.location_on, color: AppColors.primary, size: 18),
+                              leading: const Icon(
+                                Icons.location_on,
+                                color: AppColors.primary,
+                                size: 18,
+                              ),
                               title: Text(
                                 s['text'] as String,
-                                style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
+                                style: const TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                               subtitle: Text(
                                 s['place_name'] as String,
-                                style: TextStyle(color: AppColors.textTertiary, fontSize: 11),
+                                style: TextStyle(
+                                  color: AppColors.textTertiary,
+                                  fontSize: 11,
+                                ),
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                               ),
                               onTap: () {
                                 setModalState(() {
-                                  addressController.text = s['place_name'] as String;
+                                  addressController.text =
+                                      s['place_name'] as String;
                                   selectedLat = s['lat'] as double;
                                   selectedLng = s['lng'] as double;
                                   if (nameController.text.isEmpty) {
@@ -2693,7 +3181,14 @@ Enviado desde TORO
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('tourism_estimated_time'.tr(), style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
+                              Text(
+                                'tourism_estimated_time'.tr(),
+                                style: const TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                               const SizedBox(height: 6),
                               GestureDetector(
                                 onTap: () async {
@@ -2707,7 +3202,10 @@ Enviado desde TORO
                                   }
                                 },
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 12,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: AppColors.surface,
                                     borderRadius: BorderRadius.circular(12),
@@ -2715,14 +3213,20 @@ Enviado desde TORO
                                   ),
                                   child: Row(
                                     children: [
-                                      const Icon(Icons.schedule, color: AppColors.primary, size: 18),
+                                      const Icon(
+                                        Icons.schedule,
+                                        color: AppColors.primary,
+                                        size: 18,
+                                      ),
                                       const SizedBox(width: 8),
                                       Text(
                                         selectedTime != null
                                             ? '${selectedTime!.hour.toString().padLeft(2, '0')}:${selectedTime!.minute.toString().padLeft(2, '0')}'
                                             : 'Sin hora',
                                         style: TextStyle(
-                                          color: selectedTime != null ? AppColors.textPrimary : AppColors.textTertiary,
+                                          color: selectedTime != null
+                                              ? AppColors.textPrimary
+                                              : AppColors.textTertiary,
                                           fontSize: 14,
                                         ),
                                       ),
@@ -2739,22 +3243,57 @@ Enviado desde TORO
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('tourism_duration_min'.tr(), style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
+                              Text(
+                                'tourism_duration_min'.tr(),
+                                style: const TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                               const SizedBox(height: 6),
                               TextField(
                                 controller: durationController,
                                 keyboardType: TextInputType.number,
-                                style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+                                style: const TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontSize: 14,
+                                ),
                                 decoration: InputDecoration(
                                   hintText: '0',
-                                  hintStyle: TextStyle(color: AppColors.textTertiary),
+                                  hintStyle: TextStyle(
+                                    color: AppColors.textTertiary,
+                                  ),
                                   filled: true,
                                   fillColor: AppColors.surface,
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.border)),
-                                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.border)),
-                                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                  prefixIcon: const Icon(Icons.timer_outlined, color: AppColors.primary, size: 18),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(
+                                      color: AppColors.border,
+                                    ),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(
+                                      color: AppColors.border,
+                                    ),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: const BorderSide(
+                                      color: AppColors.primary,
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 12,
+                                  ),
+                                  prefixIcon: const Icon(
+                                    Icons.timer_outlined,
+                                    color: AppColors.primary,
+                                    size: 18,
+                                  ),
                                 ),
                               ),
                             ],
@@ -2770,29 +3309,47 @@ Enviado desde TORO
                       width: double.infinity,
                       height: 48,
                       child: ElevatedButton.icon(
-                        onPressed: isSaving ? null : () async {
-                          if (nameController.text.trim().isEmpty) return;
-                          setModalState(() => isSaving = true);
-                          await _updateSingleStop(
-                            stopIndex: stopIndex,
-                            name: nameController.text.trim(),
-                            address: addressController.text.trim(),
-                            lat: selectedLat,
-                            lng: selectedLng,
-                            durationMinutes: int.tryParse(durationController.text) ?? 0,
-                            scheduledTime: selectedTime,
-                          );
-                          if (mounted) Navigator.pop(context);
-                        },
+                        onPressed: isSaving
+                            ? null
+                            : () async {
+                                if (nameController.text.trim().isEmpty) return;
+                                setModalState(() => isSaving = true);
+                                await _updateSingleStop(
+                                  stopIndex: stopIndex,
+                                  name: nameController.text.trim(),
+                                  address: addressController.text.trim(),
+                                  lat: selectedLat,
+                                  lng: selectedLng,
+                                  durationMinutes:
+                                      int.tryParse(durationController.text) ??
+                                      0,
+                                  scheduledTime: selectedTime,
+                                );
+                                if (mounted) Navigator.pop(context);
+                              },
                         icon: isSaving
-                            ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
                             : const Icon(Icons.save, size: 18),
-                        label: Text(isSaving ? 'Guardando...' : 'Guardar cambios'),
+                        label: Text(
+                          isSaving ? 'Guardando...' : 'Guardar cambios',
+                        ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          textStyle: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                          ),
                         ),
                       ),
                     ),
@@ -2819,7 +3376,10 @@ Enviado desde TORO
     TimeOfDay? scheduledTime,
   }) async {
     final itinerary = List<Map<String, dynamic>>.from(
-      (_event?['itinerary'] as List?)?.map((e) => Map<String, dynamic>.from(e)) ?? [],
+      (_event?['itinerary'] as List?)?.map(
+            (e) => Map<String, dynamic>.from(e),
+          ) ??
+          [],
     );
     if (stopIndex < 0 || stopIndex >= itinerary.length) return;
 
@@ -2847,7 +3407,9 @@ Enviado desde TORO
         scheduledTime.hour,
         scheduledTime.minute,
       );
-      itinerary[stopIndex]['scheduled_time'] = scheduled.toUtc().toIso8601String();
+      itinerary[stopIndex]['scheduled_time'] = scheduled
+          .toUtc()
+          .toIso8601String();
     }
 
     try {
@@ -2870,7 +3432,11 @@ Enviado desde TORO
         title: 'Dirección actualizada',
         body: 'Se actualizó la parada: $name',
         type: 'tourism_event_updated',
-        extraData: {'change': 'stop_address', 'stop_name': name, 'stop_index': stopIndex},
+        extraData: {
+          'change': 'stop_address',
+          'stop_name': name,
+          'stop_index': stopIndex,
+        },
       );
 
       HapticService.success();
@@ -2912,7 +3478,9 @@ Enviado desde TORO
             return Padding(
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(context).viewInsets.bottom,
-                left: 20, right: 20, top: 16,
+                left: 20,
+                right: 20,
+                top: 16,
               ),
               child: SingleChildScrollView(
                 child: Column(
@@ -2921,92 +3489,184 @@ Enviado desde TORO
                   children: [
                     Center(
                       child: Container(
-                        width: 40, height: 4,
-                        decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)),
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: AppColors.border,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
                     Row(
                       children: [
                         Container(
-                          width: 28, height: 28,
-                          decoration: const BoxDecoration(color: AppColors.success, shape: BoxShape.circle),
-                          child: const Icon(Icons.add_location_alt, color: Colors.white, size: 14),
+                          width: 28,
+                          height: 28,
+                          decoration: const BoxDecoration(
+                            color: AppColors.success,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.add_location_alt,
+                            color: Colors.white,
+                            size: 14,
+                          ),
                         ),
                         const SizedBox(width: 10),
                         const Text(
                           'Agregar Parada',
-                          style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w700),
+                          style: TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 20),
                     // Name field
-                    Text('tourism_stop_name'.tr(), style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
+                    Text(
+                      'tourism_stop_name'.tr(),
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     const SizedBox(height: 6),
                     TextField(
                       controller: nameController,
-                      style: const TextStyle(color: AppColors.textPrimary, fontSize: 15),
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 15,
+                      ),
                       decoration: InputDecoration(
                         hintText: 'ej. Terminal Compostela',
                         hintStyle: TextStyle(color: AppColors.textTertiary),
-                        filled: true, fillColor: AppColors.surface,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.border)),
-                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.border)),
-                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                        prefixIcon: const Icon(Icons.label_outline, color: AppColors.primary, size: 18),
+                        filled: true,
+                        fillColor: AppColors.surface,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: AppColors.border),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: AppColors.border),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: AppColors.primary,
+                            width: 1.5,
+                          ),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
+                        prefixIcon: const Icon(
+                          Icons.label_outline,
+                          color: AppColors.primary,
+                          size: 18,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
                     // Address search
-                    Text('tourism_real_address'.tr(), style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
+                    Text(
+                      'tourism_real_address'.tr(),
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     const SizedBox(height: 6),
                     TextField(
                       controller: addressController,
-                      style: const TextStyle(color: AppColors.textPrimary, fontSize: 15),
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 15,
+                      ),
                       decoration: InputDecoration(
                         hintText: 'Buscar dirección...',
                         hintStyle: TextStyle(color: AppColors.textTertiary),
-                        filled: true, fillColor: AppColors.surface,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.border)),
-                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.border)),
-                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                        prefixIcon: const Icon(Icons.search, color: AppColors.primary, size: 18),
-                        suffixIcon: selectedLat != null ? const Icon(Icons.check_circle, color: AppColors.success, size: 18) : null,
+                        filled: true,
+                        fillColor: AppColors.surface,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: AppColors.border),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: AppColors.border),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: AppColors.primary,
+                            width: 1.5,
+                          ),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
+                        prefixIcon: const Icon(
+                          Icons.search,
+                          color: AppColors.primary,
+                          size: 18,
+                        ),
+                        suffixIcon: selectedLat != null
+                            ? const Icon(
+                                Icons.check_circle,
+                                color: AppColors.success,
+                                size: 18,
+                              )
+                            : null,
                       ),
                       onChanged: (query) {
                         debounce?.cancel();
-                        debounce = Timer(const Duration(milliseconds: 400), () async {
-                          if (query.trim().length < 3) {
-                            setModalState(() => suggestions = []);
-                            return;
-                          }
-                          try {
-                            final url = Uri.parse(
-                              'https://nominatim.openstreetmap.org/search'
-                              '?q=${Uri.encodeComponent(query)}'
-                              '&format=jsonv2&countrycodes=mx,us&limit=5&addressdetails=1&accept-language=es',
-                            );
-                            final response = await http.get(url, headers: {'User-Agent': 'TORORide/1.0'});
-                            if (response.statusCode == 200) {
-                              final results = json.decode(response.body) as List;
-                              setModalState(() {
-                                suggestions = results.map((r) {
-                                  final name = (r['name'] as String?) ?? '';
-                                  final displayName = r['display_name'] as String;
-                                  return {
-                                    'place_name': displayName,
-                                    'text': name.isNotEmpty ? name : displayName.split(',').first.trim(),
-                                    'lat': double.parse(r['lat'].toString()),
-                                    'lng': double.parse(r['lon'].toString()),
-                                  };
-                                }).toList();
-                              });
+                        debounce = Timer(
+                          const Duration(milliseconds: 400),
+                          () async {
+                            if (query.trim().length < 3) {
+                              setModalState(() => suggestions = []);
+                              return;
                             }
-                          } catch (_) {}
-                        });
+                            try {
+                              final url = Uri.parse(
+                                'https://nominatim.openstreetmap.org/search'
+                                '?q=${Uri.encodeComponent(query)}'
+                                '&format=jsonv2&countrycodes=mx,us&limit=5&addressdetails=1&accept-language=es',
+                              );
+                              final response = await http.get(
+                                url,
+                                headers: {'User-Agent': 'TORORide/1.0'},
+                              );
+                              if (response.statusCode == 200) {
+                                final results =
+                                    json.decode(response.body) as List;
+                                setModalState(() {
+                                  suggestions = results.map((r) {
+                                    final name = (r['name'] as String?) ?? '';
+                                    final displayName =
+                                        r['display_name'] as String;
+                                    return {
+                                      'place_name': displayName,
+                                      'text': name.isNotEmpty
+                                          ? name
+                                          : displayName.split(',').first.trim(),
+                                      'lat': double.parse(r['lat'].toString()),
+                                      'lng': double.parse(r['lon'].toString()),
+                                    };
+                                  }).toList();
+                                });
+                              }
+                            } catch (_) {}
+                          },
+                        );
                       },
                     ),
                     if (suggestions.isNotEmpty)
@@ -3019,22 +3679,47 @@ Enviado desde TORO
                           border: Border.all(color: AppColors.border),
                         ),
                         child: ListView.separated(
-                          shrinkWrap: true, padding: EdgeInsets.zero,
+                          shrinkWrap: true,
+                          padding: EdgeInsets.zero,
                           itemCount: suggestions.length,
-                          separatorBuilder: (_, __) => Divider(height: 1, color: AppColors.border.withValues(alpha: 0.3)),
+                          separatorBuilder: (_, __) => Divider(
+                            height: 1,
+                            color: AppColors.border.withValues(alpha: 0.3),
+                          ),
                           itemBuilder: (context, index) {
                             final s = suggestions[index];
                             return ListTile(
                               dense: true,
-                              leading: const Icon(Icons.location_on, color: AppColors.primary, size: 18),
-                              title: Text(s['text'] as String, style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600)),
-                              subtitle: Text(s['place_name'] as String, style: TextStyle(color: AppColors.textTertiary, fontSize: 11), maxLines: 2, overflow: TextOverflow.ellipsis),
+                              leading: const Icon(
+                                Icons.location_on,
+                                color: AppColors.primary,
+                                size: 18,
+                              ),
+                              title: Text(
+                                s['text'] as String,
+                                style: const TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              subtitle: Text(
+                                s['place_name'] as String,
+                                style: TextStyle(
+                                  color: AppColors.textTertiary,
+                                  fontSize: 11,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                               onTap: () {
                                 setModalState(() {
-                                  addressController.text = s['place_name'] as String;
+                                  addressController.text =
+                                      s['place_name'] as String;
                                   selectedLat = s['lat'] as double;
                                   selectedLng = s['lng'] as double;
-                                  if (nameController.text.isEmpty) nameController.text = s['text'] as String;
+                                  if (nameController.text.isEmpty)
+                                    nameController.text = s['text'] as String;
                                   suggestions = [];
                                 });
                                 HapticService.selectionClick();
@@ -3051,25 +3736,53 @@ Enviado desde TORO
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('tourism_estimated_time'.tr(), style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
+                              Text(
+                                'tourism_estimated_time'.tr(),
+                                style: const TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                               const SizedBox(height: 6),
                               GestureDetector(
                                 onTap: () async {
-                                  final picked = await showScrollableTimePicker(context, selectedTime ?? TimeOfDay.now(), primaryColor: AppColors.primary);
-                                  if (picked != null) setModalState(() => selectedTime = picked);
+                                  final picked = await showScrollableTimePicker(
+                                    context,
+                                    selectedTime ?? TimeOfDay.now(),
+                                    primaryColor: AppColors.primary,
+                                  );
+                                  if (picked != null)
+                                    setModalState(() => selectedTime = picked);
                                 },
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                  decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.border)),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 12,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.surface,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: AppColors.border),
+                                  ),
                                   child: Row(
                                     children: [
-                                      const Icon(Icons.schedule, color: AppColors.primary, size: 18),
+                                      const Icon(
+                                        Icons.schedule,
+                                        color: AppColors.primary,
+                                        size: 18,
+                                      ),
                                       const SizedBox(width: 8),
                                       Text(
                                         selectedTime != null
                                             ? '${selectedTime!.hour.toString().padLeft(2, '0')}:${selectedTime!.minute.toString().padLeft(2, '0')}'
                                             : 'Sin hora',
-                                        style: TextStyle(color: selectedTime != null ? AppColors.textPrimary : AppColors.textTertiary, fontSize: 14),
+                                        style: TextStyle(
+                                          color: selectedTime != null
+                                              ? AppColors.textPrimary
+                                              : AppColors.textTertiary,
+                                          fontSize: 14,
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -3083,20 +3796,57 @@ Enviado desde TORO
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('tourism_duration_min'.tr(), style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
+                              Text(
+                                'tourism_duration_min'.tr(),
+                                style: const TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                               const SizedBox(height: 6),
                               TextField(
                                 controller: durationController,
                                 keyboardType: TextInputType.number,
-                                style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+                                style: const TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontSize: 14,
+                                ),
                                 decoration: InputDecoration(
-                                  hintText: '0', hintStyle: TextStyle(color: AppColors.textTertiary),
-                                  filled: true, fillColor: AppColors.surface,
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.border)),
-                                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.border)),
-                                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                  prefixIcon: const Icon(Icons.timer_outlined, color: AppColors.primary, size: 18),
+                                  hintText: '0',
+                                  hintStyle: TextStyle(
+                                    color: AppColors.textTertiary,
+                                  ),
+                                  filled: true,
+                                  fillColor: AppColors.surface,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(
+                                      color: AppColors.border,
+                                    ),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(
+                                      color: AppColors.border,
+                                    ),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: const BorderSide(
+                                      color: AppColors.primary,
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 12,
+                                  ),
+                                  prefixIcon: const Icon(
+                                    Icons.timer_outlined,
+                                    color: AppColors.primary,
+                                    size: 18,
+                                  ),
                                 ),
                               ),
                             ],
@@ -3107,31 +3857,50 @@ Enviado desde TORO
                     const SizedBox(height: 24),
                     // Add button
                     SizedBox(
-                      width: double.infinity, height: 48,
+                      width: double.infinity,
+                      height: 48,
                       child: ElevatedButton.icon(
-                        onPressed: isSaving ? null : () async {
-                          if (nameController.text.trim().isEmpty) return;
-                          setModalState(() => isSaving = true);
-                          await _addNewStop(
-                            insertIndex: insertIndex,
-                            name: nameController.text.trim(),
-                            address: addressController.text.trim(),
-                            lat: selectedLat,
-                            lng: selectedLng,
-                            durationMinutes: int.tryParse(durationController.text) ?? 10,
-                            scheduledTime: selectedTime,
-                          );
-                          if (mounted) Navigator.pop(context);
-                        },
+                        onPressed: isSaving
+                            ? null
+                            : () async {
+                                if (nameController.text.trim().isEmpty) return;
+                                setModalState(() => isSaving = true);
+                                await _addNewStop(
+                                  insertIndex: insertIndex,
+                                  name: nameController.text.trim(),
+                                  address: addressController.text.trim(),
+                                  lat: selectedLat,
+                                  lng: selectedLng,
+                                  durationMinutes:
+                                      int.tryParse(durationController.text) ??
+                                      10,
+                                  scheduledTime: selectedTime,
+                                );
+                                if (mounted) Navigator.pop(context);
+                              },
                         icon: isSaving
-                            ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
                             : const Icon(Icons.add_location_alt, size: 18),
-                        label: Text(isSaving ? 'Agregando...' : 'Agregar parada'),
+                        label: Text(
+                          isSaving ? 'Agregando...' : 'Agregar parada',
+                        ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.success,
                           foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          textStyle: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                          ),
                         ),
                       ),
                     ),
@@ -3157,7 +3926,10 @@ Enviado desde TORO
     TimeOfDay? scheduledTime,
   }) async {
     final itinerary = List<Map<String, dynamic>>.from(
-      (_event?['itinerary'] as List?)?.map((e) => Map<String, dynamic>.from(e)) ?? [],
+      (_event?['itinerary'] as List?)?.map(
+            (e) => Map<String, dynamic>.from(e),
+          ) ??
+          [],
     );
 
     final newStop = <String, dynamic>{
@@ -3235,13 +4007,19 @@ Enviado desde TORO
   /// Removes an intermediate stop from the itinerary after confirmation.
   void _removeStop(int stopIndex) {
     final itinerary = List<Map<String, dynamic>>.from(
-      (_event?['itinerary'] as List?)?.map((e) => Map<String, dynamic>.from(e)) ?? [],
+      (_event?['itinerary'] as List?)?.map(
+            (e) => Map<String, dynamic>.from(e),
+          ) ??
+          [],
     );
 
-    if (stopIndex <= 0 || stopIndex >= itinerary.length - 1) return; // Can't remove origin or destination
-    if (itinerary.length <= 2) return; // Must keep at least origin + destination
+    if (stopIndex <= 0 || stopIndex >= itinerary.length - 1)
+      return; // Can't remove origin or destination
+    if (itinerary.length <= 2)
+      return; // Must keep at least origin + destination
 
-    final stopName = itinerary[stopIndex]['name'] as String? ?? 'Parada ${stopIndex + 1}';
+    final stopName =
+        itinerary[stopIndex]['name'] as String? ?? 'Parada ${stopIndex + 1}';
     final removedStop = Map<String, dynamic>.from(itinerary[stopIndex]);
 
     showDialog(
@@ -3253,7 +4031,14 @@ Enviado desde TORO
           children: [
             Icon(Icons.delete_outline, color: AppColors.error, size: 22),
             const SizedBox(width: 8),
-            Text('tourism_delete_stop'.tr(), style: const TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.w700)),
+            Text(
+              'tourism_delete_stop'.tr(),
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ],
         ),
         content: Text(
@@ -3263,17 +4048,27 @@ Enviado desde TORO
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('tourism_cancel'.tr(), style: const TextStyle(color: AppColors.textTertiary)),
+            child: Text(
+              'tourism_cancel'.tr(),
+              style: const TextStyle(color: AppColors.textTertiary),
+            ),
           ),
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(ctx);
-              await _executeRemoveStop(stopIndex, stopName, removedStop, itinerary);
+              await _executeRemoveStop(
+                stopIndex,
+                stopName,
+                removedStop,
+                itinerary,
+              );
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.error,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
             child: Text('tourism_delete'.tr()),
           ),
@@ -3335,7 +4130,12 @@ Enviado desde TORO
   }
 
   /// Calculate road distance between two points using OSRM API
-  Future<double?> _calculateRoadDistance(double lat1, double lng1, double lat2, double lng2) async {
+  Future<double?> _calculateRoadDistance(
+    double lat1,
+    double lng1,
+    double lat2,
+    double lng2,
+  ) async {
     try {
       final url = Uri.parse(
         'https://router.project-osrm.org/route/v1/driving/'
@@ -3345,7 +4145,9 @@ Enviado desde TORO
       final response = await http.get(url).timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data['code'] == 'Ok' && data['routes'] != null && (data['routes'] as List).isNotEmpty) {
+        if (data['code'] == 'Ok' &&
+            data['routes'] != null &&
+            (data['routes'] as List).isNotEmpty) {
           final distanceMeters = data['routes'][0]['distance'] as num;
           return (distanceMeters / 1000).toDouble();
         }
@@ -3358,7 +4160,9 @@ Enviado desde TORO
   }
 
   /// Recalculate total distance from itinerary stops, update pricing & save to DB
-  Future<void> _recalculateDistanceAndPricing(List<Map<String, dynamic>> itinerary) async {
+  Future<void> _recalculateDistanceAndPricing(
+    List<Map<String, dynamic>> itinerary,
+  ) async {
     if (itinerary.length < 2) return;
     try {
       double totalDistance = 0;
@@ -3406,7 +4210,20 @@ Enviado desde TORO
   }
 
   String _formatDateShort(DateTime date) {
-    const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    const months = [
+      'Ene',
+      'Feb',
+      'Mar',
+      'Abr',
+      'May',
+      'Jun',
+      'Jul',
+      'Ago',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dic',
+    ];
     return '${date.day} ${months[date.month - 1]}';
   }
 
@@ -3420,7 +4237,10 @@ Enviado desde TORO
     final ticketPrice = pricePerKm * distanceKm;
     final toroFee = ticketPrice * 0.18;
     final receives = ticketPrice - toroFee;
-    final accepted = (_stats['confirmed'] as num?)?.toInt() ?? (_stats['accepted'] as num?)?.toInt() ?? 0;
+    final accepted =
+        (_stats['confirmed'] as num?)?.toInt() ??
+        (_stats['accepted'] as num?)?.toInt() ??
+        0;
     final currentEarnings = receives * accepted;
     final totalBruto = ticketPrice * accepted;
     final receiverLabel = 'Tu recibes';
@@ -3444,7 +4264,11 @@ Enviado desde TORO
                     color: AppColors.primary.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.attach_money, color: AppColors.primary, size: 20),
+                  child: const Icon(
+                    Icons.attach_money,
+                    color: AppColors.primary,
+                    size: 20,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 const Expanded(
@@ -3465,24 +4289,41 @@ Enviado desde TORO
             GestureDetector(
               onTap: () => _showEditPriceDialog(pricePerKm),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.primary.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                  border: Border.all(
+                    color: AppColors.primary.withValues(alpha: 0.2),
+                  ),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.handshake, color: AppColors.primary, size: 18),
+                    const Icon(
+                      Icons.handshake,
+                      color: AppColors.primary,
+                      size: 18,
+                    ),
                     const SizedBox(width: 10),
                     Text(
                       'tourism_agreed_price'.tr(),
-                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w500),
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                     const Spacer(),
                     Text(
-                      '${formatMoney(pricePerKm, country: 'MX')}/km',
-                      style: const TextStyle(color: AppColors.primary, fontSize: 16, fontWeight: FontWeight.w800),
+                      formatPricePerDistance(pricePerKm),
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                     const SizedBox(width: 6),
                     const Icon(Icons.edit, color: AppColors.primary, size: 14),
@@ -3503,22 +4344,61 @@ Enviado desde TORO
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildPricingRow('Distancia total', '${_fmtPrice(distanceKm)} km', icon: Icons.straighten),
+                    _buildPricingRow(
+                      'Distancia total',
+                      formatDistance(distanceKm, decimals: 0),
+                      icon: Icons.straighten,
+                    ),
                     const Divider(color: AppColors.border, height: 16),
-                    _buildPricingRow('Precio boleto', '\$${_fmtPrice(ticketPrice)}', isBold: true, icon: Icons.receipt_long),
+                    _buildPricingRow(
+                      'Precio boleto',
+                      formatMoney(ticketPrice),
+                      isBold: true,
+                      icon: Icons.receipt_long,
+                    ),
                     const SizedBox(height: 6),
-                    _buildPricingRow('Servicio TORO (18%)', '-\$${_fmtPrice(toroFee)}', color: AppColors.textSecondary, icon: Icons.percent),
+                    _buildPricingRow(
+                      'Servicio TORO (18%)',
+                      '-${formatMoney(toroFee)}',
+                      color: AppColors.textSecondary,
+                      icon: Icons.percent,
+                    ),
                     const SizedBox(height: 6),
-                    _buildPricingRow(receiverLabel, '\$${_fmtPrice(receives)}', color: AppColors.success, isBold: true, icon: Icons.account_balance_wallet),
+                    _buildPricingRow(
+                      receiverLabel,
+                      formatMoney(receives),
+                      color: AppColors.success,
+                      isBold: true,
+                      icon: Icons.account_balance_wallet,
+                    ),
                     if (accepted > 0) ...[
                       const Divider(color: AppColors.border, height: 16),
-                      _buildPricingRow('Pasajeros confirmados', '$accepted/$maxPassengers', icon: Icons.people),
+                      _buildPricingRow(
+                        'Pasajeros confirmados',
+                        '$accepted/$maxPassengers',
+                        icon: Icons.people,
+                      ),
                       const SizedBox(height: 6),
-                      _buildPricingRow('Total recaudado', '\$${_fmtPrice(totalBruto)}', icon: Icons.monetization_on),
+                      _buildPricingRow(
+                        'Total recaudado',
+                        formatMoney(totalBruto),
+                        icon: Icons.monetization_on,
+                      ),
                       const SizedBox(height: 6),
-                      _buildPricingRow('Servicio TORO', '-\$${_fmtPrice(toroFee * accepted)}', color: AppColors.textSecondary, icon: Icons.percent),
+                      _buildPricingRow(
+                        'Servicio TORO',
+                        '-${formatMoney(toroFee * accepted)}',
+                        color: AppColors.textSecondary,
+                        icon: Icons.percent,
+                      ),
                       const SizedBox(height: 6),
-                      _buildPricingRow(receiverLabel, '\$${_fmtPrice(currentEarnings)}', color: AppColors.primary, isBold: true, icon: Icons.account_balance_wallet),
+                      _buildPricingRow(
+                        receiverLabel,
+                        '\$${_fmtPrice(currentEarnings)}',
+                        color: AppColors.primary,
+                        isBold: true,
+                        icon: Icons.account_balance_wallet,
+                      ),
                     ],
                   ],
                 ),
@@ -3536,12 +4416,20 @@ Enviado desde TORO
               ),
               child: Row(
                 children: [
-                  Icon(Icons.info_outline, color: Colors.orange.shade600, size: 16),
+                  Icon(
+                    Icons.info_outline,
+                    color: Colors.orange.shade600,
+                    size: 16,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'tourism_payment_responsibility'.tr(),
-                      style: TextStyle(color: Colors.orange.shade700, fontSize: 12, fontWeight: FontWeight.w500),
+                      style: TextStyle(
+                        color: Colors.orange.shade700,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                 ],
@@ -3556,8 +4444,14 @@ Enviado desde TORO
   Widget _buildReviewsSection() {
     final avgRating = _reviews.isEmpty
         ? 0.0
-        : _reviews.fold<double>(0.0, (sum, r) => sum + ((r['overall_rating'] as num?) ?? 0)) / _reviews.length;
-    final recommendCount = _reviews.where((r) => r['would_recommend'] == true).length;
+        : _reviews.fold<double>(
+                0.0,
+                (sum, r) => sum + ((r['overall_rating'] as num?) ?? 0),
+              ) /
+              _reviews.length;
+    final recommendCount = _reviews
+        .where((r) => r['would_recommend'] == true)
+        .length;
 
     // Collect all improvement tags across reviews
     final tagCounts = <String, int>{};
@@ -3597,13 +4491,18 @@ Enviado desde TORO
               const Spacer(),
               if (_reviews.isNotEmpty)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.primary.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    'tourism_review_count'.tr(namedArgs: {'count': '${_reviews.length}'}),
+                    'tourism_review_count'.tr(
+                      namedArgs: {'count': '${_reviews.length}'},
+                    ),
                     style: TextStyle(
                       color: AppColors.primary,
                       fontSize: 12,
@@ -3621,11 +4520,18 @@ Enviado desde TORO
                 padding: const EdgeInsets.symmetric(vertical: 20),
                 child: Column(
                   children: [
-                    Icon(Icons.rate_review_outlined, color: AppColors.textSecondary.withValues(alpha: 0.5), size: 40),
+                    Icon(
+                      Icons.rate_review_outlined,
+                      color: AppColors.textSecondary.withValues(alpha: 0.5),
+                      size: 40,
+                    ),
                     const SizedBox(height: 8),
                     Text(
                       'tourism_waiting_ratings'.tr(),
-                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 14,
+                      ),
                     ),
                   ],
                 ),
@@ -3647,11 +4553,16 @@ Enviado desde TORO
                       ),
                     ),
                     Row(
-                      children: List.generate(5, (i) => Icon(
-                        i < avgRating.round() ? Icons.star_rounded : Icons.star_outline_rounded,
-                        color: Colors.amber,
-                        size: 16,
-                      )),
+                      children: List.generate(
+                        5,
+                        (i) => Icon(
+                          i < avgRating.round()
+                              ? Icons.star_rounded
+                              : Icons.star_outline_rounded,
+                          color: Colors.amber,
+                          size: 16,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -3671,7 +4582,10 @@ Enviado desde TORO
                       ),
                       Text(
                         'tourism_recommend_it'.tr(),
-                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                        style: const TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 12,
+                        ),
                       ),
                     ],
                   ),
@@ -3694,21 +4608,29 @@ Enviado desde TORO
               Wrap(
                 spacing: 6,
                 runSpacing: 6,
-                children: sortedTags.take(5).map((entry) => Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: AppColors.warning.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    '${entry.key} (${entry.value})',
-                    style: TextStyle(
-                      color: AppColors.warning,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                )).toList(),
+                children: sortedTags
+                    .take(5)
+                    .map(
+                      (entry) => Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.warning.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '${entry.key} (${entry.value})',
+                          style: TextStyle(
+                            color: AppColors.warning,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    )
+                    .toList(),
               ),
             ],
 
@@ -3735,20 +4657,34 @@ Enviado desde TORO
                     children: [
                       Row(
                         children: [
-                          ...List.generate(5, (i) => Icon(
-                            i < rating.toInt() ? Icons.star_rounded : Icons.star_outline_rounded,
-                            color: Colors.amber,
-                            size: 14,
-                          )),
+                          ...List.generate(
+                            5,
+                            (i) => Icon(
+                              i < rating.toInt()
+                                  ? Icons.star_rounded
+                                  : Icons.star_outline_rounded,
+                              color: Colors.amber,
+                              size: 14,
+                            ),
+                          ),
                           const Spacer(),
-                          Text(timeStr, style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
+                          Text(
+                            timeStr,
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 11,
+                            ),
+                          ),
                         ],
                       ),
                       if (comment != null && comment.isNotEmpty) ...[
                         const SizedBox(height: 4),
                         Text(
                           comment,
-                          style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
+                          style: TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 13,
+                          ),
                           maxLines: 3,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -3772,7 +4708,10 @@ Enviado desde TORO
     final ticketPrice = pricePerKm * distanceKm;
     final toroFee = ticketPrice * 0.18;
     final receives = ticketPrice - toroFee;
-    final accepted = (_stats['confirmed'] as num?)?.toInt() ?? (_stats['accepted'] as num?)?.toInt() ?? 0;
+    final accepted =
+        (_stats['confirmed'] as num?)?.toInt() ??
+        (_stats['accepted'] as num?)?.toInt() ??
+        0;
     final currentEarnings = receives * accepted;
     final totalBruto = ticketPrice * accepted;
     final receiverLabel = 'Tu recibes';
@@ -3806,7 +4745,11 @@ Enviado desde TORO
                       ),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.account_balance_wallet_outlined, color: AppColors.success, size: 22),
+                    child: const Icon(
+                      Icons.account_balance_wallet_outlined,
+                      color: AppColors.success,
+                      size: 22,
+                    ),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -3823,8 +4766,11 @@ Enviado desde TORO
                         ),
                         const SizedBox(height: 3),
                         Text(
-                          'Total: \$${_fmtPrice(ticketPrice * accepted)} MXN',
-                          style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                          'Total: ${formatMoney(ticketPrice * accepted)} ${currencyCode()}',
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 14,
+                          ),
                         ),
                       ],
                     ),
@@ -3836,7 +4782,9 @@ Enviado desde TORO
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(
-                      _isFinanceExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                      _isFinanceExpanded
+                          ? Icons.keyboard_arrow_up
+                          : Icons.keyboard_arrow_down,
                       color: AppColors.textSecondary,
                       size: 20,
                     ),
@@ -3855,23 +4803,48 @@ Enviado desde TORO
                   GestureDetector(
                     onTap: () => _showEditPriceDialog(pricePerKm),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.primary.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                        border: Border.all(
+                          color: AppColors.primary.withValues(alpha: 0.2),
+                        ),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.handshake, color: AppColors.primary, size: 18),
+                          const Icon(
+                            Icons.handshake,
+                            color: AppColors.primary,
+                            size: 18,
+                          ),
                           const SizedBox(width: 10),
-                          Text('tourism_agreed_price'.tr(),
-                            style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w500)),
+                          Text(
+                            'tourism_agreed_price'.tr(),
+                            style: const TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
                           const Spacer(),
-                          Text('${formatMoney(pricePerKm, country: 'MX')}/km',
-                            style: const TextStyle(color: AppColors.primary, fontSize: 16, fontWeight: FontWeight.w800)),
+                          Text(
+                            formatPricePerDistance(pricePerKm),
+                            style: const TextStyle(
+                              color: AppColors.primary,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
                           const SizedBox(width: 6),
-                          const Icon(Icons.edit, color: AppColors.primary, size: 14),
+                          const Icon(
+                            Icons.edit,
+                            color: AppColors.primary,
+                            size: 14,
+                          ),
                         ],
                       ),
                     ),
@@ -3888,22 +4861,61 @@ Enviado desde TORO
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildPricingRow('Distancia total', '${_fmtPrice(distanceKm)} km', icon: Icons.straighten),
+                          _buildPricingRow(
+                            'Distancia total',
+                            formatDistance(distanceKm, decimals: 0),
+                            icon: Icons.straighten,
+                          ),
                           const Divider(color: AppColors.border, height: 16),
-                          _buildPricingRow('Precio boleto', '\$${_fmtPrice(ticketPrice)}', isBold: true, icon: Icons.receipt_long),
+                          _buildPricingRow(
+                            'Precio boleto',
+                            formatMoney(ticketPrice),
+                            isBold: true,
+                            icon: Icons.receipt_long,
+                          ),
                           const SizedBox(height: 6),
-                          _buildPricingRow('Servicio TORO (18%)', '-\$${_fmtPrice(toroFee)}', color: AppColors.textSecondary, icon: Icons.percent),
+                          _buildPricingRow(
+                            'Servicio TORO (18%)',
+                            '-${formatMoney(toroFee)}',
+                            color: AppColors.textSecondary,
+                            icon: Icons.percent,
+                          ),
                           const SizedBox(height: 6),
-                          _buildPricingRow(receiverLabel, '\$${_fmtPrice(receives)}', color: AppColors.success, isBold: true, icon: Icons.account_balance_wallet),
+                          _buildPricingRow(
+                            receiverLabel,
+                            '\$${_fmtPrice(receives)}',
+                            color: AppColors.success,
+                            isBold: true,
+                            icon: Icons.account_balance_wallet,
+                          ),
                           if (accepted > 0) ...[
                             const Divider(color: AppColors.border, height: 16),
-                            _buildPricingRow('Pasajeros confirmados', '$accepted/$maxPassengers', icon: Icons.people),
+                            _buildPricingRow(
+                              'Pasajeros confirmados',
+                              '$accepted/$maxPassengers',
+                              icon: Icons.people,
+                            ),
                             const SizedBox(height: 6),
-                            _buildPricingRow('Total recaudado', '\$${_fmtPrice(totalBruto)}', icon: Icons.monetization_on),
+                            _buildPricingRow(
+                              'Total recaudado',
+                              '\$${_fmtPrice(totalBruto)}',
+                              icon: Icons.monetization_on,
+                            ),
                             const SizedBox(height: 6),
-                            _buildPricingRow('Servicio TORO', '-\$${_fmtPrice(toroFee * accepted)}', color: AppColors.textSecondary, icon: Icons.percent),
+                            _buildPricingRow(
+                              'Servicio TORO',
+                              '-\$${_fmtPrice(toroFee * accepted)}',
+                              color: AppColors.textSecondary,
+                              icon: Icons.percent,
+                            ),
                             const SizedBox(height: 6),
-                            _buildPricingRow(receiverLabel, '\$${_fmtPrice(currentEarnings)}', color: AppColors.primary, isBold: true, icon: Icons.account_balance_wallet),
+                            _buildPricingRow(
+                              receiverLabel,
+                              '\$${_fmtPrice(currentEarnings)}',
+                              color: AppColors.primary,
+                              isBold: true,
+                              icon: Icons.account_balance_wallet,
+                            ),
                           ],
                         ],
                       ),
@@ -3916,15 +4928,27 @@ Enviado desde TORO
                     decoration: BoxDecoration(
                       color: Colors.orange.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.orange.withValues(alpha: 0.2)),
+                      border: Border.all(
+                        color: Colors.orange.withValues(alpha: 0.2),
+                      ),
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.info_outline, color: Colors.orange.shade600, size: 16),
+                        Icon(
+                          Icons.info_outline,
+                          color: Colors.orange.shade600,
+                          size: 16,
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
-                          child: Text('tourism_payment_responsibility'.tr(),
-                            style: TextStyle(color: Colors.orange.shade700, fontSize: 12, fontWeight: FontWeight.w500)),
+                          child: Text(
+                            'tourism_payment_responsibility'.tr(),
+                            style: TextStyle(
+                              color: Colors.orange.shade700,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -3937,7 +4961,13 @@ Enviado desde TORO
     );
   }
 
-  Widget _buildPricingRow(String label, String value, {bool isBold = false, Color? color, IconData? icon}) {
+  Widget _buildPricingRow(
+    String label,
+    String value, {
+    bool isBold = false,
+    Color? color,
+    IconData? icon,
+  }) {
     return Row(
       children: [
         if (icon != null) ...[
@@ -3945,7 +4975,10 @@ Enviado desde TORO
           const SizedBox(width: 10),
         ],
         Expanded(
-          child: Text(label, style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+          child: Text(
+            label,
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+          ),
         ),
         Text(
           value,
@@ -3960,8 +4993,12 @@ Enviado desde TORO
   }
 
   Future<void> _showEditPriceDialog(double currentPrice) async {
-    final controller = TextEditingController(text: currentPrice.toStringAsFixed(2));
+    final currentDisplayPrice = pricePerKilometerToDisplay(currentPrice);
+    final controller = TextEditingController(
+      text: currentDisplayPrice.toStringAsFixed(currencyDecimals(null)),
+    );
     final distanceKm = (_event?['total_distance_km'] as num?)?.toDouble() ?? 0;
+    final displayDistance = distanceFromKilometers(distanceKm);
 
     final result = await showDialog<double>(
       context: context,
@@ -3969,30 +5006,55 @@ Enviado desde TORO
         return StatefulBuilder(
           builder: (ctx, setDialogState) {
             final newPrice = double.tryParse(controller.text) ?? 0;
-            final newTicket = newPrice * distanceKm;
+            final newTicket = newPrice * displayDistance;
             final newFee = newTicket * 0.18;
             final newReceives = newTicket - newFee;
 
             return AlertDialog(
               backgroundColor: AppColors.card,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              title: const Text('Cambiar precio/km', style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w700)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: Text(
+                'Cambiar precio/${distanceUnit()}',
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   TextField(
                     controller: controller,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     autofocus: true,
-                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 20, fontWeight: FontWeight.w700),
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                    ),
                     decoration: InputDecoration(
                       prefixText: '\$ ',
-                      suffixText: '/km',
-                      prefixStyle: const TextStyle(color: AppColors.primary, fontSize: 20, fontWeight: FontWeight.w700),
-                      suffixStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                      suffixText: '/${distanceUnit()}',
+                      prefixStyle: const TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      suffixStyle: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 14,
+                      ),
                       filled: true,
                       fillColor: AppColors.cardSecondary,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
                     ),
                     onChanged: (_) => setDialogState(() {}),
                   ),
@@ -4006,13 +5068,28 @@ Enviado desde TORO
                       ),
                       child: Column(
                         children: [
-                          _dialogRow('Distancia', '${_fmtPrice(distanceKm)} km'),
+                          _dialogRow(
+                            'Distancia',
+                            formatDistance(distanceKm, decimals: 0),
+                          ),
                           const SizedBox(height: 6),
-                          _dialogRow('Precio boleto', '\$${_fmtPrice(newTicket)}', bold: true),
+                          _dialogRow(
+                            'Precio boleto',
+                            formatMoney(newTicket),
+                            bold: true,
+                          ),
                           const SizedBox(height: 6),
-                          _dialogRow('Servicio TORO (18%)', '-\$${_fmtPrice(newFee)}'),
+                          _dialogRow(
+                            'Servicio TORO (18%)',
+                            '-${formatMoney(newFee)}',
+                          ),
                           const SizedBox(height: 6),
-                          _dialogRow('Tu recibes', '\$${_fmtPrice(newReceives)}', bold: true, color: AppColors.success),
+                          _dialogRow(
+                            'Tu recibes',
+                            formatMoney(newReceives),
+                            bold: true,
+                            color: AppColors.success,
+                          ),
                         ],
                       ),
                     ),
@@ -4022,15 +5099,25 @@ Enviado desde TORO
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(ctx),
-                  child: const Text('Cancelar', style: TextStyle(color: AppColors.textSecondary)),
+                  child: const Text(
+                    'Cancelar',
+                    style: TextStyle(color: AppColors.textSecondary),
+                  ),
                 ),
                 ElevatedButton(
-                  onPressed: newPrice > 0 ? () => Navigator.pop(ctx, newPrice) : null,
+                  onPressed: newPrice > 0
+                      ? () => Navigator.pop(ctx, newPrice)
+                      : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
-                  child: const Text('Guardar', style: TextStyle(color: Colors.white)),
+                  child: const Text(
+                    'Guardar',
+                    style: TextStyle(color: Colors.white),
+                  ),
                 ),
               ],
             );
@@ -4039,22 +5126,36 @@ Enviado desde TORO
       },
     );
 
-    if (result != null && result != currentPrice) {
-      _pricePerKmController.text = result.toStringAsFixed(2);
+    final canonicalResult = result == null
+        ? null
+        : displayPriceToPerKilometer(result);
+    if (canonicalResult != null && canonicalResult != currentPrice) {
+      _pricePerKmController.text = canonicalResult.toStringAsFixed(6);
       await _savePricePerKm();
     }
   }
 
-  Widget _dialogRow(String label, String value, {bool bold = false, Color? color}) {
+  Widget _dialogRow(
+    String label,
+    String value, {
+    bool bold = false,
+    Color? color,
+  }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-        Text(value, style: TextStyle(
-          color: color ?? AppColors.textPrimary,
-          fontSize: bold ? 15 : 13,
-          fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
-        )),
+        Text(
+          label,
+          style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            color: color ?? AppColors.textPrimary,
+            fontSize: bold ? 15 : 13,
+            fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
+          ),
+        ),
       ],
     );
   }
@@ -4063,14 +5164,18 @@ Enviado desde TORO
     final value = double.tryParse(_pricePerKmController.text);
     if (value == null || value <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('tourism_enter_valid_price'.tr()), backgroundColor: AppColors.error),
+        SnackBar(
+          content: Text('tourism_enter_valid_price'.tr()),
+          backgroundColor: AppColors.error,
+        ),
       );
       return;
     }
 
     setState(() => _isPriceSaving = true);
     try {
-      final distanceKm = (_event?['total_distance_km'] as num?)?.toDouble() ?? 0;
+      final distanceKm =
+          (_event?['total_distance_km'] as num?)?.toDouble() ?? 0;
       final pricing = _eventService.calculatePricing(
         distanceKm: distanceKm,
         pricePerKm: value,
@@ -4093,13 +5198,17 @@ Enviado desde TORO
         });
         HapticService.success();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('tourism_price_updated'.tr()), backgroundColor: AppColors.success),
+          SnackBar(
+            content: Text('tourism_price_updated'.tr()),
+            backgroundColor: AppColors.success,
+          ),
         );
         // Notify passengers
         _eventService.notifyEventPassengers(
           eventId: widget.eventId,
           title: 'tourism_price_updated'.tr(),
-          body: 'El precio del viaje cambió a ${formatMoney(value, country: 'MX')}/km',
+          body:
+              'El precio del viaje cambió a ${formatMoney(value)}/${distanceUnit()}',
           type: 'tourism_event_updated',
           extraData: {'change': 'price_per_km', 'new_value': value},
         );
@@ -4107,7 +5216,12 @@ Enviado desde TORO
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('tourism_error_generic'.tr(namedArgs: {'error': '$e'})), backgroundColor: AppColors.error),
+          SnackBar(
+            content: Text(
+              'tourism_error_generic'.tr(namedArgs: {'error': '$e'}),
+            ),
+            backgroundColor: AppColors.error,
+          ),
         );
       }
     } finally {
@@ -4118,8 +5232,12 @@ Enviado desde TORO
   Future<void> _showSeatAdjustDialog() async {
     final currentMax = (_event?['max_passengers'] as num?)?.toInt() ?? 40;
     final vehicle = _event?['bus_vehicles'] as Map<String, dynamic>?;
-    final vehicleSeats = (vehicle?['total_seats'] as num?)?.toInt() ?? currentMax;
-    final accepted = (_stats['confirmed'] as num?)?.toInt() ?? (_stats['accepted'] as num?)?.toInt() ?? 0;
+    final vehicleSeats =
+        (vehicle?['total_seats'] as num?)?.toInt() ?? currentMax;
+    final accepted =
+        (_stats['confirmed'] as num?)?.toInt() ??
+        (_stats['accepted'] as num?)?.toInt() ??
+        0;
     // Min = passengers already confirmed (accepted + checked_in + boarded), Max = vehicle total_seats
     final minSeats = accepted > 0 ? accepted : 1;
 
@@ -4130,24 +5248,35 @@ Enviado desde TORO
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
           backgroundColor: AppColors.surface,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           title: const Text(
             'Ajustar Asientos',
-            style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w700),
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 'Máximo del vehículo: $vehicleSeats',
-                style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 13,
+                ),
               ),
               if (accepted > 0)
                 Padding(
                   padding: const EdgeInsets.only(top: 4),
                   child: Text(
                     'Pasajeros confirmados: $accepted (mínimo)',
-                    style: TextStyle(color: Colors.orange.shade600, fontSize: 12),
+                    style: TextStyle(
+                      color: Colors.orange.shade600,
+                      fontSize: 12,
+                    ),
                   ),
                 ),
               const SizedBox(height: 20),
@@ -4168,7 +5297,9 @@ Enviado desde TORO
                       ),
                       child: Icon(
                         Icons.remove,
-                        color: selected > minSeats ? AppColors.error : AppColors.textTertiary,
+                        color: selected > minSeats
+                            ? AppColors.error
+                            : AppColors.textTertiary,
                         size: 20,
                       ),
                     ),
@@ -4197,7 +5328,9 @@ Enviado desde TORO
                       ),
                       child: Icon(
                         Icons.add,
-                        color: selected < vehicleSeats ? AppColors.success : AppColors.textTertiary,
+                        color: selected < vehicleSeats
+                            ? AppColors.success
+                            : AppColors.textTertiary,
                         size: 20,
                       ),
                     ),
@@ -4209,15 +5342,26 @@ Enviado desde TORO
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: Text('tourism_cancel'.tr(), style: const TextStyle(color: AppColors.textTertiary)),
+              child: Text(
+                'tourism_cancel'.tr(),
+                style: const TextStyle(color: AppColors.textTertiary),
+              ),
             ),
             TextButton(
               onPressed: () => Navigator.pop(ctx, selected),
               style: TextButton.styleFrom(
                 backgroundColor: AppColors.primary.withValues(alpha: 0.15),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
-              child: Text('tourism_save'.tr(), style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
+              child: Text(
+                'tourism_save'.tr(),
+                style: TextStyle(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ],
         ),
@@ -4226,12 +5370,19 @@ Enviado desde TORO
 
     if (result != null && result != currentMax) {
       try {
-        await _eventService.updateEvent(widget.eventId, {'max_passengers': result});
+        await _eventService.updateEvent(widget.eventId, {
+          'max_passengers': result,
+        });
         if (mounted) {
           setState(() => _event?['max_passengers'] = result);
           HapticService.success();
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('tourism_seats_adjusted'.tr(namedArgs: {'count': '$result'})), backgroundColor: AppColors.success),
+            SnackBar(
+              content: Text(
+                'tourism_seats_adjusted'.tr(namedArgs: {'count': '$result'}),
+              ),
+              backgroundColor: AppColors.success,
+            ),
           );
           // Notify passengers
           _eventService.notifyEventPassengers(
@@ -4245,7 +5396,12 @@ Enviado desde TORO
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('tourism_error_generic'.tr(namedArgs: {'error': '$e'})), backgroundColor: AppColors.error),
+            SnackBar(
+              content: Text(
+                'tourism_error_generic'.tr(namedArgs: {'error': '$e'}),
+              ),
+              backgroundColor: AppColors.error,
+            ),
           );
         }
       }
@@ -4259,9 +5415,11 @@ Enviado desde TORO
     final maxPassengers = _event?['max_passengers'] ?? 0;
     final acceptedCount = _stats['confirmed'] ?? _stats['accepted'] ?? 0;
 
-    final organizerName = organizer?['company_name'] ?? organizer?['name'] ?? 'Mi Negocio';
+    final organizerName =
+        organizer?['company_name'] ?? organizer?['name'] ?? 'Mi Negocio';
     final organizerPhone = organizer?['phone'] as String?;
-    final organizerEmail = organizer?['contact_email'] ?? organizer?['email'] as String?;
+    final organizerEmail =
+        organizer?['contact_email'] ?? organizer?['email'] as String?;
     final organizerWebsite = organizer?['website'] as String?;
     final organizerDesc = organizer?['description'] as String?;
     final organizerLogo = organizer?['company_logo_url'] as String?;
@@ -4311,7 +5469,11 @@ Enviado desde TORO
                       color: Colors.black.withValues(alpha: 0.6),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(Icons.camera_alt, color: Colors.white, size: 18),
+                    child: const Icon(
+                      Icons.camera_alt,
+                      color: Colors.white,
+                      size: 18,
+                    ),
                   ),
                 ),
                 // Organizer name + logo overlay at bottom
@@ -4325,7 +5487,10 @@ Enviado desde TORO
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        colors: [Colors.transparent, Colors.black.withValues(alpha: 0.7)],
+                        colors: [
+                          Colors.transparent,
+                          Colors.black.withValues(alpha: 0.7),
+                        ],
                       ),
                     ),
                     child: Row(
@@ -4338,7 +5503,8 @@ Enviado desde TORO
                               width: 28,
                               height: 28,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                              errorBuilder: (_, _, _) =>
+                                  const SizedBox.shrink(),
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -4350,7 +5516,9 @@ Enviado desde TORO
                               color: Colors.white,
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
-                              shadows: [Shadow(color: Colors.black54, blurRadius: 4)],
+                              shadows: [
+                                Shadow(color: Colors.black54, blurRadius: 4),
+                              ],
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -4370,7 +5538,9 @@ Enviado desde TORO
               HapticService.lightImpact();
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const OrganizerProfileScreen()),
+                MaterialPageRoute(
+                  builder: (_) => const OrganizerProfileScreen(),
+                ),
               ).then((_) => _loadData());
             },
             child: Padding(
@@ -4381,18 +5551,34 @@ Enviado desde TORO
                   // Info row: phone, email, website
                   Row(
                     children: [
-                      const Icon(Icons.business, color: AppColors.primary, size: 14),
+                      const Icon(
+                        Icons.business,
+                        color: AppColors.primary,
+                        size: 14,
+                      ),
                       const SizedBox(width: 6),
                       const Text(
                         'Chofer',
-                        style: TextStyle(color: AppColors.textTertiary, fontSize: 11, fontWeight: FontWeight.w500),
+                        style: TextStyle(
+                          color: AppColors.textTertiary,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                       const Spacer(),
-                      const Icon(Icons.edit, color: AppColors.primary, size: 13),
+                      const Icon(
+                        Icons.edit,
+                        color: AppColors.primary,
+                        size: 13,
+                      ),
                       const SizedBox(width: 4),
                       const Text(
                         'Editar Perfil',
-                        style: TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.w600),
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ],
                   ),
@@ -4401,7 +5587,10 @@ Enviado desde TORO
                     const SizedBox(height: 4),
                     Text(
                       organizerDesc,
-                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 13,
+                      ),
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -4416,7 +5605,8 @@ Enviado desde TORO
                         _buildContactChip(Icons.phone, organizerPhone),
                       if (organizerEmail != null && organizerEmail.isNotEmpty)
                         _buildContactChip(Icons.email_outlined, organizerEmail),
-                      if (organizerWebsite != null && organizerWebsite.isNotEmpty)
+                      if (organizerWebsite != null &&
+                          organizerWebsite.isNotEmpty)
                         _buildContactChip(Icons.language, organizerWebsite),
                     ],
                   ),
@@ -4428,7 +5618,10 @@ Enviado desde TORO
           // Divider
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: Divider(color: AppColors.border.withValues(alpha: 0.5), height: 1),
+            child: Divider(
+              color: AppColors.border.withValues(alpha: 0.5),
+              height: 1,
+            ),
           ),
 
           // Driver row (read-only) — tap to assign via bidding if none
@@ -4439,7 +5632,8 @@ Enviado desde TORO
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => OrganizerBiddingScreen(eventId: widget.eventId),
+                        builder: (_) =>
+                            OrganizerBiddingScreen(eventId: widget.eventId),
                       ),
                     ).then((_) => _loadData());
                   }
@@ -4462,12 +5656,20 @@ Enviado desde TORO
                             child: Image.network(
                               driverAvatar,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, _, _) => const Icon(Icons.directions_bus, color: AppColors.warning, size: 20),
+                              errorBuilder: (_, _, _) => const Icon(
+                                Icons.directions_bus,
+                                color: AppColors.warning,
+                                size: 20,
+                              ),
                             ),
                           )
                         : Icon(
-                            driver == null ? Icons.add_circle_outline : Icons.directions_bus,
-                            color: driver != null ? AppColors.warning : AppColors.primary,
+                            driver == null
+                                ? Icons.add_circle_outline
+                                : Icons.directions_bus,
+                            color: driver != null
+                                ? AppColors.warning
+                                : AppColors.primary,
                             size: 20,
                           ),
                   ),
@@ -4478,12 +5680,18 @@ Enviado desde TORO
                       children: [
                         const Text(
                           'Driver',
-                          style: TextStyle(color: AppColors.textTertiary, fontSize: 10, fontWeight: FontWeight.w500),
+                          style: TextStyle(
+                            color: AppColors.textTertiary,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                         Text(
                           driver == null ? 'Toca para agregar' : driverName,
                           style: TextStyle(
-                            color: driver != null ? AppColors.textPrimary : AppColors.primary,
+                            color: driver != null
+                                ? AppColors.textPrimary
+                                : AppColors.primary,
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
                           ),
@@ -4498,18 +5706,25 @@ Enviado desde TORO
             ),
           ),
           // ── Driver credential chips ──
-          if (driver != null && (driverContactEmail != null || driverContactPhone != null || driverContactFacebook != null || driverBusinessCard != null))
+          if (driver != null &&
+              (driverContactEmail != null ||
+                  driverContactPhone != null ||
+                  driverContactFacebook != null ||
+                  driverBusinessCard != null))
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
               child: Wrap(
                 spacing: 6,
                 runSpacing: 4,
                 children: [
-                  if (driverContactPhone != null && driverContactPhone.isNotEmpty)
+                  if (driverContactPhone != null &&
+                      driverContactPhone.isNotEmpty)
                     _buildDriverCredChip(Icons.phone, driverContactPhone),
-                  if (driverContactEmail != null && driverContactEmail.isNotEmpty)
+                  if (driverContactEmail != null &&
+                      driverContactEmail.isNotEmpty)
                     _buildDriverCredChip(Icons.email, driverContactEmail),
-                  if (driverContactFacebook != null && driverContactFacebook.isNotEmpty)
+                  if (driverContactFacebook != null &&
+                      driverContactFacebook.isNotEmpty)
                     _buildDriverCredChip(Icons.facebook, 'Facebook'),
                   if (driverBusinessCard != null)
                     _buildDriverCredChip(Icons.badge, 'Tarjeta'),
@@ -4535,7 +5750,10 @@ Enviado desde TORO
           const SizedBox(width: 4),
           Text(
             text,
-            style: const TextStyle(color: AppColors.textSecondary, fontSize: 10),
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 10,
+            ),
             overflow: TextOverflow.ellipsis,
           ),
         ],
@@ -4560,11 +5778,19 @@ Enviado desde TORO
       child: const Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.add_photo_alternate_outlined, color: AppColors.primary, size: 40),
+          Icon(
+            Icons.add_photo_alternate_outlined,
+            color: AppColors.primary,
+            size: 40,
+          ),
           SizedBox(height: 8),
           Text(
             'Agregar Tarjeta de Presentacion',
-            style: TextStyle(color: AppColors.primary, fontSize: 13, fontWeight: FontWeight.w500),
+            style: TextStyle(
+              color: AppColors.primary,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
           ),
           Text(
             'Los pasajeros veran esta imagen',
@@ -4609,20 +5835,31 @@ Enviado desde TORO
             Flexible(
               child: Text(
                 text,
-                style: const TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w500),
+                style: const TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
             const SizedBox(width: 3),
-            Icon(Icons.open_in_new, color: AppColors.primary.withValues(alpha: 0.5), size: 10),
+            Icon(
+              Icons.open_in_new,
+              color: AppColors.primary.withValues(alpha: 0.5),
+              size: 10,
+            ),
           ],
         ),
       ),
     );
   }
 
-  Future<void> _pickBusinessCard(String? organizerId, {ImageSource? source}) async {
+  Future<void> _pickBusinessCard(
+    String? organizerId, {
+    ImageSource? source,
+  }) async {
     if (organizerId == null) return;
 
     // Show picker dialog if no source specified
@@ -4642,17 +5879,36 @@ Enviado desde TORO
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('tourism_upload_image'.tr(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                Text(
+                  'tourism_upload_image'.tr(),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
                 const SizedBox(height: 16),
                 ListTile(
-                  leading: const Icon(Icons.photo_library, color: AppColors.primary),
-                  title: Text('tourism_gallery'.tr(), style: const TextStyle(color: Colors.white)),
+                  leading: const Icon(
+                    Icons.photo_library,
+                    color: AppColors.primary,
+                  ),
+                  title: Text(
+                    'tourism_gallery'.tr(),
+                    style: const TextStyle(color: Colors.white),
+                  ),
                   onTap: () => Navigator.pop(ctx, ImageSource.gallery),
                 ),
                 if (!kIsWeb)
                   ListTile(
-                    leading: const Icon(Icons.camera_alt, color: AppColors.primary),
-                    title: Text('tourism_camera'.tr(), style: const TextStyle(color: Colors.white)),
+                    leading: const Icon(
+                      Icons.camera_alt,
+                      color: AppColors.primary,
+                    ),
+                    title: Text(
+                      'tourism_camera'.tr(),
+                      style: const TextStyle(color: Colors.white),
+                    ),
                     onTap: () => Navigator.pop(ctx, ImageSource.camera),
                   ),
               ],
@@ -4677,7 +5933,11 @@ Enviado desde TORO
       HapticService.lightImpact();
       final organizerService = OrganizerService();
       final imageBytes = await image.readAsBytes();
-      final url = await organizerService.uploadBusinessCard(organizerId, image.name, bytes: imageBytes);
+      final url = await organizerService.uploadBusinessCard(
+        organizerId,
+        image.name,
+        bytes: imageBytes,
+      );
 
       if (url != null && mounted) {
         setState(() {
@@ -4699,7 +5959,9 @@ Enviado desde TORO
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('tourism_error_generic'.tr(namedArgs: {'error': '$e'})),
+            content: Text(
+              'tourism_error_generic'.tr(namedArgs: {'error': '$e'}),
+            ),
             backgroundColor: AppColors.error,
           ),
         );
@@ -4723,8 +5985,12 @@ Enviado desde TORO
 
   /// Pickup requests section - shows passengers who requested custom pickup locations
   Widget _buildPickupRequestsSection() {
-    final pendingRequests = _pickupRequests.where((r) => r['pickup_approved'] == null).toList();
-    final approvedRequests = _pickupRequests.where((r) => r['pickup_approved'] == true).toList();
+    final pendingRequests = _pickupRequests
+        .where((r) => r['pickup_approved'] == null)
+        .toList();
+    final approvedRequests = _pickupRequests
+        .where((r) => r['pickup_approved'] == true)
+        .toList();
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -4732,7 +5998,9 @@ Enviado desde TORO
         color: AppColors.card,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: pendingRequests.isNotEmpty ? AppColors.warning : AppColors.border,
+          color: pendingRequests.isNotEmpty
+              ? AppColors.warning
+              : AppColors.border,
           width: pendingRequests.isNotEmpty ? 1.5 : 0.5,
         ),
       ),
@@ -4741,12 +6009,15 @@ Enviado desde TORO
         children: [
           // Header with collapse toggle
           GestureDetector(
-            onTap: () => setState(() => _isPickupsExpanded = !_isPickupsExpanded),
+            onTap: () =>
+                setState(() => _isPickupsExpanded = !_isPickupsExpanded),
             child: Row(
               children: [
                 Icon(
                   Icons.location_on,
-                  color: pendingRequests.isNotEmpty ? AppColors.warning : AppColors.primary,
+                  color: pendingRequests.isNotEmpty
+                      ? AppColors.warning
+                      : AppColors.primary,
                   size: 18,
                 ),
                 const SizedBox(width: 8),
@@ -4762,7 +6033,10 @@ Enviado desde TORO
                 ),
                 if (pendingRequests.isNotEmpty)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
                     margin: const EdgeInsets.only(right: 8),
                     decoration: BoxDecoration(
                       color: AppColors.warning.withValues(alpha: 0.15),
@@ -4779,7 +6053,10 @@ Enviado desde TORO
                   ),
                 if (approvedRequests.isNotEmpty && pendingRequests.isEmpty)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
                     margin: const EdgeInsets.only(right: 8),
                     decoration: BoxDecoration(
                       color: AppColors.success.withValues(alpha: 0.15),
@@ -4810,15 +6087,23 @@ Enviado desde TORO
               children: [
                 const SizedBox(height: 12),
                 if (pendingRequests.isNotEmpty) ...[
-                  ...pendingRequests.map((request) => _buildPickupRequestItem(request, isPending: true)),
+                  ...pendingRequests.map(
+                    (request) =>
+                        _buildPickupRequestItem(request, isPending: true),
+                  ),
                   if (approvedRequests.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: Divider(color: AppColors.border.withValues(alpha: 0.5)),
+                      child: Divider(
+                        color: AppColors.border.withValues(alpha: 0.5),
+                      ),
                     ),
                 ],
                 if (approvedRequests.isNotEmpty)
-                  ...approvedRequests.map((request) => _buildPickupRequestItem(request, isPending: false)),
+                  ...approvedRequests.map(
+                    (request) =>
+                        _buildPickupRequestItem(request, isPending: false),
+                  ),
                 if (_pickupRequests.isEmpty)
                   Container(
                     padding: const EdgeInsets.symmetric(vertical: 16),
@@ -4828,7 +6113,9 @@ Enviado desde TORO
                           Icon(
                             Icons.location_off_outlined,
                             size: 28,
-                            color: AppColors.textTertiary.withValues(alpha: 0.5),
+                            color: AppColors.textTertiary.withValues(
+                              alpha: 0.5,
+                            ),
                           ),
                           const SizedBox(height: 8),
                           const Text(
@@ -4854,7 +6141,10 @@ Enviado desde TORO
     );
   }
 
-  Widget _buildPickupRequestItem(Map<String, dynamic> request, {required bool isPending}) {
+  Widget _buildPickupRequestItem(
+    Map<String, dynamic> request, {
+    required bool isPending,
+  }) {
     final name = request['passenger_name'] ?? 'Pasajero';
     final address = request['pickup_address'] ?? 'Ubicación personalizada';
     final lat = request['pickup_lat'] as double?;
@@ -4916,7 +6206,10 @@ Enviado desde TORO
                     ),
                     if (!isPending && order != null)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.primary.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(6),
@@ -4935,7 +6228,11 @@ Enviado desde TORO
                 const SizedBox(height: 2),
                 Row(
                   children: [
-                    Icon(Icons.location_on, size: 12, color: AppColors.textTertiary),
+                    Icon(
+                      Icons.location_on,
+                      size: 12,
+                      color: AppColors.textTertiary,
+                    ),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
@@ -4965,7 +6262,11 @@ Enviado desde TORO
                   color: AppColors.success.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.check, color: AppColors.success, size: 18),
+                child: const Icon(
+                  Icons.check,
+                  color: AppColors.success,
+                  size: 18,
+                ),
               ),
             ),
             const SizedBox(width: 4),
@@ -4978,7 +6279,11 @@ Enviado desde TORO
                   color: AppColors.error.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.close, color: AppColors.error, size: 18),
+                child: const Icon(
+                  Icons.close,
+                  color: AppColors.error,
+                  size: 18,
+                ),
               ),
             ),
           ] else if (lat != null && lng != null) ...[
@@ -4991,7 +6296,11 @@ Enviado desde TORO
                   color: AppColors.primary.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.map, color: AppColors.primary, size: 18),
+                child: const Icon(
+                  Icons.map,
+                  color: AppColors.primary,
+                  size: 18,
+                ),
               ),
             ),
           ],
@@ -5046,7 +6355,11 @@ Enviado desde TORO
     HapticService.lightImpact();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('tourism_location_of'.tr(namedArgs: {'label': label, 'lat': '$lat', 'lng': '$lng'})),
+        content: Text(
+          'tourism_location_of'.tr(
+            namedArgs: {'label': label, 'lat': '$lat', 'lng': '$lng'},
+          ),
+        ),
         backgroundColor: AppColors.primary,
       ),
     );
@@ -5072,7 +6385,11 @@ Enviado desde TORO
           // Section header
           Row(
             children: [
-              const Icon(Icons.campaign_rounded, color: AppColors.warning, size: 22),
+              const Icon(
+                Icons.campaign_rounded,
+                color: AppColors.warning,
+                size: 22,
+              ),
               const SizedBox(width: 8),
               const Expanded(
                 child: Text(
@@ -5178,7 +6495,10 @@ Enviado desde TORO
                         ),
                         const SizedBox(width: 6),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: const Color(0xFFDC2626),
                             borderRadius: BorderRadius.circular(4),
@@ -5228,7 +6548,9 @@ Enviado desde TORO
       builder: (ctx) {
         return AlertDialog(
           backgroundColor: AppColors.card,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: Row(
             children: [
               Container(
@@ -5265,11 +6587,17 @@ Enviado desde TORO
                 decoration: BoxDecoration(
                   color: const Color(0xFFDC2626).withOpacity(0.08),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFFDC2626).withOpacity(0.2)),
+                  border: Border.all(
+                    color: const Color(0xFFDC2626).withOpacity(0.2),
+                  ),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.info_outline, color: Color(0xFFFF6B6B), size: 16),
+                    const Icon(
+                      Icons.info_outline,
+                      color: Color(0xFFFF6B6B),
+                      size: 16,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -5297,10 +6625,17 @@ Enviado desde TORO
                 controller: messageController,
                 maxLines: 3,
                 maxLength: 300,
-                style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 14,
+                ),
                 decoration: InputDecoration(
-                  hintText: 'Ej: Cambio de ruta por clima, punto de encuentro actualizado...',
-                  hintStyle: TextStyle(color: AppColors.textTertiary, fontSize: 13),
+                  hintText:
+                      'Ej: Cambio de ruta por clima, punto de encuentro actualizado...',
+                  hintStyle: TextStyle(
+                    color: AppColors.textTertiary,
+                    fontSize: 13,
+                  ),
                   filled: true,
                   fillColor: AppColors.surface,
                   border: OutlineInputBorder(
@@ -5313,9 +6648,15 @@ Enviado desde TORO
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
-                    borderSide: const BorderSide(color: Color(0xFFDC2626), width: 1.5),
+                    borderSide: const BorderSide(
+                      color: Color(0xFFDC2626),
+                      width: 1.5,
+                    ),
                   ),
-                  counterStyle: TextStyle(color: AppColors.textTertiary, fontSize: 11),
+                  counterStyle: TextStyle(
+                    color: AppColors.textTertiary,
+                    fontSize: 11,
+                  ),
                 ),
               ),
             ],
@@ -5355,7 +6696,10 @@ Enviado desde TORO
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
               ),
             ),
           ],
@@ -5396,7 +6740,9 @@ Enviado desde TORO
             ),
             backgroundColor: const Color(0xFFDC2626),
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
             duration: const Duration(seconds: 3),
           ),
         );
@@ -5406,7 +6752,9 @@ Enviado desde TORO
         setState(() => _isSendingEmergency = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('tourism_error_sending_alert'.tr(namedArgs: {'error': '$e'})),
+            content: Text(
+              'tourism_error_sending_alert'.tr(namedArgs: {'error': '$e'}),
+            ),
             backgroundColor: AppColors.error,
           ),
         );
@@ -5427,9 +6775,7 @@ Enviado desde TORO
           decoration: BoxDecoration(
             color: AppColors.primary.withOpacity(0.08),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: AppColors.primary.withOpacity(0.25),
-            ),
+            border: Border.all(color: AppColors.primary.withOpacity(0.25)),
           ),
           child: Row(
             children: [
@@ -5504,7 +6850,9 @@ Enviado desde TORO
           builder: (context, setDialogState) {
             return AlertDialog(
               backgroundColor: AppColors.card,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
               title: Row(
                 children: [
                   Container(
@@ -5556,28 +6904,35 @@ Enviado desde TORO
                           value: 'todos',
                           icon: Icons.groups_rounded,
                           selected: selectedAudience,
-                          onTap: () => setDialogState(() => selectedAudience = 'todos'),
+                          onTap: () =>
+                              setDialogState(() => selectedAudience = 'todos'),
                         ),
                         _buildAudienceChip(
                           label: 'Abordados',
                           value: 'abordados',
                           icon: Icons.directions_bus_rounded,
                           selected: selectedAudience,
-                          onTap: () => setDialogState(() => selectedAudience = 'abordados'),
+                          onTap: () => setDialogState(
+                            () => selectedAudience = 'abordados',
+                          ),
                         ),
                         _buildAudienceChip(
                           label: 'Aceptados',
                           value: 'aceptados',
                           icon: Icons.check_circle_outline_rounded,
                           selected: selectedAudience,
-                          onTap: () => setDialogState(() => selectedAudience = 'aceptados'),
+                          onTap: () => setDialogState(
+                            () => selectedAudience = 'aceptados',
+                          ),
                         ),
                         _buildAudienceChip(
                           label: 'Pendientes',
                           value: 'pendientes',
                           icon: Icons.hourglass_top_rounded,
                           selected: selectedAudience,
-                          onTap: () => setDialogState(() => selectedAudience = 'pendientes'),
+                          onTap: () => setDialogState(
+                            () => selectedAudience = 'pendientes',
+                          ),
                         ),
                       ],
                     ),
@@ -5596,10 +6951,16 @@ Enviado desde TORO
                     TextField(
                       controller: titleController,
                       maxLength: 80,
-                      style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 14,
+                      ),
                       decoration: InputDecoration(
                         hintText: 'Ej: Recordatorio de salida',
-                        hintStyle: TextStyle(color: AppColors.textTertiary, fontSize: 13),
+                        hintStyle: TextStyle(
+                          color: AppColors.textTertiary,
+                          fontSize: 13,
+                        ),
                         filled: true,
                         fillColor: AppColors.surface,
                         border: OutlineInputBorder(
@@ -5612,9 +6973,15 @@ Enviado desde TORO
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
-                          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                          borderSide: const BorderSide(
+                            color: AppColors.primary,
+                            width: 1.5,
+                          ),
                         ),
-                        counterStyle: TextStyle(color: AppColors.textTertiary, fontSize: 11),
+                        counterStyle: TextStyle(
+                          color: AppColors.textTertiary,
+                          fontSize: 11,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -5633,10 +7000,16 @@ Enviado desde TORO
                       controller: bodyController,
                       maxLines: 3,
                       maxLength: 300,
-                      style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 14,
+                      ),
                       decoration: InputDecoration(
                         hintText: 'Escribe el mensaje para los pasajeros...',
-                        hintStyle: TextStyle(color: AppColors.textTertiary, fontSize: 13),
+                        hintStyle: TextStyle(
+                          color: AppColors.textTertiary,
+                          fontSize: 13,
+                        ),
                         filled: true,
                         fillColor: AppColors.surface,
                         border: OutlineInputBorder(
@@ -5649,9 +7022,15 @@ Enviado desde TORO
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
-                          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                          borderSide: const BorderSide(
+                            color: AppColors.primary,
+                            width: 1.5,
+                          ),
                         ),
-                        counterStyle: TextStyle(color: AppColors.textTertiary, fontSize: 11),
+                        counterStyle: TextStyle(
+                          color: AppColors.textTertiary,
+                          fontSize: 11,
+                        ),
                       ),
                     ),
                   ],
@@ -5696,7 +7075,10 @@ Enviado desde TORO
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
                   ),
                 ),
               ],
@@ -5722,7 +7104,9 @@ Enviado desde TORO
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary.withOpacity(0.2) : AppColors.surface,
+          color: isSelected
+              ? AppColors.primary.withOpacity(0.2)
+              : AppColors.surface,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isSelected ? AppColors.primary : AppColors.border,
@@ -5735,13 +7119,17 @@ Enviado desde TORO
             Icon(
               icon,
               size: 16,
-              color: isSelected ? AppColors.primaryLight : AppColors.textTertiary,
+              color: isSelected
+                  ? AppColors.primaryLight
+                  : AppColors.textTertiary,
             ),
             const SizedBox(width: 6),
             Text(
               label,
               style: TextStyle(
-                color: isSelected ? AppColors.primaryLight : AppColors.textSecondary,
+                color: isSelected
+                    ? AppColors.primaryLight
+                    : AppColors.textSecondary,
                 fontSize: 12,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
               ),
@@ -5766,7 +7154,13 @@ Enviado desde TORO
       List<String>? statusFilter;
       switch (audience) {
         case 'todos':
-          statusFilter = ['accepted', 'checked_in', 'boarded', 'pending', 'invited'];
+          statusFilter = [
+            'accepted',
+            'checked_in',
+            'boarded',
+            'pending',
+            'invited',
+          ];
           break;
         case 'abordados':
           statusFilter = ['checked_in', 'boarded'];
@@ -5790,12 +7184,14 @@ Enviado desde TORO
         setState(() => _isSendingAnnouncement = false);
         HapticService.mediumImpact();
 
-        final audienceLabel = {
-          'todos': 'todos los pasajeros',
-          'abordados': 'pasajeros abordados',
-          'aceptados': 'pasajeros aceptados',
-          'pendientes': 'pasajeros pendientes',
-        }[audience] ?? 'pasajeros';
+        final audienceLabel =
+            {
+              'todos': 'todos los pasajeros',
+              'abordados': 'pasajeros abordados',
+              'aceptados': 'pasajeros aceptados',
+              'pendientes': 'pasajeros pendientes',
+            }[audience] ??
+            'pasajeros';
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -5813,7 +7209,9 @@ Enviado desde TORO
             ),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
             duration: const Duration(seconds: 3),
           ),
         );
@@ -5823,7 +7221,11 @@ Enviado desde TORO
         setState(() => _isSendingAnnouncement = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('tourism_error_sending_announcement'.tr(namedArgs: {'error': '$e'})),
+            content: Text(
+              'tourism_error_sending_announcement'.tr(
+                namedArgs: {'error': '$e'},
+              ),
+            ),
             backgroundColor: AppColors.error,
           ),
         );
@@ -5881,7 +7283,9 @@ Enviado desde TORO
 
       if (checkStatus == 'off_boarded' || inv['exited_at'] != null) {
         exited.add(inv);
-      } else if (status == 'boarded' || status == 'checked_in' || checkStatus == 'boarded') {
+      } else if (status == 'boarded' ||
+          status == 'checked_in' ||
+          checkStatus == 'boarded') {
         boarded.add(inv);
       } else if (status == 'accepted') {
         accepted.add(inv);
@@ -5908,48 +7312,79 @@ Enviado desde TORO
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
             child: Row(
               children: [
-                const Icon(Icons.how_to_reg, color: AppColors.success, size: 22),
+                const Icon(
+                  Icons.how_to_reg,
+                  color: AppColors.success,
+                  size: 22,
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     'tourism_checkin_passengers'.tr(),
-                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.w700),
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
                 // Counters
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.success.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
                     '$totalOnBoard abordo',
-                    style: TextStyle(color: AppColors.success, fontSize: 12, fontWeight: FontWeight.w700),
+                    style: TextStyle(
+                      color: AppColors.success,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 6),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.orange.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
                     '$totalAccepted esperando',
-                    style: TextStyle(color: Colors.orange, fontSize: 12, fontWeight: FontWeight.w700),
+                    style: TextStyle(
+                      color: Colors.orange,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 6),
                 GestureDetector(
-                  onTap: () => _showFullScreenCheckIn(boarded, accepted, exited, pending),
+                  onTap: () => _showFullScreenCheckIn(
+                    boarded,
+                    accepted,
+                    exited,
+                    pending,
+                  ),
                   child: Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
                       color: AppColors.cardSecondary,
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(Icons.fullscreen, color: AppColors.textSecondary, size: 18),
+                    child: const Icon(
+                      Icons.fullscreen,
+                      color: AppColors.textSecondary,
+                      size: 18,
+                    ),
                   ),
                 ),
               ],
@@ -5966,7 +7401,9 @@ Enviado desde TORO
                   child: _buildCheckInKpi(
                     '${totalOnBoard + totalAccepted}',
                     '/ $maxP asientos',
-                    (totalOnBoard + totalAccepted) >= maxP ? AppColors.error : AppColors.success,
+                    (totalOnBoard + totalAccepted) >= maxP
+                        ? AppColors.error
+                        : AppColors.success,
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -5996,41 +7433,73 @@ Enviado desde TORO
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 16),
               child: Center(
-                child: Text('tourism_no_passengers_yet'.tr(), style: TextStyle(color: AppColors.textTertiary, fontSize: 14)),
+                child: Text(
+                  'tourism_no_passengers_yet'.tr(),
+                  style: TextStyle(color: AppColors.textTertiary, fontSize: 14),
+                ),
               ),
             )
           else ...[
             // Boarded section (green, on top)
             if (boarded.isNotEmpty) ...[
-              _buildCheckInSectionHeader('A bordo', Icons.directions_bus, AppColors.success, boarded.length),
-              for (final p in boarded.take(4))
-                _buildCheckInRow(p, 'boarded'),
+              _buildCheckInSectionHeader(
+                'A bordo',
+                Icons.directions_bus,
+                AppColors.success,
+                boarded.length,
+              ),
+              for (final p in boarded.take(4)) _buildCheckInRow(p, 'boarded'),
             ],
             // Accepted / waiting section (orange)
             if (accepted.isNotEmpty) ...[
-              _buildCheckInSectionHeader('Esperando abordaje', Icons.access_time, Colors.orange, accepted.length),
-              for (final p in accepted.take(4))
-                _buildCheckInRow(p, 'accepted'),
+              _buildCheckInSectionHeader(
+                'Esperando abordaje',
+                Icons.access_time,
+                Colors.orange,
+                accepted.length,
+              ),
+              for (final p in accepted.take(4)) _buildCheckInRow(p, 'accepted'),
             ],
             // Exited section (gray)
             if (exited.isNotEmpty) ...[
-              _buildCheckInSectionHeader('Bajaron', Icons.exit_to_app, AppColors.textTertiary, exited.length),
-              for (final p in exited.take(2))
-                _buildCheckInRow(p, 'exited'),
+              _buildCheckInSectionHeader(
+                'Bajaron',
+                Icons.exit_to_app,
+                AppColors.textTertiary,
+                exited.length,
+              ),
+              for (final p in exited.take(2)) _buildCheckInRow(p, 'exited'),
             ],
             // Pending invitations
             if (pending.isNotEmpty) ...[
-              _buildCheckInSectionHeader('Invitación pendiente', Icons.mail_outline, AppColors.textTertiary, pending.length),
-              for (final p in pending.take(4))
-                _buildCheckInRow(p, 'pending'),
+              _buildCheckInSectionHeader(
+                'Invitación pendiente',
+                Icons.mail_outline,
+                AppColors.textTertiary,
+                pending.length,
+              ),
+              for (final p in pending.take(4)) _buildCheckInRow(p, 'pending'),
             ],
 
             if (_allInvitations.length > 6) ...[
               const SizedBox(height: 4),
               Center(
                 child: TextButton(
-                  onPressed: () => _showFullScreenCheckIn(boarded, accepted, exited, pending),
-                  child: Text('tourism_see_all'.tr(namedArgs: {'count': '${_allInvitations.length}'}), style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
+                  onPressed: () => _showFullScreenCheckIn(
+                    boarded,
+                    accepted,
+                    exited,
+                    pending,
+                  ),
+                  child: Text(
+                    'tourism_see_all'.tr(
+                      namedArgs: {'count': '${_allInvitations.length}'},
+                    ),
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -6045,7 +7514,9 @@ Enviado desde TORO
     final boarded = _allInvitations.where((inv) {
       final status = inv['status'] as String? ?? '';
       final checkStatus = inv['current_check_in_status'] as String?;
-      return status == 'boarded' || status == 'checked_in' || checkStatus == 'boarded';
+      return status == 'boarded' ||
+          status == 'checked_in' ||
+          checkStatus == 'boarded';
     }).length;
 
     return Container(
@@ -6059,7 +7530,10 @@ Enviado desde TORO
           ],
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.success.withValues(alpha: 0.3), width: 1),
+        border: Border.all(
+          color: AppColors.success.withValues(alpha: 0.3),
+          width: 1,
+        ),
       ),
       child: Column(
         children: [
@@ -6071,7 +7545,11 @@ Enviado desde TORO
                   color: AppColors.success.withValues(alpha: 0.2),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.flag, color: AppColors.success, size: 24),
+                child: const Icon(
+                  Icons.flag,
+                  color: AppColors.success,
+                  size: 24,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -6088,7 +7566,9 @@ Enviado desde TORO
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'tourism_finalize_event_desc'.tr(namedArgs: {'count': '$boarded'}),
+                      'tourism_finalize_event_desc'.tr(
+                        namedArgs: {'count': '$boarded'},
+                      ),
                       style: const TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 13,
@@ -6108,12 +7588,17 @@ Enviado desde TORO
               icon: const Icon(Icons.check_circle, size: 20),
               label: Text(
                 'tourism_finalize_event'.tr(),
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.success,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
                 elevation: 0,
               ),
             ),
@@ -6123,16 +7608,35 @@ Enviado desde TORO
     );
   }
 
-  Widget _buildCheckInSectionHeader(String label, IconData icon, Color color, int count) {
+  Widget _buildCheckInSectionHeader(
+    String label,
+    IconData icon,
+    Color color,
+    int count,
+  ) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
       child: Row(
         children: [
           Icon(icon, color: color, size: 14),
           const SizedBox(width: 6),
-          Text(label, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600)),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           const Spacer(),
-          Text('$count', style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w700)),
+          Text(
+            '$count',
+            style: TextStyle(
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ],
       ),
     );
@@ -6175,19 +7679,45 @@ Enviado desde TORO
     // Build timeline chips
     final timelineChips = <Widget>[];
     if (createdAt != null && group != 'pending') {
-      timelineChips.add(_buildTimeChip('Invitado', _formatTimeShort(createdAt), AppColors.textTertiary));
+      timelineChips.add(
+        _buildTimeChip(
+          'Invitado',
+          _formatTimeShort(createdAt),
+          AppColors.textTertiary,
+        ),
+      );
     }
     if (acceptedAt != null) {
-      timelineChips.add(_buildTimeChip('Aceptó', _formatTimeShort(acceptedAt), AppColors.primary));
+      timelineChips.add(
+        _buildTimeChip(
+          'Aceptó',
+          _formatTimeShort(acceptedAt),
+          AppColors.primary,
+        ),
+      );
     }
     if (boardedAt != null) {
-      timelineChips.add(_buildTimeChip('Abordó', _formatTimeShort(boardedAt), AppColors.success));
+      timelineChips.add(
+        _buildTimeChip(
+          'Abordó',
+          _formatTimeShort(boardedAt),
+          AppColors.success,
+        ),
+      );
     }
     if (lastCheckInAt != null && lastCheckInAt != boardedAt) {
-      timelineChips.add(_buildTimeChip('Check-in', _formatTimeShort(lastCheckInAt), Colors.cyan));
+      timelineChips.add(
+        _buildTimeChip(
+          'Check-in',
+          _formatTimeShort(lastCheckInAt),
+          Colors.cyan,
+        ),
+      );
     }
     if (exitedAt != null) {
-      timelineChips.add(_buildTimeChip('Bajó', _formatTimeShort(exitedAt), Colors.orange));
+      timelineChips.add(
+        _buildTimeChip('Bajó', _formatTimeShort(exitedAt), Colors.orange),
+      );
     }
 
     return Padding(
@@ -6197,7 +7727,10 @@ Enviado desde TORO
         decoration: BoxDecoration(
           color: AppColors.background,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: dotColor.withValues(alpha: 0.2), width: 0.5),
+          border: Border.all(
+            color: dotColor.withValues(alpha: 0.2),
+            width: 0.5,
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -6206,26 +7739,61 @@ Enviado desde TORO
             Row(
               children: [
                 Container(
-                  width: 10, height: 10,
+                  width: 10,
+                  height: 10,
                   decoration: BoxDecoration(
                     color: dotColor,
                     shape: BoxShape.circle,
-                    boxShadow: group == 'boarded' ? [BoxShadow(color: dotColor.withValues(alpha: 0.4), blurRadius: 6)] : null,
+                    boxShadow: group == 'boarded'
+                        ? [
+                            BoxShadow(
+                              color: dotColor.withValues(alpha: 0.4),
+                              blurRadius: 6,
+                            ),
+                          ]
+                        : null,
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(name, style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  child: Text(
+                    name,
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
                 if (group == 'exited' && totalPrice != null) ...[
-                  Text('\$${_fmtPrice(totalPrice)}', style: const TextStyle(color: AppColors.success, fontSize: 12, fontWeight: FontWeight.w700)),
+                  Text(
+                    '\$${_fmtPrice(totalPrice)}',
+                    style: const TextStyle(
+                      color: AppColors.success,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                   const SizedBox(width: 6),
                 ],
-                Text(statusText, style: TextStyle(color: dotColor, fontSize: 11, fontWeight: FontWeight.w600)),
+                Text(
+                  statusText,
+                  style: TextStyle(
+                    color: dotColor,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 if (hasGps && group != 'exited')
                   Padding(
                     padding: const EdgeInsets.only(left: 4),
-                    child: Icon(Icons.gps_fixed, size: 11, color: AppColors.success),
+                    child: Icon(
+                      Icons.gps_fixed,
+                      size: 11,
+                      color: AppColors.success,
+                    ),
                   ),
                 // Resend invitation button
                 if (group != 'exited')
@@ -6251,16 +7819,38 @@ Enviado desde TORO
                 child: Row(
                   children: [
                     if (phone != null) ...[
-                      Icon(Icons.phone, size: 10, color: AppColors.textTertiary),
+                      Icon(
+                        Icons.phone,
+                        size: 10,
+                        color: AppColors.textTertiary,
+                      ),
                       const SizedBox(width: 3),
-                      Text(phone, style: const TextStyle(color: AppColors.textTertiary, fontSize: 10)),
+                      Text(
+                        phone,
+                        style: const TextStyle(
+                          color: AppColors.textTertiary,
+                          fontSize: 10,
+                        ),
+                      ),
                     ],
-                    if (phone != null && kmTraveled != null && group == 'exited')
+                    if (phone != null &&
+                        kmTraveled != null &&
+                        group == 'exited')
                       const SizedBox(width: 10),
                     if (kmTraveled != null && group == 'exited') ...[
-                      Icon(Icons.straighten, size: 10, color: AppColors.textTertiary),
+                      Icon(
+                        Icons.straighten,
+                        size: 10,
+                        color: AppColors.textTertiary,
+                      ),
                       const SizedBox(width: 3),
-                      Text('${kmTraveled.toStringAsFixed(1)} km', style: const TextStyle(color: AppColors.textTertiary, fontSize: 10)),
+                      Text(
+                        formatDistance(kmTraveled),
+                        style: const TextStyle(
+                          color: AppColors.textTertiary,
+                          fontSize: 10,
+                        ),
+                      ),
                     ],
                   ],
                 ),
@@ -6269,11 +7859,7 @@ Enviado desde TORO
             if (timelineChips.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(left: 18, top: 4),
-                child: Wrap(
-                  spacing: 6,
-                  runSpacing: 4,
-                  children: timelineChips,
-                ),
+                child: Wrap(spacing: 6, runSpacing: 4, children: timelineChips),
               ),
           ],
         ),
@@ -6295,7 +7881,11 @@ Enviado desde TORO
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('tourism_wait_resend'.tr(namedArgs: {'remaining': '$remaining', 'name': name})),
+            content: Text(
+              'tourism_wait_resend'.tr(
+                namedArgs: {'remaining': '$remaining', 'name': name},
+              ),
+            ),
             backgroundColor: Colors.orange,
             duration: const Duration(seconds: 2),
           ),
@@ -6327,7 +7917,9 @@ Enviado desde TORO
         setState(() {});
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('tourism_reminder_sent'.tr(namedArgs: {'name': name})),
+            content: Text(
+              'tourism_reminder_sent'.tr(namedArgs: {'name': name}),
+            ),
             backgroundColor: AppColors.success,
             duration: const Duration(seconds: 2),
           ),
@@ -6337,7 +7929,9 @@ Enviado desde TORO
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('tourism_error_resending'.tr(namedArgs: {'error': '$e'})),
+            content: Text(
+              'tourism_error_resending'.tr(namedArgs: {'error': '$e'}),
+            ),
             backgroundColor: AppColors.error,
           ),
         );
@@ -6362,9 +7956,19 @@ Enviado desde TORO
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(label, style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.w600)),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 9,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           const SizedBox(width: 3),
-          Text(time, style: TextStyle(color: color.withValues(alpha: 0.7), fontSize: 9)),
+          Text(
+            time,
+            style: TextStyle(color: color.withValues(alpha: 0.7), fontSize: 9),
+          ),
         ],
       ),
     );
@@ -6403,24 +8007,46 @@ Enviado desde TORO
             children: [
               Container(
                 margin: const EdgeInsets.only(top: 12),
-                width: 40, height: 4,
-                decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
                 child: Row(
                   children: [
-                    const Icon(Icons.how_to_reg, color: AppColors.success, size: 24),
+                    const Icon(
+                      Icons.how_to_reg,
+                      color: AppColors.success,
+                      size: 24,
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: Text('tourism_checkin_passengers'.tr(), style: const TextStyle(color: AppColors.textPrimary, fontSize: 20, fontWeight: FontWeight.w800)),
+                      child: Text(
+                        'tourism_checkin_passengers'.tr(),
+                        style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
                     ),
                     GestureDetector(
                       onTap: () => Navigator.pop(ctx),
                       child: Container(
                         padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(10)),
-                        child: const Icon(Icons.close, color: AppColors.textSecondary, size: 20),
+                        decoration: BoxDecoration(
+                          color: AppColors.card,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.close,
+                          color: AppColors.textSecondary,
+                          size: 20,
+                        ),
                       ),
                     ),
                   ],
@@ -6431,37 +8057,79 @@ Enviado desde TORO
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Row(
                   children: [
-                    _buildFullScreenStat('A bordo', '${boarded.length}', AppColors.success),
+                    _buildFullScreenStat(
+                      'A bordo',
+                      '${boarded.length}',
+                      AppColors.success,
+                    ),
                     const SizedBox(width: 8),
-                    _buildFullScreenStat('Esperando', '${accepted.length}', Colors.orange),
+                    _buildFullScreenStat(
+                      'Esperando',
+                      '${accepted.length}',
+                      Colors.orange,
+                    ),
                     const SizedBox(width: 8),
-                    _buildFullScreenStat('Bajaron', '${exited.length}', AppColors.textTertiary),
+                    _buildFullScreenStat(
+                      'Bajaron',
+                      '${exited.length}',
+                      AppColors.textTertiary,
+                    ),
                     const SizedBox(width: 8),
-                    _buildFullScreenStat('Capacidad', '$maxP', AppColors.primary),
+                    _buildFullScreenStat(
+                      'Capacidad',
+                      '$maxP',
+                      AppColors.primary,
+                    ),
                   ],
                 ),
               ),
               const SizedBox(height: 12),
-              Divider(color: AppColors.border.withValues(alpha: 0.5), height: 1),
+              Divider(
+                color: AppColors.border.withValues(alpha: 0.5),
+                height: 1,
+              ),
               Expanded(
                 child: ListView(
                   controller: scrollController,
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 8,
+                  ),
                   children: [
                     if (boarded.isNotEmpty) ...[
-                      _buildCheckInSectionHeader('A bordo', Icons.directions_bus, AppColors.success, boarded.length),
+                      _buildCheckInSectionHeader(
+                        'A bordo',
+                        Icons.directions_bus,
+                        AppColors.success,
+                        boarded.length,
+                      ),
                       for (final p in boarded) _buildCheckInRow(p, 'boarded'),
                     ],
                     if (accepted.isNotEmpty) ...[
-                      _buildCheckInSectionHeader('Esperando abordaje', Icons.access_time, Colors.orange, accepted.length),
+                      _buildCheckInSectionHeader(
+                        'Esperando abordaje',
+                        Icons.access_time,
+                        Colors.orange,
+                        accepted.length,
+                      ),
                       for (final p in accepted) _buildCheckInRow(p, 'accepted'),
                     ],
                     if (exited.isNotEmpty) ...[
-                      _buildCheckInSectionHeader('Bajaron', Icons.exit_to_app, AppColors.textTertiary, exited.length),
+                      _buildCheckInSectionHeader(
+                        'Bajaron',
+                        Icons.exit_to_app,
+                        AppColors.textTertiary,
+                        exited.length,
+                      ),
                       for (final p in exited) _buildCheckInRow(p, 'exited'),
                     ],
                     if (pending.isNotEmpty) ...[
-                      _buildCheckInSectionHeader('Invitación pendiente', Icons.mail_outline, AppColors.textTertiary, pending.length),
+                      _buildCheckInSectionHeader(
+                        'Invitación pendiente',
+                        Icons.mail_outline,
+                        AppColors.textTertiary,
+                        pending.length,
+                      ),
                       for (final p in pending) _buildCheckInRow(p, 'pending'),
                     ],
                   ],
@@ -6481,16 +8149,41 @@ Enviado desde TORO
     // Driver status
     final eventStatus = _event?['status'] as String? ?? 'draft';
     if (eventStatus == 'active') {
-      items.add({'type': 'driver_status', 'label': 'Chofer asignado - Esperando inicio', 'icon': 'hourglass', 'color': 'orange', 'time': _event?['updated_at']});
+      items.add({
+        'type': 'driver_status',
+        'label': 'Chofer asignado - Esperando inicio',
+        'icon': 'hourglass',
+        'color': 'orange',
+        'time': _event?['updated_at'],
+      });
     } else if (eventStatus == 'in_progress') {
-      items.add({'type': 'driver_status', 'label': 'Viaje en curso', 'icon': 'bus', 'color': 'success', 'time': _event?['started_at'] ?? _event?['updated_at']});
+      items.add({
+        'type': 'driver_status',
+        'label': 'Viaje en curso',
+        'icon': 'bus',
+        'color': 'success',
+        'time': _event?['started_at'] ?? _event?['updated_at'],
+      });
       final currentStop = (_event?['current_stop_index'] as num?)?.toInt() ?? 0;
       if (currentStop > 0 && currentStop < itinerary.length) {
-        final stopName = itinerary[currentStop]['name'] ?? 'Parada $currentStop';
-        items.add({'type': 'stop', 'label': 'En parada: $stopName', 'icon': 'location', 'color': 'primary', 'time': _event?['updated_at']});
+        final stopName =
+            itinerary[currentStop]['name'] ?? 'Parada $currentStop';
+        items.add({
+          'type': 'stop',
+          'label': 'En parada: $stopName',
+          'icon': 'location',
+          'color': 'primary',
+          'time': _event?['updated_at'],
+        });
       }
     } else if (eventStatus == 'completed') {
-      items.add({'type': 'driver_status', 'label': 'Viaje completado', 'icon': 'check', 'color': 'success', 'time': _event?['completed_at']});
+      items.add({
+        'type': 'driver_status',
+        'label': 'Viaje completado',
+        'icon': 'check',
+        'color': 'success',
+        'time': _event?['completed_at'],
+      });
     }
 
     // Check-ins & passenger events
@@ -6500,15 +8193,41 @@ Enviado desde TORO
       final time = ci['checked_in_at'] ?? ci['created_at'];
 
       if (checkType == 'boarding') {
-        items.add({'type': 'boarding', 'label': '$name abordó', 'icon': 'person_check', 'color': 'success', 'time': time});
+        items.add({
+          'type': 'boarding',
+          'label': '$name abordó',
+          'icon': 'person_check',
+          'color': 'success',
+          'time': time,
+        });
       } else if (checkType == 'stop') {
         final stopIdx = ci['stop_index'] as int?;
-        final stopName = (stopIdx != null && stopIdx < itinerary.length) ? itinerary[stopIdx]['name'] : 'parada';
-        items.add({'type': 'stop_exit', 'label': '$name bajó en $stopName', 'icon': 'person_off', 'color': 'orange', 'time': time});
+        final stopName = (stopIdx != null && stopIdx < itinerary.length)
+            ? itinerary[stopIdx]['name']
+            : 'parada';
+        items.add({
+          'type': 'stop_exit',
+          'label': '$name bajó en $stopName',
+          'icon': 'person_off',
+          'color': 'orange',
+          'time': time,
+        });
       } else if (checkType == 'final') {
-        items.add({'type': 'completed', 'label': '$name completó el viaje', 'icon': 'flag', 'color': 'primary', 'time': time});
+        items.add({
+          'type': 'completed',
+          'label': '$name completó el viaje',
+          'icon': 'flag',
+          'color': 'primary',
+          'time': time,
+        });
       } else {
-        items.add({'type': 'checkin', 'label': '$name hizo check-in', 'icon': 'check_circle', 'color': 'success', 'time': time});
+        items.add({
+          'type': 'checkin',
+          'label': '$name hizo check-in',
+          'icon': 'check_circle',
+          'color': 'success',
+          'time': time,
+        });
       }
     }
 
@@ -6517,7 +8236,14 @@ Enviado desde TORO
       final name = req['invitee_name'] ?? 'Pasajero';
       final reqStatus = req['pickup_status'] ?? req['status'] ?? 'pending';
       if (reqStatus == 'pending') {
-        items.add({'type': 'alert', 'label': '$name solicita parada', 'icon': 'warning', 'color': 'error', 'time': req['created_at'], 'data': req});
+        items.add({
+          'type': 'alert',
+          'label': '$name solicita parada',
+          'icon': 'warning',
+          'color': 'error',
+          'time': req['created_at'],
+          'data': req,
+        });
       }
     }
 
@@ -6526,7 +8252,13 @@ Enviado desde TORO
       final name = loc['invitee_name'] ?? 'Pasajero';
       final status = loc['status'] as String?;
       if (status == 'accepted') {
-        items.add({'type': 'gps', 'label': '$name cerca del punto de abordaje', 'icon': 'gps', 'color': 'primary', 'time': loc['updated_at']});
+        items.add({
+          'type': 'gps',
+          'label': '$name cerca del punto de abordaje',
+          'icon': 'gps',
+          'color': 'primary',
+          'time': loc['updated_at'],
+        });
       }
     }
 
@@ -6562,18 +8294,29 @@ Enviado desde TORO
               const SizedBox(width: 10),
               const Text(
                 'Actividad en Vivo',
-                style: TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.w700),
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               const Spacer(),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.primary.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
                   '$accepted/$total',
-                  style: TextStyle(color: AppColors.primary, fontSize: 13, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                    color: AppColors.primary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
@@ -6585,7 +8328,11 @@ Enviado desde TORO
                     color: AppColors.cardSecondary,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Icons.fullscreen, color: AppColors.textSecondary, size: 18),
+                  child: const Icon(
+                    Icons.fullscreen,
+                    color: AppColors.textSecondary,
+                    size: 18,
+                  ),
                 ),
               ),
             ],
@@ -6603,8 +8350,7 @@ Enviado desde TORO
               ),
             )
           else ...[
-            for (final item in items.take(6))
-              _buildActivityItem(item),
+            for (final item in items.take(6)) _buildActivityItem(item),
 
             if (items.length > 6) ...[
               const SizedBox(height: 8),
@@ -6613,7 +8359,10 @@ Enviado desde TORO
                   onPressed: () => _showFullScreenActivity(items),
                   child: Text(
                     'Ver todo (${items.length})',
-                    style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),
@@ -6658,7 +8407,8 @@ Enviado desde TORO
       final dt = DateTime.tryParse(time);
       if (dt != null) {
         final local = dt.toLocal();
-        timeStr = '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
+        timeStr =
+            '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
       }
     }
 
@@ -6668,7 +8418,9 @@ Enviado desde TORO
       decoration: BoxDecoration(
         color: isAlert ? color.withValues(alpha: 0.08) : Colors.transparent,
         borderRadius: BorderRadius.circular(10),
-        border: isAlert ? Border.all(color: color.withValues(alpha: 0.2)) : null,
+        border: isAlert
+            ? Border.all(color: color.withValues(alpha: 0.2))
+            : null,
       ),
       child: Row(
         children: [
@@ -6738,12 +8490,20 @@ Enviado desde TORO
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
                 child: Row(
                   children: [
-                    const Icon(Icons.timeline, color: AppColors.primary, size: 24),
+                    const Icon(
+                      Icons.timeline,
+                      color: AppColors.primary,
+                      size: 24,
+                    ),
                     const SizedBox(width: 12),
                     const Expanded(
                       child: Text(
                         'Actividad en Vivo',
-                        style: TextStyle(color: AppColors.textPrimary, fontSize: 20, fontWeight: FontWeight.w800),
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
                     GestureDetector(
@@ -6754,7 +8514,11 @@ Enviado desde TORO
                           color: AppColors.card,
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: const Icon(Icons.close, color: AppColors.textSecondary, size: 20),
+                        child: const Icon(
+                          Icons.close,
+                          color: AppColors.textSecondary,
+                          size: 20,
+                        ),
                       ),
                     ),
                   ],
@@ -6765,27 +8529,55 @@ Enviado desde TORO
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Row(
                   children: [
-                    _buildFullScreenStat('Invitados', '$total', AppColors.textTertiary),
+                    _buildFullScreenStat(
+                      'Invitados',
+                      '$total',
+                      AppColors.textTertiary,
+                    ),
                     const SizedBox(width: 12),
-                    _buildFullScreenStat('Aceptaron', '$accepted', AppColors.success),
+                    _buildFullScreenStat(
+                      'Aceptaron',
+                      '$accepted',
+                      AppColors.success,
+                    ),
                     const SizedBox(width: 12),
-                    _buildFullScreenStat('Abordaron', '$checkedIn', Colors.orange),
+                    _buildFullScreenStat(
+                      'Abordaron',
+                      '$checkedIn',
+                      Colors.orange,
+                    ),
                     const SizedBox(width: 12),
-                    _buildFullScreenStat('Con GPS', '${_passengerLocations.length}', AppColors.primary),
+                    _buildFullScreenStat(
+                      'Con GPS',
+                      '${_passengerLocations.length}',
+                      AppColors.primary,
+                    ),
                   ],
                 ),
               ),
               const SizedBox(height: 12),
-              Divider(color: AppColors.border.withValues(alpha: 0.5), height: 1),
+              Divider(
+                color: AppColors.border.withValues(alpha: 0.5),
+                height: 1,
+              ),
               // Activity list
               Expanded(
                 child: items.isEmpty
                     ? Center(
-                        child: Text('tourism_no_activity_yet'.tr(), style: const TextStyle(color: AppColors.textTertiary, fontSize: 16)),
+                        child: Text(
+                          'tourism_no_activity_yet'.tr(),
+                          style: const TextStyle(
+                            color: AppColors.textTertiary,
+                            fontSize: 16,
+                          ),
+                        ),
                       )
                     : ListView.builder(
                         controller: scrollController,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
                         itemCount: items.length,
                         itemBuilder: (_, i) => _buildActivityItem(items[i]),
                       ),
@@ -6807,19 +8599,34 @@ Enviado desde TORO
         ),
         child: Column(
           children: [
-            Text(value, style: TextStyle(color: color, fontSize: 18, fontWeight: FontWeight.w800)),
+            Text(
+              value,
+              style: TextStyle(
+                color: color,
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
             const SizedBox(height: 2),
-            Text(label, style: TextStyle(color: color.withValues(alpha: 0.7), fontSize: 10, fontWeight: FontWeight.w500)),
+            Text(
+              label,
+              style: TextStyle(
+                color: color.withValues(alpha: 0.7),
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-
   /// Sección de solicitudes de unión (solo eventos públicos)
   Widget _buildJoinRequestsSection() {
-    final pending = _joinRequests.where((r) => r['status'] == 'pending').toList();
+    final pending = _joinRequests
+        .where((r) => r['status'] == 'pending')
+        .toList();
     if (pending.isEmpty) return const SizedBox.shrink();
 
     return Container(
@@ -6827,7 +8634,10 @@ Enviado desde TORO
       decoration: BoxDecoration(
         color: AppColors.card,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.amber.withValues(alpha: 0.4), width: 1.5),
+        border: Border.all(
+          color: Colors.amber.withValues(alpha: 0.4),
+          width: 1.5,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -6838,32 +8648,47 @@ Enviado desde TORO
               const SizedBox(width: 10),
               const Text(
                 'Solicitudes de Unión',
-                style: TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.w700),
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               const Spacer(),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.amber.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
                   '${pending.length} pendientes',
-                  style: const TextStyle(color: Colors.amber, fontSize: 12, fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                    color: Colors.amber,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 14),
-          for (final req in pending.take(3))
-            _buildJoinRequestItem(req),
+          for (final req in pending.take(3)) _buildJoinRequestItem(req),
           if (pending.length > 3)
             Center(
               child: TextButton(
                 onPressed: () {
                   // Navigate to full join requests list
                 },
-                child: Text('tourism_see_all'.tr(namedArgs: {'count': '${pending.length}'}), style: TextStyle(color: AppColors.primary)),
+                child: Text(
+                  'tourism_see_all'.tr(
+                    namedArgs: {'count': '${pending.length}'},
+                  ),
+                  style: TextStyle(color: AppColors.primary),
+                ),
               ),
             ),
         ],
@@ -6884,7 +8709,10 @@ Enviado desde TORO
             backgroundColor: Colors.amber.withValues(alpha: 0.15),
             child: Text(
               name.isNotEmpty ? name[0].toUpperCase() : '?',
-              style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.w700),
+              style: const TextStyle(
+                color: Colors.amber,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
           const SizedBox(width: 12),
@@ -6892,9 +8720,24 @@ Enviado desde TORO
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: const TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w600)),
+                Text(
+                  name,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 if (pickup != null)
-                  Text(pickup, style: TextStyle(color: AppColors.textTertiary, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  Text(
+                    pickup,
+                    style: TextStyle(
+                      color: AppColors.textTertiary,
+                      fontSize: 12,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
               ],
             ),
           ),
@@ -6906,7 +8749,11 @@ Enviado desde TORO
                 color: AppColors.success.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(Icons.check, color: AppColors.success, size: 18),
+              child: const Icon(
+                Icons.check,
+                color: AppColors.success,
+                size: 18,
+              ),
             ),
             onPressed: () async {
               final reqId = request['id']?.toString();
@@ -6919,7 +8766,12 @@ Enviado desde TORO
               } catch (e) {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('tourism_error_generic'.tr(namedArgs: {'error': '$e'})), backgroundColor: AppColors.error),
+                    SnackBar(
+                      content: Text(
+                        'tourism_error_generic'.tr(namedArgs: {'error': '$e'}),
+                      ),
+                      backgroundColor: AppColors.error,
+                    ),
                   );
                 }
               }
@@ -6945,7 +8797,12 @@ Enviado desde TORO
               } catch (e) {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('tourism_error_generic'.tr(namedArgs: {'error': '$e'})), backgroundColor: AppColors.error),
+                    SnackBar(
+                      content: Text(
+                        'tourism_error_generic'.tr(namedArgs: {'error': '$e'}),
+                      ),
+                      backgroundColor: AppColors.error,
+                    ),
                   );
                 }
               }
@@ -6958,7 +8815,9 @@ Enviado desde TORO
 
   Future<void> _loadJoinRequests() async {
     try {
-      final requests = await _eventService.getJoinRequestsForEvent(widget.eventId);
+      final requests = await _eventService.getJoinRequestsForEvent(
+        widget.eventId,
+      );
       if (mounted) {
         setState(() => _joinRequests = requests);
       }
@@ -6970,8 +8829,7 @@ Enviado desde TORO
   Widget _buildFinancialSection() {
     final totalBasePrice =
         (_event?['total_base_price'] as num?)?.toDouble() ?? 0;
-    final distanceKm =
-        (_event?['total_distance_km'] as num?)?.toDouble() ?? 0;
+    final distanceKm = (_event?['total_distance_km'] as num?)?.toDouble() ?? 0;
     final pricePerKm = (_event?['price_per_km'] as num?)?.toDouble() ?? 0;
     final toroFee = (_event?['toro_fee'] as num?)?.toDouble() ?? 0;
     final organizerCommission =
@@ -7028,7 +8886,7 @@ Enviado desde TORO
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Total: \$${_fmtPrice(totalBasePrice)} MXN',
+                          'Total: ${formatMoney(totalBasePrice)} ${currencyCode()}',
                           style: const TextStyle(
                             color: AppColors.textSecondary,
                             fontSize: 15,
@@ -7075,7 +8933,7 @@ Enviado desde TORO
                     children: [
                       _buildFinancialRow(
                         'Total Bus',
-                        '\$${_fmtPrice(totalBasePrice)} MXN',
+                        '${formatMoney(totalBasePrice)} ${currencyCode()}',
                         icon: Icons.directions_bus,
                         iconColor: AppColors.primary,
                         isBold: true,
@@ -7083,14 +8941,14 @@ Enviado desde TORO
                       const SizedBox(height: 14),
                       _buildFinancialRow(
                         'Distancia',
-                        '${_fmtPrice(distanceKm)} km',
+                        formatDistance(distanceKm, decimals: 0),
                         icon: Icons.straighten,
                         iconColor: AppColors.textTertiary,
                       ),
                       const SizedBox(height: 14),
                       _buildFinancialRow(
-                        'Precio por km',
-                        '${formatMoney(pricePerKm, country: 'MX')} MXN',
+                        'Precio por ${distanceUnit()}',
+                        formatPricePerDistance(pricePerKm),
                         icon: Icons.price_change_outlined,
                         iconColor: AppColors.textTertiary,
                       ),
@@ -7105,7 +8963,7 @@ Enviado desde TORO
                           children: [
                             _buildFinancialRow(
                               'Comision TORO (18%)',
-                              '-\$${_fmtPrice(toroFee)}',
+                              '-${formatMoney(toroFee)}',
                               color: AppColors.error,
                             ),
                             // Only show organizer commission when there's no driver assigned
@@ -7114,67 +8972,13 @@ Enviado desde TORO
                               const SizedBox(height: 12),
                               _buildFinancialRow(
                                 'Tu Comision (3%)',
-                                '+\$${_fmtPrice(organizerCommission)}',
+                                '+${formatMoney(organizerCommission)}',
                                 color: AppColors.success,
                                 isBold: true,
                               ),
                             ],
                           ],
                         ),
-                      ),
-                      const SizedBox(height: 20),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: () {
-                                HapticService.lightImpact();
-                                // TODO: Generate PDF
-                              },
-                              icon: const Icon(Icons.picture_as_pdf_outlined, size: 20),
-                              label: const Text(
-                                'Descargar PDF',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: AppColors.textSecondary,
-                                side: const BorderSide(color: AppColors.border),
-                                padding: const EdgeInsets.symmetric(vertical: 14),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: () {
-                                HapticService.lightImpact();
-                                // TODO: Send email
-                              },
-                              icon: const Icon(Icons.email_outlined, size: 20),
-                              label: const Text(
-                                'Enviar Email',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: AppColors.textSecondary,
-                                side: const BorderSide(color: AppColors.border),
-                                padding: const EdgeInsets.symmetric(vertical: 14),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
                       ),
                     ],
                   ),
@@ -7228,7 +9032,10 @@ Enviado desde TORO
       decoration: BoxDecoration(
         color: AppColors.surface,
         border: Border(
-          top: BorderSide(color: AppColors.border.withValues(alpha: 0.5), width: 1),
+          top: BorderSide(
+            color: AppColors.border.withValues(alpha: 0.5),
+            width: 1,
+          ),
         ),
         boxShadow: [
           BoxShadow(
@@ -7245,7 +9052,12 @@ Enviado desde TORO
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _buildNavItem(0, Icons.people_alt_outlined, 'Pasajeros'),
-              _buildNavItem(1, Icons.chat_bubble_outline, 'Chat', badgeCount: _chatUnreadCount),
+              _buildNavItem(
+                1,
+                Icons.chat_bubble_outline,
+                'Chat',
+                badgeCount: _chatUnreadCount,
+              ),
               _buildNavItem(2, Icons.photo_library_outlined, 'Fotos'),
               _buildNavItem(3, Icons.person_add_outlined, 'Invitar'),
             ],
@@ -7255,7 +9067,12 @@ Enviado desde TORO
     );
   }
 
-  Widget _buildNavItem(int index, IconData icon, String label, {int badgeCount = 0}) {
+  Widget _buildNavItem(
+    int index,
+    IconData icon,
+    String label, {
+    int badgeCount = 0,
+  }) {
     final isSelected = _currentTabIndex == index;
 
     return GestureDetector(
@@ -7264,7 +9081,9 @@ Enviado desde TORO
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary.withValues(alpha: 0.12) : Colors.transparent,
+          color: isSelected
+              ? AppColors.primary.withValues(alpha: 0.12)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(14),
         ),
         child: Column(
@@ -7276,18 +9095,26 @@ Enviado desde TORO
                 Icon(
                   icon,
                   size: 26,
-                  color: isSelected ? AppColors.primary : AppColors.textTertiary,
+                  color: isSelected
+                      ? AppColors.primary
+                      : AppColors.textTertiary,
                 ),
                 if (badgeCount > 0)
                   Positioned(
                     right: -8,
                     top: -6,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 5,
+                        vertical: 1,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.error,
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: AppColors.surface, width: 1.5),
+                        border: Border.all(
+                          color: AppColors.surface,
+                          width: 1.5,
+                        ),
                       ),
                       child: Text(
                         badgeCount > 99 ? '99+' : '$badgeCount',
@@ -7322,8 +9149,18 @@ Enviado desde TORO
 
   String _formatDate(DateTime date) {
     const months = [
-      'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
-      'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic',
+      'Ene',
+      'Feb',
+      'Mar',
+      'Abr',
+      'May',
+      'Jun',
+      'Jul',
+      'Ago',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dic',
     ];
     return '${date.day} ${months[date.month - 1]} ${date.year}';
   }
@@ -7400,7 +9237,8 @@ class _EventLiveMapScreen extends StatefulWidget {
 
 class _EventLiveMapScreenState extends State<_EventLiveMapScreen> {
   final MapController _mapController = MapController();
-  final TourismInvitationService _invitationService = TourismInvitationService();
+  final TourismInvitationService _invitationService =
+      TourismInvitationService();
 
   late List<Map<String, dynamic>> _locations;
   List<Map<String, dynamic>> _allInvitations = [];
@@ -7428,7 +9266,9 @@ class _EventLiveMapScreenState extends State<_EventLiveMapScreen> {
 
   Future<void> _loadAllInvitations() async {
     try {
-      final invitations = await _invitationService.getEventInvitations(widget.eventId);
+      final invitations = await _invitationService.getEventInvitations(
+        widget.eventId,
+      );
       if (mounted) {
         setState(() {
           _allInvitations = invitations;
@@ -7479,8 +9319,12 @@ class _EventLiveMapScreenState extends State<_EventLiveMapScreen> {
       }
     }
 
-    // Default to Mexico
-    return const LatLng(19.4326, -99.1332);
+    final country =
+        widget.event?['country_code']?.toString().toUpperCase() ??
+        userCountry();
+    return country == 'MX'
+        ? const LatLng(19.4326, -99.1332)
+        : const LatLng(33.4484, -112.0740);
   }
 
   void _focusOnPassenger(Map<String, dynamic> invitation) {
@@ -7494,10 +9338,12 @@ class _EventLiveMapScreenState extends State<_EventLiveMapScreen> {
     );
 
     // locData uses 'lat'/'lng' from service, invitation might have 'last_known_lat'
-    final lat = (locData['lat'] as num?)?.toDouble() ??
-                (invitation['last_known_lat'] as num?)?.toDouble();
-    final lng = (locData['lng'] as num?)?.toDouble() ??
-                (invitation['last_known_lng'] as num?)?.toDouble();
+    final lat =
+        (locData['lat'] as num?)?.toDouble() ??
+        (invitation['last_known_lat'] as num?)?.toDouble();
+    final lng =
+        (locData['lng'] as num?)?.toDouble() ??
+        (invitation['last_known_lng'] as num?)?.toDouble();
 
     if (lat != null && lng != null) {
       _mapController.move(LatLng(lat, lng), 16);
@@ -7546,14 +9392,27 @@ class _EventLiveMapScreenState extends State<_EventLiveMapScreen> {
               message: name,
               child: Container(
                 decoration: BoxDecoration(
-                  color: isFirst ? AppColors.success : isLast ? AppColors.error : AppColors.primary,
+                  color: isFirst
+                      ? AppColors.success
+                      : isLast
+                      ? AppColors.error
+                      : AppColors.primary,
                   shape: BoxShape.circle,
                   border: Border.all(color: Colors.white, width: 2),
-                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 6)],
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.3),
+                      blurRadius: 6,
+                    ),
+                  ],
                 ),
                 child: Center(
                   child: Icon(
-                    isFirst ? Icons.trip_origin : isLast ? Icons.flag : Icons.location_on,
+                    isFirst
+                        ? Icons.trip_origin
+                        : isLast
+                        ? Icons.flag
+                        : Icons.location_on,
                     color: Colors.white,
                     size: 18,
                   ),
@@ -7581,9 +9440,19 @@ class _EventLiveMapScreenState extends State<_EventLiveMapScreen> {
               color: AppColors.warning,
               shape: BoxShape.circle,
               border: Border.all(color: Colors.white, width: 3),
-              boxShadow: [BoxShadow(color: AppColors.warning.withValues(alpha: 0.5), blurRadius: 12, spreadRadius: 2)],
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.warning.withValues(alpha: 0.5),
+                  blurRadius: 12,
+                  spreadRadius: 2,
+                ),
+              ],
             ),
-            child: const Icon(Icons.directions_bus, color: Colors.white, size: 26),
+            child: const Icon(
+              Icons.directions_bus,
+              color: Colors.white,
+              size: 26,
+            ),
           ),
         ),
       );
@@ -7595,8 +9464,9 @@ class _EventLiveMapScreenState extends State<_EventLiveMapScreen> {
       final lng = (loc['lng'] as num?)?.toDouble();
       final name = loc['invited_name'] ?? 'Pasajero';
       final isCheckedIn = loc['status'] == 'checked_in';
-      final isSelected = _selectedPassenger?['id'] == loc['invitation_id'] ||
-                         _selectedPassenger?['invitation_id'] == loc['invitation_id'];
+      final isSelected =
+          _selectedPassenger?['id'] == loc['invitation_id'] ||
+          _selectedPassenger?['invitation_id'] == loc['invitation_id'];
 
       if (lat != null && lng != null) {
         markers.add(
@@ -7617,10 +9487,26 @@ class _EventLiveMapScreenState extends State<_EventLiveMapScreen> {
                   decoration: BoxDecoration(
                     color: isCheckedIn ? AppColors.success : AppColors.primary,
                     shape: BoxShape.circle,
-                    border: Border.all(color: isSelected ? AppColors.warning : Colors.white, width: isSelected ? 3 : 2),
-                    boxShadow: [BoxShadow(color: (isCheckedIn ? AppColors.success : AppColors.primary).withValues(alpha: 0.4), blurRadius: 8)],
+                    border: Border.all(
+                      color: isSelected ? AppColors.warning : Colors.white,
+                      width: isSelected ? 3 : 2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color:
+                            (isCheckedIn
+                                    ? AppColors.success
+                                    : AppColors.primary)
+                                .withValues(alpha: 0.4),
+                        blurRadius: 8,
+                      ),
+                    ],
                   ),
-                  child: Icon(isCheckedIn ? Icons.check : Icons.person, color: Colors.white, size: isSelected ? 24 : 20),
+                  child: Icon(
+                    isCheckedIn ? Icons.check : Icons.person,
+                    color: Colors.white,
+                    size: isSelected ? 24 : 20,
+                  ),
                 ),
               ),
             ),
@@ -7653,7 +9539,8 @@ class _EventLiveMapScreenState extends State<_EventLiveMapScreen> {
             ),
             children: [
               TileLayer(
-                urlTemplate: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+                urlTemplate:
+                    'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
                 subdomains: const ['a', 'b', 'c', 'd'],
                 userAgentPackageName: 'com.toro.driver',
               ),
@@ -7667,7 +9554,12 @@ class _EventLiveMapScreenState extends State<_EventLiveMapScreen> {
             left: 0,
             right: 0,
             child: Container(
-              padding: EdgeInsets.fromLTRB(8, MediaQuery.of(context).padding.top + 8, 8, 8),
+              padding: EdgeInsets.fromLTRB(
+                8,
+                MediaQuery.of(context).padding.top + 8,
+                8,
+                8,
+              ),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
@@ -7690,31 +9582,55 @@ class _EventLiveMapScreenState extends State<_EventLiveMapScreen> {
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: AppColors.border),
                       ),
-                      child: const Icon(Icons.arrow_back, color: AppColors.textPrimary, size: 20),
+                      child: const Icon(
+                        Icons.arrow_back,
+                        color: AppColors.textPrimary,
+                        size: 20,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       eventName,
-                      style: const TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w700),
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   // GPS count badge
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
-                      color: gpsCount > 0 ? AppColors.success : AppColors.textTertiary,
+                      color: gpsCount > 0
+                          ? AppColors.success
+                          : AppColors.textTertiary,
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.gps_fixed, color: Colors.white, size: 14),
+                        const Icon(
+                          Icons.gps_fixed,
+                          color: Colors.white,
+                          size: 14,
+                        ),
                         const SizedBox(width: 4),
-                        Text('$gpsCount', style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+                        Text(
+                          '$gpsCount',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -7731,7 +9647,11 @@ class _EventLiveMapScreenState extends State<_EventLiveMapScreen> {
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: AppColors.border),
                       ),
-                      child: const Icon(Icons.my_location, color: AppColors.primary, size: 20),
+                      child: const Icon(
+                        Icons.my_location,
+                        color: AppColors.primary,
+                        size: 20,
+                      ),
                     ),
                   ),
                 ],
@@ -7748,9 +9668,15 @@ class _EventLiveMapScreenState extends State<_EventLiveMapScreen> {
               return Container(
                 decoration: BoxDecoration(
                   color: AppColors.surface,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(24),
+                  ),
                   boxShadow: [
-                    BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, -4)),
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.3),
+                      blurRadius: 20,
+                      offset: const Offset(0, -4),
+                    ),
                   ],
                 ),
                 child: Column(
@@ -7770,70 +9696,134 @@ class _EventLiveMapScreenState extends State<_EventLiveMapScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: Row(
                         children: [
-                          const Icon(Icons.people, color: AppColors.primary, size: 20),
+                          const Icon(
+                            Icons.people,
+                            color: AppColors.primary,
+                            size: 20,
+                          ),
                           const SizedBox(width: 10),
                           const Text(
                             'Invitados',
-                            style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w700),
+                            style: TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                           const SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: AppColors.primary.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Text(
                               '${_allInvitations.length}',
-                              style: const TextStyle(color: AppColors.primary, fontSize: 13, fontWeight: FontWeight.w600),
+                              style: const TextStyle(
+                                color: AppColors.primary,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                           const Spacer(),
                           // Legend
                           Row(
                             children: [
-                              Container(width: 8, height: 8, decoration: const BoxDecoration(color: AppColors.success, shape: BoxShape.circle)),
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: const BoxDecoration(
+                                  color: AppColors.success,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
                               const SizedBox(width: 4),
-                              const Text('GPS', style: TextStyle(color: AppColors.textTertiary, fontSize: 10)),
+                              const Text(
+                                'GPS',
+                                style: TextStyle(
+                                  color: AppColors.textTertiary,
+                                  fontSize: 10,
+                                ),
+                              ),
                               const SizedBox(width: 8),
-                              Container(width: 8, height: 8, decoration: const BoxDecoration(color: AppColors.textTertiary, shape: BoxShape.circle)),
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: const BoxDecoration(
+                                  color: AppColors.textTertiary,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
                               const SizedBox(width: 4),
-                              Text('tourism_no_gps'.tr(), style: const TextStyle(color: AppColors.textTertiary, fontSize: 10)),
+                              Text(
+                                'tourism_no_gps'.tr(),
+                                style: const TextStyle(
+                                  color: AppColors.textTertiary,
+                                  fontSize: 10,
+                                ),
+                              ),
                             ],
                           ),
                         ],
                       ),
                     ),
                     const SizedBox(height: 12),
-                    Divider(height: 1, color: AppColors.border.withValues(alpha: 0.5)),
+                    Divider(
+                      height: 1,
+                      color: AppColors.border.withValues(alpha: 0.5),
+                    ),
                     // List
                     Expanded(
                       child: _isLoadingInvitations
-                          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+                          ? const Center(
+                              child: CircularProgressIndicator(
+                                color: AppColors.primary,
+                              ),
+                            )
                           : _allInvitations.isEmpty
-                              ? Center(
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.people_outline, size: 40, color: AppColors.textTertiary.withValues(alpha: 0.5)),
-                                      const SizedBox(height: 12),
-                                      Text('tourism_no_guests'.tr(), style: const TextStyle(color: AppColors.textTertiary, fontSize: 14)),
-                                    ],
+                          ? Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.people_outline,
+                                    size: 40,
+                                    color: AppColors.textTertiary.withValues(
+                                      alpha: 0.5,
+                                    ),
                                   ),
-                                )
-                              : ListView.builder(
-                                  controller: scrollController,
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                  itemCount: _allInvitations.length + 1, // +1 for driver
-                                  itemBuilder: (context, index) {
-                                    // First item is the driver
-                                    if (index == 0) {
-                                      return _buildDriverRow();
-                                    }
-                                    final invitation = _allInvitations[index - 1];
-                                    return _buildInviteeRow(invitation);
-                                  },
-                                ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    'tourism_no_guests'.tr(),
+                                    style: const TextStyle(
+                                      color: AppColors.textTertiary,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : ListView.builder(
+                              controller: scrollController,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                              itemCount:
+                                  _allInvitations.length + 1, // +1 for driver
+                              itemBuilder: (context, index) {
+                                // First item is the driver
+                                if (index == 0) {
+                                  return _buildDriverRow();
+                                }
+                                final invitation = _allInvitations[index - 1];
+                                return _buildInviteeRow(invitation);
+                              },
+                            ),
                     ),
                   ],
                 ),
@@ -7852,13 +9842,14 @@ class _EventLiveMapScreenState extends State<_EventLiveMapScreen> {
 
     // Check if this person has GPS active
     // Service returns 'lat'/'lng', not 'last_known_lat'/'last_known_lng'
-    final hasGps = _locations.any((l) =>
-      l['invitation_id'] == invitationId && l['lat'] != null
+    final hasGps = _locations.any(
+      (l) => l['invitation_id'] == invitationId && l['lat'] != null,
     );
     final isCheckedIn = status == 'checked_in';
     final isAccepted = status == 'accepted';
-    final isSelected = _selectedPassenger?['id'] == invitationId ||
-                       _selectedPassenger?['invitation_id'] == invitationId;
+    final isSelected =
+        _selectedPassenger?['id'] == invitationId ||
+        _selectedPassenger?['invitation_id'] == invitationId;
 
     return GestureDetector(
       onTap: () => _focusOnPassenger(invitation),
@@ -7866,7 +9857,9 @@ class _EventLiveMapScreenState extends State<_EventLiveMapScreen> {
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary.withValues(alpha: 0.15) : AppColors.card,
+          color: isSelected
+              ? AppColors.primary.withValues(alpha: 0.15)
+              : AppColors.card,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected ? AppColors.primary : AppColors.border,
@@ -7885,13 +9878,17 @@ class _EventLiveMapScreenState extends State<_EventLiveMapScreen> {
                     color: isCheckedIn
                         ? AppColors.success.withValues(alpha: 0.15)
                         : isAccepted
-                            ? AppColors.primary.withValues(alpha: 0.15)
-                            : AppColors.textTertiary.withValues(alpha: 0.15),
+                        ? AppColors.primary.withValues(alpha: 0.15)
+                        : AppColors.textTertiary.withValues(alpha: 0.15),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
                     isCheckedIn ? Icons.check : Icons.person,
-                    color: isCheckedIn ? AppColors.success : isAccepted ? AppColors.primary : AppColors.textTertiary,
+                    color: isCheckedIn
+                        ? AppColors.success
+                        : isAccepted
+                        ? AppColors.primary
+                        : AppColors.textTertiary,
                     size: 20,
                   ),
                 ),
@@ -7908,7 +9905,11 @@ class _EventLiveMapScreenState extends State<_EventLiveMapScreen> {
                         shape: BoxShape.circle,
                         border: Border.all(color: AppColors.card, width: 2),
                       ),
-                      child: const Icon(Icons.gps_fixed, color: Colors.white, size: 8),
+                      child: const Icon(
+                        Icons.gps_fixed,
+                        color: Colors.white,
+                        size: 8,
+                      ),
                     ),
                   ),
               ],
@@ -7921,7 +9922,11 @@ class _EventLiveMapScreenState extends State<_EventLiveMapScreen> {
                 children: [
                   Text(
                     name,
-                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w500),
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -7962,7 +9967,11 @@ class _EventLiveMapScreenState extends State<_EventLiveMapScreen> {
                   color: AppColors.success.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.location_on, color: AppColors.success, size: 16),
+                child: const Icon(
+                  Icons.location_on,
+                  color: AppColors.success,
+                  size: 16,
+                ),
               )
             else
               Container(
@@ -7973,7 +9982,10 @@ class _EventLiveMapScreenState extends State<_EventLiveMapScreen> {
                 ),
                 child: Text(
                   'tourism_no_gps'.tr(),
-                  style: const TextStyle(color: AppColors.textTertiary, fontSize: 10),
+                  style: const TextStyle(
+                    color: AppColors.textTertiary,
+                    fontSize: 10,
+                  ),
                 ),
               ),
           ],
@@ -7986,7 +9998,9 @@ class _EventLiveMapScreenState extends State<_EventLiveMapScreen> {
   Widget _buildDriverRow() {
     final driver = widget.event?['drivers'] as Map<String, dynamic>?;
     debugPrint('DRIVER_ROW -> driver object: $driver');
-    debugPrint('DRIVER_ROW -> current_lat: ${driver?['current_lat']}, current_lng: ${driver?['current_lng']}');
+    debugPrint(
+      'DRIVER_ROW -> current_lat: ${driver?['current_lat']}, current_lng: ${driver?['current_lng']}',
+    );
     final driverName = driver?['full_name'] ?? driver?['name'] ?? 'Conductor';
     final driverLat = (driver?['current_lat'] as num?)?.toDouble();
     final driverLng = (driver?['current_lng'] as num?)?.toDouble();
@@ -8000,7 +10014,9 @@ class _EventLiveMapScreenState extends State<_EventLiveMapScreen> {
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.warning.withValues(alpha: 0.15) : AppColors.card,
+          color: isSelected
+              ? AppColors.warning.withValues(alpha: 0.15)
+              : AppColors.card,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected ? AppColors.warning : AppColors.border,
@@ -8017,7 +10033,11 @@ class _EventLiveMapScreenState extends State<_EventLiveMapScreen> {
                 color: AppColors.warning.withValues(alpha: 0.15),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.directions_bus, color: AppColors.warning, size: 20),
+              child: const Icon(
+                Icons.directions_bus,
+                color: AppColors.warning,
+                size: 20,
+              ),
             ),
             const SizedBox(width: 12),
             // Name and role
@@ -8027,14 +10047,22 @@ class _EventLiveMapScreenState extends State<_EventLiveMapScreen> {
                 children: [
                   Text(
                     driverName,
-                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w600),
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
                   const Text(
                     'Conductor',
-                    style: TextStyle(color: AppColors.warning, fontSize: 11, fontWeight: FontWeight.w500),
+                    style: TextStyle(
+                      color: AppColors.warning,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ],
               ),
@@ -8047,7 +10075,11 @@ class _EventLiveMapScreenState extends State<_EventLiveMapScreen> {
                   color: AppColors.warning.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.location_on, color: AppColors.warning, size: 16),
+                child: const Icon(
+                  Icons.location_on,
+                  color: AppColors.warning,
+                  size: 16,
+                ),
               )
             else
               Container(
@@ -8058,7 +10090,10 @@ class _EventLiveMapScreenState extends State<_EventLiveMapScreen> {
                 ),
                 child: Text(
                   'tourism_no_gps'.tr(),
-                  style: const TextStyle(color: AppColors.textTertiary, fontSize: 10),
+                  style: const TextStyle(
+                    color: AppColors.textTertiary,
+                    fontSize: 10,
+                  ),
                 ),
               ),
           ],
@@ -8078,11 +10113,17 @@ class _EventLiveMapScreenState extends State<_EventLiveMapScreen> {
     if (lat != null && lng != null) {
       _mapController.move(LatLng(lat, lng), 16);
       setState(() {
-        _selectedPassenger = {'is_driver': true, 'name': driver?['full_name'] ?? 'Conductor'};
+        _selectedPassenger = {
+          'is_driver': true,
+          'name': driver?['full_name'] ?? 'Conductor',
+        };
       });
     } else {
       setState(() {
-        _selectedPassenger = {'is_driver': true, 'name': driver?['full_name'] ?? 'Conductor'};
+        _selectedPassenger = {
+          'is_driver': true,
+          'name': driver?['full_name'] ?? 'Conductor',
+        };
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -8096,21 +10137,31 @@ class _EventLiveMapScreenState extends State<_EventLiveMapScreen> {
 
   String _getStatusLabel(String status) {
     switch (status) {
-      case 'accepted': return 'Aceptado';
-      case 'checked_in': return 'A bordo';
-      case 'pending': return 'Pendiente';
-      case 'declined': return 'Rechazado';
-      default: return status;
+      case 'accepted':
+        return 'Aceptado';
+      case 'checked_in':
+        return 'A bordo';
+      case 'pending':
+        return 'Pendiente';
+      case 'declined':
+        return 'Rechazado';
+      default:
+        return status;
     }
   }
 
   Color _getStatusColor(String status) {
     switch (status) {
-      case 'accepted': return AppColors.primary;
-      case 'checked_in': return AppColors.success;
-      case 'pending': return AppColors.warning;
-      case 'declined': return AppColors.error;
-      default: return AppColors.textTertiary;
+      case 'accepted':
+        return AppColors.primary;
+      case 'checked_in':
+        return AppColors.success;
+      case 'pending':
+        return AppColors.warning;
+      case 'declined':
+        return AppColors.error;
+      default:
+        return AppColors.textTertiary;
     }
   }
 }

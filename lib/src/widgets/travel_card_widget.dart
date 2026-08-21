@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../utils/app_colors.dart';
+import '../utils/money_format.dart';
 
 class TravelCardWidget extends StatelessWidget {
   final String eventName;
@@ -23,6 +24,7 @@ class TravelCardWidget extends StatelessWidget {
   final String personWebsite;
   final String personDescription;
   final String invitationCode;
+  final String? countryCode;
 
   const TravelCardWidget({
     super.key,
@@ -46,6 +48,7 @@ class TravelCardWidget extends StatelessWidget {
     this.personEmail = '',
     this.personWebsite = '',
     this.personDescription = '',
+    this.countryCode,
   });
 
   int get _bookedSeats => totalSeats - availableSeats;
@@ -68,37 +71,38 @@ class TravelCardWidget extends StatelessWidget {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 420),
         child: Container(
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF0A1628),
-            Color(0xFF0E1F33),
-            Color(0xFF0C2A3A),
-            Color(0xFF0E1F33),
-            Color(0xFF111820),
-          ],
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color(0xFF0A1628),
+                Color(0xFF0E1F33),
+                Color(0xFF0C2A3A),
+                Color(0xFF0E1F33),
+                Color(0xFF111820),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: const Color(0xFF1A3A4A).withValues(alpha: 0.4),
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildHeroHeader(),
+              _line(),
+              if (_hasContact) _buildContactRow(),
+              _buildRouteSection(),
+              _line(),
+              _buildQrRow(),
+              _buildFooter(),
+            ],
+          ),
         ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-            color: const Color(0xFF1A3A4A).withValues(alpha: 0.4)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _buildHeroHeader(),
-          _line(),
-          if (_hasContact) _buildContactRow(),
-          _buildRouteSection(),
-          _line(),
-          _buildQrRow(),
-          _buildFooter(),
-        ],
-      ),
-    ),
       ),
     );
   }
@@ -186,16 +190,21 @@ class TravelCardWidget extends StatelessWidget {
                     const SizedBox(width: 10),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 5),
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.success.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Text(personRole,
-                          style: TextStyle(
-                              color: AppColors.success,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600)),
+                      child: Text(
+                        personRole,
+                        style: TextStyle(
+                          color: AppColors.success,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -222,8 +231,9 @@ class TravelCardWidget extends StatelessWidget {
   }
 
   Widget _miniInitial() {
-    final initial =
-        _displayTitle.isNotEmpty ? _displayTitle[0].toUpperCase() : '?';
+    final initial = _displayTitle.isNotEmpty
+        ? _displayTitle[0].toUpperCase()
+        : '?';
     return Container(
       width: 52,
       height: 52,
@@ -232,11 +242,14 @@ class TravelCardWidget extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
       ),
       child: Center(
-        child: Text(initial,
-            style: const TextStyle(
-                color: AppColors.primary,
-                fontSize: 24,
-                fontWeight: FontWeight.w700)),
+        child: Text(
+          initial,
+          style: const TextStyle(
+            color: AppColors.primary,
+            fontSize: 24,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
       ),
     );
   }
@@ -274,13 +287,18 @@ class TravelCardWidget extends StatelessWidget {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.calendar_today_outlined,
-                    size: 16, color: AppColors.textTertiary),
+                Icon(
+                  Icons.calendar_today_outlined,
+                  size: 16,
+                  color: AppColors.textTertiary,
+                ),
                 const SizedBox(width: 7),
                 Text(
                   formattedDate,
                   style: TextStyle(
-                      color: AppColors.textSecondary, fontSize: 16),
+                    color: AppColors.textSecondary,
+                    fontSize: 16,
+                  ),
                 ),
               ],
             ),
@@ -325,9 +343,14 @@ class TravelCardWidget extends StatelessWidget {
             decoration: BoxDecoration(shape: BoxShape.circle, color: color),
           ),
           const SizedBox(width: 6),
-          Text(label,
-              style: TextStyle(
-                  color: color, fontSize: 14, fontWeight: FontWeight.w600)),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );
@@ -344,8 +367,7 @@ class TravelCardWidget extends StatelessWidget {
         spacing: 10,
         runSpacing: 8,
         children: [
-          if (personPhone.isNotEmpty)
-            _contactChip(Icons.phone, personPhone),
+          if (personPhone.isNotEmpty) _contactChip(Icons.phone, personPhone),
           if (personEmail.isNotEmpty)
             _contactChip(Icons.email_outlined, personEmail),
           if (personWebsite.isNotEmpty)
@@ -369,11 +391,12 @@ class TravelCardWidget extends StatelessWidget {
           const SizedBox(width: 6),
           ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 200),
-            child: Text(text,
-                style: TextStyle(
-                    color: AppColors.textSecondary, fontSize: 14),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis),
+            child: Text(
+              text,
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ],
       ),
@@ -400,8 +423,7 @@ class TravelCardWidget extends StatelessWidget {
 
   Widget _buildQrCard() {
     ImageProvider? embeddedImage;
-    final logoUrl =
-        personLogoUrl.isNotEmpty ? personLogoUrl : personAvatarUrl;
+    final logoUrl = personLogoUrl.isNotEmpty ? personLogoUrl : personAvatarUrl;
     if (logoUrl.isNotEmpty) {
       embeddedImage = NetworkImage(logoUrl);
     } else {
@@ -429,13 +451,15 @@ class TravelCardWidget extends StatelessWidget {
         size: 165,
         backgroundColor: Colors.white,
         embeddedImage: embeddedImage,
-        embeddedImageStyle: const QrEmbeddedImageStyle(
-          size: Size(32, 32),
-        ),
+        embeddedImageStyle: const QrEmbeddedImageStyle(size: Size(32, 32)),
         eyeStyle: const QrEyeStyle(
-            eyeShape: QrEyeShape.square, color: Colors.black),
+          eyeShape: QrEyeShape.square,
+          color: Colors.black,
+        ),
         dataModuleStyle: const QrDataModuleStyle(
-            dataModuleShape: QrDataModuleShape.square, color: Colors.black),
+          dataModuleShape: QrDataModuleShape.square,
+          color: Colors.black,
+        ),
       ),
     );
   }
@@ -449,13 +473,19 @@ class TravelCardWidget extends StatelessWidget {
           const SizedBox(height: 18),
         ],
         if (totalSeats > 0) ...[
-          _statRow(Icons.event_seat, 'Libres / Total',
-              '$availableSeats / $totalSeats'),
+          _statRow(
+            Icons.event_seat,
+            'Libres / Total',
+            '$availableSeats / $totalSeats',
+          ),
           const SizedBox(height: 18),
         ],
         if (showPrice && ticketPrice > 0)
-          _statRow(Icons.confirmation_number_outlined, 'Boleto',
-              '\$${ticketPrice.toStringAsFixed(0)} MXN'),
+          _statRow(
+            Icons.confirmation_number_outlined,
+            'Boleto',
+            '${formatMoney(ticketPrice, country: countryCode)} ${currencyCode(country: countryCode)}',
+          ),
       ],
     );
   }
@@ -477,14 +507,18 @@ class TravelCardWidget extends StatelessWidget {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label,
-                style:
-                    TextStyle(color: AppColors.textTertiary, fontSize: 13)),
-            Text(value,
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700)),
+            Text(
+              label,
+              style: TextStyle(color: AppColors.textTertiary, fontSize: 13),
+            ),
+            Text(
+              value,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ],
         ),
       ],
@@ -515,14 +549,19 @@ class TravelCardWidget extends StatelessWidget {
             textAlign: TextAlign.center,
             text: TextSpan(
               style: TextStyle(
-                  color: AppColors.textTertiary, fontSize: 15, height: 1.3),
+                color: AppColors.textTertiary,
+                fontSize: 15,
+                height: 1.3,
+              ),
               children: const [
                 TextSpan(text: 'Escanea el '),
                 TextSpan(
-                    text: 'codigo QR',
-                    style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textSecondary)),
+                  text: 'codigo QR',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
                 TextSpan(text: ' para unirte al viaje'),
               ],
             ),

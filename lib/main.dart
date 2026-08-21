@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -6,6 +8,7 @@ import 'package:provider/provider.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:timeago/timeago.dart' as timeago;
 
 // Config
 import 'src/config/supabase_config.dart';
@@ -17,6 +20,7 @@ import 'src/services/app_state_validator.dart';
 import 'src/services/notification_service.dart';
 import 'src/services/version_check_service.dart';
 import 'src/services/background_location_service.dart';
+import 'src/services/app_installation_service.dart';
 
 // Theme
 import 'src/utils/app_theme.dart';
@@ -89,7 +93,9 @@ void main() async {
 
   // Set Mapbox access token BEFORE any MapWidget is created (mobile only)
   if (!kIsWeb) {
-    MapboxOptions.setAccessToken('pk.eyJ1IjoibWFydGluZXpjMjAxNyIsImEiOiJjbWtocWtoZHIwbW1iM2dvdXZ3bmp0ZjBiIn0.MjYgv6DuvLTkrBVbrhtFbg');
+    MapboxOptions.setAccessToken(
+      'pk.eyJ1IjoibWFydGluZXpjMjAxNyIsImEiOiJjbWtocWtoZHIwbW1iM2dvdXZ3bmp0ZjBiIn0.MjYgv6DuvLTkrBVbrhtFbg',
+    );
   }
 
   // Set system UI overlay style for futuristic dark theme (mobile only)
@@ -106,11 +112,15 @@ void main() async {
 
   // EasyLocalization needs to init before runApp (lightweight)
   await EasyLocalization.ensureInitialized();
-  debugPrint('[MAIN] EasyLocalization done at ${_mainSw.elapsedMilliseconds}ms');
+  timeago.setLocaleMessages('es', timeago.EsMessages());
+  debugPrint(
+    '[MAIN] EasyLocalization done at ${_mainSw.elapsedMilliseconds}ms',
+  );
 
   // Supabase MUST init before runApp — AuthProvider accesses client in constructor
   await SupabaseConfig.initialize();
   debugPrint('[MAIN] Supabase done at ${_mainSw.elapsedMilliseconds}ms');
+  unawaited(AppInstallationService.instance.recordOpen());
 
   debugPrint('[MAIN] runApp at ${_mainSw.elapsedMilliseconds}ms');
   // Run app IMMEDIATELY so splash shows while services init in background
@@ -118,8 +128,7 @@ void main() async {
     EasyLocalization(
       supportedLocales: const [Locale('en'), Locale('es'), Locale('es', 'MX')],
       path: 'assets/lang',
-      startLocale: const Locale('es'),
-      fallbackLocale: const Locale('es'),
+      fallbackLocale: const Locale('en'),
       saveLocale: true,
       useOnlyLangCode: false, // Allow country codes for es-MX
       child: const ToroDriverApp(),
@@ -133,15 +142,18 @@ Future<void> _initCriticalServices() async {
 
   await Future.wait([
     // Firebase (skip on web — no firebase_options.dart for web)
-    if (!kIsWeb) () async {
-      try {
-        await Firebase.initializeApp();
-        FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-        debugPrint('[SERVICES] Firebase done at ${sw.elapsedMilliseconds}ms');
-      } catch (e) {
-        debugPrint('[SERVICES] Firebase skipped: $e');
-      }
-    }(),
+    if (!kIsWeb)
+      () async {
+        try {
+          await Firebase.initializeApp();
+          FirebaseMessaging.onBackgroundMessage(
+            _firebaseMessagingBackgroundHandler,
+          );
+          debugPrint('[SERVICES] Firebase done at ${sw.elapsedMilliseconds}ms');
+        } catch (e) {
+          debugPrint('[SERVICES] Firebase skipped: $e');
+        }
+      }(),
   ]);
   debugPrint('[SERVICES] CRITICAL done at ${sw.elapsedMilliseconds}ms');
 }
@@ -153,52 +165,72 @@ void _initBackgroundServices() {
   Future.wait([
     () async {
       await VersionCheckService().init();
-      debugPrint('[BG_SERVICES] VersionCheck done at ${sw.elapsedMilliseconds}ms');
+      debugPrint(
+        '[BG_SERVICES] VersionCheck done at ${sw.elapsedMilliseconds}ms',
+      );
     }(),
     () async {
       await AppStateValidator.instance.initialize();
-      debugPrint('[BG_SERVICES] AppStateValidator done at ${sw.elapsedMilliseconds}ms');
+      debugPrint(
+        '[BG_SERVICES] AppStateValidator done at ${sw.elapsedMilliseconds}ms',
+      );
     }(),
     () async {
       try {
         await PaymentService.initialize();
-        debugPrint('[BG_SERVICES] PaymentService done at ${sw.elapsedMilliseconds}ms');
+        debugPrint(
+          '[BG_SERVICES] PaymentService done at ${sw.elapsedMilliseconds}ms',
+        );
       } catch (e) {
         debugPrint('[BG_SERVICES] PaymentService skipped: $e');
       }
     }(),
-    if (!kIsWeb) () async {
-      try {
-        await NotificationService().initialize().timeout(
-          const Duration(seconds: 5),
-          onTimeout: () => debugPrint('[BG_SERVICES] NotificationService TIMEOUT (5s)'),
-        );
-        debugPrint('[BG_SERVICES] NotificationService done at ${sw.elapsedMilliseconds}ms');
-      } catch (e) {
-        debugPrint('[BG_SERVICES] NotificationService error: $e');
-      }
-    }(),
+    if (!kIsWeb)
+      () async {
+        try {
+          await NotificationService().initialize().timeout(
+            const Duration(seconds: 5),
+            onTimeout: () =>
+                debugPrint('[BG_SERVICES] NotificationService TIMEOUT (5s)'),
+          );
+          debugPrint(
+            '[BG_SERVICES] NotificationService done at ${sw.elapsedMilliseconds}ms',
+          );
+        } catch (e) {
+          debugPrint('[BG_SERVICES] NotificationService error: $e');
+        }
+      }(),
     () async {
       await HapticService.initialize();
-      debugPrint('[BG_SERVICES] HapticService done at ${sw.elapsedMilliseconds}ms');
+      debugPrint(
+        '[BG_SERVICES] HapticService done at ${sw.elapsedMilliseconds}ms',
+      );
     }(),
-    if (!kIsWeb) () async {
-      try {
-        await MapboxNavigationService().initialize();
-        debugPrint('[BG_SERVICES] Mapbox done at ${sw.elapsedMilliseconds}ms');
-      } catch (e) {
-        debugPrint('[BG_SERVICES] Mapbox error: $e');
-      }
-    }(),
-    if (!kIsWeb) () async {
-      try {
-        await initializeBackgroundLocationService();
-        debugPrint('[BG_SERVICES] BackgroundLocation done at ${sw.elapsedMilliseconds}ms');
-      } catch (e) {
-        debugPrint('[BG_SERVICES] BackgroundLocation error: $e');
-      }
-    }(),
-  ]).then((_) => debugPrint('[BG_SERVICES] ALL DONE at ${sw.elapsedMilliseconds}ms'));
+    if (!kIsWeb)
+      () async {
+        try {
+          await MapboxNavigationService().initialize();
+          debugPrint(
+            '[BG_SERVICES] Mapbox done at ${sw.elapsedMilliseconds}ms',
+          );
+        } catch (e) {
+          debugPrint('[BG_SERVICES] Mapbox error: $e');
+        }
+      }(),
+    if (!kIsWeb)
+      () async {
+        try {
+          await initializeBackgroundLocationService();
+          debugPrint(
+            '[BG_SERVICES] BackgroundLocation done at ${sw.elapsedMilliseconds}ms',
+          );
+        } catch (e) {
+          debugPrint('[BG_SERVICES] BackgroundLocation error: $e');
+        }
+      }(),
+  ]).then(
+    (_) => debugPrint('[BG_SERVICES] ALL DONE at ${sw.elapsedMilliseconds}ms'),
+  );
 }
 
 class ToroDriverApp extends StatelessWidget {
@@ -231,15 +263,16 @@ class ToroDriverApp extends StatelessWidget {
         locale: context.locale,
         home: const _SplashWrapper(),
         routes: {
-          '/auth': (context) => const AuthWrapper(), // Direct to auth after terms
+          '/auth': (context) =>
+              const AuthWrapper(), // Direct to auth after terms
           '/home': (context) => const HomeScreen(),
           '/login': (context) => const LoginScreen(),
           '/terms': (context) => const TermsAcceptanceScreen(),
           // La ruta /navigation usa la navegacion REAL (NavigationMapScreen, la
           // misma del tab 1) en vez del stub vacio. La usan marketplace/rides.
           '/navigation': (context) => NavigationMapScreen(
-                onBack: () => Navigator.of(context).maybePop(),
-              ),
+            onBack: () => Navigator.of(context).maybePop(),
+          ),
           '/profile': (context) => const ProfileScreen(),
           '/history': (context) => const HistoryScreen(),
           '/settings': (context) => const SettingsScreen(),
@@ -257,7 +290,8 @@ class ToroDriverApp extends StatelessWidget {
           '/messages': (context) => const MessagesScreen(),
           '/bank-account': (context) => const BankAccountScreen(),
           '/add-vehicle': (context) => const AddVehicleScreen(),
-          '/add-vehicle-tourism': (context) => const AddVehicleScreen(forTourism: true),
+          '/add-vehicle-tourism': (context) =>
+              const AddVehicleScreen(forTourism: true),
           '/driver-agreement': (context) => const DriverAgreementScreen(),
           // Driver credential
           '/driver-credential': (context) => const DriverCredentialScreen(),
@@ -452,6 +486,7 @@ class _SplashWrapper extends StatefulWidget {
 
 class _SplashWrapperState extends State<_SplashWrapper> {
   bool _showSplash = true;
+
   /// Tells AnimatedSplash when to start its exit fade
   final _exitSplash = ValueNotifier<bool>(false);
 
@@ -506,7 +541,9 @@ class _SplashWrapperState extends State<_SplashWrapper> {
     if (_showSplash) {
       return ToroSplashScreen(
         onComplete: () {
-          debugPrint('[WRAPPER] onComplete → AuthWrapper at ${_mainSw.elapsedMilliseconds}ms');
+          debugPrint(
+            '[WRAPPER] onComplete → AuthWrapper at ${_mainSw.elapsedMilliseconds}ms',
+          );
           setState(() => _showSplash = false);
         },
       );

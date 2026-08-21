@@ -81,18 +81,19 @@ class LocationService {
       distanceFilter: AppConfig.locationDistanceFilter.toInt(),
     );
 
-    _positionSubscription = Geolocator.getPositionStream(
-      locationSettings: locationSettings,
-    ).handleError((error) {
-      // Gracefully handle permission denied or location errors
-      debugPrint('[LOCATION] Stream error (ignored): $error');
-    }).listen((Position position) {
-      _currentPosition = position;
-      _positionController.add(position);
+    _positionSubscription =
+        Geolocator.getPositionStream(locationSettings: locationSettings)
+            .handleError((error) {
+              // Gracefully handle permission denied or location errors
+              debugPrint('[LOCATION] Stream error (ignored): $error');
+            })
+            .listen((Position position) {
+              _currentPosition = position;
+              _positionController.add(position);
 
-      // Update location in database
-      _updateLocationInDatabase(driverId, position);
-    });
+              // Update location in database
+              _updateLocationInDatabase(driverId, position);
+            });
   }
 
   // Stop tracking location
@@ -102,20 +103,32 @@ class LocationService {
   }
 
   // Update location in database
-  Future<void> _updateLocationInDatabase(String driverId, Position position) async {
+  Future<void> _updateLocationInDatabase(
+    String driverId,
+    Position position,
+  ) async {
     try {
       // Update driver's location directly in drivers table (for admin visibility)
       // Only update columns that exist in the drivers table
-      final detectedCountry = GeoUtils.countryCode(position.latitude, position.longitude);
-      final detectedState = GeoUtils.stateCode(position.latitude, position.longitude);
+      final detectedCountry = GeoUtils.countryCode(
+        position.latitude,
+        position.longitude,
+      );
+      final detectedState = GeoUtils.stateCode(
+        position.latitude,
+        position.longitude,
+      );
 
-      await _client.from(SupabaseConfig.driversTable).update({
-        'current_lat': position.latitude,
-        'current_lng': position.longitude,
-        'country_code': detectedCountry,
-        'state_code': detectedState,
-        'updated_at': DateTime.now().toIso8601String(),
-      }).eq('id', driverId);
+      await _client
+          .from(SupabaseConfig.driversTable)
+          .update({
+            'current_lat': position.latitude,
+            'current_lng': position.longitude,
+            'country_code': detectedCountry,
+            'state_code': detectedState,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', driverId);
 
       // LocationService: Updated driver location - lat: ${position.latitude}, lng: ${position.longitude}');
     } catch (e) {
@@ -124,13 +137,16 @@ class LocationService {
 
     // Also try to update separate locations table (may not exist)
     try {
-      await _client.from(SupabaseConfig.locationsTable).update({
-        'latitude': position.latitude,
-        'longitude': position.longitude,
-        'heading': position.heading,
-        'speed': position.speed,
-        'updated_at': DateTime.now().toIso8601String(),
-      }).eq('driver_id', driverId);
+      await _client
+          .from(SupabaseConfig.locationsTable)
+          .update({
+            'latitude': position.latitude,
+            'longitude': position.longitude,
+            'heading': position.heading,
+            'speed': position.speed,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('driver_id', driverId);
     } catch (_) {
       // Locations table may not exist or no row for this driver - that's okay
     }
@@ -163,12 +179,8 @@ class LocationService {
     double endLat,
     double endLng,
   ) {
-    return Geolocator.distanceBetween(
-      startLat,
-      startLng,
-      endLat,
-      endLng,
-    ) / 1000; // Convert to km
+    return Geolocator.distanceBetween(startLat, startLng, endLat, endLng) /
+        1000; // Convert to km
   }
 
   // Calculate bearing between two points
@@ -178,12 +190,7 @@ class LocationService {
     double endLat,
     double endLng,
   ) {
-    return Geolocator.bearingBetween(
-      startLat,
-      startLng,
-      endLat,
-      endLng,
-    );
+    return Geolocator.bearingBetween(startLat, startLng, endLat, endLng);
   }
 
   // Get nearby drivers
@@ -194,11 +201,10 @@ class LocationService {
   }) async {
     // Using PostGIS function for nearby search
     // This requires the PostGIS extension and a custom function in Supabase
-    final response = await _client.rpc('get_nearby_drivers', params: {
-      'lat': latitude,
-      'lng': longitude,
-      'radius_km': radiusKm,
-    });
+    final response = await _client.rpc(
+      'get_nearby_drivers',
+      params: {'lat': latitude, 'lng': longitude, 'radius_km': radiusKm},
+    );
 
     return List<Map<String, dynamic>>.from(response ?? []);
   }
@@ -219,7 +225,8 @@ class LocationService {
 
   StreamSubscription<Position>? _rideTrackingSubscription;
   String? _activeRideId;
-  final BackgroundLocationController _backgroundLocation = BackgroundLocationController();
+  final BackgroundLocationController _backgroundLocation =
+      BackgroundLocationController();
 
   /// Start tracking for an active ride
   /// Updates both driver_locations AND the delivery record so rider can see
@@ -249,25 +256,27 @@ class LocationService {
       distanceFilter: 10, // Update every 10 meters
     );
 
-    _rideTrackingSubscription = Geolocator.getPositionStream(
-      locationSettings: locationSettings,
-    ).handleError((error) {
-      debugPrint('[LOCATION] Ride tracking stream error: $error');
-      // Mark GPS as unavailable in DB so rider sees stale-location warning
-      _client.from('deliveries')
-          .update({'driver_gps_lost': true})
-          .eq('id', rideId)
-          .catchError((_) {});
-    }).listen((Position position) {
-      _currentPosition = position;
-      _positionController.add(position);
+    _rideTrackingSubscription =
+        Geolocator.getPositionStream(locationSettings: locationSettings)
+            .handleError((error) {
+              debugPrint('[LOCATION] Ride tracking stream error: $error');
+              // Mark GPS as unavailable in DB so rider sees stale-location warning
+              _client
+                  .from('deliveries')
+                  .update({'driver_gps_lost': true})
+                  .eq('id', rideId)
+                  .catchError((_) {});
+            })
+            .listen((Position position) {
+              _currentPosition = position;
+              _positionController.add(position);
 
-      // Update driver's general location
-      _updateLocationInDatabase(driverId, position);
+              // Update driver's general location
+              _updateLocationInDatabase(driverId, position);
 
-      // Update ride-specific location (for rider to see)
-      _updateRideLocation(rideId, position);
-    });
+              // Update ride-specific location (for rider to see)
+              _updateRideLocation(rideId, position);
+            });
 
     // LocationService: Started ride tracking for ride $rideId');
   }
@@ -291,13 +300,18 @@ class LocationService {
   /// Update ride location in deliveries table
   Future<void> _updateRideLocation(String rideId, Position position) async {
     try {
-      await _client.from(SupabaseConfig.packageDeliveriesTable).update({
-        'driver_lat': position.latitude,
-        'driver_lng': position.longitude,
-        'driver_bearing': position.heading,
-        'driver_speed': position.speed,
-        'driver_location_updated_at': DateTime.now().toUtc().toIso8601String(),
-      }).eq('id', rideId);
+      await _client
+          .from(SupabaseConfig.packageDeliveriesTable)
+          .update({
+            'driver_lat': position.latitude,
+            'driver_lng': position.longitude,
+            'driver_bearing': position.heading,
+            'driver_speed': position.speed,
+            'driver_location_updated_at': DateTime.now()
+                .toUtc()
+                .toIso8601String(),
+          })
+          .eq('id', rideId);
     } catch (e) {
       // Columns might not exist - that's okay
       // LocationService: Error updating ride location: $e');
@@ -322,7 +336,10 @@ class LocationService {
     try {
       final position = await getCurrentPosition();
       if (position == null) return null;
-      return await getStateCodeFromCoordinates(position.latitude, position.longitude);
+      return await getStateCodeFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
     } catch (e) {
       return null;
     }
@@ -345,11 +362,14 @@ class LocationService {
     // bounding-box). NO depende del geocoder del dispositivo (que da null
     // offline/en emulador) ni de Mapbox. Misma fuente que el pricing.
     try {
-      final res = await _client.rpc('resolve_state_for_pricing', params: {
-        'p_lat': lat,
-        'p_lng': lng,
-        'p_country': 'MX',
-      });
+      final res = await _client.rpc(
+        'resolve_state_for_pricing',
+        params: {
+          'p_lat': lat,
+          'p_lng': lng,
+          'p_country': GeoUtils.countryCode(lat, lng),
+        },
+      );
       String? sc;
       if (res is List && res.isNotEmpty) {
         sc = (res.first['state_code'] as String?)?.trim();
@@ -429,19 +449,57 @@ class LocationService {
 
   /// Convert US state name to 2-letter code
   static final Map<String, String> _stateNameMap = {
-    'alabama': 'AL', 'alaska': 'AK', 'arizona': 'AZ', 'arkansas': 'AR',
-    'california': 'CA', 'colorado': 'CO', 'connecticut': 'CT', 'delaware': 'DE',
-    'florida': 'FL', 'georgia': 'GA', 'hawaii': 'HI', 'idaho': 'ID',
-    'illinois': 'IL', 'indiana': 'IN', 'iowa': 'IA', 'kansas': 'KS',
-    'kentucky': 'KY', 'louisiana': 'LA', 'maine': 'ME', 'maryland': 'MD',
-    'massachusetts': 'MA', 'michigan': 'MI', 'minnesota': 'MN', 'mississippi': 'MS',
-    'missouri': 'MO', 'montana': 'MT', 'nebraska': 'NE', 'nevada': 'NV',
-    'new hampshire': 'NH', 'new jersey': 'NJ', 'new mexico': 'NM', 'new york': 'NY',
-    'north carolina': 'NC', 'north dakota': 'ND', 'ohio': 'OH', 'oklahoma': 'OK',
-    'oregon': 'OR', 'pennsylvania': 'PA', 'rhode island': 'RI', 'south carolina': 'SC',
-    'south dakota': 'SD', 'tennessee': 'TN', 'texas': 'TX', 'utah': 'UT',
-    'vermont': 'VT', 'virginia': 'VA', 'washington': 'WA', 'west virginia': 'WV',
-    'wisconsin': 'WI', 'wyoming': 'WY', 'district of columbia': 'DC',
+    'alabama': 'AL',
+    'alaska': 'AK',
+    'arizona': 'AZ',
+    'arkansas': 'AR',
+    'california': 'CA',
+    'colorado': 'CO',
+    'connecticut': 'CT',
+    'delaware': 'DE',
+    'florida': 'FL',
+    'georgia': 'GA',
+    'hawaii': 'HI',
+    'idaho': 'ID',
+    'illinois': 'IL',
+    'indiana': 'IN',
+    'iowa': 'IA',
+    'kansas': 'KS',
+    'kentucky': 'KY',
+    'louisiana': 'LA',
+    'maine': 'ME',
+    'maryland': 'MD',
+    'massachusetts': 'MA',
+    'michigan': 'MI',
+    'minnesota': 'MN',
+    'mississippi': 'MS',
+    'missouri': 'MO',
+    'montana': 'MT',
+    'nebraska': 'NE',
+    'nevada': 'NV',
+    'new hampshire': 'NH',
+    'new jersey': 'NJ',
+    'new mexico': 'NM',
+    'new york': 'NY',
+    'north carolina': 'NC',
+    'north dakota': 'ND',
+    'ohio': 'OH',
+    'oklahoma': 'OK',
+    'oregon': 'OR',
+    'pennsylvania': 'PA',
+    'rhode island': 'RI',
+    'south carolina': 'SC',
+    'south dakota': 'SD',
+    'tennessee': 'TN',
+    'texas': 'TX',
+    'utah': 'UT',
+    'vermont': 'VT',
+    'virginia': 'VA',
+    'washington': 'WA',
+    'west virginia': 'WV',
+    'wisconsin': 'WI',
+    'wyoming': 'WY',
+    'district of columbia': 'DC',
   };
 
   String? _stateNameToCode(String stateName) {

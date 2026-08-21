@@ -170,6 +170,9 @@ class RideModel {
   // === RIDE EXPERIENCE: Rider Notes ===
   final String? riderNotes;              // Free text notes from rider to driver
   final String? organizationName;        // Org name if booked by organization
+  // VIAJE AGENDADO ("Para después" del rider): hora a la que quiere el viaje.
+  // null = viaje inmediato. La RLS lo muestra al chofer hasta ~15 min antes.
+  final DateTime? scheduledTime;
   final DateTime createdAt;
   final DateTime? acceptedAt;
   final DateTime? arrivedAt;
@@ -246,6 +249,7 @@ class RideModel {
     this.isPaid = false,
     this.notes,
     this.isUrgent = false,
+    this.scheduledTime,
     required this.createdAt,
     this.acceptedAt,
     this.arrivedAt,
@@ -384,6 +388,9 @@ class RideModel {
       isPaid: json['is_paid'] as bool? ?? false,
       notes: json['notes'] as String?,
       isUrgent: json['is_urgent'] as bool? ?? false,
+      scheduledTime: json['scheduled_time'] != null
+          ? DateTime.parse(json['scheduled_time'] as String).toLocal()
+          : null,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'] as String)
           : DateTime.now(),

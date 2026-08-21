@@ -111,7 +111,9 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
         ),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFFF59E0B)))
+          ? const Center(
+              child: CircularProgressIndicator(color: Color(0xFFF59E0B)),
+            )
           : TabBarView(
               controller: _tabController,
               children: [
@@ -130,10 +132,17 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
   Widget _buildResumenTab() {
     final cashOwed = (_account?['current_balance'] as num?)?.toDouble() ?? 0;
     final status = _account?['status'] as String? ?? 'active';
-    final totalRides = (_account?['total_cash_rides_completed'] as num?)?.toInt() ?? 0;
-    final threshold = (_account?['auto_suspend_threshold'] as num?)?.toDouble() ?? 500;
+    final totalRides =
+        (_account?['total_cash_rides_completed'] as num?)?.toInt() ?? 0;
+    final threshold =
+        (_account?['auto_suspend_threshold'] as num?)?.toDouble() ?? 500;
     final byType = Map<String, double>.from(_summary['by_source_type'] ?? {});
-    final countryCode = Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US';
+    final countryCode =
+        Provider.of<DriverProvider>(
+          context,
+          listen: false,
+        ).driver?.countryCode ??
+        'US';
 
     final isSuspended = status == 'suspended' || status == 'blocked';
 
@@ -150,8 +159,8 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
                 colors: isSuspended
                     ? [const Color(0xFFDC2626), const Color(0xFFB91C1C)]
                     : cashOwed > 0
-                        ? [const Color(0xFFF59E0B), const Color(0xFFD97706)]
-                        : [const Color(0xFF10B981), const Color(0xFF059669)],
+                    ? [const Color(0xFFF59E0B), const Color(0xFFD97706)]
+                    : [const Color(0xFF10B981), const Color(0xFF059669)],
               ),
               borderRadius: BorderRadius.circular(20),
             ),
@@ -161,8 +170,8 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
                   isSuspended
                       ? Icons.block_rounded
                       : cashOwed > 0
-                          ? Icons.account_balance_wallet_rounded
-                          : Icons.check_circle_rounded,
+                      ? Icons.account_balance_wallet_rounded
+                      : Icons.check_circle_rounded,
                   color: Colors.white,
                   size: 48,
                 ),
@@ -188,14 +197,20 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
                 if (isSuspended) ...[
                   const SizedBox(height: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: const Text(
                       'Deposita para reactivar',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ],
@@ -221,7 +236,11 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.account_balance, color: Color(0xFF60A5FA), size: 18),
+                      const Icon(
+                        Icons.account_balance,
+                        color: Color(0xFF60A5FA),
+                        size: 18,
+                      ),
                       const SizedBox(width: 8),
                       const Text(
                         'BALANCE STRIPE',
@@ -241,11 +260,19 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Disponible',
-                                style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11)),
+                            const Text(
+                              'Disponible',
+                              style: TextStyle(
+                                color: Color(0xFF94A3B8),
+                                fontSize: 11,
+                              ),
+                            ),
                             const SizedBox(height: 2),
                             Text(
-                              formatMoney(_stripeBalance!.availableCents / 100, country: countryCode),
+                              formatMoney(
+                                _stripeBalance!.availableCents / 100,
+                                country: countryCode,
+                              ),
                               style: const TextStyle(
                                 color: Color(0xFF10B981),
                                 fontSize: 20,
@@ -255,17 +282,29 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
                           ],
                         ),
                       ),
-                      Container(width: 1, height: 36, color: const Color(0xFF334155)),
+                      Container(
+                        width: 1,
+                        height: 36,
+                        color: const Color(0xFF334155),
+                      ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Pendiente',
-                                style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11)),
+                            const Text(
+                              'Pendiente',
+                              style: TextStyle(
+                                color: Color(0xFF94A3B8),
+                                fontSize: 11,
+                              ),
+                            ),
                             const SizedBox(height: 2),
                             Text(
-                              formatMoney(_stripeBalance!.pendingCents / 100, country: countryCode),
+                              formatMoney(
+                                _stripeBalance!.pendingCents / 100,
+                                country: countryCode,
+                              ),
                               style: const TextStyle(
                                 color: Color(0xFFF59E0B),
                                 fontSize: 20,
@@ -286,11 +325,15 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
           // Stats row
           Row(
             children: [
-              _buildStatCard('Viajes Cash', totalRides.toString(), Icons.directions_car),
+              _buildStatCard(
+                'screens.cash_balance.cash_trips'.tr(),
+                totalRides.toString(),
+                Icons.directions_car,
+              ),
               const SizedBox(width: 12),
               _buildStatCard(
-                'Limite',
-                '\$${threshold.toStringAsFixed(0)}',
+                'screens.cash_balance.limit'.tr(),
+                formatMoney(threshold, country: countryCode),
                 Icons.warning_amber_rounded,
               ),
             ],
@@ -310,10 +353,10 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
               ),
             ),
             const SizedBox(height: 8),
-            ...byType.entries.map((entry) => _buildBreakdownRow(
-                  _sourceTypeLabel(entry.key),
-                  entry.value,
-                )),
+            ...byType.entries.map(
+              (entry) =>
+                  _buildBreakdownRow(_sourceTypeLabel(entry.key), entry.value),
+            ),
           ],
 
           const SizedBox(height: 20),
@@ -331,7 +374,11 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
               children: [
                 const Row(
                   children: [
-                    Icon(Icons.info_outline, color: Color(0xFFF59E0B), size: 20),
+                    Icon(
+                      Icons.info_outline,
+                      color: Color(0xFFF59E0B),
+                      size: 20,
+                    ),
                     SizedBox(width: 8),
                     Text(
                       'Como depositar',
@@ -346,8 +393,14 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
                 const SizedBox(height: 12),
                 _buildInstruction('1', 'Realiza una transferencia bancaria'),
                 _buildInstruction('2', 'Toma foto del comprobante'),
-                _buildInstruction('3', 'Sube el comprobante en la tab "Depositar"'),
-                _buildInstruction('4', 'Admin aprueba y tu cuenta se actualiza'),
+                _buildInstruction(
+                  '3',
+                  'Sube el comprobante en la tab "Depositar"',
+                ),
+                _buildInstruction(
+                  '4',
+                  'Admin aprueba y tu cuenta se actualiza',
+                ),
               ],
             ),
           ),
@@ -404,13 +457,21 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
   }
 
   Widget _buildBreakdownRow(String label, double amount) {
-    final countryCode = Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US';
+    final countryCode =
+        Provider.of<DriverProvider>(
+          context,
+          listen: false,
+        ).driver?.countryCode ??
+        'US';
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 14)),
+          Text(
+            label,
+            style: const TextStyle(color: Colors.white70, fontSize: 14),
+          ),
           Text(
             formatMoney(amount, country: countryCode),
             style: const TextStyle(
@@ -464,7 +525,12 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
     final weekEnd = statement['week_end_date'] as String? ?? '';
     final netOwed = (statement['net_owed'] as num?)?.toDouble() ?? 0;
     final paymentStatus = statement['payment_status'] as String? ?? 'pending';
-    final countryCode = Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US';
+    final countryCode =
+        Provider.of<DriverProvider>(
+          context,
+          listen: false,
+        ).driver?.countryCode ??
+        'US';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -482,7 +548,11 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
               children: [
                 Text(
                   '$weekStart → $weekEnd',
-                  style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 Text(
                   'Adeudo: ${formatMoney(netOwed, country: countryCode)}',
@@ -569,7 +639,12 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
     final isDebit = direction == 'debit';
     final amount = (entry['amount'] as num?)?.toDouble() ?? 0;
     final balanceAfter = (entry['balance_after'] as num?)?.toDouble() ?? 0;
-    final countryCode = Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US';
+    final countryCode =
+        Provider.of<DriverProvider>(
+          context,
+          listen: false,
+        ).driver?.countryCode ??
+        'US';
     final sourceType = entry['source_type'] as String? ?? '';
     final description = entry['description'] as String? ?? '';
     final createdAt = entry['created_at'] as String? ?? '';
@@ -583,7 +658,8 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
     if (createdAt.isNotEmpty) {
       try {
         final dt = DateTime.parse(createdAt).toLocal();
-        dateStr = '${dt.month}/${dt.day} ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
+        dateStr =
+            '${dt.month}/${dt.day} ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
       } catch (_) {
         dateStr = createdAt;
       }
@@ -596,7 +672,9 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isDebit ? const Color(0xFFF59E0B).withOpacity(0.3) : const Color(0xFF10B981).withOpacity(0.3),
+          color: isDebit
+              ? const Color(0xFFF59E0B).withOpacity(0.3)
+              : const Color(0xFF10B981).withOpacity(0.3),
         ),
       ),
       child: Column(
@@ -608,12 +686,20 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: (isDebit ? const Color(0xFFF59E0B) : const Color(0xFF10B981)).withOpacity(0.15),
+                  color:
+                      (isDebit
+                              ? const Color(0xFFF59E0B)
+                              : const Color(0xFF10B981))
+                          .withOpacity(0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
-                  isDebit ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
-                  color: isDebit ? const Color(0xFFF59E0B) : const Color(0xFF10B981),
+                  isDebit
+                      ? Icons.arrow_upward_rounded
+                      : Icons.arrow_downward_rounded,
+                  color: isDebit
+                      ? const Color(0xFFF59E0B)
+                      : const Color(0xFF10B981),
                   size: 20,
                 ),
               ),
@@ -632,7 +718,10 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
                     ),
                     Text(
                       dateStr,
-                      style: const TextStyle(color: Colors.white38, fontSize: 11),
+                      style: const TextStyle(
+                        color: Colors.white38,
+                        fontSize: 11,
+                      ),
                     ),
                   ],
                 ),
@@ -643,7 +732,9 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
                   Text(
                     '${isDebit ? '+' : '-'}${formatMoney(amount, country: countryCode)}',
                     style: TextStyle(
-                      color: isDebit ? const Color(0xFFF59E0B) : const Color(0xFF10B981),
+                      color: isDebit
+                          ? const Color(0xFFF59E0B)
+                          : const Color(0xFF10B981),
                       fontWeight: FontWeight.w700,
                       fontSize: 16,
                     ),
@@ -690,7 +781,12 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
   }
 
   Widget _buildMiniRow(String label, double value, {bool bold = false}) {
-    final countryCode = Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US';
+    final countryCode =
+        Provider.of<DriverProvider>(
+          context,
+          listen: false,
+        ).driver?.countryCode ??
+        'US';
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 1),
       child: Row(
@@ -723,7 +819,12 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
 
   Widget _buildDepositarTab() {
     final cashOwed = (_account?['current_balance'] as num?)?.toDouble() ?? 0;
-    final countryCode = Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US';
+    final countryCode =
+        Provider.of<DriverProvider>(
+          context,
+          listen: false,
+        ).driver?.countryCode ??
+        'US';
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -736,11 +837,16 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
             decoration: BoxDecoration(
               color: const Color(0xFFF59E0B).withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.3)),
+              border: Border.all(
+                color: const Color(0xFFF59E0B).withOpacity(0.3),
+              ),
             ),
             child: Row(
               children: [
-                const Icon(Icons.account_balance_wallet, color: Color(0xFFF59E0B)),
+                const Icon(
+                  Icons.account_balance_wallet,
+                  color: Color(0xFFF59E0B),
+                ),
                 const SizedBox(width: 12),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -768,7 +874,11 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
           // Amount field
           const Text(
             'Monto a depositar',
-            style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const SizedBox(height: 8),
           TextField(
@@ -777,7 +887,10 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
             style: const TextStyle(color: Colors.white, fontSize: 18),
             decoration: InputDecoration(
               prefixText: '\$ ',
-              prefixStyle: const TextStyle(color: Color(0xFFF59E0B), fontSize: 18),
+              prefixStyle: const TextStyle(
+                color: Color(0xFFF59E0B),
+                fontSize: 18,
+              ),
               hintText: cashOwed.toStringAsFixed(2),
               hintStyle: const TextStyle(color: Colors.white24),
               filled: true,
@@ -802,7 +915,11 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
           // Payment method
           const Text(
             'Metodo de pago',
-            style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const SizedBox(height: 8),
           Container(
@@ -819,14 +936,33 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
                 dropdownColor: AppColors.surface,
                 style: const TextStyle(color: Colors.white),
                 items: [
-                  DropdownMenuItem(value: 'transfer', child: Text('screens.cash_balance.bank_transfer'.tr())),
-                  DropdownMenuItem(value: 'spei', child: Text('screens.cash_balance.spei'.tr())),
-                  DropdownMenuItem(value: 'oxxo', child: Text('screens.cash_balance.oxxo'.tr())),
-                  DropdownMenuItem(value: 'zelle', child: Text('screens.cash_balance.zelle'.tr())),
-                  DropdownMenuItem(value: 'venmo', child: Text('screens.cash_balance.venmo'.tr())),
-                  DropdownMenuItem(value: 'cash_office', child: Text('screens.cash_balance.cash_office'.tr())),
+                  DropdownMenuItem(
+                    value: 'transfer',
+                    child: Text('screens.cash_balance.bank_transfer'.tr()),
+                  ),
+                  DropdownMenuItem(
+                    value: 'spei',
+                    child: Text('screens.cash_balance.spei'.tr()),
+                  ),
+                  DropdownMenuItem(
+                    value: 'oxxo',
+                    child: Text('screens.cash_balance.oxxo'.tr()),
+                  ),
+                  DropdownMenuItem(
+                    value: 'zelle',
+                    child: Text('screens.cash_balance.zelle'.tr()),
+                  ),
+                  DropdownMenuItem(
+                    value: 'venmo',
+                    child: Text('screens.cash_balance.venmo'.tr()),
+                  ),
+                  DropdownMenuItem(
+                    value: 'cash_office',
+                    child: Text('screens.cash_balance.cash_office'.tr()),
+                  ),
                 ],
-                onChanged: (v) => setState(() => _depositMethod = v ?? 'transfer'),
+                onChanged: (v) =>
+                    setState(() => _depositMethod = v ?? 'transfer'),
               ),
             ),
           ),
@@ -836,7 +972,11 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
           // Reference number
           const Text(
             'Numero de referencia',
-            style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const SizedBox(height: 8),
           TextField(
@@ -867,7 +1007,11 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
           // Proof upload
           const Text(
             'Comprobante de pago',
-            style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const SizedBox(height: 8),
           GestureDetector(
@@ -878,8 +1022,12 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
                 color: AppColors.surface,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: _proofUrl != null ? const Color(0xFF10B981) : Colors.white12,
-                  style: _proofUrl != null ? BorderStyle.solid : BorderStyle.none,
+                  color: _proofUrl != null
+                      ? const Color(0xFF10B981)
+                      : Colors.white12,
+                  style: _proofUrl != null
+                      ? BorderStyle.solid
+                      : BorderStyle.none,
                 ),
               ),
               child: _proofUrl != null
@@ -898,7 +1046,11 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
                                 color: Color(0xFF10B981),
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(Icons.check, color: Colors.white, size: 16),
+                              child: const Icon(
+                                Icons.check,
+                                color: Colors.white,
+                                size: 16,
+                              ),
                             ),
                           ),
                         ],
@@ -907,7 +1059,11 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
                   : const Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.camera_alt_rounded, color: Colors.white24, size: 36),
+                        Icon(
+                          Icons.camera_alt_rounded,
+                          color: Colors.white24,
+                          size: 36,
+                        ),
                         SizedBox(height: 8),
                         Text(
                           'Toca para subir foto del comprobante',
@@ -928,18 +1084,26 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFF59E0B),
                 foregroundColor: Colors.black,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
                 disabledBackgroundColor: Colors.white12,
               ),
               child: _isSubmitting
                   ? const SizedBox(
                       width: 24,
                       height: 24,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.black,
+                      ),
                     )
                   : const Text(
                       'Enviar Comprobante',
-                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                      ),
                     ),
             ),
           ),
@@ -972,7 +1136,9 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
             ),
             style: OutlinedButton.styleFrom(
               side: const BorderSide(color: Colors.white24),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
               padding: const EdgeInsets.symmetric(vertical: 14),
             ),
           ),
@@ -988,7 +1154,12 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
     final status = deposit['status'] as String? ?? 'pending';
     final method = deposit['payment_method'] as String? ?? 'transfer';
     final createdAt = deposit['created_at'] as String? ?? '';
-    final countryCode = Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US';
+    final countryCode =
+        Provider.of<DriverProvider>(
+          context,
+          listen: false,
+        ).driver?.countryCode ??
+        'US';
 
     String dateStr = '';
     if (createdAt.isNotEmpty) {
@@ -1035,8 +1206,8 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
               status == 'approved'
                   ? Icons.check_circle
                   : status == 'rejected'
-                      ? Icons.cancel
-                      : Icons.hourglass_top,
+                  ? Icons.cancel
+                  : Icons.hourglass_top,
               color: statusColor,
               size: 20,
             ),
@@ -1048,9 +1219,16 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
               children: [
                 Text(
                   '${formatMoney(amount, country: countryCode)} - ${_methodLabel(method)}',
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
                 ),
-                Text(dateStr, style: const TextStyle(color: Colors.white38, fontSize: 11)),
+                Text(
+                  dateStr,
+                  style: const TextStyle(color: Colors.white38, fontSize: 11),
+                ),
               ],
             ),
           ),
@@ -1062,7 +1240,11 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
             ),
             child: Text(
               statusLabel,
-              style: TextStyle(color: statusColor, fontWeight: FontWeight.w600, fontSize: 12),
+              style: TextStyle(
+                color: statusColor,
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+              ),
             ),
           ),
         ],
@@ -1093,7 +1275,10 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
 
   Future<void> _pickProofImage() async {
     final picker = ImagePicker();
-    final image = await picker.pickImage(source: ImageSource.camera, maxWidth: 1200);
+    final image = await picker.pickImage(
+      source: ImageSource.camera,
+      maxWidth: 1200,
+    );
     if (image != null) {
       setState(() => _proofUrl = image.path);
     }
@@ -1103,7 +1288,9 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
     final amountText = _depositAmountController.text.trim();
     if (amountText.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('screens.cash_balance.enter_deposit_amount'.tr())),
+        SnackBar(
+          content: Text('screens.cash_balance.enter_deposit_amount'.tr()),
+        ),
       );
       return;
     }
@@ -1138,7 +1325,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
           ? _depositRefController.text.trim()
           : null,
       proofUrl: uploadedProofUrl,
-      countryCode: 'MX',
+      countryCode: driver.countryCode,
     );
 
     setState(() => _isSubmitting = false);
@@ -1174,7 +1361,10 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
-        title: const Text('Solicitar Reset', style: TextStyle(color: Colors.white)),
+        title: const Text(
+          'Solicitar Reset',
+          style: TextStyle(color: Colors.white),
+        ),
         content: Text(
           'Solicitar al admin que resetee tu balance de ${formatMoney(cashOwed, country: driver.countryCode)}?\n\nSolo se aprueba si ya depositaste.',
           style: const TextStyle(color: Colors.white70),
@@ -1182,12 +1372,20 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancelar', style: TextStyle(color: Colors.white54)),
+            child: const Text(
+              'Cancelar',
+              style: TextStyle(color: Colors.white54),
+            ),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFF59E0B)),
-            child: const Text('Solicitar', style: TextStyle(color: Colors.black)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFF59E0B),
+            ),
+            child: const Text(
+              'Solicitar',
+              style: TextStyle(color: Colors.black),
+            ),
           ),
         ],
       ),

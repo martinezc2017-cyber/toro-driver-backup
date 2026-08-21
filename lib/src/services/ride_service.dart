@@ -5,6 +5,7 @@ import '../models/ride_model.dart';
 import 'notification_service.dart';
 import 'state_pricing_service.dart';
 import 'location_service.dart';
+import '../utils/geo_utils.dart';
 
 /// Se lanza cuando un viaje que se intentó aceptar YA fue tomado por otro chofer
 /// (o dejó de estar 'pending' — p.ej. lo cancelaron). El UPDATE atómico devolvió
@@ -65,7 +66,9 @@ class RideService {
         .isFilter('driver_id', null)
         .order('created_at', ascending: false)
         .limit(20);
-    debugPrint('RIDES_QUERY: Found ${(deliveriesResponse as List).length} pending deliveries');
+    debugPrint(
+      'RIDES_QUERY: Found ${(deliveriesResponse as List).length} pending deliveries',
+    );
 
     // === 2. Query share_ride_bookings table (carpools) ===
     List<dynamic> carpoolsResponse = [];
@@ -73,7 +76,10 @@ class RideService {
       carpoolsResponse = await _client
           .from('share_ride_bookings')
           .select('*')
-          .inFilter('status', ['pending', 'matched']) // Carpools waiting for driver
+          .inFilter('status', [
+            'pending',
+            'matched',
+          ]) // Carpools waiting for driver
           .isFilter('driver_id', null)
           .order('pickup_time', ascending: true) // Ordenar por hora de pickup
           .limit(20);
@@ -97,7 +103,8 @@ class RideService {
     for (final json in carpoolsResponse) {
       try {
         final carpoolJson = Map<String, dynamic>.from(json as Map);
-        carpoolJson['service_type'] = 'carpool'; // Ensure it's recognized as carpool
+        carpoolJson['service_type'] =
+            'carpool'; // Ensure it's recognized as carpool
         rides.add(await _parseAndCalculateSplit(carpoolJson));
       } catch (e) {
         debugPrint('RIDES_QUERY: skip bad carpool row: $e');
@@ -114,7 +121,10 @@ class RideService {
 
   // Filter out rides that this driver has rejected
   // Public method to filter rejected rides - used by provider
-  Future<List<RideModel>> filterRejectedRides(List<RideModel> rides, String driverId) async {
+  Future<List<RideModel>> filterRejectedRides(
+    List<RideModel> rides,
+    String driverId,
+  ) async {
     try {
       // Get all rejected ride IDs for this driver
       final rejectedResponse = await _client
@@ -137,7 +147,10 @@ class RideService {
   }
 
   // Fetch rider profile separately and enrich the JSON
-  Future<void> _enrichWithRiderProfile(Map<String, dynamic> json, String? userId) async {
+  Future<void> _enrichWithRiderProfile(
+    Map<String, dynamic> json,
+    String? userId,
+  ) async {
     if (userId == null || userId.isEmpty) return;
     try {
       final profile = await _client
@@ -176,7 +189,9 @@ class RideService {
   }
 
   // Helper to parse ride and calculate split if needed
-  Future<RideModel> _parseAndCalculateSplit(Map<String, dynamic> originalJson) async {
+  Future<RideModel> _parseAndCalculateSplit(
+    Map<String, dynamic> originalJson,
+  ) async {
     // Make a mutable copy (Supabase returns UnmodifiableMapView)
     final json = Map<String, dynamic>.from(originalJson);
     // Fetch rider profile separately
@@ -220,7 +235,10 @@ class RideService {
       final carpoolJson = Map<String, dynamic>.from(response);
       carpoolJson['service_type'] = 'carpool';
       // Fetch rider profile separately
-      await _enrichWithRiderProfile(carpoolJson, carpoolJson['rider_id'] as String? ?? carpoolJson['user_id'] as String?);
+      await _enrichWithRiderProfile(
+        carpoolJson,
+        carpoolJson['rider_id'] as String? ?? carpoolJson['user_id'] as String?,
+      );
       return RideModel.fromJson(carpoolJson);
     }
 
@@ -228,7 +246,11 @@ class RideService {
   }
 
   // Accept ride - uses SQL function for atomicity, supports both tables
-  Future<RideModel> acceptRide(String rideId, String driverId, {String serviceType = 'ride'}) async {
+  Future<RideModel> acceptRide(
+    String rideId,
+    String driverId, {
+    String serviceType = 'ride',
+  }) async {
     // Track acceptance in ride_requests for acceptance rate calculation
     try {
       await _trackRideResponse(driverId, rideId, serviceType, 'accepted');
@@ -368,27 +390,46 @@ class RideService {
   /// Get the max negotiate percentage for a QR tier
   static double getMaxNegotiatePercent(int qrTier) {
     switch (qrTier) {
-      case 1: return 10.0;
-      case 2: return 15.0;
-      case 3: return 20.0;
-      case 4: return 25.0;
-      case 5: return 30.0;
-      default: return 0.0; // Tier 0 cannot negotiate
+      case 1:
+        return 10.0;
+      case 2:
+        return 15.0;
+      case 3:
+        return 20.0;
+      case 4:
+        return 25.0;
+      case 5:
+        return 30.0;
+      default:
+        return 0.0; // Tier 0 cannot negotiate
     }
   }
 
   // Reject ride - driver declines the ride offer
-  Future<void> rejectRide(String rideId, String driverId, {String serviceType = 'ride'}) async {
+  Future<void> rejectRide(
+    String rideId,
+    String driverId, {
+    String serviceType = 'ride',
+  }) async {
     await _trackRideResponse(driverId, rideId, serviceType, 'rejected');
   }
 
   // Track ride timeout - called when driver doesn't respond in time
-  Future<void> trackRideTimeout(String rideId, String driverId, {String serviceType = 'ride'}) async {
+  Future<void> trackRideTimeout(
+    String rideId,
+    String driverId, {
+    String serviceType = 'ride',
+  }) async {
     await _trackRideResponse(driverId, rideId, serviceType, 'timeout');
   }
 
   // Internal: Track ride response for acceptance rate calculation
-  Future<void> _trackRideResponse(String driverId, String referenceId, String serviceType, String status) async {
+  Future<void> _trackRideResponse(
+    String driverId,
+    String referenceId,
+    String serviceType,
+    String status,
+  ) async {
     try {
       // Check if request already exists
       final existing = await _client
@@ -407,7 +448,9 @@ class RideService {
               'responded_at': DateTime.now().toUtc().toIso8601String(),
             })
             .eq('id', existing['id']);
-        debugPrint('✅ Ride response tracked (UPDATE): $status for $referenceId');
+        debugPrint(
+          '✅ Ride response tracked (UPDATE): $status for $referenceId',
+        );
       } else {
         // Insert new request with response
         await _client.from('ride_requests').insert({
@@ -417,24 +460,36 @@ class RideService {
           'status': status,
           'responded_at': DateTime.now().toUtc().toIso8601String(),
         });
-        debugPrint('✅ Ride response tracked (INSERT): $status for $referenceId');
+        debugPrint(
+          '✅ Ride response tracked (INSERT): $status for $referenceId',
+        );
       }
     } catch (e) {
       // Log error but don't throw - this is non-critical for the ride flow
       debugPrint('❌ ERROR tracking ride response: $e');
-      debugPrint('   driver=$driverId, ride=$referenceId, type=$serviceType, status=$status');
+      debugPrint(
+        '   driver=$driverId, ride=$referenceId, type=$serviceType, status=$status',
+      );
     }
   }
 
   // Create pending ride request when offering to driver
-  Future<String?> createRideRequest(String driverId, String referenceId, String serviceType) async {
+  Future<String?> createRideRequest(
+    String driverId,
+    String referenceId,
+    String serviceType,
+  ) async {
     try {
-      final response = await _client.from('ride_requests').insert({
-        'driver_id': driverId,
-        'service_type': serviceType,
-        'reference_id': referenceId,
-        'status': 'pending',
-      }).select('id').single();
+      final response = await _client
+          .from('ride_requests')
+          .insert({
+            'driver_id': driverId,
+            'service_type': serviceType,
+            'reference_id': referenceId,
+            'status': 'pending',
+          })
+          .select('id')
+          .single();
 
       return response['id'] as String;
     } catch (e) {
@@ -463,7 +518,9 @@ class RideService {
   // el wait_fee; sin esto la espera nunca se cobra en viajes de pasajero.
   Future<RideModel> startRide(String rideId, {int? waitSeconds}) async {
     final update = <String, dynamic>{
-      'status': statusToDatabase(RideStatus.inProgress), // 'in_progress' + started_at
+      'status': statusToDatabase(
+        RideStatus.inProgress,
+      ), // 'in_progress' + started_at
       'started_at': DateTime.now().toUtc().toIso8601String(),
     };
     if (waitSeconds != null && waitSeconds > 0) {
@@ -491,10 +548,7 @@ class RideService {
       try {
         final response = await _client.rpc(
           'complete_ride',
-          params: {
-            'p_ride_id': rideId,
-            'p_tip': tip ?? 0,
-          },
+          params: {'p_ride_id': rideId, 'p_tip': tip ?? 0},
         );
         return RideModel.fromJson(response);
       } catch (e) {
@@ -520,17 +574,25 @@ class RideService {
     if ((stateCode == null || stateCode.isEmpty) &&
         ride.pickupLocation.latitude != 0) {
       try {
-        final res = await _client.rpc('resolve_state_for_pricing', params: {
-          'p_lat': ride.pickupLocation.latitude,
-          'p_lng': ride.pickupLocation.longitude,
-          'p_country': 'MX',
-        });
+        final res = await _client.rpc(
+          'resolve_state_for_pricing',
+          params: {
+            'p_lat': ride.pickupLocation.latitude,
+            'p_lng': ride.pickupLocation.longitude,
+            'p_country': GeoUtils.countryCode(
+              ride.pickupLocation.latitude,
+              ride.pickupLocation.longitude,
+            ),
+          },
+        );
         if (res is List && res.isNotEmpty) {
           final sc = (res.first['state_code'] as String?)?.trim();
           if (sc != null && sc.isNotEmpty && sc != 'DEFAULT') stateCode = sc;
         }
       } catch (e) {
-        debugPrint('completeRide -> resolve_state_for_pricing fallback failed: $e');
+        debugPrint(
+          'completeRide -> resolve_state_for_pricing fallback failed: $e',
+        );
       }
     }
     // FALLBACK 2: el estado del propio chofer (lo tiene en drivers.state_code,
@@ -552,7 +614,9 @@ class RideService {
       }
     }
     if (stateCode == null || stateCode.isEmpty) {
-      throw Exception('No se pudo determinar el estado desde las coordenadas — verifica tu conexión a internet');
+      throw Exception(
+        'No se pudo determinar el estado desde las coordenadas — verifica tu conexión a internet',
+      );
     }
 
     StatePricing statePricing;
@@ -585,7 +649,8 @@ class RideService {
     // es del chofer (cubierto por su retención). Igual que el trigger. "La casa gana".
     final insuranceAmount = splitBase * (insurancePercent / 100);
     final platformGross = fare - basedriverEarnings - insuranceAmount;
-    final taxAmount = (platformGross > 0 ? platformGross : 0) *
+    final taxAmount =
+        (platformGross > 0 ? platformGross : 0) *
         (taxPercent / (100 + taxPercent));
     final platformAmount = platformGross - taxAmount;
 
@@ -600,9 +665,13 @@ class RideService {
     double distanceMiles = ride.distanceKm * 0.621371;
     if (distanceMiles == 0 && ride.pickupLocation.latitude != 0) {
       // Calculate from coordinates using simple approximation
-      final latDiff = (ride.dropoffLocation.latitude - ride.pickupLocation.latitude).abs();
-      final lngDiff = (ride.dropoffLocation.longitude - ride.pickupLocation.longitude).abs();
-      distanceMiles = ((latDiff * 69) + (lngDiff * 54.6)) * 1.3; // approx road distance
+      final latDiff =
+          (ride.dropoffLocation.latitude - ride.pickupLocation.latitude).abs();
+      final lngDiff =
+          (ride.dropoffLocation.longitude - ride.pickupLocation.longitude)
+              .abs();
+      distanceMiles =
+          ((latDiff * 69) + (lngDiff * 54.6)) * 1.3; // approx road distance
       if (distanceMiles < 0.5) distanceMiles = 0.5;
     }
 
@@ -612,13 +681,14 @@ class RideService {
     final updateData = <String, dynamic>{
       'status': statusToDatabase(RideStatus.completed),
       'completed_at': now.toIso8601String(),
-      'delivered_at': now.toIso8601String(), // CRITICAL: needed for earnings queries
+      'delivered_at': now
+          .toIso8601String(), // CRITICAL: needed for earnings queries
       'final_price': fare,
       'driver_earnings': totalDriverEarnings,
       'state_code': stateCode,
       'platform_fee': platformAmount,
       'tax_amount': taxAmount,
-      'payment_status': 'paid',  // ALWAYS mark as paid when completing
+      'payment_status': 'paid', // ALWAYS mark as paid when completing
       'insurance_fee': insuranceAmount,
       'distance_miles': distanceMiles,
       // Store financial audit percentages in tax_breakdown JSONB column
@@ -679,8 +749,11 @@ class RideService {
       stateCode: stateCode,
       pickupAddress: ride.pickupLocation.address,
       dropoffAddress: ride.dropoffLocation.address,
-      bookingType: ride.type == RideType.carpool ? 'carpool' :
-                   ride.type == RideType.package ? 'package' : 'ride',
+      bookingType: ride.type == RideType.carpool
+          ? 'carpool'
+          : ride.type == RideType.package
+          ? 'package'
+          : 'ride',
     );
 
     // ========================================================================
@@ -718,7 +791,6 @@ class RideService {
     }
 
     try {
-
       final captureResponse = await _client.functions.invoke(
         'stripe-capture-payment',
         body: {
@@ -731,8 +803,8 @@ class RideService {
           'stateCode': stateCode,
           'pickupAddress': pickupAddress,
           'dropoffAddress': dropoffAddress,
-          'processSplit': true,  // Process driver/platform split
-          'notifyDriver': true,  // Send notification to driver
+          'processSplit': true, // Process driver/platform split
+          'notifyDriver': true, // Send notification to driver
         },
       );
 
@@ -754,11 +826,14 @@ class RideService {
   // No-show de PASAJERO (estilo Uber): el chofer esperó pasado el umbral y el
   // pasajero no llegó. Cierra el viaje y cobra no_show_fee + el wait fee
   // acumulado (RPC server-side ride_report_no_show). Devuelve el desglose.
-  Future<Map<String, dynamic>> reportNoShow(String rideId, String driverId) async {
-    final res = await _client.rpc('ride_report_no_show', params: {
-      'p_delivery_id': rideId,
-      'p_driver_id': driverId,
-    });
+  Future<Map<String, dynamic>> reportNoShow(
+    String rideId,
+    String driverId,
+  ) async {
+    final res = await _client.rpc(
+      'ride_report_no_show',
+      params: {'p_delivery_id': rideId, 'p_driver_id': driverId},
+    );
     return Map<String, dynamic>.from(res as Map);
   }
 
@@ -809,13 +884,14 @@ class RideService {
     try {
       await _client
           .from('share_ride_bookings')
-          .update({
-            'status': 'pending',
-            'driver_id': null,
-            'accepted_at': null,
-          })
+          .update({'status': 'pending', 'driver_id': null, 'accepted_at': null})
           .eq('driver_id', driverId)
-          .inFilter('status', ['accepted', 'in_progress', 'matched', 'driver_assigned']);
+          .inFilter('status', [
+            'accepted',
+            'in_progress',
+            'matched',
+            'driver_assigned',
+          ]);
       success = true;
     } catch (e) {
       debugPrint('Error releasing carpools: $e');
@@ -839,7 +915,9 @@ class RideService {
           .limit(1);
 
       if (deliveryResponse.isNotEmpty) {
-        debugPrint('✅ getActiveRide: Found active delivery: ${deliveryResponse.first['id']}');
+        debugPrint(
+          '✅ getActiveRide: Found active delivery: ${deliveryResponse.first['id']}',
+        );
         return RideModel.fromJson(deliveryResponse.first);
       }
     } catch (e) {
@@ -852,12 +930,19 @@ class RideService {
           .from('share_ride_bookings')
           .select()
           .eq('driver_id', driverId)
-          .inFilter('status', ['accepted', 'in_progress', 'matched', 'driver_assigned'])
+          .inFilter('status', [
+            'accepted',
+            'in_progress',
+            'matched',
+            'driver_assigned',
+          ])
           .order('created_at', ascending: false)
           .limit(1);
 
       if (carpoolResponse.isNotEmpty) {
-        debugPrint('✅ getActiveRide: Found active carpool: ${carpoolResponse.first['id']}');
+        debugPrint(
+          '✅ getActiveRide: Found active carpool: ${carpoolResponse.first['id']}',
+        );
         return RideModel.fromJson(carpoolResponse.first);
       }
     } catch (e) {
@@ -881,7 +966,10 @@ class RideService {
           .from(SupabaseConfig.packageDeliveriesTable)
           .select()
           .eq('driver_id', driverId)
-          .inFilter('status', [statusToDatabase(RideStatus.completed), statusToDatabase(RideStatus.cancelled)]);
+          .inFilter('status', [
+            statusToDatabase(RideStatus.completed),
+            statusToDatabase(RideStatus.cancelled),
+          ]);
 
       if (startDate != null) {
         query = query.gte('created_at', startDate.toIso8601String());
@@ -894,7 +982,9 @@ class RideService {
           .order('created_at', ascending: false)
           .range(offset, offset + limit - 1);
 
-      return (response as List).map((json) => RideModel.fromJson(json)).toList();
+      return (response as List)
+          .map((json) => RideModel.fromJson(json))
+          .toList();
     } catch (e) {
       return [];
     }
@@ -918,7 +1008,10 @@ class RideService {
     // Resolve stateCode: parameter > coords > GPS
     String? resolvedStateCode = stateCode;
     if (stateCode == null && pickupLat != null && pickupLng != null) {
-      resolvedStateCode = await _locationService.getStateCodeFromCoordinates(pickupLat, pickupLng);
+      resolvedStateCode = await _locationService.getStateCodeFromCoordinates(
+        pickupLat,
+        pickupLng,
+      );
     } else if (stateCode == null) {
       resolvedStateCode = await _locationService.getStateCodeFromGPS();
     }
@@ -932,7 +1025,9 @@ class RideService {
     );
 
     // MX: per_mile_rate is actually per-km, no conversion needed
-    final distance = pricing.usesKilometers ? distanceKm : distanceKm * 0.621371;
+    final distance = pricing.usesKilometers
+        ? distanceKm
+        : distanceKm * 0.621371;
     double fare = pricing.baseFare;
     fare += distance * pricing.perMileRate;
     fare += estimatedMinutes * pricing.perMinuteRate;
@@ -959,9 +1054,12 @@ class RideService {
     BookingType bookingType = BookingType.ride,
   }) async {
     // Resolve stateCode: parameter > GPS
-    final String? resolvedStateCode = stateCode ?? await _locationService.getStateCodeFromGPS();
+    final String? resolvedStateCode =
+        stateCode ?? await _locationService.getStateCodeFromGPS();
     if (resolvedStateCode == null) {
-      throw Exception('GPS no disponible — activa tu ubicación para calcular precio');
+      throw Exception(
+        'GPS no disponible — activa tu ubicación para calcular precio',
+      );
     }
 
     final pricing = await StatePricingService.instance.getPricing(
@@ -1000,8 +1098,11 @@ class RideService {
                 .order('created_at', ascending: false)
                 .limit(20);
             return (rows as List)
-                .map((json) =>
-                    RideModel.fromJson(Map<String, dynamic>.from(json as Map)))
+                .map(
+                  (json) => RideModel.fromJson(
+                    Map<String, dynamic>.from(json as Map),
+                  ),
+                )
                 .toList();
           } catch (e) {
             return <RideModel>[];
@@ -1016,19 +1117,22 @@ class RideService {
       final bookingType = ride.type == RideType.package
           ? BookingType.delivery
           : ride.type == RideType.carpool
-              ? BookingType.carpool
-              : BookingType.ride;
+          ? BookingType.carpool
+          : BookingType.ride;
 
       // Get state code from pickup location
       String? stateCode;
-      if (ride.pickupLocation.latitude != 0 && ride.pickupLocation.longitude != 0) {
+      if (ride.pickupLocation.latitude != 0 &&
+          ride.pickupLocation.longitude != 0) {
         stateCode = await _locationService.getStateCodeFromCoordinates(
           ride.pickupLocation.latitude,
           ride.pickupLocation.longitude,
         );
       }
       if (stateCode == null) {
-        throw Exception('No se pudo determinar el estado para calcular el precio — verifica tu conexión');
+        throw Exception(
+          'No se pudo determinar el estado para calcular el precio — verifica tu conexión',
+        );
       }
 
       // Get pricing config for state
@@ -1059,9 +1163,14 @@ class RideService {
         );
         // Apply TNC tax from fallback pricing too
         final tncTax = fallbackPricing.tncTaxPerTrip;
-        final fareAfterTncTax = (ride.fare - tncTax).clamp(0.0, double.infinity);
-        final driverEarnings = fareAfterTncTax * (fallbackPricing.driverPercentage / 100);
-        final platformFee = fareAfterTncTax * (fallbackPricing.platformPercentage / 100);
+        final fareAfterTncTax = (ride.fare - tncTax).clamp(
+          0.0,
+          double.infinity,
+        );
+        final driverEarnings =
+            fareAfterTncTax * (fallbackPricing.driverPercentage / 100);
+        final platformFee =
+            fareAfterTncTax * (fallbackPricing.platformPercentage / 100);
         return ride.copyWith(
           driverEarnings: driverEarnings,
           platformFee: platformFee,
@@ -1099,9 +1208,12 @@ class RideService {
           final List<dynamic> dataList = data is List ? data : [];
 
           if (dataList.isNotEmpty) {
-            final json = Map<String, dynamic>.from(dataList.first as Map<String, dynamic>);
+            final json = Map<String, dynamic>.from(
+              dataList.first as Map<String, dynamic>,
+            );
             // Enrich with rider profile (name, photo, rating)
-            final userId = json['user_id'] as String? ?? json['rider_id'] as String?;
+            final userId =
+                json['user_id'] as String? ?? json['rider_id'] as String?;
             await _enrichWithRiderProfile(json, userId);
             return RideModel.fromJson(json);
           }
@@ -1117,7 +1229,9 @@ class RideService {
             if (carpoolData != null) {
               final carpoolJson = Map<String, dynamic>.from(carpoolData);
               carpoolJson['service_type'] = 'carpool';
-              final userId = carpoolJson['user_id'] as String? ?? carpoolJson['rider_id'] as String?;
+              final userId =
+                  carpoolJson['user_id'] as String? ??
+                  carpoolJson['rider_id'] as String?;
               await _enrichWithRiderProfile(carpoolJson, userId);
               return RideModel.fromJson(carpoolJson);
             }
@@ -1139,9 +1253,13 @@ class RideService {
           if (data == null) return null;
           final List<dynamic> dataList = data is List ? data : [];
           if (dataList.isNotEmpty) {
-            final carpoolJson = Map<String, dynamic>.from(dataList.first as Map<String, dynamic>);
+            final carpoolJson = Map<String, dynamic>.from(
+              dataList.first as Map<String, dynamic>,
+            );
             carpoolJson['service_type'] = 'carpool';
-            final userId = carpoolJson['user_id'] as String? ?? carpoolJson['rider_id'] as String?;
+            final userId =
+                carpoolJson['user_id'] as String? ??
+                carpoolJson['rider_id'] as String?;
             await _enrichWithRiderProfile(carpoolJson, userId);
             return RideModel.fromJson(carpoolJson);
           }
@@ -1169,7 +1287,11 @@ class RideService {
   }
 
   // Rate passenger
-  Future<void> ratePassenger(String rideId, double rating, String? comment) async {
+  Future<void> ratePassenger(
+    String rideId,
+    double rating,
+    String? comment,
+  ) async {
     await _client.from(SupabaseConfig.ratingsTable).insert({
       'ride_id': rideId,
       'rating': rating,
@@ -1222,8 +1344,11 @@ class RideService {
     try {
       statePricing = await StatePricingService.instance.getPricing(
         stateCode: resolvedStateCode,
-        bookingType: ride.type == RideType.carpool ? BookingType.carpool :
-                     ride.type == RideType.package ? BookingType.delivery : BookingType.ride,
+        bookingType: ride.type == RideType.carpool
+            ? BookingType.carpool
+            : ride.type == RideType.package
+            ? BookingType.delivery
+            : BookingType.ride,
       );
     } on NoPricingConfiguredError {
       rethrow;
@@ -1242,7 +1367,8 @@ class RideService {
     // del viaje entero. El IVA del viaje es del chofer (cubierto por su retención).
     // Igual que el trigger auto_calculate_delivery_fees. "La casa gana".
     final platformGross = fare - driverEarnings - insuranceFee;
-    final taxAmount = (platformGross > 0 ? platformGross : 0) *
+    final taxAmount =
+        (platformGross > 0 ? platformGross : 0) *
         (statePricing.taxPercentage / (100 + statePricing.taxPercentage));
     final platformAmount = platformGross - taxAmount;
 
@@ -1255,7 +1381,8 @@ class RideService {
       'insurance_fee': insuranceFee,
       'tax_amount': taxAmount,
       'state_code': resolvedStateCode,
-      'payment_status': 'paid',  // CRITICAL: Trigger checks this before allowing completion
+      'payment_status':
+          'paid', // CRITICAL: Trigger checks this before allowing completion
       'cash_payment_confirmed': true,
       'cash_payment_confirmed_at': now.toIso8601String(),
       'cash_payment_confirmed_by': driverId,
@@ -1325,21 +1452,36 @@ class RideService {
       );
       final splitData = splitResponse.data as Map<String, dynamic>?;
       if (splitData?['success'] == true) {
-        debugPrint('✅ Cash split processed: driver gets \$${splitData?['driver_amount']}');
+        debugPrint(
+          '✅ Cash split processed: driver gets \$${splitData?['driver_amount']}',
+        );
       } else {
-        debugPrint('⚠️ Cash split warning: ${splitData?['error'] ?? 'unknown'}');
+        debugPrint(
+          '⚠️ Cash split warning: ${splitData?['error'] ?? 'unknown'}',
+        );
       }
     } catch (e) {
       // Cash already collected — can't roll back the ride. Log for admin manual recovery.
-      debugPrint('CRITICAL: Cash split failed for ride $rideId — driver $driverId, fare $fare: $e');
+      debugPrint(
+        'CRITICAL: Cash split failed for ride $rideId — driver $driverId, fare $fare: $e',
+      );
       try {
         await _client.from('audit_log').insert({
           'action': 'cash_split_failed',
           'entity_type': 'delivery',
           'entity_id': rideId,
-          'description': 'Cash split RPC failed — manual recovery required. Fare: $fare, Driver: $driverId',
-          'metadata': {'ride_id': rideId, 'driver_id': driverId, 'fare': fare, 'error': e.toString()},
-          'country_code': 'MX',
+          'description':
+              'Cash split RPC failed — manual recovery required. Fare: $fare, Driver: $driverId',
+          'metadata': {
+            'ride_id': rideId,
+            'driver_id': driverId,
+            'fare': fare,
+            'error': e.toString(),
+          },
+          'country_code': GeoUtils.countryCode(
+            ride.pickupLocation.latitude,
+            ride.pickupLocation.longitude,
+          ),
         });
       } catch (_) {}
     }

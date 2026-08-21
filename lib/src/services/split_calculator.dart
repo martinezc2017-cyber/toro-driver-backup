@@ -104,25 +104,34 @@ class SplitConfig {
   }
 
   factory SplitConfig.fromJson(Map<String, dynamic> json) {
-    final countryCode = (json['country_code'] as String?)?.toUpperCase() ?? 'MX';
+    final countryCode =
+        (json['country_code'] as String?)?.toUpperCase() ?? 'US';
     final decimalsFromJson = (json['currency_decimals'] as num?)?.toInt();
     return SplitConfig(
       platformFeePercent:
-          ((json['platform_fee_percent'] ?? json['platform_commission']) as num?)?.toDouble() ?? 0,
+          ((json['platform_fee_percent'] ?? json['platform_commission'])
+                  as num?)
+              ?.toDouble() ??
+          0,
       driverPercent: (json['driver_commission'] as num?)?.toDouble() ?? 0,
       insurancePercent: (json['insurance_percent'] as num?)?.toDouble() ?? 0,
       taxPercent: (json['tax_percent'] as num?)?.toDouble() ?? 0,
       currencyDecimals: decimalsFromJson ?? (countryCode == 'MX' ? 0 : 2),
       qrMaxLevel: (json['qr_max_level'] as num?)?.toInt() ?? 30,
       qrTier1Max: (json['qr_tier_1_max'] as num?)?.toInt() ?? 6,
-      qrTier1CommissionReduction: (json['qr_tier_1_bonus'] as num?)?.toDouble() ?? 1.0,
+      qrTier1CommissionReduction:
+          (json['qr_tier_1_bonus'] as num?)?.toDouble() ?? 1.0,
       qrTier2Max: (json['qr_tier_2_max'] as num?)?.toInt() ?? 12,
-      qrTier2CommissionReduction: (json['qr_tier_2_bonus'] as num?)?.toDouble() ?? 2.0,
+      qrTier2CommissionReduction:
+          (json['qr_tier_2_bonus'] as num?)?.toDouble() ?? 2.0,
       qrTier3Max: (json['qr_tier_3_max'] as num?)?.toInt() ?? 18,
-      qrTier3CommissionReduction: (json['qr_tier_3_bonus'] as num?)?.toDouble() ?? 3.0,
+      qrTier3CommissionReduction:
+          (json['qr_tier_3_bonus'] as num?)?.toDouble() ?? 3.0,
       qrTier4Max: (json['qr_tier_4_max'] as num?)?.toInt() ?? 24,
-      qrTier4CommissionReduction: (json['qr_tier_4_bonus'] as num?)?.toDouble() ?? 4.0,
-      qrTier5CommissionReduction: (json['qr_tier_5_bonus'] as num?)?.toDouble() ?? 5.0,
+      qrTier4CommissionReduction:
+          (json['qr_tier_4_bonus'] as num?)?.toDouble() ?? 4.0,
+      qrTier5CommissionReduction:
+          (json['qr_tier_5_bonus'] as num?)?.toDouble() ?? 5.0,
     );
   }
 
@@ -232,7 +241,9 @@ class SplitCalculator {
     final qrTier = config.getQRTier(driverQRLevel);
 
     final roundedGross = _round(grossAmount);
-    final platformFee = _round(roundedGross * (config.platformFeePercent / 100));
+    final platformFee = _round(
+      roundedGross * (config.platformFeePercent / 100),
+    );
     final insuranceFee = _round(roundedGross * (config.insurancePercent / 100));
     final taxFee = _round(roundedGross * (config.taxPercent / 100));
     // Driver absorbs the residue so sum(parts) == roundedGross EXACTLY. No .01 loss.
@@ -273,8 +284,9 @@ class SplitCalculator {
     int driverQRLevel = 0,
   }) {
     final driverBaseWithoutTip = driverEarnings - tipAmount;
-    final effectiveDriverPercent =
-        config.getEffectiveDriverPercent(driverQRLevel: driverQRLevel);
+    final effectiveDriverPercent = config.getEffectiveDriverPercent(
+      driverQRLevel: driverQRLevel,
+    );
     final estimatedGross = effectiveDriverPercent > 0
         ? _round((driverBaseWithoutTip * 100) / effectiveDriverPercent)
         : 0.0;

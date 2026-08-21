@@ -5,7 +5,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class SupabaseConfig {
   // Supabase project credentials
   static const String supabaseUrl = 'https://gkqcrkqaijwhiksyjekv.supabase.co';
-  static const String supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrcWNya3FhaWp3aGlrc3lqZWt2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjcyMjA0NTYsImV4cCI6MjA4Mjc5NjQ1Nn0.QmYXkhPndrUgInC8pdr7wdROVeh69BtbeICZbFV7Rno';
+  static const String supabaseAnonKey =
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrcWNya3FhaWp3aGlrc3lqZWt2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjcyMjA0NTYsImV4cCI6MjA4Mjc5NjQ1Nn0.QmYXkhPndrUgInC8pdr7wdROVeh69BtbeICZbFV7Rno';
 
   // Google OAuth Web Client ID
   // ==========================================================================
@@ -28,7 +29,8 @@ class SupabaseConfig {
   // signInWithIdToken fallaba por audience mismatch y la app caía al
   // OAuth web que muestra "supabase.co". Con este valor, audience del
   // idToken nativo coincide con lo que Supabase espera → sign-in sin web.
-  static const String googleWebClientId = '732187337384-3tg9j5qq6al4jjkcnt89t3p6b9d49qe6.apps.googleusercontent.com';
+  static const String googleWebClientId =
+      '732187337384-3tg9j5qq6al4jjkcnt89t3p6b9d49qe6.apps.googleusercontent.com';
 
   // Puerto para OAuth callback en Windows Desktop
   static const int desktopAuthPort = 5001;
@@ -55,7 +57,9 @@ class SupabaseConfig {
           errorStr.contains('StorageCipher') ||
           errorStr.contains('InvalidKeyException') ||
           errorStr.contains('KeyStoreException')) {
-        debugPrint('[SUPABASE] Keystore corrupted — clearing secure storage and retrying');
+        debugPrint(
+          '[SUPABASE] Keystore corrupted — clearing secure storage and retrying',
+        );
         try {
           const storage = FlutterSecureStorage();
           await storage.deleteAll();
@@ -99,7 +103,9 @@ class SupabaseConfig {
       if (value != 'ok') throw Exception('read mismatch');
       debugPrint('[KEYSTORE] Health check passed');
     } catch (e) {
-      debugPrint('[KEYSTORE] Health check FAILED: $e — clearing all secure storage');
+      debugPrint(
+        '[KEYSTORE] Health check FAILED: $e — clearing all secure storage',
+      );
       try {
         const storage = FlutterSecureStorage();
         await storage.deleteAll();
@@ -143,7 +149,10 @@ class SupabaseConfig {
   static const String deliveryMessagesTable = 'delivery_messages';
   static const String earningsReportTable = 'driver_earnings_report';
   static const String bankAccountsTable = 'bank_accounts';
-  static const String stripeAccountsTable = 'driver_stripe_accounts_mx';
+  static String stripeAccountsTableForCountry(String? countryCode) =>
+      countryCode?.toUpperCase() == 'MX'
+      ? 'driver_stripe_accounts_mx'
+      : 'driver_stripe_accounts_us';
   static const String payoutsTable = 'payouts';
 
   // Storage buckets

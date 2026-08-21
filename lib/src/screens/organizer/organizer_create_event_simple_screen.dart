@@ -49,15 +49,15 @@ class EventStop {
   }) : id = id ?? DateTime.now().millisecondsSinceEpoch.toString();
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'lat': lat,
-        'lng': lng,
-        'estimatedArrival': estimatedArrival?.toIso8601String(),
-        'durationMinutes': durationMinutes,
-        'notes': notes,
-        'stopOrder': stopOrder,
-      };
+    'id': id,
+    'name': name,
+    'lat': lat,
+    'lng': lng,
+    'estimatedArrival': estimatedArrival?.toIso8601String(),
+    'durationMinutes': durationMinutes,
+    'notes': notes,
+    'stopOrder': stopOrder,
+  };
 }
 
 /// Simplified event creation screen - all in one scrollable form
@@ -147,7 +147,8 @@ class _OrganizerCreateEventSimpleScreenState
   String? _companyLogoUrl;
   Map<String, dynamic>? _organizerProfile; // Full organizer data
   bool _loadingOrganizerProfile = true;
-  bool _contactInfoExpanded = true; // true if no data saved yet, false = compact card
+  bool _contactInfoExpanded =
+      true; // true if no data saved yet, false = compact card
   bool _savingCredential = false;
 
   // Help tooltip expansion state per section
@@ -165,6 +166,16 @@ class _OrganizerCreateEventSimpleScreenState
   // Search radius configurable by creator (1-5km, only for public events)
   double _searchRadiusKm = 3.0;
 
+  String get _countryCode =>
+      (context.read<AuthProvider>().driver?.countryCode ?? userCountry())
+          .toUpperCase();
+
+  double _displayDistance(num? kilometers) =>
+      distanceFromKilometers(kilometers, country: _countryCode);
+
+  String _displayDistanceText(num? kilometers, {int decimals = 1}) =>
+      formatDistance(kilometers, country: _countryCode, decimals: decimals);
+
   // Event types with visibility rules and descriptions
   static const _eventTypes = [
     {
@@ -172,14 +183,16 @@ class _OrganizerCreateEventSimpleScreenState
       'label': 'Tour',
       'icon': Icons.tour,
       'visibility': 'private',
-      'desc': 'Evento privado. Pasajeros se unen solo por invitacion. Puedes invitar de otros estados.',
+      'desc':
+          'Evento privado. Pasajeros se unen solo por invitacion. Puedes invitar de otros estados.',
     },
     {
       'value': 'charter',
       'label': 'Transporte Publico',
       'icon': Icons.directions_bus,
       'visibility': 'public',
-      'desc': 'Evento publico tipo autobus. Los pasajeros cercanos al chofer en ruta pueden solicitar abordaje dentro del radio que configures (max 5km).',
+      'desc':
+          'Evento publico tipo autobus. Los pasajeros cercanos al chofer en ruta pueden solicitar abordaje dentro del radio que configures.',
     },
     {
       'value': 'excursion',
@@ -193,7 +206,8 @@ class _OrganizerCreateEventSimpleScreenState
       'label': 'Corporativo',
       'icon': Icons.business,
       'visibility': 'private',
-      'desc': 'Evento privado empresarial. Solo invitaciones de la organizacion.',
+      'desc':
+          'Evento privado empresarial. Solo invitaciones de la organizacion.',
     },
     {
       'value': 'wedding',
@@ -207,7 +221,8 @@ class _OrganizerCreateEventSimpleScreenState
       'label': 'Otro',
       'icon': Icons.category,
       'visibility': null, // toggle
-      'desc': 'Personalizable. Puedes elegir si el evento es publico o privado.',
+      'desc':
+          'Personalizable. Puedes elegir si el evento es publico o privado.',
     },
   ];
 
@@ -221,11 +236,16 @@ class _OrganizerCreateEventSimpleScreenState
 
   String get _appBarTitle {
     switch (widget.serviceType) {
-      case 'fixed_route': return 'Nueva Ruta';
-      case 'tourism': return 'Nuevo Tour';
-      case 'special_event': return 'Nuevo Evento';
-      case 'shared_trip': return 'Nuevo Viaje';
-      default: return 'Crear Evento';
+      case 'fixed_route':
+        return 'Nueva Ruta';
+      case 'tourism':
+        return 'Nuevo Tour';
+      case 'special_event':
+        return 'Nuevo Evento';
+      case 'shared_trip':
+        return 'Nuevo Viaje';
+      default:
+        return 'Crear Evento';
     }
   }
 
@@ -270,18 +290,20 @@ class _OrganizerCreateEventSimpleScreenState
           try {
             final List<dynamic> stopsList = jsonDecode(stopsJson);
             _stops = stopsList
-                .map((s) => EventStop(
-                      id: s['id'],
-                      name: s['name'] ?? '',
-                      lat: s['lat'],
-                      lng: s['lng'],
-                      estimatedArrival: s['estimatedArrival'] != null
-                          ? DateTime.tryParse(s['estimatedArrival'])
-                          : null,
-                      durationMinutes: s['durationMinutes'],
-                      notes: s['notes'],
-                      stopOrder: s['stopOrder'] ?? 0,
-                    ))
+                .map(
+                  (s) => EventStop(
+                    id: s['id'],
+                    name: s['name'] ?? '',
+                    lat: s['lat'],
+                    lng: s['lng'],
+                    estimatedArrival: s['estimatedArrival'] != null
+                        ? DateTime.tryParse(s['estimatedArrival'])
+                        : null,
+                    durationMinutes: s['durationMinutes'],
+                    notes: s['notes'],
+                    stopOrder: s['stopOrder'] ?? 0,
+                  ),
+                )
                 .toList();
           } catch (e) {
             AppLogger.log('Error parsing saved stops: $e');
@@ -330,7 +352,9 @@ class _OrganizerCreateEventSimpleScreenState
         }
       });
 
-      AppLogger.log('Template loaded: ${_stops.length} stops, passengers: ${_maxPassengersController.text}');
+      AppLogger.log(
+        'Template loaded: ${_stops.length} stops, passengers: ${_maxPassengersController.text}',
+      );
     } catch (e) {
       AppLogger.log('Error loading saved defaults: $e');
     }
@@ -343,7 +367,10 @@ class _OrganizerCreateEventSimpleScreenState
 
       // Vehicle and event type (already working)
       if (_selectedVehicle != null) {
-        await prefs.setString(_savedVehicleIdKey, _selectedVehicle!['id'] as String);
+        await prefs.setString(
+          _savedVehicleIdKey,
+          _selectedVehicle!['id'] as String,
+        );
       }
       await prefs.setString(_savedEventTypeKey, _eventType);
       await prefs.setString(_savedServiceTypeKey, _serviceType);
@@ -381,10 +408,15 @@ class _OrganizerCreateEventSimpleScreenState
 
       // Description section
       if (_descriptionController.text.trim().isNotEmpty) {
-        await prefs.setString(_savedDescriptionKey, _descriptionController.text.trim());
+        await prefs.setString(
+          _savedDescriptionKey,
+          _descriptionController.text.trim(),
+        );
       }
 
-      AppLogger.log('Template saved: ${_stops.length} stops, ${_maxPassengersController.text} passengers');
+      AppLogger.log(
+        'Template saved: ${_stops.length} stops, ${_maxPassengersController.text} passengers',
+      );
     } catch (e) {
       AppLogger.log('Error saving defaults: $e');
     }
@@ -438,17 +470,24 @@ class _OrganizerCreateEventSimpleScreenState
       _organizerId = organizerData['id'] as String;
 
       // Load organizer profile data
-      final hasEmail = (organizerData['contact_email'] as String?)?.isNotEmpty == true;
-      final hasPhone = (organizerData['contact_phone'] as String?)?.isNotEmpty == true;
-      final hasFacebook = (organizerData['contact_facebook'] as String?)?.isNotEmpty == true;
-      final hasLogo = (organizerData['company_logo_url'] as String?)?.isNotEmpty == true;
+      final hasEmail =
+          (organizerData['contact_email'] as String?)?.isNotEmpty == true;
+      final hasPhone =
+          (organizerData['contact_phone'] as String?)?.isNotEmpty == true;
+      final hasFacebook =
+          (organizerData['contact_facebook'] as String?)?.isNotEmpty == true;
+      final hasLogo =
+          (organizerData['company_logo_url'] as String?)?.isNotEmpty == true;
       final hasAnyContactData = hasEmail || hasPhone || hasFacebook || hasLogo;
 
       setState(() {
         _organizerProfile = organizerData;
-        _contactEmailController.text = (organizerData?['contact_email'] as String?) ?? '';
-        _contactPhoneController.text = (organizerData?['contact_phone'] as String?) ?? '';
-        _contactFacebookController.text = (organizerData?['contact_facebook'] as String?) ?? '';
+        _contactEmailController.text =
+            (organizerData?['contact_email'] as String?) ?? '';
+        _contactPhoneController.text =
+            (organizerData?['contact_phone'] as String?) ?? '';
+        _contactFacebookController.text =
+            (organizerData?['contact_facebook'] as String?) ?? '';
         _companyLogoUrl = organizerData?['company_logo_url'] as String?;
         _loadingOrganizerProfile = false;
         // If organizer already has contact data saved, show compact card
@@ -477,7 +516,9 @@ class _OrganizerCreateEventSimpleScreenState
         }
         // 2. If user has own vehicles, auto-select first one
         else {
-          final ownVehicles = _vehicles.where((v) => v['owner_id'] == userId).toList();
+          final ownVehicles = _vehicles
+              .where((v) => v['owner_id'] == userId)
+              .toList();
           if (ownVehicles.isNotEmpty) {
             _selectedVehicle = ownVehicles.first;
             // Auto-detect: driver has own vehicles → set wizard to true
@@ -501,19 +542,22 @@ class _OrganizerCreateEventSimpleScreenState
     if (_organizerId == null) return;
 
     try {
-      await SupabaseConfig.client.from('organizers').update({
-        'contact_email': _contactEmailController.text.trim().isEmpty
-            ? null
-            : _contactEmailController.text.trim(),
-        'contact_phone': _contactPhoneController.text.trim().isEmpty
-            ? null
-            : _contactPhoneController.text.trim(),
-        'contact_facebook': _contactFacebookController.text.trim().isEmpty
-            ? null
-            : _contactFacebookController.text.trim(),
-        'company_logo_url': _companyLogoUrl,
-        'updated_at': DateTime.now().toIso8601String(),
-      }).eq('id', _organizerId!);
+      await SupabaseConfig.client
+          .from('organizers')
+          .update({
+            'contact_email': _contactEmailController.text.trim().isEmpty
+                ? null
+                : _contactEmailController.text.trim(),
+            'contact_phone': _contactPhoneController.text.trim().isEmpty
+                ? null
+                : _contactPhoneController.text.trim(),
+            'contact_facebook': _contactFacebookController.text.trim().isEmpty
+                ? null
+                : _contactFacebookController.text.trim(),
+            'company_logo_url': _companyLogoUrl,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', _organizerId!);
 
       AppLogger.log('Organizer contact info saved successfully');
     } catch (e) {
@@ -544,9 +588,8 @@ class _OrganizerCreateEventSimpleScreenState
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (ctx) => Center(
-          child: CircularProgressIndicator(color: AppColors.primary),
-        ),
+        builder: (ctx) =>
+            Center(child: CircularProgressIndicator(color: AppColors.primary)),
       );
 
       // Read bytes from XFile (works on web & mobile)
@@ -620,7 +663,8 @@ class _OrganizerCreateEventSimpleScreenState
       final itineraryJson = _stops.map((stop) => stop.toJson()).toList();
 
       // Determine if driver is posting with own vehicle
-      final bool postingWithOwnVehicle = _hasOwnVehicle == true && _selectedVehicle != null;
+      final bool postingWithOwnVehicle =
+          _hasOwnVehicle == true && _selectedVehicle != null;
 
       // Auto-set visibility based on event type & vehicle ownership
       // If posting with own vehicle → public immediately (no bidding needed)
@@ -644,19 +688,25 @@ class _OrganizerCreateEventSimpleScreenState
         'event_type': _eventType,
         'event_description': _descriptionController.text.trim(),
         'event_date': _eventDate.toIso8601String().split('T')[0],
-        'start_time': '${_startTime.hour.toString().padLeft(2, '0')}:${_startTime.minute.toString().padLeft(2, '0')}:00',
+        'start_time':
+            '${_startTime.hour.toString().padLeft(2, '0')}:${_startTime.minute.toString().padLeft(2, '0')}:00',
         'max_passengers': eventSeats,
         'price_per_km': postingWithOwnVehicle
-            ? (double.tryParse(_pricePerKmController.text.trim()) ?? 0)
+            ? displayPriceToPerKilometer(
+                double.tryParse(_pricePerKmController.text.trim()) ?? 0,
+                country: authProvider.driver?.countryCode,
+              )
             : 0,
         'total_distance_km': _realDistanceKm,
+        'search_radius_km': _searchRadiusKm,
         'itinerary': itineraryJson,
         'passenger_visibility': passengerVisibility,
         'bid_visibility': _isBidPublic ? 'public' : 'private',
         // If posting with own vehicle: active + assigned; otherwise: draft waiting for bids
         'status': postingWithOwnVehicle ? 'active' : 'draft',
         if (postingWithOwnVehicle) 'vehicle_id': _selectedVehicle!['id'],
-        if (postingWithOwnVehicle && currentDriverId != null) 'driver_id': currentDriverId,
+        if (postingWithOwnVehicle && currentDriverId != null)
+          'driver_id': currentDriverId,
         if (postingWithOwnVehicle) 'vehicle_request_status': 'accepted',
         'country_code': authProvider.driver?.countryCode ?? 'US',
         'created_at': DateTime.now().toIso8601String(),
@@ -683,7 +733,9 @@ class _OrganizerCreateEventSimpleScreenState
             barrierDismissible: false,
             builder: (ctx) => AlertDialog(
               backgroundColor: AppColors.surface,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
               title: const Row(
                 children: [
                   Icon(Icons.check_circle, color: AppColors.success, size: 24),
@@ -691,7 +743,11 @@ class _OrganizerCreateEventSimpleScreenState
                   Expanded(
                     child: Text(
                       'Evento Publicado',
-                      style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w700),
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ],
@@ -706,10 +762,15 @@ class _OrganizerCreateEventSimpleScreenState
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                     elevation: 0,
                   ),
-                  child: const Text('Listo', style: TextStyle(fontWeight: FontWeight.w600)),
+                  child: const Text(
+                    'Listo',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
                 ),
               ],
             ),
@@ -724,7 +785,9 @@ class _OrganizerCreateEventSimpleScreenState
             barrierDismissible: false,
             builder: (ctx) => AlertDialog(
               backgroundColor: AppColors.surface,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
               title: const Row(
                 children: [
                   Icon(Icons.check_circle, color: AppColors.success, size: 24),
@@ -732,7 +795,11 @@ class _OrganizerCreateEventSimpleScreenState
                   Expanded(
                     child: Text(
                       'Esperando Puja',
-                      style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w700),
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ],
@@ -743,7 +810,10 @@ class _OrganizerCreateEventSimpleScreenState
                 children: [
                   const Text(
                     'Tu evento ya es visible para todos los choferes. Ellos pueden enviarte pujas con su precio.',
-                    style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 14,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   Container(
@@ -751,7 +821,9 @@ class _OrganizerCreateEventSimpleScreenState
                     decoration: BoxDecoration(
                       color: AppColors.gold.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AppColors.gold.withValues(alpha: 0.2)),
+                      border: Border.all(
+                        color: AppColors.gold.withValues(alpha: 0.2),
+                      ),
                     ),
                     child: const Row(
                       children: [
@@ -760,7 +832,10 @@ class _OrganizerCreateEventSimpleScreenState
                         Expanded(
                           child: Text(
                             'Tambien puedes invitar choferes directamente si no recibes pujas.',
-                            style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 12,
+                            ),
                           ),
                         ),
                       ],
@@ -771,16 +846,24 @@ class _OrganizerCreateEventSimpleScreenState
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(ctx, false),
-                  child: const Text('Listo', style: TextStyle(color: AppColors.textTertiary)),
+                  child: const Text(
+                    'Listo',
+                    style: TextStyle(color: AppColors.textTertiary),
+                  ),
                 ),
                 ElevatedButton.icon(
                   onPressed: () => Navigator.pop(ctx, true),
                   icon: const Icon(Icons.person_add, size: 16),
-                  label: const Text('Invitar Choferes', style: TextStyle(fontWeight: FontWeight.w600)),
+                  label: const Text(
+                    'Invitar Choferes',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.gold,
                     foregroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                     elevation: 0,
                   ),
                 ),
@@ -793,7 +876,9 @@ class _OrganizerCreateEventSimpleScreenState
           if (inviteDrivers == true && eventId != null) {
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (_) => OrganizerBiddingScreen(eventId: eventId)),
+              MaterialPageRoute(
+                builder: (_) => OrganizerBiddingScreen(eventId: eventId),
+              ),
             );
           } else {
             Navigator.pop(context, result);
@@ -807,10 +892,7 @@ class _OrganizerCreateEventSimpleScreenState
 
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
   }
 
@@ -821,7 +903,9 @@ class _OrganizerCreateEventSimpleScreenState
       final savedVehicleId = prefs.getString(_savedVehicleIdKey);
 
       if (savedVehicleId != null && _vehicles.isNotEmpty) {
-        final savedVehicle = _vehicles.where((v) => v['id'] == savedVehicleId).firstOrNull;
+        final savedVehicle = _vehicles
+            .where((v) => v['id'] == savedVehicleId)
+            .firstOrNull;
         if (savedVehicle != null) {
           setState(() {
             _selectedVehicle = savedVehicle;
@@ -836,7 +920,12 @@ class _OrganizerCreateEventSimpleScreenState
   /// Calculate real road distance using OSRM API (Open Source Routing Machine)
   /// This is called automatically when both origin and destination are selected
   /// Calculate road distance between two points using OSRM API
-  Future<double?> _calculateRoadDistance(double lat1, double lng1, double lat2, double lng2) async {
+  Future<double?> _calculateRoadDistance(
+    double lat1,
+    double lng1,
+    double lat2,
+    double lng2,
+  ) async {
     try {
       final url = Uri.parse(
         'https://router.project-osrm.org/route/v1/driving/'
@@ -849,7 +938,9 @@ class _OrganizerCreateEventSimpleScreenState
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
 
-        if (data['code'] == 'Ok' && data['routes'] != null && (data['routes'] as List).isNotEmpty) {
+        if (data['code'] == 'Ok' &&
+            data['routes'] != null &&
+            (data['routes'] as List).isNotEmpty) {
           final route = data['routes'][0];
           final distanceMeters = route['distance'] as num;
           final distanceKm = (distanceMeters / 1000).toDouble();
@@ -960,7 +1051,8 @@ class _OrganizerCreateEventSimpleScreenState
         '&limit=1'
         '&accept-language=es',
       );
-      final response = await http.get(url, headers: {'User-Agent': 'TORORide/1.0'})
+      final response = await http
+          .get(url, headers: {'User-Agent': 'TORORide/1.0'})
           .timeout(const Duration(seconds: 5));
       if (response.statusCode == 200) {
         final results = json.decode(response.body) as List;
@@ -1043,9 +1135,11 @@ class _OrganizerCreateEventSimpleScreenState
               if (_hasOwnVehicle == true) ...[
                 _buildSectionHeader(
                   icon: Icons.attach_money_rounded,
-                  title: 'Finanzas',
+                  title: 'org_section_finanzas'.tr(),
                   helpKey: 'finanzas',
-                  helpText: 'Define el precio por kilometro que pagara cada pasajero. El precio del boleto se calcula automaticamente: precio/km × distancia total.',
+                  helpText: 'org_help_finanzas'.tr(
+                    namedArgs: {'unit': distanceUnit(country: _countryCode)},
+                  ),
                 ),
                 const SizedBox(height: 12),
                 _buildFinanzasSection(),
@@ -1077,10 +1171,14 @@ class _OrganizerCreateEventSimpleScreenState
                             child: GestureDetector(
                               onTap: () => setState(() => _isBidPublic = true),
                               child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
                                 decoration: BoxDecoration(
                                   color: _isBidPublic
-                                      ? AppColors.success.withValues(alpha: 0.15)
+                                      ? AppColors.success.withValues(
+                                          alpha: 0.15,
+                                        )
                                       : Colors.transparent,
                                   borderRadius: BorderRadius.circular(10),
                                   border: Border.all(
@@ -1120,7 +1218,9 @@ class _OrganizerCreateEventSimpleScreenState
                             child: GestureDetector(
                               onTap: () => setState(() => _isBidPublic = false),
                               child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
                                 decoration: BoxDecoration(
                                   color: !_isBidPublic
                                       ? Colors.orange.withValues(alpha: 0.15)
@@ -1261,7 +1361,9 @@ class _OrganizerCreateEventSimpleScreenState
                   ),
                   child: Icon(
                     isHelpOpen ? Icons.close : Icons.help_outline,
-                    color: isHelpOpen ? AppColors.primary : AppColors.textTertiary,
+                    color: isHelpOpen
+                        ? AppColors.primary
+                        : AppColors.textTertiary,
                     size: 18,
                   ),
                 ),
@@ -1278,12 +1380,18 @@ class _OrganizerCreateEventSimpleScreenState
               decoration: BoxDecoration(
                 color: AppColors.primary.withValues(alpha: 0.06),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
+                border: Border.all(
+                  color: AppColors.primary.withValues(alpha: 0.15),
+                ),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.lightbulb_outline, color: AppColors.gold, size: 18),
+                  const Icon(
+                    Icons.lightbulb_outline,
+                    color: AppColors.gold,
+                    size: 18,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -1358,7 +1466,9 @@ class _OrganizerCreateEventSimpleScreenState
                     Icon(
                       type['icon'] as IconData,
                       size: 16,
-                      color: isSelected ? Colors.white : AppColors.textSecondary,
+                      color: isSelected
+                          ? Colors.white
+                          : AppColors.textSecondary,
                     ),
                     const SizedBox(width: 4),
                     Text(type['label'] as String),
@@ -1385,163 +1495,187 @@ class _OrganizerCreateEventSimpleScreenState
           const SizedBox(height: 12),
 
           // Event type description box
-          Builder(builder: (_) {
-            final selectedType = _eventTypes.firstWhere(
-              (t) => t['value'] == _eventType,
-              orElse: () => _eventTypes.first,
-            );
-            final desc = selectedType['desc'] as String? ?? '';
-            final visibility = selectedType['visibility'] as String?;
-            final isPublic = _eventType == 'charter' ||
-                (_eventType == 'other' && _isOtherTypePublic);
+          Builder(
+            builder: (_) {
+              final selectedType = _eventTypes.firstWhere(
+                (t) => t['value'] == _eventType,
+                orElse: () => _eventTypes.first,
+              );
+              final desc = selectedType['desc'] as String? ?? '';
+              final visibility = selectedType['visibility'] as String?;
+              final isPublic =
+                  _eventType == 'charter' ||
+                  (_eventType == 'other' && _isOtherTypePublic);
 
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Info box with description
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: AppColors.primary.withValues(alpha: 0.2),
-                    ),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(Icons.info_outline,
-                          size: 16, color: AppColors.primary),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          desc,
-                          style: TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 12,
-                            height: 1.4,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Toggle for "Otro" type
-                if (visibility == null) ...[
-                  const SizedBox(height: 12),
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Info box with description
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: AppColors.card,
+                      color: AppColors.primary.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.border),
+                      border: Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.2),
+                      ),
                     ),
                     child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Icon(
-                          _isOtherTypePublic
-                              ? Icons.public
-                              : Icons.lock_outline,
-                          size: 18,
-                          color: _isOtherTypePublic
-                              ? AppColors.primary
-                              : AppColors.textSecondary,
+                          Icons.info_outline,
+                          size: 16,
+                          color: AppColors.primary,
                         ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            _isOtherTypePublic
-                                ? 'org_visibility_public'.tr()
-                                : 'org_visibility_private'.tr(),
+                            desc,
                             style: TextStyle(
-                              color: AppColors.textPrimary,
-                              fontSize: 13,
+                              color: AppColors.textSecondary,
+                              fontSize: 12,
+                              height: 1.4,
                             ),
                           ),
-                        ),
-                        Switch(
-                          value: _isOtherTypePublic,
-                          onChanged: (v) =>
-                              setState(() => _isOtherTypePublic = v),
-                          activeColor: AppColors.primary,
                         ),
                       ],
                     ),
                   ),
-                ],
 
-                // Search radius slider (only for public events)
-                if (isPublic) ...[
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppColors.card,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(Icons.radar, size: 16,
-                                color: AppColors.primary),
-                            const SizedBox(width: 6),
-                            Text(
-                              'org_search_radius'.tr(namedArgs: {'radius': _searchRadiusKm.toStringAsFixed(1)}),
+                  // Toggle for "Otro" type
+                  if (visibility == null) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.card,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            _isOtherTypePublic
+                                ? Icons.public
+                                : Icons.lock_outline,
+                            size: 18,
+                            color: _isOtherTypePublic
+                                ? AppColors.primary
+                                : AppColors.textSecondary,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _isOtherTypePublic
+                                  ? 'org_visibility_public'.tr()
+                                  : 'org_visibility_private'.tr(),
                               style: TextStyle(
                                 color: AppColors.textPrimary,
                                 fontSize: 13,
-                                fontWeight: FontWeight.w500,
                               ),
                             ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'org_search_radius_desc'.tr(),
-                          style: TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 11,
                           ),
-                        ),
-                        Slider(
-                          value: _searchRadiusKm,
-                          min: 1.0,
-                          max: 5.0,
-                          divisions: 8,
-                          activeColor: AppColors.primary,
-                          inactiveColor:
-                              AppColors.primary.withValues(alpha: 0.2),
-                          label: '${_searchRadiusKm.toStringAsFixed(1)} km',
-                          onChanged: (v) =>
-                              setState(() => _searchRadiusKm = v),
-                        ),
-                        Row(
-                          mainAxisAlignment:
-                              MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text('1 km',
-                                style: TextStyle(
-                                    color: AppColors.textSecondary,
-                                    fontSize: 10)),
-                            Text('5 km',
-                                style: TextStyle(
-                                    color: AppColors.textSecondary,
-                                    fontSize: 10)),
-                          ],
-                        ),
-                      ],
+                          Switch(
+                            value: _isOtherTypePublic,
+                            onChanged: (v) =>
+                                setState(() => _isOtherTypePublic = v),
+                            activeColor: AppColors.primary,
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
+                  ],
+
+                  // Search radius slider (only for public events)
+                  if (isPublic) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.card,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.radar,
+                                size: 16,
+                                color: AppColors.primary,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'org_search_radius'.tr(
+                                  namedArgs: {
+                                    'radius': _displayDistance(
+                                      _searchRadiusKm,
+                                    ).toStringAsFixed(1),
+                                    'unit': distanceUnit(country: _countryCode),
+                                  },
+                                ),
+                                style: TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'org_search_radius_desc'.tr(),
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 11,
+                            ),
+                          ),
+                          Slider(
+                            value: _searchRadiusKm,
+                            min: 1.0,
+                            max: 5.0,
+                            divisions: 8,
+                            activeColor: AppColors.primary,
+                            inactiveColor: AppColors.primary.withValues(
+                              alpha: 0.2,
+                            ),
+                            label: _displayDistanceText(_searchRadiusKm),
+                            onChanged: (v) =>
+                                setState(() => _searchRadiusKm = v),
+                          ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                _displayDistanceText(1),
+                                style: TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 10,
+                                ),
+                              ),
+                              Text(
+                                _displayDistanceText(5),
+                                style: TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 10,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
-              ],
-            );
-          }),
+              );
+            },
+          ),
           const SizedBox(height: 16),
 
           // Service Type
@@ -1573,7 +1707,9 @@ class _OrganizerCreateEventSimpleScreenState
                   selectedColor: AppColors.primary,
                   backgroundColor: AppColors.card,
                   labelStyle: TextStyle(
-                    color: _serviceType == 'route' ? Colors.white : AppColors.textSecondary,
+                    color: _serviceType == 'route'
+                        ? Colors.white
+                        : AppColors.textSecondary,
                   ),
                 ),
               ),
@@ -1583,7 +1719,11 @@ class _OrganizerCreateEventSimpleScreenState
                   label: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.location_on, size: 16, color: Colors.white),
+                      const Icon(
+                        Icons.location_on,
+                        size: 16,
+                        color: Colors.white,
+                      ),
                       const SizedBox(width: 4),
                       Text('org_area_free'.tr()),
                     ],
@@ -1595,7 +1735,9 @@ class _OrganizerCreateEventSimpleScreenState
                   selectedColor: AppColors.primary,
                   backgroundColor: AppColors.card,
                   labelStyle: TextStyle(
-                    color: _serviceType == 'area' ? Colors.white : AppColors.textSecondary,
+                    color: _serviceType == 'area'
+                        ? Colors.white
+                        : AppColors.textSecondary,
                   ),
                 ),
               ),
@@ -1646,11 +1788,13 @@ class _OrganizerCreateEventSimpleScreenState
               child: OutlinedButton.icon(
                 onPressed: _addNewStop,
                 icon: Icon(Icons.add_location_alt, size: 20),
-                label: Text(_stops.isEmpty
-                    ? 'org_add_origin'.tr()
-                    : _stops.length == 1
-                        ? 'org_add_destination'.tr()
-                        : 'org_next_stop'.tr()),
+                label: Text(
+                  _stops.isEmpty
+                      ? 'org_add_origin'.tr()
+                      : _stops.length == 1
+                      ? 'org_add_destination'.tr()
+                      : 'org_next_stop'.tr(),
+                ),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.primary,
                   side: BorderSide(color: AppColors.primary, width: 1.5),
@@ -1673,7 +1817,11 @@ class _OrganizerCreateEventSimpleScreenState
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.swap_horiz, color: AppColors.textSecondary, size: 20),
+                    Icon(
+                      Icons.swap_horiz,
+                      color: AppColors.textSecondary,
+                      size: 20,
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -1733,7 +1881,10 @@ class _OrganizerCreateEventSimpleScreenState
                 labelStyle: TextStyle(color: AppColors.textSecondary),
                 hintText: 'org_area_center_hint'.tr(),
                 hintStyle: TextStyle(color: AppColors.textTertiary),
-                prefixIcon: Icon(Icons.my_location, color: AppColors.textSecondary),
+                prefixIcon: Icon(
+                  Icons.my_location,
+                  color: AppColors.textSecondary,
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide(color: AppColors.border),
@@ -1743,8 +1894,9 @@ class _OrganizerCreateEventSimpleScreenState
                   borderSide: BorderSide(color: AppColors.border),
                 ),
               ),
-              validator: (value) =>
-                  value?.isEmpty ?? true ? 'org_area_center_required'.tr() : null,
+              validator: (value) => value?.isEmpty ?? true
+                  ? 'org_area_center_required'.tr()
+                  : null,
             ),
             const SizedBox(height: 16),
             TextFormField(
@@ -1752,7 +1904,9 @@ class _OrganizerCreateEventSimpleScreenState
               style: TextStyle(color: AppColors.textPrimary),
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
-                labelText: 'org_area_radius'.tr(),
+                labelText: 'org_area_radius'.tr(
+                  namedArgs: {'unit': distanceUnit(country: _countryCode)},
+                ),
                 labelStyle: TextStyle(color: AppColors.textSecondary),
                 hintText: 'org_area_radius_hint'.tr(),
                 hintStyle: TextStyle(color: AppColors.textTertiary),
@@ -1766,12 +1920,12 @@ class _OrganizerCreateEventSimpleScreenState
                   borderSide: BorderSide(color: AppColors.border),
                 ),
               ),
-              validator: (value) =>
-                  value?.isEmpty ?? true ? 'org_area_radius_required'.tr() : null,
+              validator: (value) => value?.isEmpty ?? true
+                  ? 'org_area_radius_required'.tr()
+                  : null,
             ),
             const SizedBox(height: 16),
           ],
-
 
           // Event Date
           InkWell(
@@ -1790,7 +1944,10 @@ class _OrganizerCreateEventSimpleScreenState
               decoration: InputDecoration(
                 labelText: 'org_event_date'.tr(),
                 labelStyle: TextStyle(color: AppColors.textSecondary),
-                prefixIcon: Icon(Icons.calendar_today, color: AppColors.textSecondary),
+                prefixIcon: Icon(
+                  Icons.calendar_today,
+                  color: AppColors.textSecondary,
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide(color: AppColors.border),
@@ -1807,7 +1964,11 @@ class _OrganizerCreateEventSimpleScreenState
           // Start Time
           InkWell(
             onTap: () async {
-              final time = await showScrollableTimePicker(context, _startTime, primaryColor: AppColors.primary);
+              final time = await showScrollableTimePicker(
+                context,
+                _startTime,
+                primaryColor: AppColors.primary,
+              );
               if (time != null) {
                 setState(() => _startTime = time);
               }
@@ -1816,7 +1977,10 @@ class _OrganizerCreateEventSimpleScreenState
               decoration: InputDecoration(
                 labelText: 'org_start_time'.tr(),
                 labelStyle: TextStyle(color: AppColors.textSecondary),
-                prefixIcon: Icon(Icons.access_time, color: AppColors.textSecondary),
+                prefixIcon: Icon(
+                  Icons.access_time,
+                  color: AppColors.textSecondary,
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide(color: AppColors.border),
@@ -1876,15 +2040,15 @@ class _OrganizerCreateEventSimpleScreenState
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (ctx) => Center(
-          child: CircularProgressIndicator(color: AppColors.primary),
-        ),
+        builder: (ctx) =>
+            Center(child: CircularProgressIndicator(color: AppColors.primary)),
       );
 
       // Read bytes from XFile (works on web & mobile)
       final imageBytes = await pickedFile.readAsBytes();
       final ext = pickedFile.path.split('.').last.toLowerCase();
-      final fileName = '$userId/profile_${DateTime.now().millisecondsSinceEpoch}.$ext';
+      final fileName =
+          '$userId/profile_${DateTime.now().millisecondsSinceEpoch}.$ext';
 
       String contentType = 'image/jpeg';
       if (ext == 'png') contentType = 'image/png';
@@ -1919,7 +2083,9 @@ class _OrganizerCreateEventSimpleScreenState
 
       if (mounted) {
         // Update local organizer profile data so UI refreshes
-        final profiles = Map<String, dynamic>.from(_organizerProfile?['profiles'] ?? {});
+        final profiles = Map<String, dynamic>.from(
+          _organizerProfile?['profiles'] ?? {},
+        );
         profiles['avatar_url'] = imageUrl;
         _organizerProfile?['profiles'] = profiles;
         // Update driver provider too
@@ -1929,14 +2095,20 @@ class _OrganizerCreateEventSimpleScreenState
         }
         setState(() {});
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Foto actualizada'), backgroundColor: Colors.green),
+          const SnackBar(
+            content: Text('Foto actualizada'),
+            backgroundColor: Colors.green,
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
         Navigator.pop(context); // Close loading if open
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al subir foto: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Error al subir foto: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -1980,7 +2152,11 @@ class _OrganizerCreateEventSimpleScreenState
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final driver = authProvider.driver;
     final profile = _organizerProfile?['profiles'];
-    final fullName = driver?.name ?? driver?.fullName ?? profile?['full_name'] ?? 'cred_no_name'.tr();
+    final fullName =
+        driver?.name ??
+        driver?.fullName ??
+        profile?['full_name'] ??
+        'cred_no_name'.tr();
     final phone = driver?.phone ?? profile?['phone'] ?? '';
     final photoUrl = driver?.profileImageUrl ?? profile?['avatar_url'];
     final createdAt = _organizerProfile?['created_at'];
@@ -2000,7 +2176,9 @@ class _OrganizerCreateEventSimpleScreenState
           final months = (difference.inDays / 30).floor();
           timeWithToro = 'org_time_months'.tr(namedArgs: {'count': '$months'});
         } else if (difference.inDays > 0) {
-          timeWithToro = 'org_time_days'.tr(namedArgs: {'count': '${difference.inDays}'});
+          timeWithToro = 'org_time_days'.tr(
+            namedArgs: {'count': '${difference.inDays}'},
+          );
         } else {
           timeWithToro = 'org_time_new'.tr();
         }
@@ -2032,7 +2210,10 @@ class _OrganizerCreateEventSimpleScreenState
                         height: 50,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          border: Border.all(color: AppColors.success, width: 2),
+                          border: Border.all(
+                            color: AppColors.success,
+                            width: 2,
+                          ),
                           image: photoUrl != null
                               ? DecorationImage(
                                   image: NetworkImage(photoUrl),
@@ -2041,7 +2222,11 @@ class _OrganizerCreateEventSimpleScreenState
                               : null,
                         ),
                         child: photoUrl == null
-                            ? Icon(Icons.person, color: AppColors.textTertiary, size: 28)
+                            ? Icon(
+                                Icons.person,
+                                color: AppColors.textTertiary,
+                                size: 28,
+                              )
                             : null,
                       ),
                       Positioned(
@@ -2053,9 +2238,16 @@ class _OrganizerCreateEventSimpleScreenState
                           decoration: BoxDecoration(
                             color: AppColors.primary,
                             shape: BoxShape.circle,
-                            border: Border.all(color: AppColors.surface, width: 1.5),
+                            border: Border.all(
+                              color: AppColors.surface,
+                              width: 1.5,
+                            ),
                           ),
-                          child: const Icon(Icons.camera_alt, size: 10, color: Colors.white),
+                          child: const Icon(
+                            Icons.camera_alt,
+                            size: 10,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ],
@@ -2080,7 +2272,11 @@ class _OrganizerCreateEventSimpleScreenState
                             ),
                           ),
                           const SizedBox(width: 6),
-                          Icon(Icons.check_circle, color: AppColors.success, size: 16),
+                          Icon(
+                            Icons.check_circle,
+                            color: AppColors.success,
+                            size: 16,
+                          ),
                         ],
                       ),
                       const SizedBox(height: 6),
@@ -2090,9 +2286,15 @@ class _OrganizerCreateEventSimpleScreenState
                         runSpacing: 4,
                         children: [
                           if (_contactEmailController.text.isNotEmpty)
-                            _buildContactChip(Icons.email, _contactEmailController.text),
+                            _buildContactChip(
+                              Icons.email,
+                              _contactEmailController.text,
+                            ),
                           if (_contactPhoneController.text.isNotEmpty)
-                            _buildContactChip(Icons.phone, _contactPhoneController.text),
+                            _buildContactChip(
+                              Icons.phone,
+                              _contactPhoneController.text,
+                            ),
                           if (_contactFacebookController.text.isNotEmpty)
                             _buildContactChip(Icons.facebook, 'Facebook'),
                           if (_companyLogoUrl != null)
@@ -2179,9 +2381,16 @@ class _OrganizerCreateEventSimpleScreenState
                         decoration: BoxDecoration(
                           color: AppColors.primary,
                           shape: BoxShape.circle,
-                          border: Border.all(color: AppColors.surface, width: 2),
+                          border: Border.all(
+                            color: AppColors.surface,
+                            width: 2,
+                          ),
                         ),
-                        child: const Icon(Icons.camera_alt, size: 12, color: Colors.white),
+                        child: const Icon(
+                          Icons.camera_alt,
+                          size: 12,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                   ],
@@ -2204,7 +2413,11 @@ class _OrganizerCreateEventSimpleScreenState
                     if (phone.isNotEmpty)
                       Row(
                         children: [
-                          Icon(Icons.phone, size: 14, color: AppColors.textSecondary),
+                          Icon(
+                            Icons.phone,
+                            size: 14,
+                            color: AppColors.textSecondary,
+                          ),
                           const SizedBox(width: 4),
                           Text(
                             phone,
@@ -2218,7 +2431,11 @@ class _OrganizerCreateEventSimpleScreenState
                     const SizedBox(height: 2),
                     Row(
                       children: [
-                        Icon(Icons.access_time, size: 14, color: AppColors.primary),
+                        Icon(
+                          Icons.access_time,
+                          size: 14,
+                          color: AppColors.primary,
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           timeWithToro,
@@ -2329,7 +2546,9 @@ class _OrganizerCreateEventSimpleScreenState
                 color: AppColors.card,
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: _companyLogoUrl != null ? AppColors.primary : AppColors.border,
+                  color: _companyLogoUrl != null
+                      ? AppColors.primary
+                      : AppColors.border,
                   width: _companyLogoUrl != null ? 2 : 1,
                 ),
               ),
@@ -2362,7 +2581,9 @@ class _OrganizerCreateEventSimpleScreenState
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          _companyLogoUrl != null ? 'org_logo_loaded'.tr() : 'org_add_logo'.tr(),
+                          _companyLogoUrl != null
+                              ? 'org_logo_loaded'.tr()
+                              : 'org_add_logo'.tr(),
                           style: const TextStyle(
                             color: AppColors.textPrimary,
                             fontSize: 14,
@@ -2382,7 +2603,9 @@ class _OrganizerCreateEventSimpleScreenState
                   ),
                   Icon(
                     _companyLogoUrl != null ? Icons.check_circle : Icons.upload,
-                    color: _companyLogoUrl != null ? AppColors.primary : AppColors.textSecondary,
+                    color: _companyLogoUrl != null
+                        ? AppColors.primary
+                        : AppColors.textSecondary,
                   ),
                 ],
               ),
@@ -2399,11 +2622,16 @@ class _OrganizerCreateEventSimpleScreenState
                   ? const SizedBox(
                       width: 18,
                       height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
                     )
                   : const Icon(Icons.save, size: 20),
               label: Text(
-                _savingCredential ? 'org_saving'.tr() : 'org_save_credencial'.tr(),
+                _savingCredential
+                    ? 'org_saving'.tr()
+                    : 'org_save_credencial'.tr(),
                 style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
@@ -2463,10 +2691,7 @@ class _OrganizerCreateEventSimpleScreenState
           Flexible(
             child: Text(
               text,
-              style: TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 11,
-              ),
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -2512,10 +2737,7 @@ class _OrganizerCreateEventSimpleScreenState
             const SizedBox(height: 8),
             Text(
               'Agrega un vehículo de turismo en "Publicar Vehículo"',
-              style: TextStyle(
-                color: AppColors.textTertiary,
-                fontSize: 14,
-              ),
+              style: TextStyle(color: AppColors.textTertiary, fontSize: 14),
               textAlign: TextAlign.center,
             ),
           ],
@@ -2531,13 +2753,18 @@ class _OrganizerCreateEventSimpleScreenState
         final imageUrls = vehicle['image_urls'] as List<dynamic>? ?? [];
 
         // Get pricing from rental_listing
-        final rentalListing = vehicle['rental_listing'] as Map<String, dynamic>?;
+        final rentalListing =
+            vehicle['rental_listing'] as Map<String, dynamic>?;
         final weeklyPrice = rentalListing?['weekly_price'] as num?;
         final pricePerKm = rentalListing?['price_per_km'] as num?;
+        final listingCountry =
+            (rentalListing?['country_code'] as String?) ?? _countryCode;
 
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
-          color: isSelected ? AppColors.primary.withValues(alpha: 0.1) : AppColors.surface,
+          color: isSelected
+              ? AppColors.primary.withValues(alpha: 0.1)
+              : AppColors.surface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
             side: BorderSide(
@@ -2566,82 +2793,84 @@ class _OrganizerCreateEventSimpleScreenState
                     children: [
                       // Vehicle image
                       ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: imageUrls.isNotEmpty
-                        ? Image.network(
-                            imageUrls.first as String,
-                            width: 80,
-                            height: 60,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, _, _) => _buildPlaceholderImage(),
-                          )
-                        : _buildPlaceholderImage(),
-                  ),
-                  const SizedBox(width: 16),
-                  // Vehicle info
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          vehicleName,
-                          style: TextStyle(
-                            color: AppColors.textPrimary,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
+                        borderRadius: BorderRadius.circular(8),
+                        child: imageUrls.isNotEmpty
+                            ? Image.network(
+                                imageUrls.first as String,
+                                width: 80,
+                                height: 60,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, _, _) =>
+                                    _buildPlaceholderImage(),
+                              )
+                            : _buildPlaceholderImage(),
+                      ),
+                      const SizedBox(width: 16),
+                      // Vehicle info
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(
-                              Icons.event_seat,
-                              size: 16,
-                              color: AppColors.textSecondary,
-                            ),
-                            const SizedBox(width: 4),
                             Text(
-                              '$totalSeats asientos',
+                              vehicleName,
                               style: TextStyle(
-                                color: AppColors.textSecondary,
-                                fontSize: 14,
+                                color: AppColors.textPrimary,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
-                          ],
-                        ),
-                        if (weeklyPrice != null) ...[
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.attach_money,
-                                size: 16,
-                                color: Colors.green,
-                              ),
-                              Text(
-                                '\$${weeklyPrice.toStringAsFixed(0)}/semana',
-                                style: const TextStyle(
-                                  color: Colors.green,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.event_seat,
+                                  size: 16,
+                                  color: AppColors.textSecondary,
                                 ),
-                              ),
-                              if (pricePerKm != null) ...[
-                                const SizedBox(width: 8),
+                                const SizedBox(width: 4),
                                 Text(
-                                  '+ \$${pricePerKm.toStringAsFixed(0)}/km',
+                                  '$totalSeats asientos',
                                   style: TextStyle(
-                                    color: AppColors.textTertiary,
-                                    fontSize: 12,
+                                    color: AppColors.textSecondary,
+                                    fontSize: 14,
                                   ),
                                 ),
                               ],
+                            ),
+                            if (weeklyPrice != null) ...[
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.attach_money,
+                                    size: 16,
+                                    color: Colors.green,
+                                  ),
+                                  Text(
+                                    '${formatMoney(weeklyPrice, country: listingCountry)} '
+                                    '${currencyCode(country: listingCountry)}/semana',
+                                    style: const TextStyle(
+                                      color: Colors.green,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  if (pricePerKm != null) ...[
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      '+ ${formatPricePerDistance(pricePerKm, country: listingCountry)}',
+                                      style: TextStyle(
+                                        color: AppColors.textTertiary,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
                             ],
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
+                          ],
+                        ),
+                      ),
                       if (isSelected)
                         Icon(
                           Icons.check_circle,
@@ -2657,7 +2886,10 @@ class _OrganizerCreateEventSimpleScreenState
                     top: 8,
                     right: 8,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.blue.withValues(alpha: 0.9),
                         borderRadius: BorderRadius.circular(4),
@@ -2691,7 +2923,8 @@ class _OrganizerCreateEventSimpleScreenState
   bool _isSavedDefault(String vehicleId) {
     // This is a synchronous check - we'll need to load this from SharedPreferences
     // For now, we'll just check if it matches the currently selected vehicle on load
-    return _selectedVehicle?['id'] == vehicleId && widget.preSelectedVehicleId == null;
+    return _selectedVehicle?['id'] == vehicleId &&
+        widget.preSelectedVehicleId == null;
   }
 
   Widget _buildCapacitySection() {
@@ -2707,9 +2940,14 @@ class _OrganizerCreateEventSimpleScreenState
 
   /// Finanzas section - pricing when organizer has own vehicle
   Widget _buildFinanzasSection() {
-    final distanceKm = _realDistanceKm ?? double.tryParse(_distanceKmController.text) ?? 0;
-    final pricePerKm = double.tryParse(_pricePerKmController.text) ?? 0;
-    final ticketPrice = pricePerKm * distanceKm;
+    final distanceKm =
+        _realDistanceKm ?? double.tryParse(_distanceKmController.text) ?? 0;
+    final localDistance = _displayDistance(distanceKm);
+    final localPricePerDistance =
+        double.tryParse(_pricePerKmController.text) ?? 0;
+    final ticketPrice = localPricePerDistance * localDistance;
+    final localUnit = distanceUnit(country: _countryCode);
+    final localCurrency = currencyCode(country: _countryCode);
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -2721,20 +2959,34 @@ class _OrganizerCreateEventSimpleScreenState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Price per km input
+          // Price input in the driver's local distance unit.
           Text(
-            'Precio por kilometro (MXN)',
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600),
+            'org_price_per_distance'.tr(
+              namedArgs: {'currency': localCurrency, 'unit': localUnit},
+            ),
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const SizedBox(height: 8),
           TextFormField(
             controller: _pricePerKmController,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            style: const TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w700),
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
             decoration: InputDecoration(
               hintText: '0.00',
               hintStyle: TextStyle(color: AppColors.textDisabled),
-              prefixIcon: Icon(Icons.attach_money_rounded, color: AppColors.success, size: 20),
+              prefixIcon: Icon(
+                Icons.attach_money_rounded,
+                color: AppColors.success,
+                size: 20,
+              ),
               filled: true,
               fillColor: AppColors.surface,
               border: OutlineInputBorder(
@@ -2745,33 +2997,49 @@ class _OrganizerCreateEventSimpleScreenState
                 borderRadius: BorderRadius.circular(10),
                 borderSide: BorderSide(color: AppColors.border),
               ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 12,
+              ),
             ),
             onChanged: (_) => setState(() {}),
           ),
 
           // Price preview
-          if (distanceKm > 0 && pricePerKm > 0) ...[
+          if (distanceKm > 0 && localPricePerDistance > 0) ...[
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: AppColors.success.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+                border: Border.all(
+                  color: AppColors.success.withValues(alpha: 0.3),
+                ),
               ),
               child: Column(
                 children: [
-                  _finanzasRow('Distancia total', '${distanceKm.toStringAsFixed(1)} km'),
+                  _finanzasRow(
+                    'org_total_distance'.tr(),
+                    _displayDistanceText(distanceKm),
+                  ),
                   const SizedBox(height: 6),
-                  _finanzasRow('Precio/km', '${formatMoney(pricePerKm, country: 'MX')} MXN'),
+                  _finanzasRow(
+                    'org_price_per_unit'.tr(namedArgs: {'unit': localUnit}),
+                    '${formatMoney(localPricePerDistance, country: _countryCode)} '
+                    '$localCurrency',
+                  ),
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 6),
-                    child: Divider(color: AppColors.success.withValues(alpha: 0.3), height: 1),
+                    child: Divider(
+                      color: AppColors.success.withValues(alpha: 0.3),
+                      height: 1,
+                    ),
                   ),
                   _finanzasRow(
-                    'Precio boleto',
-                    '\$${ticketPrice.toStringAsFixed(0)} MXN',
+                    'org_ticket_price'.tr(),
+                    '${formatMoney(ticketPrice, country: _countryCode)} '
+                    '$localCurrency',
                     bold: true,
                   ),
                 ],
@@ -2781,12 +3049,19 @@ class _OrganizerCreateEventSimpleScreenState
             const SizedBox(height: 10),
             Row(
               children: [
-                Icon(Icons.info_outline, size: 14, color: AppColors.textTertiary),
+                Icon(
+                  Icons.info_outline,
+                  size: 14,
+                  color: AppColors.textTertiary,
+                ),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
                     'Agrega las paradas del itinerario para calcular la distancia y ver el precio del boleto.',
-                    style: TextStyle(color: AppColors.textTertiary, fontSize: 11),
+                    style: TextStyle(
+                      color: AppColors.textTertiary,
+                      fontSize: 11,
+                    ),
                   ),
                 ),
               ],
@@ -2801,7 +3076,10 @@ class _OrganizerCreateEventSimpleScreenState
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+        Text(
+          label,
+          style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+        ),
         Text(
           value,
           style: TextStyle(
@@ -2854,9 +3132,14 @@ class _OrganizerCreateEventSimpleScreenState
               setState(() => _hasOwnVehicle = true);
 
               // Auto-select own vehicle if available
-              final userId = Provider.of<AuthProvider>(context, listen: false).driver?.id;
+              final userId = Provider.of<AuthProvider>(
+                context,
+                listen: false,
+              ).driver?.id;
               if (userId != null) {
-                final ownVehicles = _vehicles.where((v) => v['owner_id'] == userId).toList();
+                final ownVehicles = _vehicles
+                    .where((v) => v['owner_id'] == userId)
+                    .toList();
                 if (ownVehicles.isNotEmpty && _selectedVehicle == null) {
                   setState(() {
                     _selectedVehicle = ownVehicles.first;
@@ -2875,7 +3158,8 @@ class _OrganizerCreateEventSimpleScreenState
           _buildWizardOption(
             icon: Icons.groups_rounded,
             title: 'Necesito conductor',
-            subtitle: 'Soy organizador / dispatcher — busco chofer con vehículo',
+            subtitle:
+                'Soy organizador / dispatcher — busco chofer con vehículo',
             color: AppColors.gold,
             onTap: () async {
               HapticService.lightImpact();
@@ -2935,7 +3219,10 @@ class _OrganizerCreateEventSimpleScreenState
                     const SizedBox(height: 3),
                     Text(
                       subtitle,
-                      style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                      ),
                     ),
                   ],
                 ),
@@ -2951,7 +3238,9 @@ class _OrganizerCreateEventSimpleScreenState
   /// Driver has own vehicle — show selected vehicle + seats
   Widget _buildOwnVehicleCapacity() {
     final userId = Provider.of<AuthProvider>(context, listen: false).driver?.id;
-    final ownVehicles = _vehicles.where((v) => v['owner_id'] == userId).toList();
+    final ownVehicles = _vehicles
+        .where((v) => v['owner_id'] == userId)
+        .toList();
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -2990,7 +3279,11 @@ class _OrganizerCreateEventSimpleScreenState
                 },
                 child: Text(
                   'Cambiar',
-                  style: TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    color: AppColors.primary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
@@ -2998,10 +3291,12 @@ class _OrganizerCreateEventSimpleScreenState
           const SizedBox(height: 14),
 
           if (_loadingVehicles)
-            const Center(child: Padding(
-              padding: EdgeInsets.all(20),
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ))
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(20),
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            )
           else if (ownVehicles.isEmpty)
             // No vehicles registered — prompt to add
             _buildAddVehiclePrompt()
@@ -3016,7 +3311,11 @@ class _OrganizerCreateEventSimpleScreenState
                 onTap: () => _showOwnVehiclePicker(ownVehicles),
                 child: Text(
                   'Ver mis ${ownVehicles.length} vehículos',
-                  style: TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w500),
+                  style: TextStyle(
+                    color: AppColors.primary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -3032,14 +3331,25 @@ class _OrganizerCreateEventSimpleScreenState
               decoration: InputDecoration(
                 labelText: 'Asientos disponibles',
                 labelStyle: TextStyle(color: AppColors.textSecondary),
-                prefixIcon: Icon(Icons.event_seat, color: AppColors.textSecondary),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppColors.border)),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppColors.border)),
+                prefixIcon: Icon(
+                  Icons.event_seat,
+                  color: AppColors.textSecondary,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: AppColors.border),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: AppColors.border),
+                ),
               ),
               validator: (value) {
-                if (value == null || value.isEmpty) return 'org_seats_required'.tr();
+                if (value == null || value.isEmpty)
+                  return 'org_seats_required'.tr();
                 final seats = int.tryParse(value);
-                if (seats == null || seats <= 0) return 'org_seats_invalid'.tr();
+                if (seats == null || seats <= 0)
+                  return 'org_seats_invalid'.tr();
                 return null;
               },
               onChanged: (_) => setState(() {}),
@@ -3062,7 +3372,10 @@ class _OrganizerCreateEventSimpleScreenState
                   Expanded(
                     child: Text(
                       'Publicarás este evento con tu vehículo',
-                      style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                      ),
                     ),
                   ),
                 ],
@@ -3083,7 +3396,10 @@ class _OrganizerCreateEventSimpleScreenState
         HapticService.lightImpact();
         Navigator.pushNamed(context, '/add-vehicle-tourism').then((_) {
           // Reload vehicles when returning from add vehicle screen
-          final authProvider = Provider.of<AuthProvider>(context, listen: false);
+          final authProvider = Provider.of<AuthProvider>(
+            context,
+            listen: false,
+          );
           final userId = authProvider.driver?.id;
           if (userId != null) {
             SupabaseConfig.client
@@ -3092,20 +3408,22 @@ class _OrganizerCreateEventSimpleScreenState
                 .eq('is_active', true)
                 .eq('available_for_tourism', true)
                 .then((vehicles) {
-              if (mounted) {
-                setState(() {
-                  _vehicles = List<Map<String, dynamic>>.from(vehicles);
-                  final ownVehicles = _vehicles.where((v) => v['owner_id'] == userId).toList();
-                  if (ownVehicles.isNotEmpty) {
-                    _selectedVehicle = ownVehicles.first;
-                    final seats = ownVehicles.first['total_seats'] as int?;
-                    if (seats != null) {
-                      _eventSeatsController.text = seats.toString();
-                    }
+                  if (mounted) {
+                    setState(() {
+                      _vehicles = List<Map<String, dynamic>>.from(vehicles);
+                      final ownVehicles = _vehicles
+                          .where((v) => v['owner_id'] == userId)
+                          .toList();
+                      if (ownVehicles.isNotEmpty) {
+                        _selectedVehicle = ownVehicles.first;
+                        final seats = ownVehicles.first['total_seats'] as int?;
+                        if (seats != null) {
+                          _eventSeatsController.text = seats.toString();
+                        }
+                      }
+                    });
                   }
                 });
-              }
-            });
           }
         });
       },
@@ -3114,7 +3432,10 @@ class _OrganizerCreateEventSimpleScreenState
         decoration: BoxDecoration(
           color: AppColors.primary.withValues(alpha: 0.06),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.primary.withValues(alpha: 0.3), style: BorderStyle.solid),
+          border: Border.all(
+            color: AppColors.primary.withValues(alpha: 0.3),
+            style: BorderStyle.solid,
+          ),
         ),
         child: Column(
           children: [
@@ -3161,17 +3482,31 @@ class _OrganizerCreateEventSimpleScreenState
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: imageUrl != null
-                ? Image.network(imageUrl, width: 56, height: 56, fit: BoxFit.cover,
+                ? Image.network(
+                    imageUrl,
+                    width: 56,
+                    height: 56,
+                    fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => Container(
-                      width: 56, height: 56,
+                      width: 56,
+                      height: 56,
                       color: AppColors.card,
-                      child: Icon(Icons.directions_bus, color: AppColors.textTertiary, size: 28),
+                      child: Icon(
+                        Icons.directions_bus,
+                        color: AppColors.textTertiary,
+                        size: 28,
+                      ),
                     ),
                   )
                 : Container(
-                    width: 56, height: 56,
+                    width: 56,
+                    height: 56,
                     color: AppColors.card,
-                    child: Icon(Icons.directions_bus, color: AppColors.textTertiary, size: 28),
+                    child: Icon(
+                      Icons.directions_bus,
+                      color: AppColors.textTertiary,
+                      size: 28,
+                    ),
                   ),
           ),
           const SizedBox(width: 12),
@@ -3179,11 +3514,21 @@ class _OrganizerCreateEventSimpleScreenState
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w600)),
+                Text(
+                  name,
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 const SizedBox(height: 3),
                 Text(
                   '$seats asientos${plate.isNotEmpty ? ' · $plate' : ''}',
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                  ),
                 ),
               ],
             ),
@@ -3198,24 +3543,47 @@ class _OrganizerCreateEventSimpleScreenState
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
       builder: (ctx) => Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Mis Vehículos', style: TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.w700)),
+            Text(
+              'Mis Vehículos',
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
             const SizedBox(height: 16),
             ...ownVehicles.map((v) {
               final isSelected = _selectedVehicle?['id'] == v['id'];
               final vName = v['vehicle_name'] as String? ?? 'Sin nombre';
               final vSeats = v['total_seats'] as int? ?? 0;
               return ListTile(
-                leading: Icon(Icons.directions_bus, color: isSelected ? Colors.green : AppColors.textSecondary),
-                title: Text(vName, style: TextStyle(color: AppColors.textPrimary)),
-                subtitle: Text('$vSeats asientos', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-                trailing: isSelected ? Icon(Icons.check_circle, color: Colors.green) : null,
+                leading: Icon(
+                  Icons.directions_bus,
+                  color: isSelected ? Colors.green : AppColors.textSecondary,
+                ),
+                title: Text(
+                  vName,
+                  style: TextStyle(color: AppColors.textPrimary),
+                ),
+                subtitle: Text(
+                  '$vSeats asientos',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                  ),
+                ),
+                trailing: isSelected
+                    ? Icon(Icons.check_circle, color: Colors.green)
+                    : null,
                 onTap: () {
                   setState(() {
                     _selectedVehicle = v;
@@ -3272,7 +3640,11 @@ class _OrganizerCreateEventSimpleScreenState
                 },
                 child: Text(
                   'Cambiar',
-                  style: TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    color: AppColors.primary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
@@ -3287,14 +3659,24 @@ class _OrganizerCreateEventSimpleScreenState
             decoration: InputDecoration(
               labelText: 'org_seats_needed'.tr(),
               labelStyle: TextStyle(color: AppColors.textSecondary),
-              prefixIcon: Icon(Icons.event_seat, color: AppColors.textSecondary),
+              prefixIcon: Icon(
+                Icons.event_seat,
+                color: AppColors.textSecondary,
+              ),
               hintText: 'org_seats_hint'.tr(),
               hintStyle: TextStyle(color: AppColors.textTertiary),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppColors.border)),
-              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppColors.border)),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: AppColors.border),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: AppColors.border),
+              ),
             ),
             validator: (value) {
-              if (value == null || value.isEmpty) return 'org_seats_required'.tr();
+              if (value == null || value.isEmpty)
+                return 'org_seats_required'.tr();
               final seats = int.tryParse(value);
               if (seats == null || seats <= 0) return 'org_seats_invalid'.tr();
               return null;
@@ -3319,7 +3701,10 @@ class _OrganizerCreateEventSimpleScreenState
                 Expanded(
                   child: Text(
                     'org_bid_info'.tr(),
-                    style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                    ),
                   ),
                 ),
               ],
@@ -3379,7 +3764,11 @@ class _OrganizerCreateEventSimpleScreenState
               const SizedBox(height: 10),
               Text(
                 'org_fee_detail'.tr(),
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 12, height: 1.4),
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 12,
+                  height: 1.4,
+                ),
               ),
               const SizedBox(height: 8),
               Container(
@@ -3387,7 +3776,9 @@ class _OrganizerCreateEventSimpleScreenState
                 decoration: BoxDecoration(
                   color: Colors.orange.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.orange.withValues(alpha: 0.2)),
+                  border: Border.all(
+                    color: Colors.orange.withValues(alpha: 0.2),
+                  ),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -3429,11 +3820,29 @@ class _OrganizerCreateEventSimpleScreenState
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: AppColors.textTertiary.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(2)))),
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.textTertiary.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
             const SizedBox(height: 16),
-            Text('Selecciona Vehículo', style: TextStyle(color: AppColors.textPrimary, fontSize: 20, fontWeight: FontWeight.bold)),
+            Text(
+              'Selecciona Vehículo',
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             const SizedBox(height: 16),
-            Expanded(child: SingleChildScrollView(child: _buildVehicleSection())),
+            Expanded(
+              child: SingleChildScrollView(child: _buildVehicleSection()),
+            ),
           ],
         ),
       ),
@@ -3479,19 +3888,22 @@ class _OrganizerCreateEventSimpleScreenState
       }
 
       setState(() {
-        _stops.add(EventStop(
-          name: result['name'],
-          lat: resultLat,
-          lng: resultLng,
-          estimatedArrival: result['datetime'],
-          durationMinutes: result['duration'],
-          notes: result['notes'],
-          stopOrder: _stops.length,
-        ));
+        _stops.add(
+          EventStop(
+            name: result['name'],
+            lat: resultLat,
+            lng: resultLng,
+            estimatedArrival: result['datetime'],
+            durationMinutes: result['duration'],
+            notes: result['notes'],
+            stopOrder: _stops.length,
+          ),
+        );
 
         // Auto-sort stops by datetime (chronological order)
         _stops.sort((a, b) {
-          if (a.estimatedArrival == null && b.estimatedArrival == null) return 0;
+          if (a.estimatedArrival == null && b.estimatedArrival == null)
+            return 0;
           if (a.estimatedArrival == null) return 1;
           if (b.estimatedArrival == null) return -1;
           return a.estimatedArrival!.compareTo(b.estimatedArrival!);
@@ -3621,15 +4033,17 @@ class _OrganizerCreateEventSimpleScreenState
     final originalStops = List<EventStop>.from(_stops);
     for (int i = originalStops.length - 2; i >= 0; i--) {
       final originalStop = originalStops[i];
-      _stops.add(EventStop(
-        name: originalStop.name,
-        lat: originalStop.lat,
-        lng: originalStop.lng,
-        estimatedArrival: null,
-        durationMinutes: originalStop.durationMinutes,
-        notes: originalStop.notes,
-        stopOrder: _stops.length,
-      ));
+      _stops.add(
+        EventStop(
+          name: originalStop.name,
+          lat: originalStop.lat,
+          lng: originalStop.lng,
+          estimatedArrival: null,
+          durationMinutes: originalStop.durationMinutes,
+          notes: originalStop.notes,
+          stopOrder: _stops.length,
+        ),
+      );
     }
     setState(() {});
     HapticService.lightImpact();
@@ -3647,7 +4061,10 @@ class _OrganizerCreateEventSimpleScreenState
       for (int i = 0; i < _stops.length - 1; i++) {
         final from = _stops[i];
         final to = _stops[i + 1];
-        if (from.lat != null && from.lng != null && to.lat != null && to.lng != null) {
+        if (from.lat != null &&
+            from.lng != null &&
+            to.lat != null &&
+            to.lng != null) {
           final distance = await _calculateRoadDistance(
             from.lat!,
             from.lng!,
@@ -3676,9 +4093,15 @@ class _OrganizerCreateEventSimpleScreenState
     }
   }
 
-  Future<Map<String, dynamic>?> _showAddStopDialog({EventStop? existingStop}) async {
-    final nameController = TextEditingController(text: existingStop?.name ?? '');
-    final notesController = TextEditingController(text: existingStop?.notes ?? '');
+  Future<Map<String, dynamic>?> _showAddStopDialog({
+    EventStop? existingStop,
+  }) async {
+    final nameController = TextEditingController(
+      text: existingStop?.name ?? '',
+    );
+    final notesController = TextEditingController(
+      text: existingStop?.notes ?? '',
+    );
     final durationController = TextEditingController(
       text: existingStop?.durationMinutes?.toString() ?? '',
     );
@@ -3686,7 +4109,8 @@ class _OrganizerCreateEventSimpleScreenState
     double? lat = existingStop?.lat;
     double? lng = existingStop?.lng;
     String? address = existingStop?.name;
-    DateTime? selectedDateTime = existingStop?.estimatedArrival; // Changed from TimeOfDay to DateTime
+    DateTime? selectedDateTime =
+        existingStop?.estimatedArrival; // Changed from TimeOfDay to DateTime
 
     // Autocomplete variables
     List<Map<String, dynamic>> suggestions = [];
@@ -3724,7 +4148,10 @@ class _OrganizerCreateEventSimpleScreenState
                     '&accept-language=es',
                   );
 
-                  final response = await http.get(url, headers: {'User-Agent': 'TORORide/1.0'});
+                  final response = await http.get(
+                    url,
+                    headers: {'User-Agent': 'TORORide/1.0'},
+                  );
 
                   if (response.statusCode == 200) {
                     final results = json.decode(response.body) as List;
@@ -3735,7 +4162,9 @@ class _OrganizerCreateEventSimpleScreenState
                         final displayName = r['display_name'] as String;
                         return {
                           'place_name': displayName,
-                          'text': name.isNotEmpty ? name : displayName.split(',').first.trim(),
+                          'text': name.isNotEmpty
+                              ? name
+                              : displayName.split(',').first.trim(),
                           'lat': double.parse(r['lat'].toString()),
                           'lng': double.parse(r['lon'].toString()),
                         };
@@ -3748,13 +4177,16 @@ class _OrganizerCreateEventSimpleScreenState
                 }
               });
             }
+
             return Container(
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(context).viewInsets.bottom,
               ),
               decoration: BoxDecoration(
                 color: AppColors.background,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(20),
+                ),
               ),
               child: SafeArea(
                 child: SingleChildScrollView(
@@ -3765,10 +4197,16 @@ class _OrganizerCreateEventSimpleScreenState
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.add_location_alt, color: AppColors.primary, size: 24),
+                          Icon(
+                            Icons.add_location_alt,
+                            color: AppColors.primary,
+                            size: 24,
+                          ),
                           const SizedBox(width: 12),
                           Text(
-                            existingStop != null ? 'Editar Parada' : 'Nueva Parada',
+                            existingStop != null
+                                ? 'Editar Parada'
+                                : 'Nueva Parada',
                             style: TextStyle(
                               color: AppColors.textPrimary,
                               fontSize: 20,
@@ -3777,7 +4215,10 @@ class _OrganizerCreateEventSimpleScreenState
                           ),
                           const Spacer(),
                           IconButton(
-                            icon: Icon(Icons.close, color: AppColors.textSecondary),
+                            icon: Icon(
+                              Icons.close,
+                              color: AppColors.textSecondary,
+                            ),
                             onPressed: () => Navigator.pop(context),
                           ),
                         ],
@@ -3791,27 +4232,40 @@ class _OrganizerCreateEventSimpleScreenState
                               Expanded(
                                 child: TextFormField(
                                   controller: nameController,
-                                  style: TextStyle(color: AppColors.textPrimary),
+                                  style: TextStyle(
+                                    color: AppColors.textPrimary,
+                                  ),
                                   decoration: InputDecoration(
                                     labelText: 'Dirección',
                                     hintText: 'Escribe o selecciona en mapa',
-                                    prefixIcon: Icon(Icons.place, color: AppColors.textSecondary),
+                                    prefixIcon: Icon(
+                                      Icons.place,
+                                      color: AppColors.textSecondary,
+                                    ),
                                     suffixIcon: lat != null && lng != null
-                                        ? Icon(Icons.check_circle, color: Colors.green, size: 20)
+                                        ? Icon(
+                                            Icons.check_circle,
+                                            color: Colors.green,
+                                            size: 20,
+                                          )
                                         : nameController.text.isNotEmpty
-                                            ? IconButton(
-                                                icon: Icon(Icons.clear, color: AppColors.textSecondary, size: 20),
-                                                onPressed: () {
-                                                  nameController.clear();
-                                                  setModalState(() {
-                                                    suggestions = [];
-                                                    showSuggestions = false;
-                                                    lat = null;
-                                                    lng = null;
-                                                  });
-                                                },
-                                              )
-                                            : null,
+                                        ? IconButton(
+                                            icon: Icon(
+                                              Icons.clear,
+                                              color: AppColors.textSecondary,
+                                              size: 20,
+                                            ),
+                                            onPressed: () {
+                                              nameController.clear();
+                                              setModalState(() {
+                                                suggestions = [];
+                                                showSuggestions = false;
+                                                lat = null;
+                                                lng = null;
+                                              });
+                                            },
+                                          )
+                                        : null,
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(8),
                                     ),
@@ -3826,15 +4280,18 @@ class _OrganizerCreateEventSimpleScreenState
                                 height: 56,
                                 child: ElevatedButton(
                                   onPressed: () async {
-                                    final result = await showDialog<Map<String, dynamic>>(
-                                      context: context,
-                                      builder: (context) => _SimpleMapPicker(
-                                        title: 'Seleccionar Ubicación',
-                                        initialLocation: lat != null && lng != null
-                                            ? LatLng(lat!, lng!)
-                                            : null,
-                                      ),
-                                    );
+                                    final result =
+                                        await showDialog<Map<String, dynamic>>(
+                                          context: context,
+                                          builder: (context) =>
+                                              _SimpleMapPicker(
+                                                title: 'Seleccionar Ubicación',
+                                                initialLocation:
+                                                    lat != null && lng != null
+                                                    ? LatLng(lat!, lng!)
+                                                    : null,
+                                              ),
+                                        );
                                     if (result != null) {
                                       setModalState(() {
                                         lat = result['coords']['lat'];
@@ -3847,9 +4304,15 @@ class _OrganizerCreateEventSimpleScreenState
                                   },
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: AppColors.primary,
-                                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                    ),
                                   ),
-                                  child: Icon(Icons.map, color: Colors.white, size: 20),
+                                  child: Icon(
+                                    Icons.map,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
                                 ),
                               ),
                             ],
@@ -3861,16 +4324,24 @@ class _OrganizerCreateEventSimpleScreenState
                               decoration: BoxDecoration(
                                 color: AppColors.surface,
                                 borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: AppColors.textTertiary.withOpacity(0.2)),
+                                border: Border.all(
+                                  color: AppColors.textTertiary.withOpacity(
+                                    0.2,
+                                  ),
+                                ),
                               ),
                               constraints: const BoxConstraints(maxHeight: 200),
                               child: ListView.separated(
                                 shrinkWrap: true,
-                                padding: const EdgeInsets.symmetric(vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 4,
+                                ),
                                 itemCount: suggestions.length,
                                 separatorBuilder: (_, _) => Divider(
                                   height: 1,
-                                  color: AppColors.textTertiary.withOpacity(0.1),
+                                  color: AppColors.textTertiary.withOpacity(
+                                    0.1,
+                                  ),
                                 ),
                                 itemBuilder: (context, index) {
                                   final suggestion = suggestions[index];
@@ -3879,39 +4350,53 @@ class _OrganizerCreateEventSimpleScreenState
                                       setModalState(() {
                                         lat = suggestion['lat'] as double;
                                         lng = suggestion['lng'] as double;
-                                        address = suggestion['place_name'] as String;
-                                        nameController.text = suggestion['text'] as String;
+                                        address =
+                                            suggestion['place_name'] as String;
+                                        nameController.text =
+                                            suggestion['text'] as String;
                                         showSuggestions = false;
                                       });
                                       FocusScope.of(context).unfocus();
                                     },
                                     child: Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 10,
+                                      ),
                                       child: Row(
                                         children: [
-                                          Icon(Icons.location_on, color: AppColors.primary, size: 18),
+                                          Icon(
+                                            Icons.location_on,
+                                            color: AppColors.primary,
+                                            size: 18,
+                                          ),
                                           const SizedBox(width: 10),
                                           Expanded(
                                             child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
                                               children: [
                                                 Text(
                                                   suggestion['text'] as String,
                                                   style: TextStyle(
-                                                    color: AppColors.textPrimary,
+                                                    color:
+                                                        AppColors.textPrimary,
                                                     fontSize: 14,
                                                     fontWeight: FontWeight.w500,
                                                   ),
                                                 ),
                                                 const SizedBox(height: 2),
                                                 Text(
-                                                  suggestion['place_name'] as String,
+                                                  suggestion['place_name']
+                                                      as String,
                                                   style: TextStyle(
-                                                    color: AppColors.textSecondary,
+                                                    color:
+                                                        AppColors.textSecondary,
                                                     fontSize: 12,
                                                   ),
                                                   maxLines: 1,
-                                                  overflow: TextOverflow.ellipsis,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
                                                 ),
                                               ],
                                             ),
@@ -3928,7 +4413,8 @@ class _OrganizerCreateEventSimpleScreenState
                       const SizedBox(height: 16),
                       InkWell(
                         onTap: () async {
-                          DateTime initialDateTime = selectedDateTime ?? DateTime.now();
+                          DateTime initialDateTime =
+                              selectedDateTime ?? DateTime.now();
 
                           await showDialog(
                             context: context,
@@ -3946,17 +4432,31 @@ class _OrganizerCreateEventSimpleScreenState
                                     children: [
                                       // Header
                                       Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                          vertical: 12,
+                                        ),
                                         decoration: BoxDecoration(
                                           color: AppColors.background,
-                                          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                                          borderRadius:
+                                              const BorderRadius.vertical(
+                                                top: Radius.circular(20),
+                                              ),
                                         ),
                                         child: Row(
-                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
                                           children: [
                                             TextButton(
-                                              onPressed: () => Navigator.pop(context),
-                                              child: Text('Cancelar', style: TextStyle(color: AppColors.textSecondary)),
+                                              onPressed: () =>
+                                                  Navigator.pop(context),
+                                              child: Text(
+                                                'Cancelar',
+                                                style: TextStyle(
+                                                  color:
+                                                      AppColors.textSecondary,
+                                                ),
+                                              ),
                                             ),
                                             Text(
                                               'Fecha y Hora',
@@ -3969,11 +4469,18 @@ class _OrganizerCreateEventSimpleScreenState
                                             TextButton(
                                               onPressed: () {
                                                 setModalState(() {
-                                                  selectedDateTime = tempDateTime;
+                                                  selectedDateTime =
+                                                      tempDateTime;
                                                 });
                                                 Navigator.pop(context);
                                               },
-                                              child: Text('Listo', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
+                                              child: Text(
+                                                'Listo',
+                                                style: TextStyle(
+                                                  color: AppColors.primary,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
                                             ),
                                           ],
                                         ),
@@ -3981,14 +4488,20 @@ class _OrganizerCreateEventSimpleScreenState
                                       // Cupertino Date/Time Picker
                                       Expanded(
                                         child: CupertinoDatePicker(
-                                          mode: CupertinoDatePickerMode.dateAndTime,
+                                          mode: CupertinoDatePickerMode
+                                              .dateAndTime,
                                           initialDateTime: initialDateTime,
-                                          minimumDate: DateTime.now().subtract(const Duration(hours: 1)),
-                                          maximumDate: DateTime.now().add(const Duration(days: 365)),
+                                          minimumDate: DateTime.now().subtract(
+                                            const Duration(hours: 1),
+                                          ),
+                                          maximumDate: DateTime.now().add(
+                                            const Duration(days: 365),
+                                          ),
                                           use24hFormat: false,
-                                          onDateTimeChanged: (DateTime newDateTime) {
-                                            tempDateTime = newDateTime;
-                                          },
+                                          onDateTimeChanged:
+                                              (DateTime newDateTime) {
+                                                tempDateTime = newDateTime;
+                                              },
                                         ),
                                       ),
                                     ],
@@ -4001,7 +4514,10 @@ class _OrganizerCreateEventSimpleScreenState
                         child: InputDecorator(
                           decoration: InputDecoration(
                             labelText: 'Fecha y hora estimada (opcional)',
-                            prefixIcon: Icon(Icons.event, color: AppColors.textSecondary),
+                            prefixIcon: Icon(
+                              Icons.event,
+                              color: AppColors.textSecondary,
+                            ),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
@@ -4011,7 +4527,9 @@ class _OrganizerCreateEventSimpleScreenState
                                 ? '${selectedDateTime!.day}/${selectedDateTime!.month}/${selectedDateTime!.year} ${_formatTimeAMPM(selectedDateTime!)}'
                                 : 'Seleccionar fecha y hora',
                             style: TextStyle(
-                              color: selectedDateTime != null ? AppColors.textPrimary : AppColors.textTertiary,
+                              color: selectedDateTime != null
+                                  ? AppColors.textPrimary
+                                  : AppColors.textTertiary,
                             ),
                           ),
                         ),
@@ -4024,7 +4542,10 @@ class _OrganizerCreateEventSimpleScreenState
                         decoration: InputDecoration(
                           labelText: 'Duración de parada (minutos, opcional)',
                           hintText: 'Ej: 15',
-                          prefixIcon: Icon(Icons.timer, color: AppColors.textSecondary),
+                          prefixIcon: Icon(
+                            Icons.timer,
+                            color: AppColors.textSecondary,
+                          ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
@@ -4038,7 +4559,10 @@ class _OrganizerCreateEventSimpleScreenState
                         decoration: InputDecoration(
                           labelText: 'Notas (opcional)',
                           hintText: 'Información adicional sobre esta parada',
-                          prefixIcon: Icon(Icons.notes, color: AppColors.textSecondary),
+                          prefixIcon: Icon(
+                            Icons.notes,
+                            color: AppColors.textSecondary,
+                          ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
@@ -4052,7 +4576,11 @@ class _OrganizerCreateEventSimpleScreenState
                           onPressed: () {
                             if (nameController.text.trim().isEmpty) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Ingresa la dirección de la parada')),
+                                const SnackBar(
+                                  content: Text(
+                                    'Ingresa la dirección de la parada',
+                                  ),
+                                ),
                               );
                               return;
                             }
@@ -4060,7 +4588,8 @@ class _OrganizerCreateEventSimpleScreenState
                               'name': nameController.text.trim(),
                               'lat': lat,
                               'lng': lng,
-                              'datetime': selectedDateTime, // Changed from 'time' to 'datetime'
+                              'datetime':
+                                  selectedDateTime, // Changed from 'time' to 'datetime'
                               'duration': durationController.text.isNotEmpty
                                   ? int.tryParse(durationController.text)
                                   : null,
@@ -4074,11 +4603,14 @@ class _OrganizerCreateEventSimpleScreenState
                             existingStop != null
                                 ? 'Guardar Cambios'
                                 : _stops.isEmpty
-                                    ? 'Agregar Origen'
-                                    : _stops.length == 1
-                                        ? 'Agregar Destino'
-                                        : 'Agregar Parada',
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                                ? 'Agregar Origen'
+                                : _stops.length == 1
+                                ? 'Agregar Destino'
+                                : 'Agregar Parada',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
@@ -4106,7 +4638,11 @@ class _OrganizerCreateEventSimpleScreenState
       decoration: BoxDecoration(
         color: AppColors.card,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border, style: BorderStyle.solid, width: 1.5),
+        border: Border.all(
+          color: AppColors.border,
+          style: BorderStyle.solid,
+          width: 1.5,
+        ),
       ),
       child: Column(
         children: [
@@ -4123,10 +4659,7 @@ class _OrganizerCreateEventSimpleScreenState
           const SizedBox(height: 4),
           Text(
             'Agrega al menos 2 paradas (origen y destino)',
-            style: TextStyle(
-              color: AppColors.textTertiary,
-              fontSize: 13,
-            ),
+            style: TextStyle(color: AppColors.textTertiary, fontSize: 13),
             textAlign: TextAlign.center,
           ),
         ],
@@ -4178,7 +4711,10 @@ class _OrganizerCreateEventSimpleScreenState
         children: [
           ListTile(
             dense: true,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 4,
+            ),
             leading: Container(
               width: 36,
               height: 36,
@@ -4203,16 +4739,17 @@ class _OrganizerCreateEventSimpleScreenState
               children: [
                 Text(
                   label,
-                  style: TextStyle(
-                    color: AppColors.textTertiary,
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: AppColors.textTertiary, fontSize: 12),
                 ),
                 if (stop.estimatedArrival != null) ...[
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Icon(Icons.event, size: 12, color: AppColors.textTertiary),
+                      Icon(
+                        Icons.event,
+                        size: 12,
+                        color: AppColors.textTertiary,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         '${stop.estimatedArrival!.day}/${stop.estimatedArrival!.month}/${stop.estimatedArrival!.year} ${_formatTimeAMPM(stop.estimatedArrival!)}',
@@ -4235,15 +4772,25 @@ class _OrganizerCreateEventSimpleScreenState
                   icon: Icon(Icons.edit, size: 18, color: AppColors.primary),
                   onPressed: () => _editStop(index),
                   padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                  constraints: const BoxConstraints(
+                    minWidth: 32,
+                    minHeight: 32,
+                  ),
                 ),
                 // Delete button (only if more than 2 stops)
                 if (_stops.length > 2)
                   IconButton(
-                    icon: Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                    icon: Icon(
+                      Icons.delete_outline,
+                      size: 18,
+                      color: Colors.red,
+                    ),
                     onPressed: () => _deleteStop(index),
                     padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                    constraints: const BoxConstraints(
+                      minWidth: 32,
+                      minHeight: 32,
+                    ),
                   ),
               ],
             ),
@@ -4317,7 +4864,7 @@ class _OrganizerCreateEventSimpleScreenState
                   ),
                 ),
                 Text(
-                  '${_realDistanceKm!.toStringAsFixed(1)} km',
+                  _displayDistanceText(_realDistanceKm),
                   style: const TextStyle(
                     color: Colors.green,
                     fontSize: 16,
@@ -4357,10 +4904,7 @@ class _SimpleMapPicker extends StatefulWidget {
   final String title;
   final LatLng? initialLocation;
 
-  const _SimpleMapPicker({
-    required this.title,
-    this.initialLocation,
-  });
+  const _SimpleMapPicker({required this.title, this.initialLocation});
 
   @override
   State<_SimpleMapPicker> createState() => _SimpleMapPickerState();
@@ -4429,7 +4973,10 @@ class _SimpleMapPickerState extends State<_SimpleMapPicker> {
           '&accept-language=es',
         );
 
-        final response = await http.get(url, headers: {'User-Agent': 'TORORide/1.0'});
+        final response = await http.get(
+          url,
+          headers: {'User-Agent': 'TORORide/1.0'},
+        );
 
         if (response.statusCode == 200) {
           final results = json.decode(response.body) as List;
@@ -4441,7 +4988,9 @@ class _SimpleMapPickerState extends State<_SimpleMapPicker> {
                 final displayName = r['display_name'] as String;
                 return {
                   'place_name': displayName,
-                  'text': name.isNotEmpty ? name : displayName.split(',').first.trim(),
+                  'text': name.isNotEmpty
+                      ? name
+                      : displayName.split(',').first.trim(),
                   'lat': double.parse(r['lat'].toString()),
                   'lng': double.parse(r['lon'].toString()),
                 };
@@ -4505,7 +5054,8 @@ class _SimpleMapPickerState extends State<_SimpleMapPicker> {
         }
 
         // Add state
-        if (place.administrativeArea != null && place.administrativeArea!.isNotEmpty) {
+        if (place.administrativeArea != null &&
+            place.administrativeArea!.isNotEmpty) {
           addressParts.add(place.administrativeArea!);
         }
 
@@ -4544,7 +5094,9 @@ class _SimpleMapPickerState extends State<_SimpleMapPicker> {
       if (!serviceEnabled) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('GPS desactivado. Activa la ubicación.')),
+            const SnackBar(
+              content: Text('GPS desactivado. Activa la ubicación.'),
+            ),
           );
         }
         setState(() => _isLoadingGPS = false);
@@ -4731,30 +5283,44 @@ class _SimpleMapPickerState extends State<_SimpleMapPicker> {
                       decoration: InputDecoration(
                         hintText: 'Buscar dirección...',
                         hintStyle: const TextStyle(color: Color(0xFF888888)),
-                        prefixIcon: const Icon(Icons.search, color: Color(0xFFAAAAAA), size: 20),
+                        prefixIcon: const Icon(
+                          Icons.search,
+                          color: Color(0xFFAAAAAA),
+                          size: 20,
+                        ),
                         suffixIcon: _isSearching
                             ? const Padding(
                                 padding: EdgeInsets.all(12),
                                 child: SizedBox(
                                   width: 20,
                                   height: 20,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.orange),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.orange,
+                                  ),
                                 ),
                               )
                             : _searchController.text.isNotEmpty
-                                ? IconButton(
-                                    icon: const Icon(Icons.clear, color: Color(0xFFAAAAAA), size: 20),
-                                    onPressed: () {
-                                      _searchController.clear();
-                                      setState(() {
-                                        _suggestions = [];
-                                        _showSuggestions = false;
-                                      });
-                                    },
-                                  )
-                                : null,
+                            ? IconButton(
+                                icon: const Icon(
+                                  Icons.clear,
+                                  color: Color(0xFFAAAAAA),
+                                  size: 20,
+                                ),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() {
+                                    _suggestions = [];
+                                    _showSuggestions = false;
+                                  });
+                                },
+                              )
+                            : null,
                         border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
                       ),
                       textInputAction: TextInputAction.search,
                       onSubmitted: (_) => _searchAddress(),
@@ -4801,21 +5367,30 @@ class _SimpleMapPickerState extends State<_SimpleMapPicker> {
                               setState(() {
                                 _currentCenter = newLocation;
                                 _showSuggestions = false;
-                                _searchController.text = suggestion['text'] as String;
+                                _searchController.text =
+                                    suggestion['text'] as String;
                               });
 
                               _reverseGeocode(newLocation);
                               FocusScope.of(context).unfocus();
                             },
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
                               child: Row(
                                 children: [
-                                  const Icon(Icons.location_on, color: Colors.orange, size: 20),
+                                  const Icon(
+                                    Icons.location_on,
+                                    color: Colors.orange,
+                                    size: 20,
+                                  ),
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           suggestion['text'] as String,
@@ -4911,9 +5486,16 @@ class _SimpleMapPickerState extends State<_SimpleMapPicker> {
                       ? const SizedBox(
                           width: 24,
                           height: 24,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.orange),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.orange,
+                          ),
                         )
-                      : const Icon(Icons.my_location, color: Colors.orange, size: 24),
+                      : const Icon(
+                          Icons.my_location,
+                          color: Colors.orange,
+                          size: 24,
+                        ),
                 ),
               ),
             ),
@@ -4943,7 +5525,11 @@ class _SimpleMapPickerState extends State<_SimpleMapPicker> {
                           ),
                         ],
                       ),
-                      child: const Icon(Icons.add, size: 22, color: Colors.white),
+                      child: const Icon(
+                        Icons.add,
+                        size: 22,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -4966,7 +5552,11 @@ class _SimpleMapPickerState extends State<_SimpleMapPicker> {
                           ),
                         ],
                       ),
-                      child: const Icon(Icons.remove, size: 22, color: Colors.white),
+                      child: const Icon(
+                        Icons.remove,
+                        size: 22,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ],
@@ -4982,7 +5572,9 @@ class _SimpleMapPickerState extends State<_SimpleMapPicker> {
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   color: const Color(0xFF2A2A2A),
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(24),
+                  ),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withOpacity(0.3),
@@ -5011,7 +5603,11 @@ class _SimpleMapPickerState extends State<_SimpleMapPicker> {
                                 color: Colors.red.withOpacity(0.25),
                                 borderRadius: BorderRadius.circular(10),
                               ),
-                              child: const Icon(Icons.location_on, color: Colors.red, size: 22),
+                              child: const Icon(
+                                Icons.location_on,
+                                color: Colors.red,
+                                size: 22,
+                              ),
                             ),
                             const SizedBox(width: 14),
                             Expanded(
@@ -5021,18 +5617,28 @@ class _SimpleMapPickerState extends State<_SimpleMapPicker> {
                                         SizedBox(
                                           width: 16,
                                           height: 16,
-                                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.orange),
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Colors.orange,
+                                          ),
                                         ),
                                         SizedBox(width: 10),
                                         Text(
                                           'Obteniendo dirección...',
-                                          style: TextStyle(color: Color(0xFF999999), fontSize: 14),
+                                          style: TextStyle(
+                                            color: Color(0xFF999999),
+                                            fontSize: 14,
+                                          ),
                                         ),
                                       ],
                                     )
                                   : Text(
                                       _addressText,
-                                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.white),
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.white,
+                                      ),
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
                                     ),
@@ -5073,7 +5679,11 @@ class _SimpleMapPickerState extends State<_SimpleMapPicker> {
                           child: const Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.check_circle, color: Colors.white, size: 22),
+                              Icon(
+                                Icons.check_circle,
+                                color: Colors.white,
+                                size: 22,
+                              ),
                               SizedBox(width: 10),
                               Text(
                                 'Confirmar Ubicación',
@@ -5097,5 +5707,4 @@ class _SimpleMapPickerState extends State<_SimpleMapPicker> {
       ),
     );
   }
-
 }

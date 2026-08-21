@@ -453,16 +453,18 @@ class AuthProvider with ChangeNotifier {
   }
 
   // Delete account
-  Future<void> deleteAccount() async {
+  Future<bool> deleteAccount() async {
     try {
       await _authService.deleteAccount();
       _driver = null;
       _status = AuthStatus.unauthenticated;
       _error = null;
       notifyListeners();
+      return true;
     } catch (e) {
       _error = 'Error deleting account: $e';
       notifyListeners();
+      return false;
     }
   }
 

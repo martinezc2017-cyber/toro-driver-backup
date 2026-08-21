@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../utils/money_format.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
 import '../core/logging/app_logger.dart';
@@ -112,7 +113,9 @@ class TourismEventService {
         try {
           final driverResponse = await _client
               .from('drivers')
-              .select('id, name, full_name, phone, profile_image_url, business_card_url, contact_email, contact_phone, contact_facebook, current_lat, current_lng')
+              .select(
+                'id, name, full_name, phone, profile_image_url, business_card_url, contact_email, contact_phone, contact_facebook, current_lat, current_lng',
+              )
               .eq('id', driverId)
               .maybeSingle();
           debugPrint('EVENT_SVC -> driverResponse: $driverResponse');
@@ -128,7 +131,9 @@ class TourismEventService {
         try {
           final organizerResponse = await _client
               .from('organizers')
-              .select('id, user_id, company_name, phone, contact_email, contact_phone, website, description, company_logo_url, business_card_url, contact_facebook, state, country_code, is_verified, commission_rate')
+              .select(
+                'id, user_id, company_name, phone, contact_email, contact_phone, website, description, company_logo_url, business_card_url, contact_facebook, state, country_code, is_verified, commission_rate',
+              )
               .eq('id', organizerId)
               .maybeSingle();
           debugPrint('EVENT_SVC -> organizerResponse: $organizerResponse');
@@ -144,7 +149,9 @@ class TourismEventService {
         try {
           final vehicleResponse = await _client
               .from('bus_vehicles')
-              .select('id, vehicle_name, vehicle_type, total_seats, image_urls, plate, make, model, year, color, amenities')
+              .select(
+                'id, vehicle_name, vehicle_type, total_seats, image_urls, plate, make, model, year, color, amenities',
+              )
               .eq('id', vehicleId)
               .maybeSingle();
           debugPrint('EVENT_SVC -> vehicleResponse: $vehicleResponse');
@@ -166,9 +173,16 @@ class TourismEventService {
         // Auto-sync: if normalized table is empty but JSONB has data, populate it
         if (itineraryList.isEmpty) {
           final jsonbItinerary = response['itinerary'];
-          if (jsonbItinerary != null && jsonbItinerary is List && jsonbItinerary.isNotEmpty) {
-            debugPrint('EVENT_SVC -> Syncing JSONB itinerary to normalized table (${jsonbItinerary.length} stops)');
-            itineraryList = await _syncItineraryFromJsonb(eventId, jsonbItinerary);
+          if (jsonbItinerary != null &&
+              jsonbItinerary is List &&
+              jsonbItinerary.isNotEmpty) {
+            debugPrint(
+              'EVENT_SVC -> Syncing JSONB itinerary to normalized table (${jsonbItinerary.length} stops)',
+            );
+            itineraryList = await _syncItineraryFromJsonb(
+              eventId,
+              jsonbItinerary,
+            );
           }
         }
 
@@ -193,7 +207,10 @@ class TourismEventService {
 
           if (profile != null) {
             final enrichedOrganizer = Map<String, dynamic>.from(organizer);
-            enrichedOrganizer['name'] = profile['full_name'] ?? organizer['company_name'] ?? 'Organizador';
+            enrichedOrganizer['name'] =
+                profile['full_name'] ??
+                organizer['company_name'] ??
+                'Organizador';
             enrichedOrganizer['email'] = profile['email'];
             enrichedOrganizer['avatar_url'] = profile['avatar_url'];
             response['organizers'] = enrichedOrganizer;
@@ -258,7 +275,8 @@ class TourismEventService {
       // Calculate confirmed_passengers from invitations
       final events = List<Map<String, dynamic>>.from(response);
       for (final event in events) {
-        final invitations = event['tourism_invitations'] as List<dynamic>? ?? [];
+        final invitations =
+            event['tourism_invitations'] as List<dynamic>? ?? [];
         final confirmed = invitations.where((i) {
           final s = (i as Map<String, dynamic>)['status'] as String?;
           return s == 'accepted' || s == 'boarded' || s == 'checked_in';
@@ -299,7 +317,8 @@ class TourismEventService {
       // Calculate confirmed_passengers from invitations
       final events = List<Map<String, dynamic>>.from(response);
       for (final event in events) {
-        final invitations = event['tourism_invitations'] as List<dynamic>? ?? [];
+        final invitations =
+            event['tourism_invitations'] as List<dynamic>? ?? [];
         final confirmed = invitations.where((i) {
           final s = (i as Map<String, dynamic>)['status'] as String?;
           return s == 'accepted' || s == 'boarded' || s == 'checked_in';
@@ -406,12 +425,14 @@ class TourismEventService {
       // Notify organizer (use organizers.user_id, NOT organizer_id)
       final orgData = response['organizers'] as Map<String, dynamic>?;
       final orgUserId = orgData?['user_id'] as String?;
+      final country = (response['country_code'] as String? ?? userCountry())
+          .toUpperCase();
       if (orgUserId != null) {
         await _sendNotification(
           orgUserId,
           accept ? 'Nueva Puja Recibida' : 'Puja Rechazada',
           accept
-              ? 'Un conductor ha enviado su puja${pricePerKm != null ? " de \$${pricePerKm.toStringAsFixed(0)}/km" : ""}.'
+              ? 'Un conductor ha enviado su puja${pricePerKm != null ? " de ${formatPricePerDistance(pricePerKm, country: country)}" : ""}.'
               : 'Un conductor ha rechazado la invitacion${reason != null ? ": $reason" : "."}',
           'tourism_request_response',
           {'event_id': eventId, 'accepted': accept, 'bid_id': bidId},
@@ -570,7 +591,9 @@ class TourismEventService {
         reason: 'Driver left event "$eventName" — returned to broadcast',
       );
 
-      debugPrint('leaveEvent: driver $driverId left event $eventId → back to broadcast');
+      debugPrint(
+        'leaveEvent: driver $driverId left event $eventId → back to broadcast',
+      );
       return response;
     } catch (e) {
       debugPrint('leaveEvent error: $e');
@@ -582,7 +605,9 @@ class TourismEventService {
   ///
   /// Returns events with status='draft' (pending bids) that don't have a driver assigned yet.
   /// Any driver can see these and submit a bid.
-  Future<List<Map<String, dynamic>>> getOpenEventsForBidding(String driverId) async {
+  Future<List<Map<String, dynamic>>> getOpenEventsForBidding(
+    String driverId,
+  ) async {
     try {
       // Get events open for PUBLIC bidding (no driver assigned)
       // Uses 'draft' status because DB check constraint doesn't allow 'pending_bids'
@@ -600,7 +625,9 @@ class TourismEventService {
           .isFilter('driver_id', null)
           .order('created_at', ascending: false);
 
-      debugPrint('[OPEN_EVENTS] Raw response count: ${(response as List).length}');
+      debugPrint(
+        '[OPEN_EVENTS] Raw response count: ${(response as List).length}',
+      );
 
       final results = <Map<String, dynamic>>[];
 
@@ -663,19 +690,24 @@ class TourismEventService {
       bidData['vehicle_id'] = vehicleId;
     }
 
-    final result = await _client.from('tourism_vehicle_bids')
-        .insert(bidData).select().single();
+    final result = await _client
+        .from('tourism_vehicle_bids')
+        .insert(bidData)
+        .select()
+        .single();
 
     // Notify the organizer about the new bid
     try {
       final event = await _client
           .from('tourism_events')
-          .select('organizer_id, event_name, organizers(user_id)')
+          .select('organizer_id, event_name, country_code, organizers(user_id)')
           .eq('id', eventId)
           .single();
       final orgData = event['organizers'] as Map<String, dynamic>?;
       final orgUserId = orgData?['user_id'] as String?;
       final eventName = event['event_name'] as String? ?? 'Evento';
+      final country = (event['country_code'] as String? ?? userCountry())
+          .toUpperCase();
 
       // Get driver name
       final driver = await _client
@@ -689,7 +721,10 @@ class TourismEventService {
         await _sendDbNotification(
           userId: orgUserId,
           title: 'Nueva Puja Recibida',
-          body: '$driverName ofrece \$${pricePerKm.toStringAsFixed(0)}/km para: $eventName',
+          body:
+              '$driverName ofrece '
+              '${formatPricePerDistance(pricePerKm, country: country)} '
+              'para: $eventName',
           type: 'bid_response',
           data: {'event_id': eventId, 'bid_id': result['id']},
         );
@@ -819,10 +854,13 @@ class TourismEventService {
   /// type 'bid_counter_offer'. The driver app handles incoming
   /// counter-offers via FCM → NotificationService._navigateFromNotification.
   Future<void> acceptCounterOffer(String bidId) async {
-    await _client.from('tourism_vehicle_bids').update({
-      'driver_status': 'accepted',
-      'updated_at': DateTime.now().toUtc().toIso8601String(),
-    }).eq('id', bidId);
+    await _client
+        .from('tourism_vehicle_bids')
+        .update({
+          'driver_status': 'accepted',
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
+        })
+        .eq('id', bidId);
 
     // Notify the organizer that the driver accepted the counter-offer
     try {
@@ -838,16 +876,24 @@ class TourismEventService {
       if (eventId != null) {
         final event = await _client
             .from('tourism_events')
-            .select('organizer_id, event_name, organizers(user_id)')
+            .select(
+              'organizer_id, event_name, country_code, organizers(user_id)',
+            )
             .eq('id', eventId)
             .single();
         final orgData = event['organizers'] as Map<String, dynamic>?;
         final orgUserId = orgData?['user_id'] as String?;
         final eventName = event['event_name'] as String? ?? 'Evento';
+        final country = (event['country_code'] as String? ?? userCountry())
+            .toUpperCase();
 
         String driverName = 'El chofer';
         if (driverId != null) {
-          final d = await _client.from('drivers').select('name').eq('id', driverId).maybeSingle();
+          final d = await _client
+              .from('drivers')
+              .select('name')
+              .eq('id', driverId)
+              .maybeSingle();
           driverName = d?['name'] as String? ?? driverName;
         }
 
@@ -855,7 +901,10 @@ class TourismEventService {
           await _sendDbNotification(
             userId: orgUserId,
             title: 'Puja Aceptada',
-            body: '$driverName acepto tu oferta de \$${price.toStringAsFixed(2)}/km para: $eventName',
+            body:
+                '$driverName acepto tu oferta de '
+                '${formatPricePerDistance(price, country: country)} '
+                'para: $eventName',
             type: 'bid_accepted',
             data: {'event_id': eventId, 'bid_id': bidId},
           );
@@ -883,12 +932,15 @@ class TourismEventService {
         .single();
     final currentRound = (bid['negotiation_round'] as int?) ?? 0;
 
-    await _client.from('tourism_vehicle_bids').update({
-      'driver_status': 'counter_offered',
-      'proposed_price_per_km': proposedPrice,
-      'negotiation_round': currentRound + 1,
-      'updated_at': DateTime.now().toUtc().toIso8601String(),
-    }).eq('id', bidId);
+    await _client
+        .from('tourism_vehicle_bids')
+        .update({
+          'driver_status': 'counter_offered',
+          'proposed_price_per_km': proposedPrice,
+          'negotiation_round': currentRound + 1,
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
+        })
+        .eq('id', bidId);
 
     // Notify the organizer about driver's counter-offer
     try {
@@ -903,16 +955,24 @@ class TourismEventService {
       if (eventId != null) {
         final event = await _client
             .from('tourism_events')
-            .select('organizer_id, event_name, organizers(user_id)')
+            .select(
+              'organizer_id, event_name, country_code, organizers(user_id)',
+            )
             .eq('id', eventId)
             .single();
         final orgData = event['organizers'] as Map<String, dynamic>?;
         final orgUserId = orgData?['user_id'] as String?;
         final eventName = event['event_name'] as String? ?? 'Evento';
+        final country = (event['country_code'] as String? ?? userCountry())
+            .toUpperCase();
 
         String driverName = 'El chofer';
         if (driverId != null) {
-          final d = await _client.from('drivers').select('name').eq('id', driverId).maybeSingle();
+          final d = await _client
+              .from('drivers')
+              .select('name')
+              .eq('id', driverId)
+              .maybeSingle();
           driverName = d?['name'] as String? ?? driverName;
         }
 
@@ -920,7 +980,10 @@ class TourismEventService {
           await _sendDbNotification(
             userId: orgUserId,
             title: 'Contra-oferta del Chofer',
-            body: '$driverName propone \$${proposedPrice.toStringAsFixed(2)}/km para: $eventName',
+            body:
+                '$driverName propone '
+                '${formatPricePerDistance(proposedPrice, country: country)} '
+                'para: $eventName',
             type: 'bid_counter_offer',
             data: {'event_id': eventId, 'bid_id': bidId},
           );
@@ -943,10 +1006,7 @@ class TourismEventService {
       final now = DateTime.now().toUtc().toIso8601String();
       await _client
           .from('tourism_events')
-          .update({
-            'status': 'in_progress',
-            'updated_at': now,
-          })
+          .update({'status': 'in_progress', 'updated_at': now})
           .eq('id', eventId);
 
       // Fetch using the safe getEvent method
@@ -978,10 +1038,7 @@ class TourismEventService {
       // Update the status
       await _client
           .from('tourism_events')
-          .update({
-            'status': 'completed',
-            'updated_at': now,
-          })
+          .update({'status': 'completed', 'updated_at': now})
           .eq('id', eventId);
 
       // Fetch the updated event using the same safe method as getEvent
@@ -1000,7 +1057,10 @@ class TourismEventService {
   }
 
   /// Generates tourism_trip_records for all participants of a completed event.
-  Future<void> _generateTripRecords(String eventId, Map<String, dynamic> event) async {
+  Future<void> _generateTripRecords(
+    String eventId,
+    Map<String, dynamic> event,
+  ) async {
     try {
       final eventName = event['event_name'] as String? ?? '';
       final eventDate = event['event_date'] as String?;
@@ -1011,7 +1071,10 @@ class TourismEventService {
 
       // Denormalized names
       final driverData = event['drivers'] as Map<String, dynamic>?;
-      final driverName = driverData?['full_name'] as String? ?? driverData?['name'] as String? ?? '';
+      final driverName =
+          driverData?['full_name'] as String? ??
+          driverData?['name'] as String? ??
+          '';
       final organizerData = event['organizers'] as Map<String, dynamic>?;
       final organizerName = organizerData?['company_name'] as String? ?? '';
       final vehicleData = event['bus_vehicles'] as Map<String, dynamic>?;
@@ -1041,9 +1104,16 @@ class TourismEventService {
       // Get all accepted/checked-in/boarded passengers
       final invitations = await _client
           .from('tourism_invitations')
-          .select('user_id, invited_name, pickup_address, pickup_lat, pickup_lng, last_check_in_at, accepted_at, seat_number, boarding_stop, dropoff_stop, gps_tracking_enabled')
+          .select(
+            'user_id, invited_name, pickup_address, pickup_lat, pickup_lng, last_check_in_at, accepted_at, seat_number, boarding_stop, dropoff_stop, gps_tracking_enabled',
+          )
           .eq('event_id', eventId)
-          .inFilter('status', ['accepted', 'checked_in', 'boarded', 'off_boarded']);
+          .inFilter('status', [
+            'accepted',
+            'checked_in',
+            'boarded',
+            'off_boarded',
+          ]);
 
       final records = <Map<String, dynamic>>[];
 
@@ -1097,7 +1167,9 @@ class TourismEventService {
 
       if (records.isNotEmpty) {
         await _client.from('tourism_trip_records').insert(records);
-        debugPrint('[TOURISM] Generated ${records.length} trip records for event $eventId');
+        debugPrint(
+          '[TOURISM] Generated ${records.length} trip records for event $eventId',
+        );
       }
     } catch (e) {
       debugPrint('[TOURISM] Error generating trip records: $e');
@@ -1135,14 +1207,16 @@ class TourismEventService {
       final driverId = event?['driver_id'] as String?;
 
       // Mark event as cancelled (CHECK constraint only allows known statuses)
-      await _client.from('tourism_events').update({
-        'status': 'cancelled',
-      }).eq('id', eventId);
+      await _client
+          .from('tourism_events')
+          .update({'status': 'cancelled'})
+          .eq('id', eventId);
 
       // Cancel related invitations
-      await _client.from('tourism_invitations').update({
-        'status': 'cancelled',
-      }).eq('event_id', eventId);
+      await _client
+          .from('tourism_invitations')
+          .update({'status': 'cancelled'})
+          .eq('event_id', eventId);
 
       debugPrint('✅ Event marked as cancelled: $eventId');
 
@@ -1296,9 +1370,8 @@ class TourismEventService {
         final stop = Map<String, dynamic>.from(jsonbStops[i] as Map);
 
         // Determine stop_order: try 'order' (Format A), then 'stopOrder' (Format B), then index
-        final stopOrder = (stop['order'] as int?) ??
-            (stop['stopOrder'] as int?) ??
-            i;
+        final stopOrder =
+            (stop['order'] as int?) ?? (stop['stopOrder'] as int?) ?? i;
 
         // Determine scheduled_time: try 'arrival_time' (Format A), then parse 'estimatedArrival' (Format B)
         String? scheduledTime = stop['arrival_time'] as String?;
@@ -1306,7 +1379,8 @@ class TourismEventService {
           final dt = DateTime.tryParse(stop['estimatedArrival']);
           if (dt != null) {
             final local = dt.toLocal();
-            scheduledTime = '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
+            scheduledTime =
+                '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
           }
         }
 
@@ -1334,7 +1408,9 @@ class TourismEventService {
           .upsert(rows, onConflict: 'event_id,stop_order')
           .select();
 
-      debugPrint('EVENT_SVC -> Synced ${response.length} stops to normalized table');
+      debugPrint(
+        'EVENT_SVC -> Synced ${response.length} stops to normalized table',
+      );
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
       debugPrint('EVENT_SVC -> Error syncing itinerary: $e');
@@ -1382,22 +1458,24 @@ class TourismEventService {
   ) {
     final channel = _client.channel('tourism_event_$eventId');
 
-    channel.onPostgresChanges(
-      event: PostgresChangeEvent.all,
-      schema: 'public',
-      table: 'tourism_events',
-      filter: PostgresChangeFilter(
-        type: PostgresChangeFilterType.eq,
-        column: 'id',
-        value: eventId,
-      ),
-      callback: (payload) {
-        final newRecord = payload.newRecord;
-        if (newRecord.isNotEmpty) {
-          onUpdate(newRecord);
-        }
-      },
-    ).subscribe();
+    channel
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'tourism_events',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'id',
+            value: eventId,
+          ),
+          callback: (payload) {
+            final newRecord = payload.newRecord;
+            if (newRecord.isNotEmpty) {
+              onUpdate(newRecord);
+            }
+          },
+        )
+        .subscribe();
 
     return channel;
   }
@@ -1430,7 +1508,7 @@ class TourismEventService {
         final newRecord = payload.newRecord;
         if (newRecord.isNotEmpty &&
             (newRecord['driver_status'] == 'pending' ||
-             newRecord['organizer_status'] == 'counter_offered')) {
+                newRecord['organizer_status'] == 'counter_offered')) {
           onRequest(newRecord);
         }
       },
@@ -1538,7 +1616,9 @@ class TourismEventService {
   }) {
     final totalBase = distanceKm * pricePerKm;
     final toroFee = totalBase * toroFeePercent;
-    final organizerCommission = isDriverOwned ? 0.0 : totalBase * organizerCommissionPercent;
+    final organizerCommission = isDriverOwned
+        ? 0.0
+        : totalBase * organizerCommissionPercent;
     final driverAmount = totalBase - toroFee - organizerCommission;
 
     return {
@@ -1599,11 +1679,10 @@ class TourismEventService {
         final profile = pmap[request['user_id']];
 
         // Enrich with profile data
-        request['passenger_name'] = profile?['full_name'] ??
-            request['passenger_name'] ??
-            'Sin nombre';
-        request['passenger_phone'] = profile?['phone'] ??
-            request['passenger_phone'];
+        request['passenger_name'] =
+            profile?['full_name'] ?? request['passenger_name'] ?? 'Sin nombre';
+        request['passenger_phone'] =
+            profile?['phone'] ?? request['passenger_phone'];
         request['passenger_email'] = profile?['email'];
         request['passenger_avatar_url'] = profile?['avatar_url'];
         request['has_profile'] = profile != null;
@@ -1663,7 +1742,8 @@ class TourismEventService {
           .single();
 
       final userId = joinRequest['user_id'] as String?;
-      final passengerName = joinRequest['passenger_name'] as String? ?? 'Pasajero';
+      final passengerName =
+          joinRequest['passenger_name'] as String? ?? 'Pasajero';
       final passengerPhone = joinRequest['passenger_phone'] as String?;
       final pickupAddress = joinRequest['pickup_address'] as String?;
       final pickupLat = joinRequest['pickup_lat'];
@@ -1686,10 +1766,12 @@ class TourismEventService {
       };
 
       // Include pickup/dropoff if provided
-      if (pickupAddress != null) invitationData['pickup_address'] = pickupAddress;
+      if (pickupAddress != null)
+        invitationData['pickup_address'] = pickupAddress;
       if (pickupLat != null) invitationData['pickup_lat'] = pickupLat;
       if (pickupLng != null) invitationData['pickup_lng'] = pickupLng;
-      if (dropoffAddress != null) invitationData['dropoff_address'] = dropoffAddress;
+      if (dropoffAddress != null)
+        invitationData['dropoff_address'] = dropoffAddress;
       if (dropoffLat != null) invitationData['dropoff_lat'] = dropoffLat;
       if (dropoffLng != null) invitationData['dropoff_lng'] = dropoffLng;
 
@@ -1706,12 +1788,15 @@ class TourismEventService {
       final invitationId = invitation['id'] as String;
 
       // 3. Update join request: accepted + link to invitation
-      await _client.from('tourism_join_requests').update({
-        'status': 'accepted',
-        'responded_at': now,
-        'invitation_id': invitationId,
-        'updated_at': now,
-      }).eq('id', requestId);
+      await _client
+          .from('tourism_join_requests')
+          .update({
+            'status': 'accepted',
+            'responded_at': now,
+            'invitation_id': invitationId,
+            'updated_at': now,
+          })
+          .eq('id', requestId);
 
       // 4. Notify the passenger (non-critical)
       if (userId != null) {
@@ -1724,7 +1809,9 @@ class TourismEventService {
         );
       }
 
-      debugPrint('JOIN_REQ -> Accepted request $requestId, invitation $invitationId');
+      debugPrint(
+        'JOIN_REQ -> Accepted request $requestId, invitation $invitationId',
+      );
       return true;
     } catch (e) {
       debugPrint('acceptJoinRequest error: $e');
@@ -1751,12 +1838,15 @@ class TourismEventService {
           .eq('id', requestId)
           .maybeSingle();
 
-      await _client.from('tourism_join_requests').update({
-        'status': 'rejected',
-        'responded_at': now,
-        'response_notes': reason,
-        'updated_at': now,
-      }).eq('id', requestId);
+      await _client
+          .from('tourism_join_requests')
+          .update({
+            'status': 'rejected',
+            'responded_at': now,
+            'response_notes': reason,
+            'updated_at': now,
+          })
+          .eq('id', requestId);
 
       // Notify the passenger (non-critical)
       final userId = joinRequest?['user_id'] as String?;
@@ -1793,22 +1883,24 @@ class TourismEventService {
   ) {
     final channel = _client.channel('join_requests_$eventId');
 
-    channel.onPostgresChanges(
-      event: PostgresChangeEvent.all,
-      schema: 'public',
-      table: 'tourism_join_requests',
-      filter: PostgresChangeFilter(
-        type: PostgresChangeFilterType.eq,
-        column: 'event_id',
-        value: eventId,
-      ),
-      callback: (payload) {
-        final newRecord = payload.newRecord;
-        if (newRecord.isNotEmpty) {
-          onRequest(newRecord);
-        }
-      },
-    ).subscribe();
+    channel
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'tourism_join_requests',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'event_id',
+            value: eventId,
+          ),
+          callback: (payload) {
+            final newRecord = payload.newRecord;
+            if (newRecord.isNotEmpty) {
+              onRequest(newRecord);
+            }
+          },
+        )
+        .subscribe();
 
     return channel;
   }
@@ -1842,7 +1934,9 @@ class TourismEventService {
     try {
       final response = await _client
           .from('tourism_event_reviews')
-          .select('id, event_id, overall_rating, driver_rating, organizer_rating, vehicle_rating, comment, improvement_tags, would_recommend, created_at')
+          .select(
+            'id, event_id, overall_rating, driver_rating, organizer_rating, vehicle_rating, comment, improvement_tags, would_recommend, created_at',
+          )
           .eq('event_id', eventId)
           .order('created_at', ascending: false);
 
@@ -1868,9 +1962,9 @@ class TourismEventService {
           .select('id')
           .eq('driver_id', driverId);
 
-      final eventIds = List<Map<String, dynamic>>.from(events)
-          .map((e) => e['id'] as String)
-          .toList();
+      final eventIds = List<Map<String, dynamic>>.from(
+        events,
+      ).map((e) => e['id'] as String).toList();
       if (eventIds.isEmpty) {
         return {
           'avg_overall': 0.0,
@@ -1881,10 +1975,12 @@ class TourismEventService {
         };
       }
 
-      final reviewRows = List<Map<String, dynamic>>.from(await _client
-          .from('tourism_event_reviews')
-          .select('event_id, overall_rating, driver_rating, improvement_tags')
-          .inFilter('event_id', eventIds));
+      final reviewRows = List<Map<String, dynamic>>.from(
+        await _client
+            .from('tourism_event_reviews')
+            .select('event_id, overall_rating, driver_rating, improvement_tags')
+            .inFilter('event_id', eventIds),
+      );
 
       double sumOverall = 0;
       double sumDriver = 0;
@@ -2061,11 +2157,7 @@ class TourismEventService {
             title,
             body,
             'tourism_emergency_broadcast',
-            {
-              'event_id': eventId,
-              'is_emergency': true,
-              ...extraData,
-            },
+            {'event_id': eventId, 'is_emergency': true, ...extraData},
           );
           count++;
         }
@@ -2114,15 +2206,14 @@ class TourismEventService {
             title,
             body,
             'tourism_organizer_announcement',
-            {
-              'event_id': eventId,
-              ...extraData,
-            },
+            {'event_id': eventId, ...extraData},
           );
           count++;
         }
       }
-      debugPrint('ORGANIZER_ANNOUNCEMENT -> Sent to $count passengers (filter: $filter)');
+      debugPrint(
+        'ORGANIZER_ANNOUNCEMENT -> Sent to $count passengers (filter: $filter)',
+      );
     } catch (e) {
       debugPrint('ORGANIZER_ANNOUNCEMENT -> Error: $e');
     }
@@ -2148,22 +2239,37 @@ class TourismEventService {
       // Get passenger stats (anonymous - no names)
       final passengers = await _client
           .from('tourism_invitations')
-          .select('km_traveled, total_price, payment_status, boarded_at, exited_at, status')
+          .select(
+            'km_traveled, total_price, payment_status, boarded_at, exited_at, status',
+          )
           .eq('event_id', eventId)
-          .inFilter('status', ['accepted', 'boarded', 'checked_in', 'off_boarded']);
+          .inFilter('status', [
+            'accepted',
+            'boarded',
+            'checked_in',
+            'off_boarded',
+          ]);
 
       final passengerList = List<Map<String, dynamic>>.from(passengers);
       final totalPassengers = passengerList.length;
       final totalKmAllPassengers = passengerList.fold<double>(
-        0, (sum, p) => sum + ((p['km_traveled'] as num?)?.toDouble() ?? 0));
+        0,
+        (sum, p) => sum + ((p['km_traveled'] as num?)?.toDouble() ?? 0),
+      );
       final totalRevenue = passengerList.fold<double>(
-        0, (sum, p) => sum + ((p['total_price'] as num?)?.toDouble() ?? 0));
-      final paidCount = passengerList.where((p) => p['payment_status'] == 'paid').length;
+        0,
+        (sum, p) => sum + ((p['total_price'] as num?)?.toDouble() ?? 0),
+      );
+      final paidCount = passengerList
+          .where((p) => p['payment_status'] == 'paid')
+          .length;
 
       // Get reviews (anonymous - no user info)
       final reviews = await _client
           .from('tourism_event_reviews')
-          .select('overall_rating, driver_rating, organizer_rating, vehicle_rating, improvement_tags, would_recommend, comment')
+          .select(
+            'overall_rating, driver_rating, organizer_rating, vehicle_rating, improvement_tags, would_recommend, comment',
+          )
           .eq('event_id', eventId);
 
       final reviewList = List<Map<String, dynamic>>.from(reviews);
@@ -2199,7 +2305,11 @@ class TourismEventService {
 
       // Get anonymous comments (no user attribution)
       final comments = reviewList
-          .where((r) => r['comment'] != null && r['comment'].toString().trim().isNotEmpty)
+          .where(
+            (r) =>
+                r['comment'] != null &&
+                r['comment'].toString().trim().isNotEmpty,
+          )
           .map((r) => r['comment'].toString())
           .toList();
 
@@ -2237,8 +2347,12 @@ class TourismEventService {
         'avg_driver_rating': avgDriver,
         'avg_organizer_rating': avgOrganizer,
         'avg_vehicle_rating': avgVehicle,
-        'recommend_percentage': totalReviews > 0 ? (recommendCount / totalReviews * 100) : 0,
-        'improvement_suggestions': sortedTags.map((e) => {'tag': e.key, 'count': e.value}).toList(),
+        'recommend_percentage': totalReviews > 0
+            ? (recommendCount / totalReviews * 100)
+            : 0,
+        'improvement_suggestions': sortedTags
+            .map((e) => {'tag': e.key, 'count': e.value})
+            .toList(),
         'anonymous_comments': comments,
       };
     } catch (e) {
@@ -2293,18 +2407,22 @@ class TourismEventService {
       // tourism_events has NO rating aggregate columns, and the names were wrong
       // (title/start_date -> event_name/event_date). Pull the driver's events
       // with real columns, then aggregate ratings from tourism_event_reviews.
-      final events = List<Map<String, dynamic>>.from(await _client
-          .from('tourism_events')
-          .select('id, event_name, event_date')
-          .eq('driver_id', driverId)
-          .order('event_date', ascending: false));
+      final events = List<Map<String, dynamic>>.from(
+        await _client
+            .from('tourism_events')
+            .select('id, event_name, event_date')
+            .eq('driver_id', driverId)
+            .order('event_date', ascending: false),
+      );
       if (events.isEmpty) return [];
 
       final eventIds = events.map((e) => e['id'] as String).toList();
-      final reviews = List<Map<String, dynamic>>.from(await _client
-          .from('tourism_event_reviews')
-          .select('event_id, overall_rating, driver_rating')
-          .inFilter('event_id', eventIds));
+      final reviews = List<Map<String, dynamic>>.from(
+        await _client
+            .from('tourism_event_reviews')
+            .select('event_id, overall_rating, driver_rating')
+            .inFilter('event_id', eventIds),
+      );
 
       final Map<String, List<Map<String, dynamic>>> byEvent = {};
       for (final r in reviews) {
@@ -2408,7 +2526,12 @@ class TourismEventService {
     debugPrint('  RESULT: $passed passed, $failed failed');
     debugPrint('═══════════════════════════════════════════════════');
 
-    results['_summary'] = {'total': passed + failed, 'passed': passed, 'failed': failed, 'all_ok': failed == 0};
+    results['_summary'] = {
+      'total': passed + failed,
+      'passed': passed,
+      'failed': failed,
+      'all_ok': failed == 0,
+    };
     return results;
   }
 
@@ -2420,62 +2543,123 @@ class TourismEventService {
     final checks = <String, dynamic>{};
 
     try {
-      final event = await _client.from('tourism_events').select('*').eq('id', eventId).maybeSingle();
+      final event = await _client
+          .from('tourism_events')
+          .select('*')
+          .eq('id', eventId)
+          .maybeSingle();
       if (event == null) {
         debugPrint('  [FAIL] Event not found');
-        return {'event': {'ok': false, 'error': 'Not found'}};
+        return {
+          'event': {'ok': false, 'error': 'Not found'},
+        };
       }
-      checks['event'] = {'ok': true, 'status': event['status'], 'country_code': event['country_code']};
-      debugPrint('  [OK] Event: ${event['event_name']} (${event['status']}) country=${event['country_code']}');
+      checks['event'] = {
+        'ok': true,
+        'status': event['status'],
+        'country_code': event['country_code'],
+      };
+      debugPrint(
+        '  [OK] Event: ${event['event_name']} (${event['status']}) country=${event['country_code']}',
+      );
 
       // Organizer
       final orgId = event['organizer_id'] as String?;
       if (orgId != null) {
-        final org = await _client.from('organizers').select('id, company_name, phone, country_code').eq('id', orgId).maybeSingle();
-        checks['organizer'] = org != null ? {'ok': true, 'name': org['company_name']} : {'ok': false, 'error': 'Not found'};
-        debugPrint('  ${org != null ? "[OK]" : "[FAIL]"} Organizer: ${org?['company_name'] ?? "NOT FOUND"}');
+        final org = await _client
+            .from('organizers')
+            .select('id, company_name, phone, country_code')
+            .eq('id', orgId)
+            .maybeSingle();
+        checks['organizer'] = org != null
+            ? {'ok': true, 'name': org['company_name']}
+            : {'ok': false, 'error': 'Not found'};
+        debugPrint(
+          '  ${org != null ? "[OK]" : "[FAIL]"} Organizer: ${org?['company_name'] ?? "NOT FOUND"}',
+        );
       }
 
       // Driver
       final dId = event['driver_id'] as String?;
       if (dId != null) {
-        final d = await _client.from('drivers').select('id, name, full_name, business_card_url').eq('id', dId).maybeSingle();
-        checks['driver'] = d != null ? {'ok': true, 'name': d['full_name'] ?? d['name'], 'has_card': d['business_card_url'] != null} : {'ok': false};
-        debugPrint('  ${d != null ? "[OK]" : "[FAIL]"} Driver: ${d?['full_name'] ?? d?['name'] ?? "NOT FOUND"}');
+        final d = await _client
+            .from('drivers')
+            .select('id, name, full_name, business_card_url')
+            .eq('id', dId)
+            .maybeSingle();
+        checks['driver'] = d != null
+            ? {
+                'ok': true,
+                'name': d['full_name'] ?? d['name'],
+                'has_card': d['business_card_url'] != null,
+              }
+            : {'ok': false};
+        debugPrint(
+          '  ${d != null ? "[OK]" : "[FAIL]"} Driver: ${d?['full_name'] ?? d?['name'] ?? "NOT FOUND"}',
+        );
       }
 
       // Vehicle
       final vId = event['vehicle_id'] as String?;
       if (vId != null) {
-        final v = await _client.from('bus_vehicles').select('id, vehicle_name, total_seats, vehicle_type').eq('id', vId).maybeSingle();
-        checks['vehicle'] = v != null ? {'ok': true, 'name': v['vehicle_name'], 'seats': v['total_seats']} : {'ok': false};
-        debugPrint('  ${v != null ? "[OK]" : "[FAIL]"} Vehicle: ${v?['vehicle_name'] ?? "NOT FOUND"} (${v?['total_seats']} seats)');
+        final v = await _client
+            .from('bus_vehicles')
+            .select('id, vehicle_name, total_seats, vehicle_type')
+            .eq('id', vId)
+            .maybeSingle();
+        checks['vehicle'] = v != null
+            ? {'ok': true, 'name': v['vehicle_name'], 'seats': v['total_seats']}
+            : {'ok': false};
+        debugPrint(
+          '  ${v != null ? "[OK]" : "[FAIL]"} Vehicle: ${v?['vehicle_name'] ?? "NOT FOUND"} (${v?['total_seats']} seats)',
+        );
       }
 
       // Itinerary
-      final itin = await _client.from('tourism_event_itinerary').select('id').eq('event_id', eventId);
+      final itin = await _client
+          .from('tourism_event_itinerary')
+          .select('id')
+          .eq('event_id', eventId);
       checks['itinerary'] = {'ok': true, 'stops': (itin as List).length};
       debugPrint('  [OK] Itinerary: ${itin.length} stops');
 
       // Invitations
-      final inv = await _client.from('tourism_invitations').select('id, status').eq('event_id', eventId);
+      final inv = await _client
+          .from('tourism_invitations')
+          .select('id, status')
+          .eq('event_id', eventId);
       final invList = List<Map<String, dynamic>>.from(inv);
       final accepted = invList.where((i) => i['status'] == 'accepted').length;
-      checks['invitations'] = {'ok': true, 'total': invList.length, 'accepted': accepted};
-      debugPrint('  [OK] Invitations: ${invList.length} total, $accepted accepted');
+      checks['invitations'] = {
+        'ok': true,
+        'total': invList.length,
+        'accepted': accepted,
+      };
+      debugPrint(
+        '  [OK] Invitations: ${invList.length} total, $accepted accepted',
+      );
 
       // Messages
-      final msgs = await _client.from('tourism_messages').select('id').eq('event_id', eventId);
+      final msgs = await _client
+          .from('tourism_messages')
+          .select('id')
+          .eq('event_id', eventId);
       checks['messages'] = {'ok': true, 'count': (msgs as List).length};
       debugPrint('  [OK] Messages: ${msgs.length}');
 
       // Vehicle bids
-      final bids = await _client.from('tourism_vehicle_bids').select('id').eq('event_id', eventId);
+      final bids = await _client
+          .from('tourism_vehicle_bids')
+          .select('id')
+          .eq('event_id', eventId);
       checks['bids'] = {'ok': true, 'count': (bids as List).length};
       debugPrint('  [OK] Bids: ${bids.length}');
 
       // Trip records
-      final trips = await _client.from('tourism_trip_records').select('id').eq('event_id', eventId);
+      final trips = await _client
+          .from('tourism_trip_records')
+          .select('id')
+          .eq('event_id', eventId);
       checks['trip_records'] = {'ok': true, 'count': (trips as List).length};
       debugPrint('  [OK] Trip records: ${trips.length}');
 
@@ -2644,22 +2828,24 @@ class TourismEventService {
   }) {
     final channel = _client.channel('driver_bids_$driverId');
 
-    channel.onPostgresChanges(
-      event: PostgresChangeEvent.all,
-      schema: 'public',
-      table: 'tourism_vehicle_bids',
-      filter: PostgresChangeFilter(
-        type: PostgresChangeFilterType.eq,
-        column: 'driver_id',
-        value: driverId,
-      ),
-      callback: (payload) {
-        final newRecord = payload.newRecord;
-        if (newRecord.isNotEmpty) {
-          onBidUpdate(newRecord);
-        }
-      },
-    ).subscribe();
+    channel
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'tourism_vehicle_bids',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'driver_id',
+            value: driverId,
+          ),
+          callback: (payload) {
+            final newRecord = payload.newRecord;
+            if (newRecord.isNotEmpty) {
+              onBidUpdate(newRecord);
+            }
+          },
+        )
+        .subscribe();
 
     return channel;
   }
@@ -2669,7 +2855,9 @@ class TourismEventService {
   // ===========================================================================
 
   /// Get open trip requests visible to drivers.
-  Future<List<Map<String, dynamic>>> getOpenTripRequests(String driverId) async {
+  Future<List<Map<String, dynamic>>> getOpenTripRequests(
+    String driverId,
+  ) async {
     try {
       // Get driver's country_code
       final driver = await _client
@@ -2677,7 +2865,7 @@ class TourismEventService {
           .select('country_code')
           .eq('id', driverId)
           .maybeSingle();
-      final countryCode = driver?['country_code'] ?? 'MX';
+      final countryCode = driver?['country_code'] ?? 'US';
 
       final result = await _client
           .from('trip_requests')
@@ -2690,8 +2878,9 @@ class TourismEventService {
           .order('created_at', ascending: false)
           .limit(50);
 
-      final rows =
-          (result as List).map((r) => Map<String, dynamic>.from(r)).toList();
+      final rows = (result as List)
+          .map((r) => Map<String, dynamic>.from(r))
+          .toList();
 
       // Side-fetch rider profiles (rider_id == profiles.id) -> attach as 'rider'.
       final riderIds = rows
@@ -2741,7 +2930,9 @@ class TourismEventService {
       // Get driver info for snapshot
       final driver = await _client
           .from('drivers')
-          .select('name, vehicle_type, vehicle_make, vehicle_model, vehicle_plate, rating, total_rides, profile_image_url, country_code, state_code')
+          .select(
+            'name, vehicle_type, vehicle_make, vehicle_model, vehicle_plate, rating, total_rides, profile_image_url, country_code, state_code',
+          )
           .eq('id', driverId)
           .single();
 
@@ -2753,7 +2944,7 @@ class TourismEventService {
       // Comision de plataforma VIVA (pricing_config), NO el 20% hardcodeado que
       // estaba aqui: a un chofer de MX (18%) se le guardaba 20% en el snapshot.
       final pricing = await LivePricing.load(
-        countryCode: (driver['country_code'] as String?) ?? 'MX',
+        countryCode: (driver['country_code'] as String?) ?? 'US',
         stateCode: driver['state_code'] as String?,
       );
 
@@ -2777,10 +2968,10 @@ class TourismEventService {
 
       // Notify rider via edge function
       try {
-        await _client.functions.invoke('trip-notify', body: {
-          'event_type': 'new_offer',
-          'trip_request_id': tripRequestId,
-        });
+        await _client.functions.invoke(
+          'trip-notify',
+          body: {'event_type': 'new_offer', 'trip_request_id': tripRequestId},
+        );
       } catch (_) {}
 
       return true;
@@ -2791,18 +2982,20 @@ class TourismEventService {
   }
 
   /// Get driver's own trip offers.
-  Future<List<Map<String, dynamic>>> getDriverTripOffers(String driverId) async {
+  Future<List<Map<String, dynamic>>> getDriverTripOffers(
+    String driverId,
+  ) async {
     try {
       final result = await _client
           .from('trip_offers')
-          .select('*, trip_request:trip_requests!trip_request_id(origin_name, destination_name, trip_date, pickup_time, trip_type, status, passenger_count)')
+          .select(
+            '*, trip_request:trip_requests!trip_request_id(origin_name, destination_name, trip_date, pickup_time, trip_type, status, passenger_count)',
+          )
           .eq('driver_id', driverId)
           .order('created_at', ascending: false)
           .limit(50);
 
-      return (result as List)
-          .map((r) => Map<String, dynamic>.from(r))
-          .toList();
+      return (result as List).map((r) => Map<String, dynamic>.from(r)).toList();
     } catch (e) {
       debugPrint('[TRIP_WIZARD] Error loading driver trip offers: $e');
       return [];
@@ -2816,19 +3009,21 @@ class TourismEventService {
   }) {
     final channel = _client.channel('trip_offers_driver_$driverId');
 
-    channel.onPostgresChanges(
-      event: PostgresChangeEvent.all,
-      schema: 'public',
-      table: 'trip_offers',
-      filter: PostgresChangeFilter(
-        type: PostgresChangeFilterType.eq,
-        column: 'driver_id',
-        value: driverId,
-      ),
-      callback: (payload) {
-        onUpdate();
-      },
-    ).subscribe();
+    channel
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'trip_offers',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'driver_id',
+            value: driverId,
+          ),
+          callback: (payload) {
+            onUpdate();
+          },
+        )
+        .subscribe();
 
     return channel;
   }

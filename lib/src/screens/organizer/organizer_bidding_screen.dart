@@ -19,10 +19,7 @@ import '../../widgets/organizer_connect_banner.dart';
 class OrganizerBiddingScreen extends StatefulWidget {
   final String eventId;
 
-  const OrganizerBiddingScreen({
-    super.key,
-    required this.eventId,
-  });
+  const OrganizerBiddingScreen({super.key, required this.eventId});
 
   @override
   State<OrganizerBiddingScreen> createState() => _OrganizerBiddingScreenState();
@@ -35,6 +32,15 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
   bool _isLoading = true;
   String? _error;
   Map<String, dynamic>? _event;
+
+  String get _countryCode =>
+      ((_event?['country_code'] as String?) ?? userCountry()).toUpperCase();
+
+  String _distance(num? kilometers, {int decimals = 0}) =>
+      formatDistance(kilometers, country: _countryCode, decimals: decimals);
+
+  double _localRate(num? pricePerKilometer) =>
+      pricePerKilometerToDisplay(pricePerKilometer, country: _countryCode);
 
   // Tab state
   int _currentTab = 0; // 0 = browse vehicles, 1 = view bids
@@ -150,7 +156,9 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
 
       if (mounted) {
         HapticService.success();
-        _showSuccess('Solicitudes enviadas a ${_selectedVehicles.length} chofer(es)');
+        _showSuccess(
+          'Solicitudes enviadas a ${_selectedVehicles.length} chofer(es)',
+        );
         _selectedVehicles.clear();
         setState(() => _currentTab = 1); // Switch to bids tab
         _loadData();
@@ -204,7 +212,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
             const SizedBox(height: 12),
             _detailRow('Vehículo', vehicleName),
             _detailRow('Chofer', driverName),
-            _detailRow('Precio/km', formatMoney(pricePerKm, country: 'MX')),
+            _detailRow('Precio/${distanceUnit()}', formatMoney(pricePerKm)),
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(10),
@@ -217,8 +225,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
               ),
               child: const Row(
                 children: [
-                  Icon(Icons.info_outline,
-                      size: 16, color: AppColors.warning),
+                  Icon(Icons.info_outline, size: 16, color: AppColors.warning),
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -270,7 +277,8 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
   Future<void> _showCounterOfferDialog(Map<String, dynamic> bid) async {
     final bidId = bid['id'] as String?;
     final driverName = bid['driver_name'] ?? 'Chofer';
-    final currentPrice = (bid['proposed_price_per_km'] as num?)?.toDouble() ?? 0;
+    final currentPrice =
+        (bid['proposed_price_per_km'] as num?)?.toDouble() ?? 0;
 
     if (bidId == null) {
       _showError('Datos de puja incompletos');
@@ -293,7 +301,10 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
           children: [
             Text(
               'Chofer: $driverName',
-              style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 13,
+              ),
             ),
             const SizedBox(height: 8),
             Container(
@@ -305,15 +316,22 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.local_offer, size: 16, color: AppColors.textTertiary),
+                  const Icon(
+                    Icons.local_offer,
+                    size: 16,
+                    color: AppColors.textTertiary,
+                  ),
                   const SizedBox(width: 8),
                   const Text(
                     'Precio actual:',
-                    style: TextStyle(color: AppColors.textTertiary, fontSize: 12),
+                    style: TextStyle(
+                      color: AppColors.textTertiary,
+                      fontSize: 12,
+                    ),
                   ),
                   const Spacer(),
                   Text(
-                    '${formatMoney(currentPrice, country: 'MX')}/km',
+                    formatPricePerDistance(currentPrice, country: _countryCode),
                     style: const TextStyle(
                       color: AppColors.textPrimary,
                       fontSize: 14,
@@ -324,14 +342,19 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            const Text(
-              'Tu propuesta (precio/km):',
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+            Text(
+              'Tu propuesta (precio/${distanceUnit(country: _countryCode)}):',
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 13,
+              ),
             ),
             const SizedBox(height: 8),
             TextField(
               controller: controller,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               style: const TextStyle(
                 color: AppColors.textPrimary,
                 fontSize: 18,
@@ -344,7 +367,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
                 ),
-                suffixText: '/km',
+                suffixText: '/${distanceUnit(country: _countryCode)}',
                 suffixStyle: const TextStyle(
                   color: AppColors.textTertiary,
                   fontSize: 14,
@@ -361,7 +384,10 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: AppColors.warning, width: 1.5),
+                  borderSide: const BorderSide(
+                    color: AppColors.warning,
+                    width: 1.5,
+                  ),
                 ),
                 hintText: '0.00',
                 hintStyle: const TextStyle(color: AppColors.textTertiary),
@@ -404,14 +430,23 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
     HapticService.lightImpact();
 
     try {
+      final canonicalPrice = displayPriceToPerKilometer(
+        proposedPrice,
+        country: _countryCode,
+      );
       await _organizerService.sendCounterOffer(
         bidId: bidId,
-        proposedPrice: proposedPrice,
+        proposedPrice: canonicalPrice,
       );
 
       if (mounted) {
         HapticService.success();
-        _showSuccess('Contra-oferta enviada: ${formatMoney(proposedPrice, country: 'MX')}/km');
+        _showSuccess(
+          'Contra-oferta enviada: '
+          '${formatMoney(proposedPrice, country: _countryCode)} '
+          '${currencyCode(country: _countryCode)}/'
+          '${distanceUnit(country: _countryCode)}',
+        );
         _loadData();
       }
     } catch (e) {
@@ -443,7 +478,10 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _detailRow('Chofer', driverName),
-            _detailRow('Precio propuesto', '${formatMoney(driverPrice, country: 'MX')}/km'),
+            _detailRow(
+              'Precio propuesto',
+              '${formatMoney(driverPrice)}/${distanceUnit()}',
+            ),
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(10),
@@ -525,20 +563,14 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
   void _showError(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: AppColors.error,
-      ),
+      SnackBar(content: Text(message), backgroundColor: AppColors.error),
     );
   }
 
   void _showSuccess(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: AppColors.success,
-      ),
+      SnackBar(content: Text(message), backgroundColor: AppColors.success),
     );
   }
 
@@ -582,10 +614,10 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                     child: CircularProgressIndicator(color: AppColors.primary),
                   )
                 : _error != null
-                    ? _buildErrorState()
-                    : _currentTab == 0
-                        ? _buildBrowseVehiclesTab()
-                        : _buildViewBidsTab(),
+                ? _buildErrorState()
+                : _currentTab == 0
+                ? _buildBrowseVehiclesTab()
+                : _buildViewBidsTab(),
           ),
         ],
       ),
@@ -605,7 +637,8 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
   }
 
   Widget _buildEventHeader(String eventName) {
-    final totalDistance = (_event?['total_distance_km'] as num?)?.toDouble() ?? 0;
+    final totalDistance =
+        (_event?['total_distance_km'] as num?)?.toDouble() ?? 0;
 
     return Container(
       margin: const EdgeInsets.all(16),
@@ -630,11 +663,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
               color: AppColors.primary.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(
-              Icons.gavel,
-              color: AppColors.primary,
-              size: 22,
-            ),
+            child: const Icon(Icons.gavel, color: AppColors.primary, size: 22),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -654,10 +683,14 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    const Icon(Icons.route, size: 12, color: AppColors.textTertiary),
+                    const Icon(
+                      Icons.route,
+                      size: 12,
+                      color: AppColors.textTertiary,
+                    ),
                     const SizedBox(width: 4),
                     Text(
-                      '${totalDistance.toStringAsFixed(0)} km',
+                      _distance(totalDistance),
                       style: const TextStyle(
                         color: AppColors.textTertiary,
                         fontSize: 12,
@@ -697,9 +730,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: const BoxDecoration(
         color: AppColors.surface,
-        border: Border(
-          bottom: BorderSide(color: AppColors.border, width: 0.5),
-        ),
+        border: Border(bottom: BorderSide(color: AppColors.border, width: 0.5)),
       ),
       child: Row(
         children: [
@@ -797,35 +828,54 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
       return _buildEmptyState(
         icon: Icons.price_check_outlined,
         message: 'Aún no hay pujas',
-        subtitle: 'Envía solicitudes a choferes desde la pestaña "Buscar Vehículos"',
+        subtitle:
+            'Envía solicitudes a choferes desde la pestaña "Buscar Vehículos"',
       );
     }
 
     // Separate bids by status
-    final pending = _bids.where((b) =>
-        b['driver_status'] == 'pending' &&
-        b['organizer_status'] == 'pending').toList();
-    final received = _bids.where((b) =>
-        b['driver_status'] == 'accepted' &&
-        b['organizer_status'] == 'pending').toList();
-    final negotiating = _bids.where((b) =>
-        b['organizer_status'] == 'counter_offered' ||
-        b['driver_status'] == 'counter_offered').toList();
-    final rejected = _bids.where((b) =>
-        b['driver_status'] == 'rejected' ||
-        b['organizer_status'] == 'rejected').toList();
-    final selected = _bids.where((b) =>
-        b['organizer_status'] == 'selected' &&
-        b['is_winning_bid'] == true).toList();
+    final pending = _bids
+        .where(
+          (b) =>
+              b['driver_status'] == 'pending' &&
+              b['organizer_status'] == 'pending',
+        )
+        .toList();
+    final received = _bids
+        .where(
+          (b) =>
+              b['driver_status'] == 'accepted' &&
+              b['organizer_status'] == 'pending',
+        )
+        .toList();
+    final negotiating = _bids
+        .where(
+          (b) =>
+              b['organizer_status'] == 'counter_offered' ||
+              b['driver_status'] == 'counter_offered',
+        )
+        .toList();
+    final rejected = _bids
+        .where(
+          (b) =>
+              b['driver_status'] == 'rejected' ||
+              b['organizer_status'] == 'rejected',
+        )
+        .toList();
+    final selected = _bids
+        .where(
+          (b) =>
+              b['organizer_status'] == 'selected' &&
+              b['is_winning_bid'] == true,
+        )
+        .toList();
 
     // Bids that have a price (received + negotiating) for comparison table
     final comparableBids = _bids.where((b) {
       final ds = b['driver_status'] as String? ?? '';
       final os = b['organizer_status'] as String? ?? '';
       final hasPrice = b['proposed_price_per_km'] != null;
-      return hasPrice &&
-          ds != 'rejected' &&
-          os != 'rejected';
+      return hasPrice && ds != 'rejected' && os != 'rejected';
     }).toList();
 
     // Sort by price ascending (cheapest first)
@@ -954,8 +1004,11 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
           // Header
           Row(
             children: [
-              const Icon(Icons.compare_arrows,
-                  size: 18, color: AppColors.primary),
+              const Icon(
+                Icons.compare_arrows,
+                size: 18,
+                color: AppColors.primary,
+              ),
               const SizedBox(width: 8),
               const Text(
                 'Comparar Ofertas',
@@ -967,8 +1020,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
               ),
               const Spacer(),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(6),
@@ -993,7 +1045,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
               color: AppColors.background,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Row(
+            child: Row(
               children: [
                 Expanded(
                   flex: 3,
@@ -1021,7 +1073,8 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                 Expanded(
                   flex: 2,
                   child: Text(
-                    '\$/km',
+                    '${currencyCode(country: _countryCode)}/'
+                    '${distanceUnit(country: _countryCode)}',
                     style: TextStyle(
                       color: AppColors.textTertiary,
                       fontSize: 10,
@@ -1061,7 +1114,8 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
             final isWinner = bid['is_winning_bid'] == true;
             final driverStatus = bid['driver_status'] as String? ?? '';
             final organizerStatus = bid['organizer_status'] as String? ?? '';
-            final isNegotiating = organizerStatus == 'counter_offered' ||
+            final isNegotiating =
+                organizerStatus == 'counter_offered' ||
                 driverStatus == 'counter_offered';
 
             Color rowColor = Colors.transparent;
@@ -1082,8 +1136,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                 }
               },
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                 decoration: BoxDecoration(
                   color: rowColor,
                   borderRadius: BorderRadius.circular(6),
@@ -1105,12 +1158,18 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                           Row(
                             children: [
                               if (isWinner) ...[
-                                const Icon(Icons.emoji_events,
-                                    size: 12, color: AppColors.success),
+                                const Icon(
+                                  Icons.emoji_events,
+                                  size: 12,
+                                  color: AppColors.success,
+                                ),
                                 const SizedBox(width: 3),
                               ] else if (isCheapest) ...[
-                                const Icon(Icons.arrow_downward,
-                                    size: 12, color: AppColors.primary),
+                                const Icon(
+                                  Icons.arrow_downward,
+                                  size: 12,
+                                  color: AppColors.primary,
+                                ),
                                 const SizedBox(width: 3),
                               ],
                               Flexible(
@@ -1158,13 +1217,13 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                     Expanded(
                       flex: 2,
                       child: Text(
-                        formatMoney(price, country: 'MX'),
+                        formatMoney(_localRate(price), country: _countryCode),
                         style: TextStyle(
                           color: isWinner
                               ? AppColors.success
                               : isCheapest
-                                  ? AppColors.primary
-                                  : AppColors.textPrimary,
+                              ? AppColors.primary
+                              : AppColors.textPrimary,
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
                         ),
@@ -1175,7 +1234,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                     Expanded(
                       flex: 2,
                       child: Text(
-                        '\$${total.toStringAsFixed(0)}',
+                        formatMoney(total, country: _countryCode),
                         style: TextStyle(
                           color: isWinner
                               ? AppColors.success
@@ -1196,19 +1255,19 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
           const SizedBox(height: 8),
           Row(
             children: [
-              const Icon(Icons.arrow_downward,
-                  size: 10, color: AppColors.primary),
+              const Icon(
+                Icons.arrow_downward,
+                size: 10,
+                color: AppColors.primary,
+              ),
               const SizedBox(width: 4),
               const Text(
                 'Mas economico',
-                style: TextStyle(
-                  color: AppColors.textTertiary,
-                  fontSize: 9,
-                ),
+                style: TextStyle(color: AppColors.textTertiary, fontSize: 9),
               ),
               const Spacer(),
               Text(
-                '${totalDistance.toStringAsFixed(0)} km total',
+                '${_distance(totalDistance)} total',
                 style: const TextStyle(
                   color: AppColors.textTertiary,
                   fontSize: 9,
@@ -1247,8 +1306,8 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
             color: isSelected
                 ? AppColors.primary
                 : alreadyRequested
-                    ? AppColors.success.withValues(alpha: 0.3)
-                    : AppColors.border,
+                ? AppColors.success.withValues(alpha: 0.3)
+                : AppColors.border,
             width: isSelected ? 1.5 : 0.5,
           ),
         ),
@@ -1260,14 +1319,10 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                 width: 24,
                 height: 24,
                 decoration: BoxDecoration(
-                  color: isSelected
-                      ? AppColors.primary
-                      : Colors.transparent,
+                  color: isSelected ? AppColors.primary : Colors.transparent,
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(
-                    color: isSelected
-                        ? AppColors.primary
-                        : AppColors.border,
+                    color: isSelected ? AppColors.primary : AppColors.border,
                     width: 2,
                   ),
                 ),
@@ -1284,7 +1339,11 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                 ),
                 child: const Row(
                   children: [
-                    Icon(Icons.check_circle, size: 12, color: AppColors.success),
+                    Icon(
+                      Icons.check_circle,
+                      size: 12,
+                      color: AppColors.success,
+                    ),
                     SizedBox(width: 4),
                     Text(
                       'Enviado',
@@ -1299,28 +1358,42 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
               ),
             const SizedBox(width: 12),
             // Vehicle photo
-            Builder(builder: (context) {
-              final imageUrls = vehicle['image_urls'] as List<dynamic>? ?? [];
-              final firstImage = imageUrls.isNotEmpty ? imageUrls[0].toString() : null;
-              return ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: SizedBox(
-                  width: 52,
-                  height: 52,
-                  child: firstImage != null
-                      ? Image.network(firstImage, fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) => Container(
+            Builder(
+              builder: (context) {
+                final imageUrls = vehicle['image_urls'] as List<dynamic>? ?? [];
+                final firstImage = imageUrls.isNotEmpty
+                    ? imageUrls[0].toString()
+                    : null;
+                return ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: SizedBox(
+                    width: 52,
+                    height: 52,
+                    child: firstImage != null
+                        ? Image.network(
+                            firstImage,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => Container(
+                              color: AppColors.surface,
+                              child: const Icon(
+                                Icons.directions_bus,
+                                color: AppColors.textTertiary,
+                                size: 24,
+                              ),
+                            ),
+                          )
+                        : Container(
                             color: AppColors.surface,
-                            child: const Icon(Icons.directions_bus, color: AppColors.textTertiary, size: 24),
+                            child: const Icon(
+                              Icons.directions_bus,
+                              color: AppColors.textTertiary,
+                              size: 24,
+                            ),
                           ),
-                        )
-                      : Container(
-                          color: AppColors.surface,
-                          child: const Icon(Icons.directions_bus, color: AppColors.textTertiary, size: 24),
-                        ),
-                ),
-              );
-            }),
+                  ),
+                );
+              },
+            ),
             const SizedBox(width: 10),
             // Vehicle info
             Expanded(
@@ -1340,8 +1413,11 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(Icons.event_seat,
-                          size: 11, color: AppColors.textTertiary),
+                      const Icon(
+                        Icons.event_seat,
+                        size: 11,
+                        color: AppColors.textTertiary,
+                      ),
                       const SizedBox(width: 3),
                       Text(
                         '$totalSeats asientos',
@@ -1380,17 +1456,18 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
     final vehicleName = bid['vehicle_name'] ?? 'Vehiculo';
     final driverName = bid['driver_name'] ?? 'Chofer';
     final bidEventMaxP = (_event?['max_passengers'] as num?)?.toInt() ?? 0;
-    final totalSeats = bidEventMaxP > 0 ? bidEventMaxP : (bid['total_seats'] ?? 0);
+    final totalSeats = bidEventMaxP > 0
+        ? bidEventMaxP
+        : (bid['total_seats'] ?? 0);
     final pricePerKm = (bid['proposed_price_per_km'] as num?)?.toDouble();
     final notes = bid['driver_notes'] as String?;
     final organizerStatus = bid['organizer_status'] as String? ?? '';
     final driverStatus = bid['driver_status'] as String? ?? '';
-    final organizerProposedPrice =
-        (bid['organizer_proposed_price'] as num?)?.toDouble();
-    final driverProposedPrice =
-        (bid['driver_proposed_price'] as num?)?.toDouble();
-    final negotiationRound =
-        (bid['negotiation_round'] as num?)?.toInt() ?? 0;
+    final organizerProposedPrice = (bid['organizer_proposed_price'] as num?)
+        ?.toDouble();
+    final driverProposedPrice = (bid['driver_proposed_price'] as num?)
+        ?.toDouble();
+    final negotiationRound = (bid['negotiation_round'] as num?)?.toInt() ?? 0;
 
     // Determine if this bid is in a negotiation state
     final isOrganizerCounterOffered = organizerStatus == 'counter_offered';
@@ -1400,8 +1477,9 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
     // Calculate estimated total
     final totalDistance =
         (_event?['total_distance_km'] as num?)?.toDouble() ?? 0;
-    final estimatedTotal =
-        pricePerKm != null ? pricePerKm * totalDistance : null;
+    final estimatedTotal = pricePerKm != null
+        ? pricePerKm * totalDistance
+        : null;
 
     // Event date and time
     final eventDate = _event?['event_date'] as String?;
@@ -1443,12 +1521,12 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                   isWinner
                       ? Icons.emoji_events
                       : isNegotiating
-                          ? Icons.swap_horiz
-                          : isPending
-                              ? Icons.hourglass_empty
-                              : isRejected
-                                  ? Icons.cancel
-                                  : Icons.local_offer,
+                      ? Icons.swap_horiz
+                      : isPending
+                      ? Icons.hourglass_empty
+                      : isRejected
+                      ? Icons.cancel
+                      : Icons.local_offer,
                   size: 20,
                   color: accentColor,
                 ),
@@ -1481,16 +1559,21 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
               ),
               if (isWinner)
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.success.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: const Row(
                     children: [
-                      Icon(Icons.check_circle,
-                          size: 12, color: AppColors.success),
+                      Icon(
+                        Icons.check_circle,
+                        size: 12,
+                        color: AppColors.success,
+                      ),
                       SizedBox(width: 4),
                       Text(
                         'GANADOR',
@@ -1505,8 +1588,10 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                 ),
               if (isNegotiating && negotiationRound > 0)
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.warning.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(6),
@@ -1514,8 +1599,11 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.repeat,
-                          size: 12, color: AppColors.warning),
+                      const Icon(
+                        Icons.repeat,
+                        size: 12,
+                        color: AppColors.warning,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         'Ronda $negotiationRound',
@@ -1536,8 +1624,11 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
             const SizedBox(height: 8),
             Row(
               children: [
-                const Icon(Icons.calendar_today,
-                    size: 12, color: AppColors.textTertiary),
+                const Icon(
+                  Icons.calendar_today,
+                  size: 12,
+                  color: AppColors.textTertiary,
+                ),
                 const SizedBox(width: 6),
                 Text(
                   _formatEventDate(dateStr),
@@ -1548,8 +1639,11 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                 ),
                 if (totalSeats > 0) ...[
                   const SizedBox(width: 12),
-                  const Icon(Icons.event_seat,
-                      size: 12, color: AppColors.textTertiary),
+                  const Icon(
+                    Icons.event_seat,
+                    size: 12,
+                    color: AppColors.textTertiary,
+                  ),
                   const SizedBox(width: 4),
                   Text(
                     '$totalSeats asientos',
@@ -1568,11 +1662,18 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
             const SizedBox(height: 6),
             Row(
               children: [
-                const Icon(Icons.timer_outlined, size: 11, color: AppColors.textTertiary),
+                const Icon(
+                  Icons.timer_outlined,
+                  size: 11,
+                  color: AppColors.textTertiary,
+                ),
                 const SizedBox(width: 4),
                 Text(
                   '${_formatTimeAgo(bid['created_at'] as String?)}  •  ${_formatBidDateTime(bid['created_at'] as String?)}',
-                  style: const TextStyle(color: AppColors.textTertiary, fontSize: 10),
+                  style: const TextStyle(
+                    color: AppColors.textTertiary,
+                    fontSize: 10,
+                  ),
                 ),
               ],
             ),
@@ -1589,16 +1690,19 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Precio/km',
-                        style: TextStyle(
+                      Text(
+                        'Precio/${distanceUnit(country: _countryCode)}',
+                        style: const TextStyle(
                           color: AppColors.textTertiary,
                           fontSize: 11,
                         ),
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        formatMoney(pricePerKm, country: 'MX'),
+                        formatMoney(
+                          _localRate(pricePerKm),
+                          country: _countryCode,
+                        ),
                         style: TextStyle(
                           color: isRejected
                               ? AppColors.textSecondary
@@ -1624,7 +1728,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          formatMoney(estimatedTotal, country: 'MX'),
+                          formatMoney(estimatedTotal, country: _countryCode),
                           style: TextStyle(
                             color: isRejected
                                 ? AppColors.textSecondary
@@ -1634,7 +1738,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                           ),
                         ),
                         Text(
-                          '(${totalDistance.toStringAsFixed(0)} km)',
+                          '(${_distance(totalDistance)})',
                           style: const TextStyle(
                             color: AppColors.textTertiary,
                             fontSize: 9,
@@ -1648,8 +1752,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
           ],
 
           // Counter-offer status: organizer sent a counter-offer
-          if (isOrganizerCounterOffered &&
-              organizerProposedPrice != null) ...[
+          if (isOrganizerCounterOffered && organizerProposedPrice != null) ...[
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(10),
@@ -1662,8 +1765,11 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.arrow_forward,
-                      size: 16, color: AppColors.warning),
+                  const Icon(
+                    Icons.arrow_forward,
+                    size: 16,
+                    color: AppColors.warning,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Column(
@@ -1679,7 +1785,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          '${formatMoney(organizerProposedPrice, country: 'MX')}/km',
+                          '${formatMoney(organizerProposedPrice)}/${distanceUnit()}',
                           style: const TextStyle(
                             color: AppColors.warning,
                             fontSize: 16,
@@ -1691,7 +1797,9 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                   ),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 4),
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.warning.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(6),
@@ -1724,8 +1832,11 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.arrow_back,
-                      size: 16, color: AppColors.primary),
+                  const Icon(
+                    Icons.arrow_back,
+                    size: 16,
+                    color: AppColors.primary,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Column(
@@ -1741,7 +1852,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          '${formatMoney(driverProposedPrice, country: 'MX')}/km',
+                          '${formatMoney(driverProposedPrice)}/${distanceUnit()}',
                           style: const TextStyle(
                             color: AppColors.primaryLight,
                             fontSize: 16,
@@ -1768,8 +1879,11 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.notes,
-                      size: 14, color: AppColors.textTertiary),
+                  const Icon(
+                    Icons.notes,
+                    size: 14,
+                    color: AppColors.textTertiary,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -1800,7 +1914,9 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                       label: const Text(
                         'Aceptar',
                         style: TextStyle(
-                            fontSize: 13, fontWeight: FontWeight.w600),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.success,
@@ -1822,12 +1938,16 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                       label: const Text(
                         'Contra-oferta',
                         style: TextStyle(
-                            fontSize: 13, fontWeight: FontWeight.w600),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.warning,
                         side: const BorderSide(
-                            color: AppColors.warning, width: 1),
+                          color: AppColors.warning,
+                          width: 1,
+                        ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
@@ -1857,7 +1977,9 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                       label: const Text(
                         'Seleccionar Puja',
                         style: TextStyle(
-                            fontSize: 13, fontWeight: FontWeight.w600),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.success,
@@ -1878,12 +2000,16 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                     label: const Text(
                       'Contra-oferta',
                       style: TextStyle(
-                          fontSize: 12, fontWeight: FontWeight.w600),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.warning,
-                      side:
-                          const BorderSide(color: AppColors.warning, width: 1),
+                      side: const BorderSide(
+                        color: AppColors.warning,
+                        width: 1,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
@@ -1905,13 +2031,18 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.error_outline,
-                size: 48, color: AppColors.error.withValues(alpha: 0.7)),
+            Icon(
+              Icons.error_outline,
+              size: 48,
+              color: AppColors.error.withValues(alpha: 0.7),
+            ),
             const SizedBox(height: 16),
             Text(
               _error ?? 'Error desconocido',
               style: const TextStyle(
-                  color: AppColors.textSecondary, fontSize: 14),
+                color: AppColors.textSecondary,
+                fontSize: 14,
+              ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
@@ -1943,19 +2074,28 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon,
-                size: 48, color: AppColors.textTertiary.withValues(alpha: 0.5)),
+            Icon(
+              icon,
+              size: 48,
+              color: AppColors.textTertiary.withValues(alpha: 0.5),
+            ),
             const SizedBox(height: 16),
             Text(
               message,
-              style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 14,
+              ),
               textAlign: TextAlign.center,
             ),
             if (subtitle != null) ...[
               const SizedBox(height: 8),
               Text(
                 subtitle,
-                style: const TextStyle(color: AppColors.textTertiary, fontSize: 12),
+                style: const TextStyle(
+                  color: AppColors.textTertiary,
+                  fontSize: 12,
+                ),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -1995,8 +2135,19 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
     try {
       final date = DateTime.parse(dateStr);
       final months = [
-        '', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
-        'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic',
+        '',
+        'Ene',
+        'Feb',
+        'Mar',
+        'Abr',
+        'May',
+        'Jun',
+        'Jul',
+        'Ago',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dic',
       ];
       final day = date.day;
       final month = months[date.month];
@@ -2017,10 +2168,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
         children: [
           Text(
             '$label:',
-            style: const TextStyle(
-              color: AppColors.textTertiary,
-              fontSize: 13,
-            ),
+            style: const TextStyle(color: AppColors.textTertiary, fontSize: 13),
           ),
           Text(
             value,

@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../services/tourism_event_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/haptic_service.dart';
+import '../../utils/money_format.dart';
 
 /// Pantalla para que el organizador o conductor vea y gestione las solicitudes
 /// de pasajeros que quieren unirse a un evento de turismo.
@@ -60,8 +61,9 @@ class _JoinRequestsScreenState extends State<JoinRequestsScreen> {
     });
 
     try {
-      final requests =
-          await _eventService.getJoinRequestsForEvent(widget.eventId);
+      final requests = await _eventService.getJoinRequestsForEvent(
+        widget.eventId,
+      );
 
       if (mounted) {
         setState(() {
@@ -80,13 +82,12 @@ class _JoinRequestsScreenState extends State<JoinRequestsScreen> {
   }
 
   void _subscribeToRequests() {
-    _realtimeChannel = _eventService.subscribeToJoinRequests(
-      widget.eventId,
-      (payload) {
-        // Reload the full list to get enriched profile data
-        _loadRequests();
-      },
-    );
+    _realtimeChannel = _eventService.subscribeToJoinRequests(widget.eventId, (
+      payload,
+    ) {
+      // Reload the full list to get enriched profile data
+      _loadRequests();
+    });
   }
 
   Future<void> _unsubscribe() async {
@@ -108,8 +109,10 @@ class _JoinRequestsScreenState extends State<JoinRequestsScreen> {
     setState(() => _processingIds.add(requestId));
 
     try {
-      final success =
-          await _eventService.acceptJoinRequest(requestId, widget.eventId);
+      final success = await _eventService.acceptJoinRequest(
+        requestId,
+        widget.eventId,
+      );
 
       if (!success) {
         throw Exception('No se pudo aceptar la solicitud');
@@ -316,24 +319,24 @@ class _JoinRequestsScreenState extends State<JoinRequestsScreen> {
                       style: const TextStyle(color: AppColors.textPrimary),
                       decoration: InputDecoration(
                         hintText: 'Escribe la razon...',
-                        hintStyle:
-                            const TextStyle(color: AppColors.textTertiary),
+                        hintStyle: const TextStyle(
+                          color: AppColors.textTertiary,
+                        ),
                         filled: true,
                         fillColor: AppColors.card,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide:
-                              const BorderSide(color: AppColors.border),
+                          borderSide: const BorderSide(color: AppColors.border),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide:
-                              const BorderSide(color: AppColors.border),
+                          borderSide: const BorderSide(color: AppColors.border),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide:
-                              const BorderSide(color: AppColors.primary),
+                          borderSide: const BorderSide(
+                            color: AppColors.primary,
+                          ),
                         ),
                       ),
                       maxLines: 2,
@@ -441,10 +444,10 @@ class _JoinRequestsScreenState extends State<JoinRequestsScreen> {
                         ),
                       )
                     : _error != null
-                        ? _buildErrorState()
-                        : _pendingCount == 0
-                            ? _buildEmptyState()
-                            : _buildRequestsList(),
+                    ? _buildErrorState()
+                    : _pendingCount == 0
+                    ? _buildEmptyState()
+                    : _buildRequestsList(),
               ),
             ],
           ),
@@ -590,10 +593,7 @@ class _JoinRequestsScreenState extends State<JoinRequestsScreen> {
             const SizedBox(height: 8),
             const Text(
               'Cuando un pasajero solicite unirse a este evento, aparecera aqui para que lo aceptes o rechaces.',
-              style: TextStyle(
-                fontSize: 14,
-                color: AppColors.textSecondary,
-              ),
+              style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
               textAlign: TextAlign.center,
             ),
           ],
@@ -607,18 +607,11 @@ class _JoinRequestsScreenState extends State<JoinRequestsScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(
-            Icons.error_outline,
-            size: 48,
-            color: AppColors.error,
-          ),
+          const Icon(Icons.error_outline, size: 48, color: AppColors.error),
           const SizedBox(height: 16),
           const Text(
             'Error al cargar solicitudes',
-            style: TextStyle(
-              fontSize: 16,
-              color: AppColors.textPrimary,
-            ),
+            style: TextStyle(fontSize: 16, color: AppColors.textPrimary),
           ),
           const SizedBox(height: 8),
           TextButton.icon(
@@ -633,10 +626,8 @@ class _JoinRequestsScreenState extends State<JoinRequestsScreen> {
 
   Widget _buildRequestsList() {
     // Filter to show pending first, then others
-    final pending =
-        _requests.where((r) => r['status'] == 'pending').toList();
-    final others =
-        _requests.where((r) => r['status'] != 'pending').toList();
+    final pending = _requests.where((r) => r['status'] == 'pending').toList();
+    final others = _requests.where((r) => r['status'] != 'pending').toList();
 
     return RefreshIndicator(
       onRefresh: _loadRequests,
@@ -690,23 +681,22 @@ class _JoinRequestsScreenState extends State<JoinRequestsScreen> {
     final isPending = status == 'pending';
     final isProcessing = _processingIds.contains(requestId);
 
-    final passengerName =
-        request['passenger_name'] as String? ?? 'Sin nombre';
+    final passengerName = request['passenger_name'] as String? ?? 'Sin nombre';
     final avatarUrl = request['passenger_avatar_url'] as String?;
     final phone = request['passenger_phone'] as String?;
 
     final pickupAddress = request['pickup_address'] as String?;
     final dropoffAddress = request['dropoff_address'] as String?;
-    final estimatedKm =
-        (request['estimated_distance_km'] as num?)?.toDouble();
+    final estimatedKm = (request['estimated_distance_km'] as num?)?.toDouble();
     final createdAt = request['created_at'] as String?;
     final passengers = request['num_passengers'] as int? ?? 1;
     final notes = request['notes'] as String?;
 
     // Calculate estimated price
     final pricePerKm = widget.pricePerKm ?? 10.0;
-    final estimatedPrice =
-        estimatedKm != null ? estimatedKm * pricePerKm : null;
+    final estimatedPrice = estimatedKm != null
+        ? estimatedKm * pricePerKm
+        : null;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -718,8 +708,8 @@ class _JoinRequestsScreenState extends State<JoinRequestsScreen> {
           color: isPending
               ? AppColors.warning.withValues(alpha: 0.3)
               : status == 'accepted'
-                  ? AppColors.success.withValues(alpha: 0.3)
-                  : AppColors.border,
+              ? AppColors.success.withValues(alpha: 0.3)
+              : AppColors.border,
           width: 1,
         ),
       ),
@@ -879,23 +869,17 @@ class _JoinRequestsScreenState extends State<JoinRequestsScreen> {
           Row(
             children: [
               if (estimatedKm != null)
-                _buildStatChip(
-                  Icons.route,
-                  '${estimatedKm.toStringAsFixed(1)} km',
-                ),
+                _buildStatChip(Icons.route, formatDistance(estimatedKm)),
               if (estimatedKm != null) const SizedBox(width: 8),
               if (estimatedPrice != null)
                 _buildStatChip(
                   Icons.attach_money,
-                  '\$${estimatedPrice.toStringAsFixed(0)} MXN',
+                  '${formatMoney(estimatedPrice)} ${currencyCode()}',
                   color: AppColors.success,
                 ),
               if (estimatedPrice != null) const SizedBox(width: 8),
               if (passengers > 1)
-                _buildStatChip(
-                  Icons.people,
-                  '$passengers personas',
-                ),
+                _buildStatChip(Icons.people, '$passengers personas'),
             ],
           ),
 
@@ -946,8 +930,9 @@ class _JoinRequestsScreenState extends State<JoinRequestsScreen> {
                 // Reject button
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed:
-                        isProcessing ? null : () => _rejectRequest(request),
+                    onPressed: isProcessing
+                        ? null
+                        : () => _rejectRequest(request),
                     icon: const Icon(Icons.close, size: 16),
                     label: const Text('Rechazar'),
                     style: OutlinedButton.styleFrom(
@@ -967,8 +952,9 @@ class _JoinRequestsScreenState extends State<JoinRequestsScreen> {
                 Expanded(
                   flex: 2,
                   child: ElevatedButton.icon(
-                    onPressed:
-                        isProcessing ? null : () => _acceptRequest(request),
+                    onPressed: isProcessing
+                        ? null
+                        : () => _acceptRequest(request),
                     icon: isProcessing
                         ? const SizedBox(
                             width: 16,

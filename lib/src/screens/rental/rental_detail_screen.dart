@@ -69,7 +69,7 @@ class _RentalDetailScreenState extends State<RentalDetailScreen> {
     final monthlyPrice = (l['monthly_price'] ?? 0).toDouble();
     final deposit = (l['deposit_amount'] ?? 0).toDouble();
     final perKm = (l['per_km_base'] ?? 0).toDouble();
-    final currency = l['currency'] ?? 'MXN';
+    final currency = l['currency'] ?? currencyCode();
     final features = List<String>.from(l['features'] ?? []);
     final address = l['pickup_address'] ?? '';
     final insCompany = l['insurance_company'] ?? '';
@@ -332,8 +332,8 @@ class _RentalDetailScreenState extends State<RentalDetailScreen> {
                           ),
                         if (perKm > 0)
                           _priceRow(
-                            'Por Km Extra',
-                            '${formatMoney(perKm, country: currency == 'MXN' ? 'MX' : 'US')} $currency',
+                            'Por ${distanceUnit(country: currency == 'MXN' ? 'MX' : 'US')} Extra',
+                            '${formatMoney(pricePerKilometerToDisplay(perKm, country: currency == 'MXN' ? 'MX' : 'US'), country: currency == 'MXN' ? 'MX' : 'US')} $currency',
                           ),
                         if (deposit > 0) ...[
                           Divider(
@@ -402,7 +402,14 @@ class _RentalDetailScreenState extends State<RentalDetailScreen> {
                     if (vin.isNotEmpty) _specRow('VIN', vin),
                     _specRow('Combustible', _fuelPolicyLabel(fuelPolicy)),
                     if (mileageLimit > 0)
-                      _specRow('Limite Km', '$mileageLimit km'),
+                      _specRow(
+                        'Limite ${distanceUnit(country: currency == 'MXN' ? 'MX' : 'US')}',
+                        formatDistance(
+                          mileageLimit,
+                          country: currency == 'MXN' ? 'MX' : 'US',
+                          decimals: 0,
+                        ),
+                      ),
                     _specRow(
                       'Minimo Renta',
                       '$minDays dia${minDays > 1 ? 's' : ''}',

@@ -15,6 +15,7 @@ import '../../services/tourism_event_service.dart';
 import '../../services/tourism_messaging_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/haptic_service.dart';
+import '../../utils/money_format.dart';
 import '../../widgets/organizer_connect_banner.dart';
 import '../../core/logging/app_logger.dart';
 
@@ -30,10 +31,7 @@ import '../../core/logging/app_logger.dart';
 class OrganizerItineraryScreen extends StatefulWidget {
   final String eventId;
 
-  const OrganizerItineraryScreen({
-    super.key,
-    required this.eventId,
-  });
+  const OrganizerItineraryScreen({super.key, required this.eventId});
 
   @override
   State<OrganizerItineraryScreen> createState() =>
@@ -49,6 +47,12 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
   // Data
   Map<String, dynamic>? _event;
   List<Map<String, dynamic>> _itinerary = [];
+
+  String get _countryCode =>
+      ((_event?['country_code'] as String?) ??
+              context.read<AuthProvider>().driver?.countryCode ??
+              userCountry())
+          .toUpperCase();
 
   // OSRM route data between stops
   // Key: "stopIndex" -> {km, min, polyline}
@@ -173,8 +177,7 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
   }
 
   void _subscribeToUpdates() {
-    _itineraryChannel =
-        _client.channel('itinerary_${widget.eventId}');
+    _itineraryChannel = _client.channel('itinerary_${widget.eventId}');
     _itineraryChannel!
         .onPostgresChanges(
           event: PostgresChangeEvent.all,
@@ -192,8 +195,7 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
         .subscribe();
 
     // Subscribe to invitation changes (passenger KPIs)
-    _invitationsChannel =
-        _client.channel('inv_${widget.eventId}');
+    _invitationsChannel = _client.channel('inv_${widget.eventId}');
     _invitationsChannel!
         .onPostgresChanges(
           event: PostgresChangeEvent.all,
@@ -254,7 +256,11 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
   }
 
   Future<Map<String, dynamic>?> _fetchOsrmRoute(
-      double lat1, double lng1, double lat2, double lng2) async {
+    double lat1,
+    double lng1,
+    double lat2,
+    double lng2,
+  ) async {
     try {
       final url = Uri.parse(
         'https://router.project-osrm.org/route/v1/driving/'
@@ -262,8 +268,7 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
         '?overview=full&geometries=polyline&alternatives=false&steps=false',
       );
 
-      final response =
-          await http.get(url).timeout(const Duration(seconds: 10));
+      final response = await http.get(url).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -326,8 +331,10 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
   Future<void> _markStopArrived(int stopIndex) async {
     HapticService.mediumImpact();
     try {
-      final result =
-          await _eventService.markStopArrived(widget.eventId, stopIndex);
+      final result = await _eventService.markStopArrived(
+        widget.eventId,
+        stopIndex,
+      );
       if (result.isNotEmpty) {
         HapticService.success();
         if (mounted) {
@@ -339,14 +346,16 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                        'Llegada registrada: ${_itinerary[stopIndex]['name'] ?? 'Parada ${stopIndex + 1}'}'),
+                      'Llegada registrada: ${_itinerary[stopIndex]['name'] ?? 'Parada ${stopIndex + 1}'}',
+                    ),
                   ),
                 ],
               ),
               backgroundColor: AppColors.success,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
           );
         }
@@ -383,19 +392,24 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
           SnackBar(
             content: Row(
               children: [
-                const Icon(Icons.departure_board,
-                    color: Colors.white, size: 20),
+                const Icon(
+                  Icons.departure_board,
+                  color: Colors.white,
+                  size: 20,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                      'Salida registrada: ${_itinerary[stopIndex]['name'] ?? 'Parada ${stopIndex + 1}'}'),
+                    'Salida registrada: ${_itinerary[stopIndex]['name'] ?? 'Parada ${stopIndex + 1}'}',
+                  ),
                 ),
               ],
             ),
             backgroundColor: AppColors.primary,
             behavior: SnackBarBehavior.floating,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         );
       }
@@ -454,15 +468,18 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
     if (result == null) return;
 
     try {
-      await _client.from('tourism_event_itinerary').update({
-        'name': result['name'],
-        'lat': result['lat'],
-        'lng': result['lng'],
-        'scheduled_time': result['scheduled_time'],
-        'duration_minutes': result['duration'] ?? 30,
-        'notes': result['notes'],
-        'updated_at': DateTime.now().toUtc().toIso8601String(),
-      }).eq('id', stop['id']);
+      await _client
+          .from('tourism_event_itinerary')
+          .update({
+            'name': result['name'],
+            'lat': result['lat'],
+            'lng': result['lng'],
+            'scheduled_time': result['scheduled_time'],
+            'duration_minutes': result['duration'] ?? 30,
+            'notes': result['notes'],
+            'updated_at': DateTime.now().toUtc().toIso8601String(),
+          })
+          .eq('id', stop['id']);
 
       HapticService.success();
       await _loadData();
@@ -485,8 +502,10 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Eliminar Parada',
-            style: TextStyle(color: AppColors.textPrimary)),
+        title: const Text(
+          'Eliminar Parada',
+          style: TextStyle(color: AppColors.textPrimary),
+        ),
         content: Text(
           'Eliminar "${stop['name'] ?? 'Parada ${index + 1}'}"?',
           style: const TextStyle(color: AppColors.textSecondary),
@@ -494,14 +513,18 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancelar',
-                style: TextStyle(color: AppColors.textTertiary)),
+            child: const Text(
+              'Cancelar',
+              style: TextStyle(color: AppColors.textTertiary),
+            ),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-            child:
-                const Text('Eliminar', style: TextStyle(color: Colors.white)),
+            child: const Text(
+              'Eliminar',
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -517,10 +540,13 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
 
       // Reorder remaining stops
       for (int i = index + 1; i < _itinerary.length; i++) {
-        await _client.from('tourism_event_itinerary').update({
-          'stop_order': i - 1,
-          'updated_at': DateTime.now().toUtc().toIso8601String(),
-        }).eq('id', _itinerary[i]['id']);
+        await _client
+            .from('tourism_event_itinerary')
+            .update({
+              'stop_order': i - 1,
+              'updated_at': DateTime.now().toUtc().toIso8601String(),
+            })
+            .eq('id', _itinerary[i]['id']);
       }
 
       HapticService.success();
@@ -539,17 +565,19 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
 
   // ─── STOP DIALOG (Nominatim + Map Picker) ──────────────────
 
-  Future<Map<String, dynamic>?> _showStopDialog(
-      {Map<String, dynamic>? existingStop}) async {
-    final nameController =
-        TextEditingController(text: existingStop?['name'] ?? '');
-    final notesController =
-        TextEditingController(text: existingStop?['notes'] ?? '');
+  Future<Map<String, dynamic>?> _showStopDialog({
+    Map<String, dynamic>? existingStop,
+  }) async {
+    final nameController = TextEditingController(
+      text: existingStop?['name'] ?? '',
+    );
+    final notesController = TextEditingController(
+      text: existingStop?['notes'] ?? '',
+    );
     final durationController = TextEditingController(
       text: (existingStop?['duration_minutes'] ?? '').toString(),
     );
-    if (durationController.text == 'null' ||
-        durationController.text == '0') {
+    if (durationController.text == 'null' || durationController.text == '0') {
       durationController.text = '';
     }
 
@@ -589,53 +617,57 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
               }
 
               debounceTimer?.cancel();
-              debounceTimer =
-                  Timer(const Duration(milliseconds: 500), () async {
-                try {
-                  final url = Uri.parse(
-                    'https://nominatim.openstreetmap.org/search'
-                    '?q=${Uri.encodeComponent(query)}'
-                    '&format=jsonv2'
-                    '&countrycodes=mx,us'
-                    '&limit=5'
-                    '&addressdetails=1'
-                    '&accept-language=es',
-                  );
+              debounceTimer = Timer(
+                const Duration(milliseconds: 500),
+                () async {
+                  try {
+                    final url = Uri.parse(
+                      'https://nominatim.openstreetmap.org/search'
+                      '?q=${Uri.encodeComponent(query)}'
+                      '&format=jsonv2'
+                      '&countrycodes=mx,us'
+                      '&limit=5'
+                      '&addressdetails=1'
+                      '&accept-language=es',
+                    );
 
-                  final response = await http.get(url,
-                      headers: {'User-Agent': 'TORORide/1.0'});
+                    final response = await http.get(
+                      url,
+                      headers: {'User-Agent': 'TORORide/1.0'},
+                    );
 
-                  if (response.statusCode == 200) {
-                    final results = json.decode(response.body) as List;
-                    setModalState(() {
-                      suggestions = results.map((r) {
-                        final name = (r['name'] as String?) ?? '';
-                        final displayName = r['display_name'] as String;
-                        return {
-                          'place_name': displayName,
-                          'text': name.isNotEmpty
-                              ? name
-                              : displayName.split(',').first.trim(),
-                          'lat': double.parse(r['lat'].toString()),
-                          'lng': double.parse(r['lon'].toString()),
-                        };
-                      }).toList();
-                      showSuggestions = suggestions.isNotEmpty;
-                    });
+                    if (response.statusCode == 200) {
+                      final results = json.decode(response.body) as List;
+                      setModalState(() {
+                        suggestions = results.map((r) {
+                          final name = (r['name'] as String?) ?? '';
+                          final displayName = r['display_name'] as String;
+                          return {
+                            'place_name': displayName,
+                            'text': name.isNotEmpty
+                                ? name
+                                : displayName.split(',').first.trim(),
+                            'lat': double.parse(r['lat'].toString()),
+                            'lng': double.parse(r['lon'].toString()),
+                          };
+                        }).toList();
+                        showSuggestions = suggestions.isNotEmpty;
+                      });
+                    }
+                  } catch (e) {
+                    AppLogger.log('Error fetching suggestions: $e');
                   }
-                } catch (e) {
-                  AppLogger.log('Error fetching suggestions: $e');
-                }
-              });
+                },
+              );
             }
 
             return Container(
               padding: EdgeInsets.only(
-                  bottom: MediaQuery.of(context).viewInsets.bottom),
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+              ),
               decoration: const BoxDecoration(
                 color: AppColors.background,
-                borderRadius:
-                    BorderRadius.vertical(top: Radius.circular(20)),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
               ),
               child: SafeArea(
                 child: SingleChildScrollView(
@@ -647,8 +679,11 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
                       // Header
                       Row(
                         children: [
-                          const Icon(Icons.add_location_alt,
-                              color: AppColors.primary, size: 24),
+                          const Icon(
+                            Icons.add_location_alt,
+                            color: AppColors.primary,
+                            size: 24,
+                          ),
                           const SizedBox(width: 12),
                           Text(
                             existingStop != null
@@ -662,8 +697,10 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
                           ),
                           const Spacer(),
                           IconButton(
-                            icon: const Icon(Icons.close,
-                                color: AppColors.textSecondary),
+                            icon: const Icon(
+                              Icons.close,
+                              color: AppColors.textSecondary,
+                            ),
                             onPressed: () => Navigator.pop(context),
                           ),
                         ],
@@ -680,20 +717,24 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
                                 child: TextFormField(
                                   controller: nameController,
                                   style: const TextStyle(
-                                      color: AppColors.textPrimary),
+                                    color: AppColors.textPrimary,
+                                  ),
                                   decoration: InputDecoration(
                                     labelText: 'Dirección',
-                                    hintText:
-                                        'Escribe o selecciona en mapa',
-                                    prefixIcon: const Icon(Icons.place,
-                                        color: AppColors.textSecondary),
+                                    hintText: 'Escribe o selecciona en mapa',
+                                    prefixIcon: const Icon(
+                                      Icons.place,
+                                      color: AppColors.textSecondary,
+                                    ),
                                     suffixIcon: lat != null && lng != null
-                                        ? const Icon(Icons.check_circle,
-                                            color: Colors.green, size: 20)
+                                        ? const Icon(
+                                            Icons.check_circle,
+                                            color: Colors.green,
+                                            size: 20,
+                                          )
                                         : null,
                                     border: OutlineInputBorder(
-                                      borderRadius:
-                                          BorderRadius.circular(8),
+                                      borderRadius: BorderRadius.circular(8),
                                     ),
                                   ),
                                   onChanged: (value) {
@@ -706,18 +747,18 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
                                 height: 56,
                                 child: ElevatedButton(
                                   onPressed: () async {
-                                    final result = await showDialog<
-                                        Map<String, dynamic>>(
-                                      context: context,
-                                      builder: (context) =>
-                                          _ItineraryMapPicker(
-                                        title: 'Seleccionar Ubicación',
-                                        initialLocation:
-                                            lat != null && lng != null
-                                                ? LatLng(lat!, lng!)
-                                                : null,
-                                      ),
-                                    );
+                                    final result =
+                                        await showDialog<Map<String, dynamic>>(
+                                          context: context,
+                                          builder: (context) =>
+                                              _ItineraryMapPicker(
+                                                title: 'Seleccionar Ubicación',
+                                                initialLocation:
+                                                    lat != null && lng != null
+                                                    ? LatLng(lat!, lng!)
+                                                    : null,
+                                              ),
+                                        );
                                     if (result != null) {
                                       setModalState(() {
                                         lat = result['coords']['lat'];
@@ -731,10 +772,14 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: AppColors.primary,
                                     padding: const EdgeInsets.symmetric(
-                                        horizontal: 12),
+                                      horizontal: 12,
+                                    ),
                                   ),
-                                  child: const Icon(Icons.map,
-                                      color: Colors.white, size: 20),
+                                  child: const Icon(
+                                    Icons.map,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
                                 ),
                               ),
                             ],
@@ -747,30 +792,31 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
                                 color: AppColors.surface,
                                 borderRadius: BorderRadius.circular(8),
                                 border: Border.all(
-                                    color: AppColors.textTertiary
-                                        .withOpacity(0.2)),
+                                  color: AppColors.textTertiary.withOpacity(
+                                    0.2,
+                                  ),
+                                ),
                               ),
-                              constraints:
-                                  const BoxConstraints(maxHeight: 200),
+                              constraints: const BoxConstraints(maxHeight: 200),
                               child: ListView.separated(
                                 shrinkWrap: true,
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 4,
+                                ),
                                 itemCount: suggestions.length,
                                 separatorBuilder: (_, __) => Divider(
                                   height: 1,
-                                  color: AppColors.textTertiary
-                                      .withOpacity(0.1),
+                                  color: AppColors.textTertiary.withOpacity(
+                                    0.1,
+                                  ),
                                 ),
                                 itemBuilder: (context, index) {
                                   final suggestion = suggestions[index];
                                   return InkWell(
                                     onTap: () {
                                       setModalState(() {
-                                        lat =
-                                            suggestion['lat'] as double;
-                                        lng =
-                                            suggestion['lng'] as double;
+                                        lat = suggestion['lat'] as double;
+                                        lng = suggestion['lng'] as double;
                                         nameController.text =
                                             suggestion['text'] as String;
                                         showSuggestions = false;
@@ -779,12 +825,16 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
                                     },
                                     child: Padding(
                                       padding: const EdgeInsets.symmetric(
-                                          horizontal: 12, vertical: 10),
+                                        horizontal: 12,
+                                        vertical: 10,
+                                      ),
                                       child: Row(
                                         children: [
-                                          const Icon(Icons.location_on,
-                                              color: AppColors.primary,
-                                              size: 18),
+                                          const Icon(
+                                            Icons.location_on,
+                                            color: AppColors.primary,
+                                            size: 18,
+                                          ),
                                           const SizedBox(width: 10),
                                           Expanded(
                                             child: Column(
@@ -792,14 +842,12 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
                                                   CrossAxisAlignment.start,
                                               children: [
                                                 Text(
-                                                  suggestion['text']
-                                                      as String,
+                                                  suggestion['text'] as String,
                                                   style: const TextStyle(
-                                                    color: AppColors
-                                                        .textPrimary,
+                                                    color:
+                                                        AppColors.textPrimary,
                                                     fontSize: 14,
-                                                    fontWeight:
-                                                        FontWeight.w500,
+                                                    fontWeight: FontWeight.w500,
                                                   ),
                                                 ),
                                                 const SizedBox(height: 2),
@@ -807,8 +855,8 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
                                                   suggestion['place_name']
                                                       as String,
                                                   style: const TextStyle(
-                                                    color: AppColors
-                                                        .textSecondary,
+                                                    color:
+                                                        AppColors.textSecondary,
                                                     fontSize: 12,
                                                   ),
                                                   maxLines: 1,
@@ -832,8 +880,7 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
                       // Date/time picker
                       InkWell(
                         onTap: () async {
-                          DateTime initial =
-                              selectedDateTime ?? DateTime.now();
+                          DateTime initial = selectedDateTime ?? DateTime.now();
                           await showDialog(
                             context: context,
                             builder: (BuildContext builder) {
@@ -844,42 +891,40 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
                                   height: 380,
                                   decoration: BoxDecoration(
                                     color: AppColors.surface,
-                                    borderRadius:
-                                        BorderRadius.circular(20),
+                                    borderRadius: BorderRadius.circular(20),
                                   ),
                                   child: Column(
                                     children: [
                                       Container(
-                                        padding:
-                                            const EdgeInsets.symmetric(
-                                                horizontal: 16,
-                                                vertical: 12),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                          vertical: 12,
+                                        ),
                                         decoration: const BoxDecoration(
                                           color: AppColors.background,
-                                          borderRadius:
-                                              BorderRadius.vertical(
-                                                  top: Radius.circular(
-                                                      20)),
+                                          borderRadius: BorderRadius.vertical(
+                                            top: Radius.circular(20),
+                                          ),
                                         ),
                                         child: Row(
                                           mainAxisAlignment:
-                                              MainAxisAlignment
-                                                  .spaceBetween,
+                                              MainAxisAlignment.spaceBetween,
                                           children: [
                                             TextButton(
                                               onPressed: () =>
                                                   Navigator.pop(context),
                                               child: const Text(
-                                                  'Cancelar',
-                                                  style: TextStyle(
-                                                      color: AppColors
-                                                          .textSecondary)),
+                                                'Cancelar',
+                                                style: TextStyle(
+                                                  color:
+                                                      AppColors.textSecondary,
+                                                ),
+                                              ),
                                             ),
                                             const Text(
                                               'Fecha y Hora',
                                               style: TextStyle(
-                                                color:
-                                                    AppColors.textPrimary,
+                                                color: AppColors.textPrimary,
                                                 fontWeight: FontWeight.w600,
                                                 fontSize: 16,
                                               ),
@@ -891,12 +936,13 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
                                                 });
                                                 Navigator.pop(context);
                                               },
-                                              child: const Text('Listo',
-                                                  style: TextStyle(
-                                                      color:
-                                                          AppColors.primary,
-                                                      fontWeight:
-                                                          FontWeight.w600)),
+                                              child: const Text(
+                                                'Listo',
+                                                style: TextStyle(
+                                                  color: AppColors.primary,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
                                             ),
                                           ],
                                         ),
@@ -906,15 +952,14 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
                                           mode: CupertinoDatePickerMode
                                               .dateAndTime,
                                           initialDateTime: initial,
-                                          minimumDate: DateTime.now()
-                                              .subtract(const Duration(
-                                                  hours: 1)),
-                                          maximumDate: DateTime.now()
-                                              .add(const Duration(
-                                                  days: 365)),
+                                          minimumDate: DateTime.now().subtract(
+                                            const Duration(hours: 1),
+                                          ),
+                                          maximumDate: DateTime.now().add(
+                                            const Duration(days: 365),
+                                          ),
                                           use24hFormat: false,
-                                          onDateTimeChanged:
-                                              (DateTime newDT) {
+                                          onDateTimeChanged: (DateTime newDT) {
                                             temp = newDT;
                                           },
                                         ),
@@ -929,8 +974,10 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
                         child: InputDecorator(
                           decoration: InputDecoration(
                             labelText: 'Fecha y hora estimada (opcional)',
-                            prefixIcon: const Icon(Icons.event,
-                                color: AppColors.textSecondary),
+                            prefixIcon: const Icon(
+                              Icons.event,
+                              color: AppColors.textSecondary,
+                            ),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
@@ -953,13 +1000,14 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
                       TextFormField(
                         controller: durationController,
                         keyboardType: TextInputType.number,
-                        style: const TextStyle(
-                            color: AppColors.textPrimary),
+                        style: const TextStyle(color: AppColors.textPrimary),
                         decoration: InputDecoration(
                           labelText: 'Duración de parada (minutos)',
                           hintText: 'Ej: 15',
-                          prefixIcon: const Icon(Icons.timer,
-                              color: AppColors.textSecondary),
+                          prefixIcon: const Icon(
+                            Icons.timer,
+                            color: AppColors.textSecondary,
+                          ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
@@ -971,13 +1019,14 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
                       TextFormField(
                         controller: notesController,
                         maxLines: 3,
-                        style: const TextStyle(
-                            color: AppColors.textPrimary),
+                        style: const TextStyle(color: AppColors.textPrimary),
                         decoration: InputDecoration(
                           labelText: 'Notas (opcional)',
                           hintText: 'Información adicional',
-                          prefixIcon: const Icon(Icons.notes,
-                              color: AppColors.textSecondary),
+                          prefixIcon: const Icon(
+                            Icons.notes,
+                            color: AppColors.textSecondary,
+                          ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
@@ -994,8 +1043,10 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
                             if (nameController.text.trim().isEmpty) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                    content: Text(
-                                        'Ingresa la dirección de la parada')),
+                                  content: Text(
+                                    'Ingresa la dirección de la parada',
+                                  ),
+                                ),
                               );
                               return;
                             }
@@ -1014,21 +1065,20 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
                               'duration': durationController.text.isNotEmpty
                                   ? int.tryParse(durationController.text)
                                   : null,
-                              'notes':
-                                  notesController.text.trim().isNotEmpty
-                                      ? notesController.text.trim()
-                                      : null,
+                              'notes': notesController.text.trim().isNotEmpty
+                                  ? notesController.text.trim()
+                                  : null,
                             });
                           },
-                          icon:
-                              const Icon(Icons.check, color: Colors.white),
+                          icon: const Icon(Icons.check, color: Colors.white),
                           label: Text(
                             existingStop != null
                                 ? 'Guardar Cambios'
                                 : 'Agregar Parada',
                             style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 16),
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                            ),
                           ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
@@ -1058,8 +1108,7 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
     final currentStop = _currentStopIndex < _itinerary.length
         ? _itinerary[_currentStopIndex]
         : null;
-    final stopName =
-        currentStop?['name'] ?? 'Parada ${_currentStopIndex + 1}';
+    final stopName = currentStop?['name'] ?? 'Parada ${_currentStopIndex + 1}';
 
     final message = await showDialog<String>(
       context: context,
@@ -1072,8 +1121,7 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
     if (message == null || message.isEmpty) return;
     if (!mounted) return;
 
-    final authProvider =
-        Provider.of<AuthProvider>(context, listen: false);
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final driver = authProvider.driver;
     if (driver == null) return;
 
@@ -1102,7 +1150,8 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         );
       }
@@ -1133,15 +1182,16 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
           Expanded(
             child: _isLoading
                 ? const Center(
-                    child: CircularProgressIndicator(color: AppColors.primary))
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  )
                 : _error != null
-                    ? _buildErrorState()
-                    : RefreshIndicator(
-                        color: AppColors.primary,
-                        backgroundColor: AppColors.surface,
-                        onRefresh: _loadData,
-                        child: _buildContent(),
-                      ),
+                ? _buildErrorState()
+                : RefreshIndicator(
+                    color: AppColors.primary,
+                    backgroundColor: AppColors.surface,
+                    onRefresh: _loadData,
+                    child: _buildContent(),
+                  ),
           ),
         ],
       ),
@@ -1151,8 +1201,9 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
 
   PreferredSizeWidget _buildAppBar() {
     final eventName = _event?['event_name'] ?? 'Itinerario';
-    final completedStops =
-        _itinerary.where((s) => s['departed_at'] != null).length;
+    final completedStops = _itinerary
+        .where((s) => s['departed_at'] != null)
+        .length;
     final totalStops = _itinerary.length;
 
     return AppBar(
@@ -1213,9 +1264,7 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
                   alignment: Alignment.center,
                   children: [
                     CircularProgressIndicator(
-                      value: totalStops > 0
-                          ? completedStops / totalStops
-                          : 0,
+                      value: totalStops > 0 ? completedStops / totalStops : 0,
                       backgroundColor: AppColors.border,
                       color: AppColors.success,
                       strokeWidth: 3,
@@ -1244,13 +1293,18 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.error_outline,
-                size: 48, color: AppColors.error.withOpacity(0.7)),
+            Icon(
+              Icons.error_outline,
+              size: 48,
+              color: AppColors.error.withOpacity(0.7),
+            ),
             const SizedBox(height: 16),
             Text(
               _error ?? 'Error desconocido',
               style: const TextStyle(
-                  color: AppColors.textSecondary, fontSize: 14),
+                color: AppColors.textSecondary,
+                fontSize: 14,
+              ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
@@ -1260,7 +1314,8 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               child: const Text('Reintentar'),
             ),
@@ -1296,9 +1351,11 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.route_outlined,
-                size: 64,
-                color: AppColors.textTertiary.withOpacity(0.5)),
+            Icon(
+              Icons.route_outlined,
+              size: 64,
+              color: AppColors.textTertiary.withOpacity(0.5),
+            ),
             const SizedBox(height: 16),
             const Text(
               'Sin itinerario',
@@ -1322,10 +1379,13 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 14,
+                ),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
           ],
@@ -1348,8 +1408,7 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
 
     final hours = (totalMin / 60).floor();
     final mins = (totalMin % 60).round();
-    final timeStr =
-        hours > 0 ? '${hours}h ${mins}m' : '${mins} min';
+    final timeStr = hours > 0 ? '${hours}h ${mins}m' : '${mins} min';
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -1364,7 +1423,7 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
           const Icon(Icons.route, color: AppColors.primary, size: 18),
           const SizedBox(width: 8),
           Text(
-            '${totalKm.toStringAsFixed(1)} km',
+            formatDistance(totalKm, country: _countryCode),
             style: const TextStyle(
               color: AppColors.primary,
               fontSize: 16,
@@ -1442,8 +1501,7 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
 
   Widget _buildDistanceIndicator(int segmentIndex) {
     final seg = _routeSegments[segmentIndex]!;
-    final mi = (seg['mi'] as num?)?.toDouble() ?? 0;
-    final km = mi / 0.621371;
+    final km = (seg['km'] as num?)?.toDouble() ?? 0;
     final min = (seg['min'] as num?)?.toDouble() ?? 0;
 
     return Container(
@@ -1458,22 +1516,19 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
           ),
           const SizedBox(width: 16),
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
               color: AppColors.info.withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
-              border:
-                  Border.all(color: AppColors.info.withOpacity(0.2)),
+              border: Border.all(color: AppColors.info.withOpacity(0.2)),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.directions_car,
-                    size: 12, color: AppColors.info),
+                Icon(Icons.directions_car, size: 12, color: AppColors.info),
                 const SizedBox(width: 6),
                 Text(
-                  '${km.toStringAsFixed(1)} km',
+                  formatDistance(km, country: _countryCode),
                   style: TextStyle(
                     color: AppColors.info,
                     fontSize: 11,
@@ -1516,8 +1571,7 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
     final stopName = stop['name'] ?? 'Parada ${index + 1}';
     final address = stop['address'] as String?;
     final scheduledTime = stop['scheduled_time'] as String?;
-    final durationMinutes =
-        (stop['duration_minutes'] as num?)?.toInt() ?? 30;
+    final durationMinutes = (stop['duration_minutes'] as num?)?.toInt() ?? 30;
     final notes = stop['notes'] as String?;
 
     DateTime? arrivedAt;
@@ -1555,11 +1609,12 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
             children: [
               if (index > 0)
                 Container(
-                    width: 3,
-                    height: 8,
-                    color: hasDeparted || hasArrived
-                        ? AppColors.success
-                        : AppColors.border),
+                  width: 3,
+                  height: 8,
+                  color: hasDeparted || hasArrived
+                      ? AppColors.success
+                      : AppColors.border,
+                ),
               AnimatedBuilder(
                 animation: _pulseAnimation,
                 builder: (context, child) {
@@ -1571,10 +1626,10 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
                       color: hasDeparted
                           ? AppColors.success
                           : (hasArrived
-                              ? AppColors.warning
-                              : (isCurrentStop
-                                  ? AppColors.primary
-                                  : AppColors.card)),
+                                ? AppColors.warning
+                                : (isCurrentStop
+                                      ? AppColors.primary
+                                      : AppColors.card)),
                       border: Border.all(
                         color: statusColor,
                         width: isCurrentStop ? 3 : 2,
@@ -1583,7 +1638,8 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
                           ? [
                               BoxShadow(
                                 color: statusColor.withOpacity(
-                                    _pulseAnimation.value * 0.5),
+                                  _pulseAnimation.value * 0.5,
+                                ),
                                 blurRadius: 12,
                                 spreadRadius: 2,
                               ),
@@ -1592,21 +1648,27 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
                     ),
                     child: Center(
                       child: hasDeparted
-                          ? const Icon(Icons.check,
-                              color: Colors.white, size: 14)
+                          ? const Icon(
+                              Icons.check,
+                              color: Colors.white,
+                              size: 14,
+                            )
                           : hasArrived
-                              ? const Icon(Icons.location_on,
-                                  color: Colors.white, size: 14)
-                              : Text(
-                                  '${index + 1}',
-                                  style: TextStyle(
-                                    color: isCurrentStop
-                                        ? Colors.white
-                                        : AppColors.textSecondary,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
+                          ? const Icon(
+                              Icons.location_on,
+                              color: Colors.white,
+                              size: 14,
+                            )
+                          : Text(
+                              '${index + 1}',
+                              style: TextStyle(
+                                color: isCurrentStop
+                                    ? Colors.white
+                                    : AppColors.textSecondary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
                     ),
                   );
                 },
@@ -1655,8 +1717,11 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
                         onTap: () => _editStop(index),
                         child: Container(
                           padding: const EdgeInsets.all(4),
-                          child: const Icon(Icons.edit,
-                              size: 16, color: AppColors.primary),
+                          child: const Icon(
+                            Icons.edit,
+                            size: 16,
+                            color: AppColors.primary,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -1664,14 +1729,19 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
                         onTap: () => _deleteStop(index),
                         child: Container(
                           padding: const EdgeInsets.all(4),
-                          child: const Icon(Icons.delete,
-                              size: 16, color: AppColors.error),
+                          child: const Icon(
+                            Icons.delete,
+                            size: 16,
+                            color: AppColors.error,
+                          ),
                         ),
                       ),
                     ] else
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
                         decoration: BoxDecoration(
                           color: statusColor.withOpacity(0.15),
                           borderRadius: BorderRadius.circular(6),
@@ -1692,17 +1762,54 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      Icon(Icons.people, size: 13, color: AppColors.textTertiary),
+                      Icon(
+                        Icons.people,
+                        size: 13,
+                        color: AppColors.textTertiary,
+                      ),
                       const SizedBox(width: 3),
-                      Text('$_totalPassengers', style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w700)),
+                      Text(
+                        '$_totalPassengers',
+                        style: const TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                       const SizedBox(width: 10),
-                      Icon(Icons.how_to_reg, size: 13, color: AppColors.success),
+                      Icon(
+                        Icons.how_to_reg,
+                        size: 13,
+                        color: AppColors.success,
+                      ),
                       const SizedBox(width: 3),
-                      Text('$_aboardPassengers', style: const TextStyle(color: AppColors.success, fontSize: 12, fontWeight: FontWeight.w700)),
+                      Text(
+                        '$_aboardPassengers',
+                        style: const TextStyle(
+                          color: AppColors.success,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                       const SizedBox(width: 10),
-                      Icon(Icons.person_off, size: 13, color: _missingPassengers > 0 ? AppColors.warning : AppColors.success),
+                      Icon(
+                        Icons.person_off,
+                        size: 13,
+                        color: _missingPassengers > 0
+                            ? AppColors.warning
+                            : AppColors.success,
+                      ),
                       const SizedBox(width: 3),
-                      Text('$_missingPassengers', style: TextStyle(color: _missingPassengers > 0 ? AppColors.warning : AppColors.success, fontSize: 12, fontWeight: FontWeight.w700)),
+                      Text(
+                        '$_missingPassengers',
+                        style: TextStyle(
+                          color: _missingPassengers > 0
+                              ? AppColors.warning
+                              : AppColors.success,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ],
                   ),
                 ],
@@ -1713,13 +1820,18 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
                   runSpacing: 4,
                   children: [
                     if (scheduledTime != null)
-                      _buildChip(Icons.schedule, scheduledTime,
-                          AppColors.textTertiary),
-                    _buildChip(Icons.timer, '$durationMinutes min',
-                        AppColors.info),
+                      _buildChip(
+                        Icons.schedule,
+                        scheduledTime,
+                        AppColors.textTertiary,
+                      ),
+                    _buildChip(
+                      Icons.timer,
+                      '$durationMinutes min',
+                      AppColors.info,
+                    ),
                     if (notes != null && notes.isNotEmpty)
-                      _buildChip(Icons.notes, notes,
-                          AppColors.textTertiary),
+                      _buildChip(Icons.notes, notes, AppColors.textTertiary),
                   ],
                 ),
                 // Actual times
@@ -1729,15 +1841,17 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
                     children: [
                       if (arrivedAt != null)
                         _buildChip(
-                            Icons.check_circle,
-                            'Llegó: ${_formatTime(arrivedAt)}',
-                            AppColors.success),
+                          Icons.check_circle,
+                          'Llegó: ${_formatTime(arrivedAt)}',
+                          AppColors.success,
+                        ),
                       if (departedAt != null) ...[
                         const SizedBox(width: 8),
                         _buildChip(
-                            Icons.check_circle,
-                            'Salió: ${_formatTime(departedAt)}',
-                            AppColors.success),
+                          Icons.check_circle,
+                          'Salió: ${_formatTime(departedAt)}',
+                          AppColors.success,
+                        ),
                       ],
                     ],
                   ),
@@ -1751,18 +1865,21 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
                         Expanded(
                           child: ElevatedButton.icon(
                             onPressed: () => _markStopArrived(index),
-                            icon: const Icon(Icons.check_circle_outline,
-                                size: 16),
-                            label: const Text('Llegué',
-                                style: TextStyle(fontSize: 13)),
+                            icon: const Icon(
+                              Icons.check_circle_outline,
+                              size: 16,
+                            ),
+                            label: const Text(
+                              'Llegué',
+                              style: TextStyle(fontSize: 13),
+                            ),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.success,
                               foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 8),
+                              padding: const EdgeInsets.symmetric(vertical: 8),
                               shape: RoundedRectangleBorder(
-                                  borderRadius:
-                                      BorderRadius.circular(10)),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
                             ),
                           ),
                         ),
@@ -1770,18 +1887,18 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
                         Expanded(
                           child: ElevatedButton.icon(
                             onPressed: () => _markStopDeparted(index),
-                            icon: const Icon(Icons.departure_board,
-                                size: 16),
-                            label: const Text('Salir',
-                                style: TextStyle(fontSize: 13)),
+                            icon: const Icon(Icons.departure_board, size: 16),
+                            label: const Text(
+                              'Salir',
+                              style: TextStyle(fontSize: 13),
+                            ),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primary,
                               foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 8),
+                              padding: const EdgeInsets.symmetric(vertical: 8),
                               shape: RoundedRectangleBorder(
-                                  borderRadius:
-                                      BorderRadius.circular(10)),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
                             ),
                           ),
                         ),
@@ -1947,8 +2064,11 @@ class _NotifyPassengersDialogState extends State<_NotifyPassengersDialog> {
               color: AppColors.primary.withOpacity(0.15),
               borderRadius: BorderRadius.circular(10),
             ),
-            child:
-                const Icon(Icons.campaign, color: AppColors.primary, size: 20),
+            child: const Icon(
+              Icons.campaign,
+              color: AppColors.primary,
+              size: 20,
+            ),
           ),
           const SizedBox(width: 12),
           const Expanded(
@@ -1977,8 +2097,11 @@ class _NotifyPassengersDialogState extends State<_NotifyPassengersDialog> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.location_on,
-                      color: AppColors.warning, size: 18),
+                  const Icon(
+                    Icons.location_on,
+                    color: AppColors.warning,
+                    size: 18,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -2013,8 +2136,10 @@ class _NotifyPassengersDialogState extends State<_NotifyPassengersDialog> {
                     _controller.text = msg;
                   },
                   child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.card,
                       borderRadius: BorderRadius.circular(20),
@@ -2051,8 +2176,10 @@ class _NotifyPassengersDialogState extends State<_NotifyPassengersDialog> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide:
-                      const BorderSide(color: AppColors.primary, width: 2),
+                  borderSide: const BorderSide(
+                    color: AppColors.primary,
+                    width: 2,
+                  ),
                 ),
               ),
             ),
@@ -2062,8 +2189,10 @@ class _NotifyPassengersDialogState extends State<_NotifyPassengersDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Cancelar',
-              style: TextStyle(color: AppColors.textTertiary)),
+          child: const Text(
+            'Cancelar',
+            style: TextStyle(color: AppColors.textTertiary),
+          ),
         ),
         ElevatedButton.icon(
           onPressed: () {
@@ -2091,10 +2220,7 @@ class _ItineraryMapPicker extends StatefulWidget {
   final String title;
   final LatLng? initialLocation;
 
-  const _ItineraryMapPicker({
-    required this.title,
-    this.initialLocation,
-  });
+  const _ItineraryMapPicker({required this.title, this.initialLocation});
 
   @override
   State<_ItineraryMapPicker> createState() => _ItineraryMapPickerState();
@@ -2159,8 +2285,10 @@ class _ItineraryMapPickerState extends State<_ItineraryMapPicker> {
           '&accept-language=es',
         );
 
-        final response =
-            await http.get(url, headers: {'User-Agent': 'TORORide/1.0'});
+        final response = await http.get(
+          url,
+          headers: {'User-Agent': 'TORORide/1.0'},
+        );
 
         if (response.statusCode == 200) {
           final results = json.decode(response.body) as List;
@@ -2192,7 +2320,9 @@ class _ItineraryMapPickerState extends State<_ItineraryMapPicker> {
     setState(() => _isLoadingAddress = true);
     try {
       final placemarks = await placemarkFromCoordinates(
-          location.latitude, location.longitude);
+        location.latitude,
+        location.longitude,
+      );
 
       if (placemarks.isNotEmpty) {
         final place = placemarks.first;
@@ -2337,23 +2467,28 @@ class _ItineraryMapPickerState extends State<_ItineraryMapPicker> {
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                            color: Colors.black.withOpacity(0.3),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4)),
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
                       ],
                     ),
                     child: TextField(
                       controller: _searchController,
-                      style: const TextStyle(
-                          fontSize: 14, color: Colors.white),
+                      style: const TextStyle(fontSize: 14, color: Colors.white),
                       decoration: const InputDecoration(
                         hintText: 'Buscar dirección...',
                         hintStyle: TextStyle(color: Color(0xFF888888)),
-                        prefixIcon: Icon(Icons.search,
-                            color: Color(0xFFAAAAAA), size: 20),
+                        prefixIcon: Icon(
+                          Icons.search,
+                          color: Color(0xFFAAAAAA),
+                          size: 20,
+                        ),
                         border: InputBorder.none,
                         contentPadding: EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 14),
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
                       ),
                       onChanged: _fetchSuggestions,
                     ),
@@ -2366,66 +2501,75 @@ class _ItineraryMapPickerState extends State<_ItineraryMapPicker> {
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                              color: Colors.black.withOpacity(0.3),
-                              blurRadius: 12),
+                            color: Colors.black.withOpacity(0.3),
+                            blurRadius: 12,
+                          ),
                         ],
                       ),
                       constraints: const BoxConstraints(maxHeight: 250),
                       child: ListView.separated(
                         shrinkWrap: true,
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 8),
+                        padding: const EdgeInsets.symmetric(vertical: 8),
                         itemCount: _suggestions.length,
                         separatorBuilder: (_, __) => Divider(
-                            height: 1,
-                            color: Colors.white.withOpacity(0.1),
-                            indent: 16,
-                            endIndent: 16),
+                          height: 1,
+                          color: Colors.white.withOpacity(0.1),
+                          indent: 16,
+                          endIndent: 16,
+                        ),
                         itemBuilder: (context, index) {
                           final s = _suggestions[index];
                           return InkWell(
                             onTap: () {
-                              final loc = LatLng(s['lat'] as double,
-                                  s['lng'] as double);
+                              final loc = LatLng(
+                                s['lat'] as double,
+                                s['lng'] as double,
+                              );
                               _mapController.move(loc, 16);
                               setState(() {
                                 _currentCenter = loc;
                                 _showSuggestions = false;
-                                _searchController.text =
-                                    s['text'] as String;
+                                _searchController.text = s['text'] as String;
                               });
                               _reverseGeocode(loc);
                               FocusScope.of(context).unfocus();
                             },
                             child: Padding(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 12),
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
                               child: Row(
                                 children: [
-                                  const Icon(Icons.location_on,
-                                      color: Colors.orange, size: 20),
+                                  const Icon(
+                                    Icons.location_on,
+                                    color: Colors.orange,
+                                    size: 20,
+                                  ),
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        Text(s['text'] as String,
-                                            style: const TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 14,
-                                                fontWeight:
-                                                    FontWeight.w500)),
+                                        Text(
+                                          s['text'] as String,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
                                         const SizedBox(height: 2),
                                         Text(
-                                            s['place_name'] as String,
-                                            style: const TextStyle(
-                                                color:
-                                                    Color(0xFF888888),
-                                                fontSize: 12),
-                                            maxLines: 1,
-                                            overflow: TextOverflow
-                                                .ellipsis),
+                                          s['place_name'] as String,
+                                          style: const TextStyle(
+                                            color: Color(0xFF888888),
+                                            fontSize: 12,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
                                       ],
                                     ),
                                   ),
@@ -2454,13 +2598,17 @@ class _ItineraryMapPickerState extends State<_ItineraryMapPicker> {
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                              color: Colors.red.withOpacity(0.4),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4)),
+                            color: Colors.red.withOpacity(0.4),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
                         ],
                       ),
-                      child: const Icon(Icons.location_on,
-                          color: Colors.white, size: 28),
+                      child: const Icon(
+                        Icons.location_on,
+                        color: Colors.white,
+                        size: 28,
+                      ),
                     ),
                     Container(
                       width: 12,
@@ -2488,8 +2636,9 @@ class _ItineraryMapPickerState extends State<_ItineraryMapPicker> {
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                          color: Colors.black.withOpacity(0.3),
-                          blurRadius: 8),
+                        color: Colors.black.withOpacity(0.3),
+                        blurRadius: 8,
+                      ),
                     ],
                   ),
                   child: _isLoadingGPS
@@ -2497,9 +2646,15 @@ class _ItineraryMapPickerState extends State<_ItineraryMapPicker> {
                           width: 24,
                           height: 24,
                           child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.orange))
-                      : const Icon(Icons.my_location,
-                          color: Colors.orange, size: 24),
+                            strokeWidth: 2,
+                            color: Colors.orange,
+                          ),
+                        )
+                      : const Icon(
+                          Icons.my_location,
+                          color: Colors.orange,
+                          size: 24,
+                        ),
                 ),
               ),
             ),
@@ -2514,12 +2669,14 @@ class _ItineraryMapPickerState extends State<_ItineraryMapPicker> {
                 decoration: BoxDecoration(
                   color: const Color(0xFF2A2A2A),
                   borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(24)),
+                    top: Radius.circular(24),
+                  ),
                   boxShadow: [
                     BoxShadow(
-                        color: Colors.black.withOpacity(0.3),
-                        blurRadius: 20,
-                        offset: const Offset(0, -5)),
+                      color: Colors.black.withOpacity(0.3),
+                      blurRadius: 20,
+                      offset: const Offset(0, -5),
+                    ),
                   ],
                 ),
                 child: SafeArea(
@@ -2541,8 +2698,11 @@ class _ItineraryMapPickerState extends State<_ItineraryMapPicker> {
                                 color: Colors.red.withOpacity(0.25),
                                 borderRadius: BorderRadius.circular(10),
                               ),
-                              child: const Icon(Icons.location_on,
-                                  color: Colors.red, size: 22),
+                              child: const Icon(
+                                Icons.location_on,
+                                color: Colors.red,
+                                size: 22,
+                              ),
                             ),
                             const SizedBox(width: 14),
                             Expanded(
@@ -2550,26 +2710,30 @@ class _ItineraryMapPickerState extends State<_ItineraryMapPicker> {
                                   ? const Row(
                                       children: [
                                         SizedBox(
-                                            width: 16,
-                                            height: 16,
-                                            child:
-                                                CircularProgressIndicator(
-                                                    strokeWidth: 2,
-                                                    color:
-                                                        Colors.orange)),
+                                          width: 16,
+                                          height: 16,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Colors.orange,
+                                          ),
+                                        ),
                                         SizedBox(width: 10),
-                                        Text('Obteniendo dirección...',
-                                            style: TextStyle(
-                                                color: Color(0xFF999999),
-                                                fontSize: 14)),
+                                        Text(
+                                          'Obteniendo dirección...',
+                                          style: TextStyle(
+                                            color: Color(0xFF999999),
+                                            fontSize: 14,
+                                          ),
+                                        ),
                                       ],
                                     )
                                   : Text(
                                       _addressText,
                                       style: const TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w500,
-                                          color: Colors.white),
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.white,
+                                      ),
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
                                     ),
@@ -2590,28 +2754,28 @@ class _ItineraryMapPickerState extends State<_ItineraryMapPicker> {
                         },
                         child: Container(
                           width: double.infinity,
-                          padding:
-                              const EdgeInsets.symmetric(vertical: 16),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
-                              colors: [
-                                Colors.orange,
-                                Color(0xFFFF8C00)
-                              ],
+                              colors: [Colors.orange, Color(0xFFFF8C00)],
                             ),
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: [
                               BoxShadow(
-                                  color: Colors.orange.withOpacity(0.4),
-                                  blurRadius: 12,
-                                  offset: const Offset(0, 4)),
+                                color: Colors.orange.withOpacity(0.4),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
                             ],
                           ),
                           child: const Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.check_circle,
-                                  color: Colors.white, size: 22),
+                              Icon(
+                                Icons.check_circle,
+                                color: Colors.white,
+                                size: 22,
+                              ),
                               SizedBox(width: 10),
                               Text(
                                 'Confirmar Ubicación',

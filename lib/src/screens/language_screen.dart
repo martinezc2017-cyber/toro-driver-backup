@@ -11,17 +11,30 @@ class LanguageScreen extends StatefulWidget {
 }
 
 class _LanguageScreenState extends State<LanguageScreen> {
-  String _selectedLanguage = 'es';
+  String _selectedLanguage = 'en';
 
   final List<Map<String, dynamic>> _languages = [
-    {'code': 'es', 'name': 'Español', 'flag': '🇲🇽', 'region': 'México'},
-    {'code': 'en', 'name': 'English', 'flag': '🇺🇸', 'region': 'United States'},
+    {
+      'code': 'en',
+      'name': 'English',
+      'flag': '🇺🇸',
+      'region': 'United States',
+    },
+    {'code': 'es', 'name': 'Español', 'flag': '🌎', 'region': 'International'},
+    {
+      'code': 'es-MX',
+      'name': 'Español (México)',
+      'flag': '🇲🇽',
+      'region': 'México',
+    },
   ];
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _selectedLanguage = context.locale.languageCode;
+    _selectedLanguage = context.locale.countryCode == null
+        ? context.locale.languageCode
+        : context.locale.toLanguageTag();
   }
 
   @override
@@ -61,7 +74,9 @@ class _LanguageScreenState extends State<LanguageScreen> {
                 Icon(Icons.check_circle, size: 16, color: AppColors.primary),
                 const SizedBox(width: 8),
                 Text(
-                  _languages.firstWhere((l) => l['code'] == _selectedLanguage)['name'],
+                  _languages.firstWhere(
+                    (l) => l['code'] == _selectedLanguage,
+                  )['name'],
                   style: TextStyle(
                     fontSize: 13,
                     color: AppColors.primary,
@@ -81,12 +96,19 @@ class _LanguageScreenState extends State<LanguageScreen> {
           // Info note
           Row(
             children: [
-              Icon(Icons.info_outline, size: 14, color: AppColors.textSecondary),
+              Icon(
+                Icons.info_outline,
+                size: 14,
+                color: AppColors.textSecondary,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'El cambio se aplica inmediatamente',
-                  style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  'language_change_immediate'.tr(),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ),
             ],
@@ -103,16 +125,23 @@ class _LanguageScreenState extends State<LanguageScreen> {
       onTap: () {
         HapticService.selectionClick();
         setState(() => _selectedLanguage = lang['code']);
-        context.setLocale(Locale(lang['code']));
+        final parts = (lang['code'] as String).split('-');
+        context.setLocale(
+          parts.length == 1 ? Locale(parts.first) : Locale(parts[0], parts[1]),
+        );
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary.withValues(alpha: 0.1) : AppColors.card,
+          color: isSelected
+              ? AppColors.primary.withValues(alpha: 0.1)
+              : AppColors.card,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: isSelected ? AppColors.primary.withValues(alpha: 0.4) : AppColors.border.withValues(alpha: 0.3),
+            color: isSelected
+                ? AppColors.primary.withValues(alpha: 0.4)
+                : AppColors.border.withValues(alpha: 0.3),
           ),
         ),
         child: Row(
@@ -128,12 +157,17 @@ class _LanguageScreenState extends State<LanguageScreen> {
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
-                      color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                      color: isSelected
+                          ? AppColors.primary
+                          : AppColors.textPrimary,
                     ),
                   ),
                   Text(
                     lang['region'],
-                    style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ],
               ),

@@ -49,9 +49,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     // Check biometric availability
-    final biometricAvailable = await BiometricService.instance.isBiometricAvailable();
-    final biometricEnabled = await BiometricService.instance.isBiometricEnabled();
-    final biometricName = await BiometricService.instance.getBiometricTypeName();
+    final biometricAvailable = await BiometricService.instance
+        .isBiometricAvailable();
+    final biometricEnabled = await BiometricService.instance
+        .isBiometricEnabled();
+    final biometricName = await BiometricService.instance
+        .getBiometricTypeName();
 
     if (mounted) {
       setState(() {
@@ -70,7 +73,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('biometric_logout_required'.tr(args: [_biometricName])),
+            content: Text(
+              'biometric_logout_required'.tr(args: [_biometricName]),
+            ),
             backgroundColor: AppColors.warning,
           ),
         );
@@ -109,7 +114,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           children: [
             Icon(Icons.settings, size: 18, color: AppColors.primary),
             const SizedBox(width: 8),
-            Text('configuration'.tr(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            Text(
+              'configuration'.tr(),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
           ],
         ),
       ),
@@ -159,7 +167,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _buildSwitchTile(
               _biometricName == 'Face ID' ? Icons.face : Icons.fingerprint,
               _biometricName,
-              _biometricEnabled ? 'quick_access_enabled'.tr() : 'sign_in_with_biometric'.tr(args: [_biometricName]),
+              _biometricEnabled
+                  ? 'quick_access_enabled'.tr()
+                  : 'sign_in_with_biometric'.tr(args: [_biometricName]),
               _biometricEnabled,
               (value) => _toggleBiometric(value),
             ),
@@ -243,13 +253,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
           width: 36,
           height: 36,
           decoration: BoxDecoration(
-            color: (value ? AppColors.primary : AppColors.textSecondary).withValues(alpha: 0.15),
+            color: (value ? AppColors.primary : AppColors.textSecondary)
+                .withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(icon, color: value ? AppColors.primary : AppColors.textSecondary, size: 18),
+          child: Icon(
+            icon,
+            color: value ? AppColors.primary : AppColors.textSecondary,
+            size: 18,
+          ),
         ),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.textPrimary)),
-        subtitle: Text(subtitle, style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
+        title: Text(
+          title,
+          style: const TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
+        ),
         trailing: Switch.adaptive(
           value: value,
           onChanged: onChanged,
@@ -277,16 +302,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
         leading: Container(
-          width: 36, height: 36,
+          width: 36,
+          height: 36,
           decoration: BoxDecoration(
             color: iconColor.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(icon, color: iconColor, size: 18),
         ),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.textPrimary)),
-        subtitle: subtitle == null ? null : Text(subtitle, style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
-        trailing: Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 18),
+        title: Text(
+          title,
+          style: const TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        subtitle: subtitle == null
+            ? null
+            : Text(
+                subtitle,
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
+              ),
+        trailing: Icon(
+          Icons.chevron_right,
+          color: AppColors.textSecondary,
+          size: 18,
+        ),
         onTap: onTap,
       ),
     );
@@ -309,7 +351,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(width: 8),
               Text(
                 'danger_zone'.tr(),
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.error),
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.error,
+                ),
               ),
             ],
           ),
@@ -324,17 +370,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 foregroundColor: AppColors.error,
                 side: BorderSide(color: AppColors.error),
                 padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
             ),
           ),
           const SizedBox(height: 12),
-          Center(
-            child: TextButton(
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
               onPressed: () => _showDeleteAccountConfirmation(),
-              child: Text(
-                'delete_account_permanent'.tr(),
-                style: TextStyle(color: AppColors.error.withValues(alpha: 0.7), fontSize: 12),
+              icon: Icon(
+                Icons.delete_forever,
+                size: 18,
+                color: AppColors.error,
+              ),
+              label: Text('delete_account'.tr()),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.error,
+                side: BorderSide(
+                  color: AppColors.error.withValues(alpha: 0.65),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
             ),
           ),
@@ -349,12 +410,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.card,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('logout_confirm'.tr(), style: const TextStyle(color: AppColors.textPrimary, fontSize: 16)),
-        content: Text('logout_message'.tr(), style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+        title: Text(
+          'logout_confirm'.tr(),
+          style: const TextStyle(color: AppColors.textPrimary, fontSize: 16),
+        ),
+        content: Text(
+          'logout_message'.tr(),
+          style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text('cancel'.tr(), style: TextStyle(color: AppColors.textSecondary)),
+            child: Text(
+              'cancel'.tr(),
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
@@ -382,27 +452,48 @@ class _SettingsScreenState extends State<SettingsScreen> {
           children: [
             Icon(Icons.warning, color: AppColors.error, size: 20),
             const SizedBox(width: 8),
-            Text('delete_account_confirm'.tr(), style: TextStyle(color: AppColors.error, fontSize: 16)),
+            Text(
+              'delete_account_confirm'.tr(),
+              style: TextStyle(color: AppColors.error, fontSize: 16),
+            ),
           ],
         ),
-        content: Text('delete_warning'.tr(), style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+        content: Text(
+          'delete_warning'.tr(),
+          style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text('cancel'.tr(), style: TextStyle(color: AppColors.textSecondary)),
+            child: Text(
+              'cancel'.tr(),
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: Text('delete'.tr(), style: TextStyle(color: AppColors.error)),
+            child: Text(
+              'delete'.tr(),
+              style: TextStyle(color: AppColors.error),
+            ),
           ),
         ],
       ),
     );
 
     if (confirmed == true && mounted) {
-      await context.read<AuthProvider>().deleteAccount();
-      if (mounted) {
+      final authProvider = context.read<AuthProvider>();
+      final deleted = await authProvider.deleteAccount();
+      if (!mounted) return;
+      if (deleted) {
         Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('delete_account_failed'.tr()),
+            backgroundColor: AppColors.error,
+          ),
+        );
       }
     }
   }

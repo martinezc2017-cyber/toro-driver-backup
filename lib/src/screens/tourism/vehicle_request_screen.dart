@@ -15,8 +15,8 @@ import 'tourism_driver_home_screen.dart';
 ///
 /// Redesigned as a bidding (puja) system:
 /// - Driver sees event info + full itinerary (NOT vehicle info)
-/// - Driver proposes their price per km
-/// - If price is left empty, min_price_per_km is used as anti-fraud default
+/// - Driver proposes a price in their local distance unit
+/// - Supabase keeps the canonical price per kilometer
 class VehicleRequestScreen extends StatefulWidget {
   final bool embedded;
   const VehicleRequestScreen({super.key, this.embedded = false});
@@ -44,7 +44,8 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
   String? _error;
   RealtimeChannel? _realtimeChannel;
   RealtimeChannel? _bidStatusChannel;
-  double _minPricePerKm = 10.0; // default, loaded from pricing_config (MX/DEFAULT)
+  double _minPricePerDistance = 0;
+  String _countryCode = 'US';
   int _driverVehicleSeats = 0; // loaded from bus_vehicles
 
   // Tab controller for "Eventos Abiertos", "Invitaciones", "Mis Pujas"
@@ -104,16 +105,27 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
             // Refresh bids list
             _loadMyBids();
             // Show in-app banner for won bid
-            if (orgStatus == 'selected' && newRecord['is_winning_bid'] == true) {
+            if (orgStatus == 'selected' &&
+                newRecord['is_winning_bid'] == true) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Row(
                     children: [
-                      const Icon(Icons.emoji_events, color: Colors.amber, size: 28),
+                      const Icon(
+                        Icons.emoji_events,
+                        color: Colors.amber,
+                        size: 28,
+                      ),
                       const SizedBox(width: 12),
                       const Expanded(
-                        child: Text('Tu puja fue aceptada!',
-                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15)),
+                        child: Text(
+                          'Tu puja fue aceptada!',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -145,7 +157,10 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
   Future<void> _loadOpenEvents() async {
     setState(() => _isLoadingOpen = true);
     try {
-      final driverProvider = Provider.of<DriverProvider>(context, listen: false);
+      final driverProvider = Provider.of<DriverProvider>(
+        context,
+        listen: false,
+      );
       final driver = driverProvider.driver;
       if (driver == null) {
         setState(() => _isLoadingOpen = false);
@@ -163,14 +178,20 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
   }
 
   Future<void> _confirmLeaveEvent(String eventId) async {
-    final driverId = Provider.of<DriverProvider>(context, listen: false).driver?.id;
+    final driverId = Provider.of<DriverProvider>(
+      context,
+      listen: false,
+    ).driver?.id;
     if (driverId == null) return;
 
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.card,
-        title: const Text('¿Salir del evento?', style: TextStyle(color: AppColors.textPrimary)),
+        title: const Text(
+          '¿Salir del evento?',
+          style: TextStyle(color: AppColors.textPrimary),
+        ),
         content: const Text(
           'El evento regresará a broadcast y otros drivers podrán pujar.\n\nEsta acción no se puede deshacer.',
           style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
@@ -178,11 +199,17 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancelar', style: TextStyle(color: AppColors.textSecondary)),
+            child: const Text(
+              'Cancelar',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+            ),
             child: const Text('Salir del evento'),
           ),
         ],
@@ -191,12 +218,18 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
 
     if (confirmed != true || !mounted) return;
 
-    await _eventService.leaveEvent(eventId, driverId, reason: 'driver_voluntary_leave');
+    await _eventService.leaveEvent(
+      eventId,
+      driverId,
+      reason: 'driver_voluntary_leave',
+    );
     if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Saliste del evento. Ya está disponible para otros drivers.'),
+        content: Text(
+          'Saliste del evento. Ya está disponible para otros drivers.',
+        ),
         backgroundColor: Colors.orange,
       ),
     );
@@ -206,7 +239,10 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
   Future<void> _loadMyBids() async {
     setState(() => _isLoadingMyBids = true);
     try {
-      final driverProvider = Provider.of<DriverProvider>(context, listen: false);
+      final driverProvider = Provider.of<DriverProvider>(
+        context,
+        listen: false,
+      );
       final driver = driverProvider.driver;
       if (driver == null) {
         setState(() => _isLoadingMyBids = false);
@@ -226,7 +262,10 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
   Future<void> _loadTripRequests() async {
     setState(() => _isLoadingTrips = true);
     try {
-      final driverProvider = Provider.of<DriverProvider>(context, listen: false);
+      final driverProvider = Provider.of<DriverProvider>(
+        context,
+        listen: false,
+      );
       final driver = driverProvider.driver;
       if (driver == null) {
         setState(() => _isLoadingTrips = false);
@@ -245,23 +284,77 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
 
   Future<void> _loadMinPrice() async {
     try {
-      final response = await Supabase.instance.client
-          .from('pricing_config')
-          .select('ride_per_km')
-          .eq('country_code', 'MX')
-          .eq('state_code', 'DEFAULT')
-          .maybeSingle();
-      if (response != null && response['ride_per_km'] != null) {
-        setState(() {
-          _minPricePerKm = (response['ride_per_km'] as num).toDouble();
-        });
+      final driver = Provider.of<DriverProvider>(context, listen: false).driver;
+      final country = (driver?.countryCode ?? userCountry()).toUpperCase();
+      final state = driver?.stateCode?.trim().toUpperCase();
+
+      Future<Map<String, dynamic>?> loadRow(String stateCode) async {
+        final row = await Supabase.instance.client
+            .from('pricing_config')
+            .select('ride_per_km')
+            .eq('country_code', country)
+            .eq('state_code', stateCode)
+            .eq('is_active', true)
+            .maybeSingle();
+        return row;
       }
-    } catch (_) {}
+
+      Map<String, dynamic>? response;
+      if (state != null && state.isNotEmpty && state != 'DEFAULT') {
+        response = await loadRow(state);
+      }
+      response ??= await loadRow('DEFAULT');
+
+      if (mounted) {
+        setState(() => _countryCode = country);
+      }
+      if (response != null && response['ride_per_km'] != null) {
+        final canonicalRate = (response['ride_per_km'] as num).toDouble();
+        if (mounted) {
+          setState(() {
+            _minPricePerDistance = pricePerKilometerToDisplay(
+              canonicalRate,
+              country: country,
+            );
+          });
+        }
+      }
+    } catch (error) {
+      debugPrint('VehicleRequestScreen pricing error: $error');
+    }
+  }
+
+  String get _priceUnit =>
+      '${currencyCode(country: _countryCode)}/${distanceUnit(country: _countryCode)}';
+
+  String _money(num? amount) => formatMoney(amount, country: _countryCode);
+
+  String _canonicalRate(num? pricePerKilometer) =>
+      formatPricePerDistance(pricePerKilometer, country: _countryCode);
+
+  double _canonicalPrice(num? displayedPrice) =>
+      displayPriceToPerKilometer(displayedPrice, country: _countryCode);
+
+  String _distance(num? kilometers, {int decimals = 0}) =>
+      formatDistance(kilometers, country: _countryCode, decimals: decimals);
+
+  void _showRegionalError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   Future<void> _loadDriverVehicle() async {
     try {
-      final driverProvider = Provider.of<DriverProvider>(context, listen: false);
+      final driverProvider = Provider.of<DriverProvider>(
+        context,
+        listen: false,
+      );
       final driver = driverProvider.driver;
       if (driver == null) return;
 
@@ -283,8 +376,10 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
 
   bool _isOverCapacity(Map<String, dynamic> request) {
     if (_driverVehicleSeats <= 0) return false;
-    final passengers = request['max_passengers'] as int? ??
-        request['expected_passengers'] as int? ?? 0;
+    final passengers =
+        request['max_passengers'] as int? ??
+        request['expected_passengers'] as int? ??
+        0;
     return passengers > _driverVehicleSeats;
   }
 
@@ -295,7 +390,10 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
     });
 
     try {
-      final driverProvider = Provider.of<DriverProvider>(context, listen: false);
+      final driverProvider = Provider.of<DriverProvider>(
+        context,
+        listen: false,
+      );
       final driver = driverProvider.driver;
 
       if (driver == null) {
@@ -325,13 +423,12 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
     final driver = driverProvider.driver;
     if (driver == null) return;
 
-    _realtimeChannel = _eventService.subscribeToVehicleRequests(
-      driver.id,
-      (request) {
-        _loadRequests();
-        _loadMyBids();
-      },
-    );
+    _realtimeChannel = _eventService.subscribeToVehicleRequests(driver.id, (
+      request,
+    ) {
+      _loadRequests();
+      _loadMyBids();
+    });
   }
 
   Future<void> _unsubscribeFromRequests() async {
@@ -340,16 +437,19 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
     }
   }
 
-  /// Show bid dialog where driver proposes their price per km
+  /// Show bid dialog where the driver proposes a local-unit price.
   Future<void> _showBidDialog(Map<String, dynamic> request) async {
     final eventId = request['id'] as String?;
     if (eventId == null) return;
 
     final bidId = request['bid_id'] as String?;
-    final eventTitle = request['event_name'] ?? request['title'] ?? 'este evento';
-    final distanceKm = (request['total_distance_km'] as num?)?.toDouble() ??
+    final eventTitle =
+        request['event_name'] ?? request['title'] ?? 'este evento';
+    final distanceKm =
+        (request['total_distance_km'] as num?)?.toDouble() ??
         (request['estimated_distance_km'] as num?)?.toDouble();
-    final passengers = request['max_passengers'] as int? ??
+    final passengers =
+        request['max_passengers'] as int? ??
         request['expected_passengers'] as int?;
 
     final priceController = TextEditingController();
@@ -361,8 +461,14 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
       isScrollControlled: true,
       builder: (context) => StatefulBuilder(
         builder: (ctx, setModalState) {
-          final price = proposedPrice ?? _minPricePerKm;
-          final estimatedTotal = distanceKm != null ? distanceKm * price : null;
+          final price = proposedPrice ?? _minPricePerDistance;
+          final displayDistance = distanceFromKilometers(
+            distanceKm,
+            country: _countryCode,
+          );
+          final estimatedTotal = distanceKm != null
+              ? displayDistance * price
+              : null;
           // TORO commission 18%
           final toroFee = estimatedTotal != null ? estimatedTotal * 0.18 : null;
           final driverEarnings = estimatedTotal != null && toroFee != null
@@ -427,7 +533,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Text(
-                    'Propone tu precio por km para "$eventTitle"',
+                    'Propone tu precio por ${distanceUnit(country: _countryCode)} para "$eventTitle"',
                     style: const TextStyle(
                       color: AppColors.textSecondary,
                       fontSize: 13,
@@ -440,7 +546,9 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: TextField(
                     controller: priceController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     style: const TextStyle(
                       color: AppColors.textPrimary,
                       fontSize: 24,
@@ -448,7 +556,9 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                     ),
                     textAlign: TextAlign.center,
                     decoration: InputDecoration(
-                      hintText: _minPricePerKm.toStringAsFixed(0),
+                      hintText: _minPricePerDistance.toStringAsFixed(
+                        currencyDecimals(_countryCode),
+                      ),
                       hintStyle: TextStyle(
                         color: AppColors.textTertiary.withValues(alpha: 0.5),
                         fontSize: 24,
@@ -466,7 +576,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                         ),
                       ),
                       prefixIconConstraints: const BoxConstraints(minWidth: 40),
-                      suffixText: 'MXN/km',
+                      suffixText: _priceUnit,
                       suffixStyle: const TextStyle(
                         color: AppColors.textTertiary,
                         fontSize: 14,
@@ -483,7 +593,10 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
-                        borderSide: const BorderSide(color: AppColors.gold, width: 1.5),
+                        borderSide: const BorderSide(
+                          color: AppColors.gold,
+                          width: 1.5,
+                        ),
                       ),
                     ),
                     onChanged: (val) {
@@ -497,7 +610,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Text(
-                    'Precio minimo: \$${_minPricePerKm.toStringAsFixed(0)} MXN/km',
+                    'Precio minimo: ${_money(_minPricePerDistance)} $_priceUnit',
                     style: const TextStyle(
                       color: AppColors.textTertiary,
                       fontSize: 12,
@@ -519,40 +632,37 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                     ),
                     child: Column(
                       children: [
-                        _buildEstimateRow(
-                          'Distancia',
-                          '${distanceKm.toStringAsFixed(0)} km',
-                        ),
+                        _buildEstimateRow('Distancia', _distance(distanceKm)),
                         if (passengers != null)
                           _buildEstimateRow(
                             'Pasajeros',
                             '$passengers personas',
                           ),
                         _buildEstimateRow(
-                          'Tu precio/km',
-                          '\$${price.toStringAsFixed(0)} MXN',
+                          'Tu precio/${distanceUnit(country: _countryCode)}',
+                          '${_money(price)} ${currencyCode(country: _countryCode)}',
                         ),
                         if (estimatedTotal != null) ...[
                           const Divider(color: AppColors.border, height: 16),
                           _buildEstimateRow(
                             'Precio total viaje',
-                            '\$${estimatedTotal.toStringAsFixed(0)} MXN',
+                            '${_money(estimatedTotal)} ${currencyCode(country: _countryCode)}',
                             valueBold: true,
                           ),
                           if (passengers != null && passengers > 0)
                             _buildEstimateRow(
                               'Boleto por persona',
-                              '\$${(estimatedTotal / passengers).toStringAsFixed(0)} MXN',
+                              '${_money(estimatedTotal / passengers)} ${currencyCode(country: _countryCode)}',
                             ),
                           _buildEstimateRow(
                             'Comision TORO (18%)',
-                            '-\$${toroFee!.toStringAsFixed(0)} MXN',
+                            '-${_money(toroFee)} ${currencyCode(country: _countryCode)}',
                             valueColor: AppColors.error,
                           ),
                           const Divider(color: AppColors.border, height: 16),
                           _buildEstimateRow(
                             'Tu ganancia estimada',
-                            '\$${driverEarnings!.toStringAsFixed(0)} MXN',
+                            '${_money(driverEarnings)} ${currencyCode(country: _countryCode)}',
                             labelStyle: const TextStyle(
                               color: AppColors.success,
                               fontSize: 15,
@@ -618,7 +728,12 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
     if (confirmed != true) return;
 
     // Use proposed price or min price as default
-    final finalPrice = proposedPrice ?? _minPricePerKm;
+    final finalPrice = proposedPrice ?? _minPricePerDistance;
+
+    if (_minPricePerDistance <= 0) {
+      _showRegionalError('No hay tarifa activa para tu region');
+      return;
+    }
 
     HapticService.success();
 
@@ -627,7 +742,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
         eventId,
         true,
         bidId: bidId,
-        pricePerKm: finalPrice,
+        pricePerKm: _canonicalPrice(finalPrice),
       );
 
       if (result.isEmpty) {
@@ -642,9 +757,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              'Puja enviada: \$${finalPrice.toStringAsFixed(0)} MXN/km',
-            ),
+            content: Text('Puja enviada: ${_money(finalPrice)} $_priceUnit'),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
             duration: const Duration(seconds: 3),
@@ -678,11 +791,9 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
         children: [
           Text(
             label,
-            style: labelStyle ??
-                const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 13,
-                ),
+            style:
+                labelStyle ??
+                const TextStyle(color: AppColors.textSecondary, fontSize: 13),
           ),
           Text(
             value,
@@ -766,7 +877,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
           SnackBar(
             content: Text(
               price != null
-                  ? 'Contra-oferta aceptada: \$${price.toStringAsFixed(0)} MXN/km'
+                  ? 'Contra-oferta aceptada: ${_canonicalRate(price)}'
                   : 'Contra-oferta aceptada',
             ),
             backgroundColor: AppColors.success,
@@ -789,11 +900,14 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
   }
 
   /// Show dialog for driver to send a counter-offer back to organizer
-  Future<void> _showDriverCounterOfferDialog(Map<String, dynamic> request) async {
+  Future<void> _showDriverCounterOfferDialog(
+    Map<String, dynamic> request,
+  ) async {
     final bidId = request['bid_id'] as String?;
     if (bidId == null) return;
 
-    final organizerPrice = (request['organizer_proposed_price'] as num?)?.toDouble();
+    final organizerPrice = (request['organizer_proposed_price'] as num?)
+        ?.toDouble();
     final round = (request['negotiation_round'] as int?) ?? 0;
     final priceController = TextEditingController();
     double? proposedPrice;
@@ -885,7 +999,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                         ),
                       ),
                       child: Text(
-                        'Precio propuesto: \$${organizerPrice.toStringAsFixed(0)} MXN/km',
+                        'Precio propuesto: ${_canonicalRate(organizerPrice)}',
                         style: const TextStyle(
                           color: AppColors.warning,
                           fontSize: 14,
@@ -901,7 +1015,9 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: TextField(
                     controller: priceController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     style: const TextStyle(
                       color: AppColors.textPrimary,
                       fontSize: 24,
@@ -910,8 +1026,15 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                     textAlign: TextAlign.center,
                     decoration: InputDecoration(
                       hintText: organizerPrice != null
-                          ? (organizerPrice + 2).toStringAsFixed(0)
-                          : _minPricePerKm.toStringAsFixed(0),
+                          ? (pricePerKilometerToDisplay(
+                                      organizerPrice,
+                                      country: _countryCode,
+                                    ) +
+                                    2)
+                                .toStringAsFixed(currencyDecimals(_countryCode))
+                          : _minPricePerDistance.toStringAsFixed(
+                              currencyDecimals(_countryCode),
+                            ),
                       hintStyle: TextStyle(
                         color: AppColors.textTertiary.withValues(alpha: 0.5),
                         fontSize: 24,
@@ -929,7 +1052,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                         ),
                       ),
                       prefixIconConstraints: const BoxConstraints(minWidth: 40),
-                      suffixText: 'MXN/km',
+                      suffixText: _priceUnit,
                       suffixStyle: const TextStyle(
                         color: AppColors.textTertiary,
                         fontSize: 14,
@@ -946,7 +1069,10 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
-                        borderSide: const BorderSide(color: AppColors.warning, width: 1.5),
+                        borderSide: const BorderSide(
+                          color: AppColors.warning,
+                          width: 1.5,
+                        ),
                       ),
                     ),
                     onChanged: (val) {
@@ -960,7 +1086,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Text(
-                    'Precio minimo: \$${_minPricePerKm.toStringAsFixed(0)} MXN/km',
+                    'Precio minimo: ${_money(_minPricePerDistance)} $_priceUnit',
                     style: const TextStyle(
                       color: AppColors.textTertiary,
                       fontSize: 12,
@@ -1018,14 +1144,19 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
 
     if (confirmed != true) return;
 
-    final finalPrice = proposedPrice ?? _minPricePerKm;
+    final finalPrice = proposedPrice ?? _minPricePerDistance;
 
-    if (finalPrice < _minPricePerKm) {
+    if (_minPricePerDistance <= 0) {
+      _showRegionalError('No hay tarifa activa para tu region');
+      return;
+    }
+
+    if (finalPrice < _minPricePerDistance) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'El precio minimo es \$${_minPricePerKm.toStringAsFixed(0)} MXN/km',
+              'El precio minimo es ${_money(_minPricePerDistance)} $_priceUnit',
             ),
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
@@ -1040,7 +1171,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
     try {
       await _eventService.sendDriverCounterOffer(
         bidId: bidId,
-        proposedPrice: finalPrice,
+        proposedPrice: _canonicalPrice(finalPrice),
       );
 
       // Update the local request to reflect driver_status = counter_offered
@@ -1048,7 +1179,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
         final idx = _requests.indexWhere((r) => r['bid_id'] == bidId);
         if (idx != -1) {
           _requests[idx]['bid_driver_status'] = 'counter_offered';
-          _requests[idx]['proposed_price_per_km'] = finalPrice;
+          _requests[idx]['proposed_price_per_km'] = _canonicalPrice(finalPrice);
         }
       });
 
@@ -1056,7 +1187,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Contra-oferta enviada: \$${finalPrice.toStringAsFixed(0)} MXN/km',
+              'Contra-oferta enviada: ${_money(finalPrice)} $_priceUnit',
             ),
             backgroundColor: AppColors.warning,
             behavior: SnackBarBehavior.floating,
@@ -1190,7 +1321,9 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                       style: const TextStyle(color: AppColors.textPrimary),
                       decoration: InputDecoration(
                         hintText: 'Escribe la razon...',
-                        hintStyle: const TextStyle(color: AppColors.textTertiary),
+                        hintStyle: const TextStyle(
+                          color: AppColors.textTertiary,
+                        ),
                         filled: true,
                         fillColor: AppColors.card,
                         border: OutlineInputBorder(
@@ -1203,7 +1336,9 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: AppColors.primary),
+                          borderSide: const BorderSide(
+                            color: AppColors.primary,
+                          ),
                         ),
                       ),
                       maxLines: 2,
@@ -1268,7 +1403,8 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
       isScrollControlled: true,
       builder: (context) => _EventDetailsSheet(
         request: request,
-        minPricePerKm: _minPricePerKm,
+        minPricePerDistance: _minPricePerDistance,
+        countryCode: _countryCode,
         driverVehicleSeats: _driverVehicleSeats,
         onBid: _isOverCapacity(request)
             ? null
@@ -1358,12 +1494,16 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                     _buildOpenEventsTab(),
                     // Tab 2: Invited bids (existing)
                     _isLoading
-                        ? const Center(child: CircularProgressIndicator(color: AppColors.gold))
+                        ? const Center(
+                            child: CircularProgressIndicator(
+                              color: AppColors.gold,
+                            ),
+                          )
                         : _error != null
-                            ? _buildErrorState()
-                            : _requests.isEmpty
-                                ? _buildEmptyInvitationsState()
-                                : _buildRequestsList(),
+                        ? _buildErrorState()
+                        : _requests.isEmpty
+                        ? _buildEmptyInvitationsState()
+                        : _buildRequestsList(),
                     // Tab 3: My bids (all statuses)
                     _buildMyBidsTab(),
                     // Tab 4: Trip wizard requests from riders
@@ -1392,12 +1532,21 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
               },
               child: const Padding(
                 padding: EdgeInsets.only(right: 10),
-                child: Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textSecondary, size: 16),
+                child: Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  color: AppColors.textSecondary,
+                  size: 16,
+                ),
               ),
             ),
           const Expanded(
-            child: Text('Pujas Disponibles',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+            child: Text(
+              'Pujas Disponibles',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
             ),
           ),
           GestureDetector(
@@ -1426,7 +1575,10 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
         labelColor: AppColors.gold,
         unselectedLabelColor: AppColors.textTertiary,
         labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-        unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+        unselectedLabelStyle: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+        ),
         tabs: [
           Tab(
             child: Row(
@@ -1436,14 +1588,21 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                 if (_openEvents.isNotEmpty) ...[
                   const SizedBox(width: 6),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.gold,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
                       '${_openEvents.length}',
-                      style: const TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.w800),
+                      style: const TextStyle(
+                        color: Colors.black,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                 ],
@@ -1458,14 +1617,21 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                 if (_requests.isNotEmpty) ...[
                   const SizedBox(width: 6),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.gold,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
                       '${_requests.length}',
-                      style: const TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.w800),
+                      style: const TextStyle(
+                        color: Colors.black,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                 ],
@@ -1480,14 +1646,21 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                 if (_myBids.isNotEmpty) ...[
                   const SizedBox(width: 6),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.gold,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
                       '${_myBids.length}',
-                      style: const TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.w800),
+                      style: const TextStyle(
+                        color: Colors.black,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                 ],
@@ -1502,14 +1675,21 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                 if (_tripRequests.isNotEmpty) ...[
                   const SizedBox(width: 6),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.cyan,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
                       '${_tripRequests.length}',
-                      style: const TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.w800),
+                      style: const TextStyle(
+                        color: Colors.black,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                 ],
@@ -1525,7 +1705,9 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
 
   Widget _buildOpenEventsTab() {
     if (_isLoadingOpen) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.gold));
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.gold),
+      );
     }
 
     // Filter events by search text
@@ -1533,11 +1715,24 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
         ? _openEvents
         : _openEvents.where((e) {
             final name = (e['event_name'] as String? ?? '').toLowerCase();
-            final orgName = (e['organizers'] as Map?)?['company_name']?.toString().toLowerCase() ?? '';
+            final orgName =
+                (e['organizers'] as Map?)?['company_name']
+                    ?.toString()
+                    .toLowerCase() ??
+                '';
             final itinerary = e['itinerary'] as List?;
-            final stopNames = itinerary?.map((s) => (s as Map?)?['name']?.toString().toLowerCase() ?? '').join(' ') ?? '';
+            final stopNames =
+                itinerary
+                    ?.map(
+                      (s) =>
+                          (s as Map?)?['name']?.toString().toLowerCase() ?? '',
+                    )
+                    .join(' ') ??
+                '';
             final query = _filterText.toLowerCase();
-            return name.contains(query) || orgName.contains(query) || stopNames.contains(query);
+            return name.contains(query) ||
+                orgName.contains(query) ||
+                stopNames.contains(query);
           }).toList();
 
     return Column(
@@ -1549,16 +1744,33 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
             height: 36,
             child: TextField(
               controller: _filterController,
-              style: const TextStyle(color: AppColors.textPrimary, fontSize: 12),
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 12,
+              ),
               decoration: InputDecoration(
                 hintText: 'Buscar destino, chofer...',
-                hintStyle: const TextStyle(color: AppColors.textTertiary, fontSize: 12),
-                prefixIcon: const Icon(Icons.search, color: AppColors.textTertiary, size: 16),
+                hintStyle: const TextStyle(
+                  color: AppColors.textTertiary,
+                  fontSize: 12,
+                ),
+                prefixIcon: const Icon(
+                  Icons.search,
+                  color: AppColors.textTertiary,
+                  size: 16,
+                ),
                 prefixIconConstraints: const BoxConstraints(minWidth: 32),
                 suffixIcon: _filterText.isNotEmpty
                     ? GestureDetector(
-                        onTap: () { _filterController.clear(); setState(() => _filterText = ''); },
-                        child: const Icon(Icons.clear, size: 14, color: AppColors.textTertiary),
+                        onTap: () {
+                          _filterController.clear();
+                          setState(() => _filterText = '');
+                        },
+                        child: const Icon(
+                          Icons.clear,
+                          size: 14,
+                          color: AppColors.textTertiary,
+                        ),
                       )
                     : null,
                 suffixIconConstraints: const BoxConstraints(minWidth: 28),
@@ -1566,13 +1778,20 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                 fillColor: AppColors.card,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: AppColors.border.withValues(alpha: 0.3)),
+                  borderSide: BorderSide(
+                    color: AppColors.border.withValues(alpha: 0.3),
+                  ),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: AppColors.border.withValues(alpha: 0.3)),
+                  borderSide: BorderSide(
+                    color: AppColors.border.withValues(alpha: 0.3),
+                  ),
                 ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 0,
+                ),
               ),
               onChanged: (val) => setState(() => _filterText = val),
             ),
@@ -1633,22 +1852,34 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
             Row(
               children: [
                 Expanded(
-                  child: Text(title,
-                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w700),
-                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 const SizedBox(width: 6),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 5,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
-                    color: (alreadyBid ? AppColors.success : AppColors.gold).withValues(alpha: 0.15),
+                    color: (alreadyBid ? AppColors.success : AppColors.gold)
+                        .withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(4),
                   ),
-                  child: Text(alreadyBid ? 'ENVIADA' : 'ABIERTO',
+                  child: Text(
+                    alreadyBid ? 'ENVIADA' : 'ABIERTO',
                     style: TextStyle(
                       color: alreadyBid ? AppColors.success : AppColors.gold,
-                      fontSize: 8, fontWeight: FontWeight.w800,
+                      fontSize: 8,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
                 ),
@@ -1658,21 +1889,34 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
             // Row 2: organizer + route
             Row(
               children: [
-                Text(organizerName,
-                  style: const TextStyle(color: AppColors.textTertiary, fontSize: 10),
+                Text(
+                  organizerName,
+                  style: const TextStyle(
+                    color: AppColors.textTertiary,
+                    fontSize: 10,
+                  ),
                 ),
                 if (isVerified) ...[
                   const SizedBox(width: 2),
-                  const Icon(Icons.verified, color: AppColors.primaryCyan, size: 10),
+                  const Icon(
+                    Icons.verified,
+                    color: AppColors.primaryCyan,
+                    size: 10,
+                  ),
                 ],
                 if (routeText.isNotEmpty) ...[
                   const SizedBox(width: 6),
                   const Icon(Icons.route, color: AppColors.success, size: 10),
                   const SizedBox(width: 3),
                   Expanded(
-                    child: Text(routeText,
-                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 10),
-                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                    child: Text(
+                      routeText,
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 10,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ] else
@@ -1690,26 +1934,41 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                   const SizedBox(width: 8),
                 ],
                 if (estimatedDistance != null) ...[
-                  _buildMiniChip(Icons.straighten, '${estimatedDistance.toStringAsFixed(0)} km'),
+                  _buildMiniChip(
+                    Icons.straighten,
+                    _distance(estimatedDistance),
+                  ),
                   const SizedBox(width: 8),
                 ],
                 if (passengers != null)
                   _buildMiniChip(Icons.event_seat, '$passengers'),
                 const Spacer(),
                 if (createdAt != null)
-                  Text(_formatTimeAgo(createdAt),
-                    style: const TextStyle(color: AppColors.textTertiary, fontSize: 9),
+                  Text(
+                    _formatTimeAgo(createdAt),
+                    style: const TextStyle(
+                      color: AppColors.textTertiary,
+                      fontSize: 9,
+                    ),
                   ),
                 if (!alreadyBid) ...[
                   const SizedBox(width: 6),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.gold,
                       borderRadius: BorderRadius.circular(6),
                     ),
-                    child: const Text('Pujar',
-                      style: TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.w700),
+                    child: const Text(
+                      'Pujar',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ],
@@ -1739,15 +1998,23 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
       isScrollControlled: true,
       builder: (context) => StatefulBuilder(
         builder: (ctx, setModalState) {
-          final price = proposedPrice ?? _minPricePerKm;
-          final estimatedTotal = distanceKm != null ? distanceKm * price : null;
+          final price = proposedPrice ?? _minPricePerDistance;
+          final displayDistance = distanceFromKilometers(
+            distanceKm,
+            country: _countryCode,
+          );
+          final estimatedTotal = distanceKm != null
+              ? displayDistance * price
+              : null;
           final toroFee = estimatedTotal != null ? estimatedTotal * 0.18 : null;
           final driverEarnings = estimatedTotal != null && toroFee != null
               ? estimatedTotal - toroFee
               : null;
 
           return Container(
-            padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom,
+            ),
             decoration: const BoxDecoration(
               color: AppColors.surface,
               borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -1756,8 +2023,17 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Center(child: Container(margin: const EdgeInsets.only(top: 12), width: 40, height: 4,
-                  decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)))),
+                Center(
+                  child: Container(
+                    margin: const EdgeInsets.only(top: 12),
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.border,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
                   child: Row(
@@ -1768,20 +2044,35 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                           color: AppColors.gold.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Icon(Icons.gavel_rounded, color: AppColors.gold, size: 22),
+                        child: const Icon(
+                          Icons.gavel_rounded,
+                          color: AppColors.gold,
+                          size: 22,
+                        ),
                       ),
                       const SizedBox(width: 12),
                       const Expanded(
-                        child: Text('Enviar Puja',
-                          style: TextStyle(color: AppColors.textPrimary, fontSize: 20, fontWeight: FontWeight.w700)),
+                        child: Text(
+                          'Enviar Puja',
+                          style: TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                       ),
                     ],
                   ),
                 ),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Text('Propone tu precio por km para "$eventTitle"',
-                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                  child: Text(
+                    'Propone tu precio por ${distanceUnit(country: _countryCode)} para "$eventTitle"',
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 13,
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 20),
                 // Price input
@@ -1789,30 +2080,74 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: TextField(
                     controller: priceController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 24, fontWeight: FontWeight.w700),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w700,
+                    ),
                     textAlign: TextAlign.center,
                     decoration: InputDecoration(
-                      hintText: _minPricePerKm.toStringAsFixed(0),
-                      hintStyle: TextStyle(color: AppColors.textTertiary.withValues(alpha: 0.5), fontSize: 24, fontWeight: FontWeight.w700),
-                      prefixIcon: const Padding(padding: EdgeInsets.only(left: 16),
-                        child: Text('\$', style: TextStyle(color: AppColors.gold, fontSize: 24, fontWeight: FontWeight.w700))),
+                      hintText: _minPricePerDistance.toStringAsFixed(
+                        currencyDecimals(_countryCode),
+                      ),
+                      hintStyle: TextStyle(
+                        color: AppColors.textTertiary.withValues(alpha: 0.5),
+                        fontSize: 24,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      prefixIcon: const Padding(
+                        padding: EdgeInsets.only(left: 16),
+                        child: Text(
+                          '\$',
+                          style: TextStyle(
+                            color: AppColors.gold,
+                            fontSize: 24,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
                       prefixIconConstraints: const BoxConstraints(minWidth: 40),
-                      suffixText: 'MXN/km',
-                      suffixStyle: const TextStyle(color: AppColors.textTertiary, fontSize: 14),
-                      filled: true, fillColor: AppColors.card,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppColors.border)),
-                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppColors.border)),
-                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppColors.gold, width: 1.5)),
+                      suffixText: _priceUnit,
+                      suffixStyle: const TextStyle(
+                        color: AppColors.textTertiary,
+                        fontSize: 14,
+                      ),
+                      filled: true,
+                      fillColor: AppColors.card,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(color: AppColors.border),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(color: AppColors.border),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(
+                          color: AppColors.gold,
+                          width: 1.5,
+                        ),
+                      ),
                     ),
-                    onChanged: (val) => setModalState(() => proposedPrice = double.tryParse(val)),
+                    onChanged: (val) => setModalState(
+                      () => proposedPrice = double.tryParse(val),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 8),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Text('Precio minimo: \$${_minPricePerKm.toStringAsFixed(0)} MXN/km',
-                    style: const TextStyle(color: AppColors.textTertiary, fontSize: 12)),
+                  child: Text(
+                    'Precio minimo: ${_money(_minPricePerDistance)} $_priceUnit',
+                    style: const TextStyle(
+                      color: AppColors.textTertiary,
+                      fontSize: 12,
+                    ),
+                  ),
                 ),
                 if (distanceKm != null) ...[
                   const SizedBox(height: 16),
@@ -1820,60 +2155,97 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                     margin: const EdgeInsets.symmetric(horizontal: 20),
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: AppColors.card, borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: AppColors.success.withValues(alpha: 0.2)),
+                      color: AppColors.card,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: AppColors.success.withValues(alpha: 0.2),
+                      ),
                     ),
-                    child: Column(children: [
-                      _buildEstimateRow('Distancia', '${distanceKm.toStringAsFixed(0)} km'),
-                      if (passengers != null)
-                        _buildEstimateRow('Pasajeros', '$passengers personas'),
-                      _buildEstimateRow('Tu precio/km', '\$${price.toStringAsFixed(0)} MXN'),
-                      if (estimatedTotal != null) ...[
-                        const Divider(color: AppColors.border, height: 16),
-                        _buildEstimateRow('Precio total viaje', '\$${estimatedTotal.toStringAsFixed(0)} MXN',
-                          valueBold: true),
-                        if (passengers != null && passengers > 0)
-                          _buildEstimateRow('Boleto por persona', '\$${(estimatedTotal / passengers).toStringAsFixed(0)} MXN'),
-                        _buildEstimateRow('Comision TORO (18%)', '-\$${toroFee!.toStringAsFixed(0)} MXN', valueColor: AppColors.error),
-                        const Divider(color: AppColors.border, height: 16),
-                        _buildEstimateRow('Tu ganancia estimada', '\$${driverEarnings!.toStringAsFixed(0)} MXN',
-                          labelStyle: const TextStyle(color: AppColors.success, fontSize: 15, fontWeight: FontWeight.w700),
-                          valueColor: AppColors.success, valueBold: true),
+                    child: Column(
+                      children: [
+                        _buildEstimateRow('Distancia', _distance(distanceKm)),
+                        if (passengers != null)
+                          _buildEstimateRow(
+                            'Pasajeros',
+                            '$passengers personas',
+                          ),
+                        _buildEstimateRow(
+                          'Tu precio/${distanceUnit(country: _countryCode)}',
+                          '${_money(price)} ${currencyCode(country: _countryCode)}',
+                        ),
+                        if (estimatedTotal != null) ...[
+                          const Divider(color: AppColors.border, height: 16),
+                          _buildEstimateRow(
+                            'Precio total viaje',
+                            '${_money(estimatedTotal)} ${currencyCode(country: _countryCode)}',
+                            valueBold: true,
+                          ),
+                          if (passengers != null && passengers > 0)
+                            _buildEstimateRow(
+                              'Boleto por persona',
+                              '${_money(estimatedTotal / passengers)} ${currencyCode(country: _countryCode)}',
+                            ),
+                          _buildEstimateRow(
+                            'Comision TORO (18%)',
+                            '-${_money(toroFee)} ${currencyCode(country: _countryCode)}',
+                            valueColor: AppColors.error,
+                          ),
+                          const Divider(color: AppColors.border, height: 16),
+                          _buildEstimateRow(
+                            'Tu ganancia estimada',
+                            '${_money(driverEarnings)} ${currencyCode(country: _countryCode)}',
+                            labelStyle: const TextStyle(
+                              color: AppColors.success,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                            ),
+                            valueColor: AppColors.success,
+                            valueBold: true,
+                          ),
+                        ],
                       ],
-                    ]),
+                    ),
                   ),
                 ],
                 const SizedBox(height: 20),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-                  child: Row(children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.pop(context, false),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.textSecondary,
-                          side: const BorderSide(color: AppColors.border),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        ),
-                        child: const Text('Cancelar'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(flex: 2,
-                      child: ElevatedButton.icon(
-                        onPressed: () => Navigator.pop(context, true),
-                        icon: const Icon(Icons.gavel_rounded, size: 18),
-                        label: const Text('Enviar Puja'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.gold, foregroundColor: Colors.black,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                          elevation: 0,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.textSecondary,
+                            side: const BorderSide(color: AppColors.border),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          child: const Text('Cancelar'),
                         ),
                       ),
-                    ),
-                  ]),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 2,
+                        child: ElevatedButton.icon(
+                          onPressed: () => Navigator.pop(context, true),
+                          icon: const Icon(Icons.gavel_rounded, size: 18),
+                          label: const Text('Enviar Puja'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.gold,
+                            foregroundColor: Colors.black,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            elevation: 0,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 SizedBox(height: MediaQuery.of(context).padding.bottom + 8),
               ],
@@ -1885,18 +2257,25 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
 
     if (confirmed != true) return;
 
-    final finalPrice = proposedPrice ?? _minPricePerKm;
+    final finalPrice = proposedPrice ?? _minPricePerDistance;
+    if (_minPricePerDistance <= 0) {
+      _showRegionalError('No hay tarifa activa para tu region');
+      return;
+    }
     HapticService.success();
 
     try {
-      final driverProvider = Provider.of<DriverProvider>(context, listen: false);
+      final driverProvider = Provider.of<DriverProvider>(
+        context,
+        listen: false,
+      );
       final driver = driverProvider.driver;
       if (driver == null) throw Exception('No driver');
 
       await _eventService.submitBidOnOpenEvent(
         eventId: eventId,
         driverId: driver.id,
-        pricePerKm: finalPrice,
+        pricePerKm: _canonicalPrice(finalPrice),
       );
 
       // Reload to refresh badge
@@ -1905,7 +2284,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Puja enviada: \$${finalPrice.toStringAsFixed(0)} MXN/km'),
+            content: Text('Puja enviada: ${_money(finalPrice)} $_priceUnit'),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
             duration: const Duration(seconds: 3),
@@ -1915,7 +2294,11 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error, behavior: SnackBarBehavior.floating),
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     }
@@ -1935,16 +2318,28 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                 shape: BoxShape.circle,
                 border: Border.all(color: AppColors.border),
               ),
-              child: const Icon(Icons.event_busy, size: 48, color: AppColors.textTertiary),
+              child: const Icon(
+                Icons.event_busy,
+                size: 48,
+                color: AppColors.textTertiary,
+              ),
             ),
             const SizedBox(height: 24),
-            const Text('No hay eventos abiertos',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
-              textAlign: TextAlign.center),
+            const Text(
+              'No hay eventos abiertos',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 8),
-            const Text('Cuando alguien publique un evento, aparecera aqui para que puedas enviar tu puja.',
+            const Text(
+              'Cuando alguien publique un evento, aparecera aqui para que puedas enviar tu puja.',
               style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
-              textAlign: TextAlign.center),
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
       ),
@@ -1965,16 +2360,28 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                 shape: BoxShape.circle,
                 border: Border.all(color: AppColors.border),
               ),
-              child: const Icon(Icons.mail_outline, size: 48, color: AppColors.textTertiary),
+              child: const Icon(
+                Icons.mail_outline,
+                size: 48,
+                color: AppColors.textTertiary,
+              ),
             ),
             const SizedBox(height: 24),
-            const Text('No tienes invitaciones',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
-              textAlign: TextAlign.center),
+            const Text(
+              'No tienes invitaciones',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 8),
-            const Text('Cuando te inviten directamente a un viaje, aparecera aqui.',
+            const Text(
+              'Cuando te inviten directamente a un viaje, aparecera aqui.',
               style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
-              textAlign: TextAlign.center),
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
       ),
@@ -1986,18 +2393,11 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(
-            Icons.error_outline,
-            size: 48,
-            color: AppColors.error,
-          ),
+          const Icon(Icons.error_outline, size: 48, color: AppColors.error),
           const SizedBox(height: 16),
           const Text(
             'Error al cargar solicitudes',
-            style: TextStyle(
-              fontSize: 16,
-              color: AppColors.textPrimary,
-            ),
+            style: TextStyle(fontSize: 16, color: AppColors.textPrimary),
           ),
           const SizedBox(height: 8),
           TextButton.icon(
@@ -2026,20 +2426,25 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
   }
 
   Widget _buildBidCard(Map<String, dynamic> request) {
-    final title = request['event_name'] as String? ??
-        request['title'] as String? ?? 'Evento';
+    final title =
+        request['event_name'] as String? ??
+        request['title'] as String? ??
+        'Evento';
     final organizer = request['organizers'] as Map<String, dynamic>?;
-    final organizerName = organizer?['company_name'] ??
+    final organizerName =
+        organizer?['company_name'] ??
         organizer?['contact_name'] ??
         organizer?['business_name'] ??
         'Chofer';
 
-    final startDate = request['event_date'] as String? ??
-        request['start_date'] as String?;
+    final startDate =
+        request['event_date'] as String? ?? request['start_date'] as String?;
     final startTime = request['start_time'] as String?;
-    final estimatedDistance = request['total_distance_km'] as num? ??
+    final estimatedDistance =
+        request['total_distance_km'] as num? ??
         request['estimated_distance_km'] as num?;
-    final passengers = request['max_passengers'] as int? ??
+    final passengers =
+        request['max_passengers'] as int? ??
         request['expected_passengers'] as int?;
 
     final itinerary = request['itinerary'] as List?;
@@ -2049,8 +2454,8 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
     // Negotiation state
     final bidOrganizerStatus = request['bid_organizer_status'] as String?;
     final bidDriverStatus = request['bid_driver_status'] as String?;
-    final organizerProposedPrice =
-        (request['organizer_proposed_price'] as num?)?.toDouble();
+    final organizerProposedPrice = (request['organizer_proposed_price'] as num?)
+        ?.toDouble();
     final negotiationRound = (request['negotiation_round'] as int?) ?? 0;
 
     final isOrganizerCounterOffer = bidOrganizerStatus == 'counter_offered';
@@ -2105,13 +2510,20 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                   child: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: (isOrganizerCounterOffer ? AppColors.warning : AppColors.gold)
-                          .withValues(alpha: 0.15),
+                      color:
+                          (isOrganizerCounterOffer
+                                  ? AppColors.warning
+                                  : AppColors.gold)
+                              .withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(
-                      isOrganizerCounterOffer ? Icons.swap_horiz_rounded : Icons.gavel_rounded,
-                      color: isOrganizerCounterOffer ? AppColors.warning : AppColors.gold,
+                      isOrganizerCounterOffer
+                          ? Icons.swap_horiz_rounded
+                          : Icons.gavel_rounded,
+                      color: isOrganizerCounterOffer
+                          ? AppColors.warning
+                          : AppColors.gold,
                       size: 18,
                     ),
                   ),
@@ -2121,18 +2533,33 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(title,
-                        style: const TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w700),
-                        maxLines: 1, overflow: TextOverflow.ellipsis,
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       Row(
                         children: [
-                          const Icon(Icons.business, color: AppColors.textTertiary, size: 11),
+                          const Icon(
+                            Icons.business,
+                            color: AppColors.textTertiary,
+                            size: 11,
+                          ),
                           const SizedBox(width: 3),
                           Flexible(
-                            child: Text(organizerName,
-                              style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
-                              maxLines: 1, overflow: TextOverflow.ellipsis,
+                            child: Text(
+                              organizerName,
+                              style: const TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 11,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
@@ -2141,13 +2568,22 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: badgeColor.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  child: Text(badgeText,
-                    style: TextStyle(color: badgeColor, fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: 0.5),
+                  child: Text(
+                    badgeText,
+                    style: TextStyle(
+                      color: badgeColor,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.5,
+                    ),
                   ),
                 ),
               ],
@@ -2160,9 +2596,15 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                   const Icon(Icons.route, color: AppColors.success, size: 14),
                   const SizedBox(width: 6),
                   Expanded(
-                    child: Text(routeText,
-                      style: const TextStyle(color: AppColors.textPrimary, fontSize: 12, fontWeight: FontWeight.w500),
-                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                    child: Text(
+                      routeText,
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
@@ -2172,11 +2614,18 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                 children: [
                   const Icon(Icons.route, color: AppColors.success, size: 14),
                   const SizedBox(width: 6),
-                  Flexible(child: Text(
-                    '${request['pickup_location']}${request['dropoff_location'] != null ? '  →  ${request['dropoff_location']}' : ''}',
-                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 12, fontWeight: FontWeight.w500),
-                    maxLines: 1, overflow: TextOverflow.ellipsis,
-                  )),
+                  Flexible(
+                    child: Text(
+                      '${request['pickup_location']}${request['dropoff_location'] != null ? '  →  ${request['dropoff_location']}' : ''}',
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 ],
               ),
             ],
@@ -2190,7 +2639,10 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                 if (startTime != null && startTime.isNotEmpty)
                   _buildMiniChip(Icons.access_time, _formatTime(startTime)),
                 if (estimatedDistance != null)
-                  _buildMiniChip(Icons.straighten, '${estimatedDistance.toStringAsFixed(0)} km'),
+                  _buildMiniChip(
+                    Icons.straighten,
+                    _distance(estimatedDistance),
+                  ),
                 if (passengers != null)
                   _buildMiniChip(Icons.people, '$passengers'),
               ],
@@ -2261,7 +2713,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            '\$${organizerProposedPrice.toStringAsFixed(0)} MXN/km',
+                            _canonicalRate(organizerProposedPrice),
                             style: const TextStyle(
                               color: AppColors.warning,
                               fontSize: 18,
@@ -2419,7 +2871,9 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                   label: const Text('Rechazar'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.error,
-                    side: BorderSide(color: AppColors.error.withValues(alpha: 0.5)),
+                    side: BorderSide(
+                      color: AppColors.error.withValues(alpha: 0.5),
+                    ),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -2544,7 +2998,11 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                 width: 20,
                 child: Column(
                   children: [
-                    Icon(dotIcon, color: dotColor, size: isFirst || isLast ? 14 : 8),
+                    Icon(
+                      dotIcon,
+                      color: dotColor,
+                      size: isFirst || isLast ? 14 : 8,
+                    ),
                     if (!isLast)
                       Container(
                         width: 1.5,
@@ -2631,7 +3089,11 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
   /// Small logo widget reused in compact cards
   Widget _buildSmallLogo(String? logoUrl, double size) {
     if (logoUrl != null && logoUrl.isNotEmpty) {
-      return Image.network(logoUrl, width: size, height: size, fit: BoxFit.cover,
+      return Image.network(
+        logoUrl,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
         errorBuilder: (_, __, ___) => _buildLogoPlaceholder(size),
       );
     }
@@ -2640,7 +3102,8 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
 
   Widget _buildLogoPlaceholder(double size) {
     return Container(
-      width: size, height: size,
+      width: size,
+      height: size,
       decoration: BoxDecoration(
         color: AppColors.gold.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(8),
@@ -2656,7 +3119,10 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
       children: [
         Icon(icon, color: AppColors.textTertiary, size: 12),
         const SizedBox(width: 3),
-        Text(text, style: const TextStyle(color: AppColors.textSecondary, fontSize: 11)),
+        Text(
+          text,
+          style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+        ),
       ],
     );
   }
@@ -2665,7 +3131,9 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
 
   Widget _buildMyBidsTab() {
     if (_isLoadingMyBids) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.gold));
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.gold),
+      );
     }
 
     if (_myBids.isEmpty) {
@@ -2675,7 +3143,11 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.gavel_outlined, size: 48, color: AppColors.textTertiary.withOpacity(0.5)),
+              Icon(
+                Icons.gavel_outlined,
+                size: 48,
+                color: AppColors.textTertiary.withOpacity(0.5),
+              ),
               const SizedBox(height: 16),
               const Text(
                 'No tienes pujas enviadas',
@@ -2694,10 +3166,34 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
     }
 
     // Separate by status
-    final won = _myBids.where((b) => b['organizer_status'] == 'selected' && b['is_winning_bid'] == true).toList();
-    final pending = _myBids.where((b) => b['organizer_status'] == 'pending' && b['driver_status'] == 'accepted').toList();
-    final counterOffer = _myBids.where((b) => b['organizer_status'] == 'counter_offered' || b['driver_status'] == 'counter_offered').toList();
-    final rejected = _myBids.where((b) => b['organizer_status'] == 'rejected' || b['driver_status'] == 'rejected').toList();
+    final won = _myBids
+        .where(
+          (b) =>
+              b['organizer_status'] == 'selected' &&
+              b['is_winning_bid'] == true,
+        )
+        .toList();
+    final pending = _myBids
+        .where(
+          (b) =>
+              b['organizer_status'] == 'pending' &&
+              b['driver_status'] == 'accepted',
+        )
+        .toList();
+    final counterOffer = _myBids
+        .where(
+          (b) =>
+              b['organizer_status'] == 'counter_offered' ||
+              b['driver_status'] == 'counter_offered',
+        )
+        .toList();
+    final rejected = _myBids
+        .where(
+          (b) =>
+              b['organizer_status'] == 'rejected' ||
+              b['driver_status'] == 'rejected',
+        )
+        .toList();
 
     return RefreshIndicator(
       onRefresh: _loadMyBids,
@@ -2707,28 +3203,48 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
         children: [
           // Won bids first (most important)
           if (won.isNotEmpty) ...[
-            _buildBidSectionHeader('Pujas Ganadas', Icons.emoji_events, AppColors.success, won.length),
+            _buildBidSectionHeader(
+              'Pujas Ganadas',
+              Icons.emoji_events,
+              AppColors.success,
+              won.length,
+            ),
             const SizedBox(height: 8),
             ...won.map((b) => _buildMyBidCard(b, 'won')),
             const SizedBox(height: 16),
           ],
           // Counter-offers (needs action)
           if (counterOffer.isNotEmpty) ...[
-            _buildBidSectionHeader('Contra-ofertas', Icons.swap_horiz, Colors.orange, counterOffer.length),
+            _buildBidSectionHeader(
+              'Contra-ofertas',
+              Icons.swap_horiz,
+              Colors.orange,
+              counterOffer.length,
+            ),
             const SizedBox(height: 8),
             ...counterOffer.map((b) => _buildMyBidCard(b, 'counter')),
             const SizedBox(height: 16),
           ],
           // Pending (waiting for organizer)
           if (pending.isNotEmpty) ...[
-            _buildBidSectionHeader('Esperando Respuesta', Icons.hourglass_empty, AppColors.gold, pending.length),
+            _buildBidSectionHeader(
+              'Esperando Respuesta',
+              Icons.hourglass_empty,
+              AppColors.gold,
+              pending.length,
+            ),
             const SizedBox(height: 8),
             ...pending.map((b) => _buildMyBidCard(b, 'pending')),
             const SizedBox(height: 16),
           ],
           // Rejected
           if (rejected.isNotEmpty) ...[
-            _buildBidSectionHeader('Rechazadas', Icons.cancel_outlined, AppColors.error, rejected.length),
+            _buildBidSectionHeader(
+              'Rechazadas',
+              Icons.cancel_outlined,
+              AppColors.error,
+              rejected.length,
+            ),
             const SizedBox(height: 8),
             ...rejected.map((b) => _buildMyBidCard(b, 'rejected')),
           ],
@@ -2737,14 +3253,23 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
     );
   }
 
-  Widget _buildBidSectionHeader(String title, IconData icon, Color color, int count) {
+  Widget _buildBidSectionHeader(
+    String title,
+    IconData icon,
+    Color color,
+    int count,
+  ) {
     return Row(
       children: [
         Icon(icon, size: 18, color: color),
         const SizedBox(width: 8),
         Text(
           title,
-          style: TextStyle(color: color, fontSize: 14, fontWeight: FontWeight.w700),
+          style: TextStyle(
+            color: color,
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+          ),
         ),
         const SizedBox(width: 6),
         Container(
@@ -2755,7 +3280,11 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
           ),
           child: Text(
             '$count',
-            style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w800),
+            style: TextStyle(
+              color: color,
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+            ),
           ),
         ),
       ],
@@ -2852,19 +3381,31 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                     children: [
                       Text(
                         eventName,
-                        style: const TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w700),
-                        maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       Text(
                         orgName,
-                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
-                        maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 11,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: accentColor.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(6),
@@ -2876,7 +3417,11 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                       const SizedBox(width: 4),
                       Text(
                         statusLabel,
-                        style: TextStyle(color: accentColor, fontSize: 9, fontWeight: FontWeight.w800),
+                        style: TextStyle(
+                          color: accentColor,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ],
                   ),
@@ -2891,9 +3436,15 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                   const Icon(Icons.route, color: AppColors.success, size: 14),
                   const SizedBox(width: 6),
                   Expanded(
-                    child: Text(routeText,
-                      style: const TextStyle(color: AppColors.textPrimary, fontSize: 12, fontWeight: FontWeight.w500),
-                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                    child: Text(
+                      routeText,
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
@@ -2904,16 +3455,22 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
               spacing: 10,
               runSpacing: 4,
               children: [
-                if (eventDate != null) _buildMiniChip(Icons.calendar_today, _formatDate(eventDate)),
-                if (startTime != null) _buildMiniChip(Icons.access_time, _formatTime(startTime)),
-                if (totalDist > 0) _buildMiniChip(Icons.straighten, '${totalDist.toStringAsFixed(0)} km'),
+                if (eventDate != null)
+                  _buildMiniChip(Icons.calendar_today, _formatDate(eventDate)),
+                if (startTime != null)
+                  _buildMiniChip(Icons.access_time, _formatTime(startTime)),
+                if (totalDist > 0)
+                  _buildMiniChip(Icons.straighten, _distance(totalDist)),
               ],
             ),
             // Price info
             if (price != null) ...[
               const SizedBox(height: 10),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: accentColor.withOpacity(0.08),
                   borderRadius: BorderRadius.circular(8),
@@ -2921,14 +3478,22 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                 child: Row(
                   children: [
                     Text(
-                      '${formatMoney(price, country: Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'MX')}/km',
-                      style: TextStyle(color: accentColor, fontSize: 16, fontWeight: FontWeight.w700),
+                      '${formatMoney(price, country: Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US')}/${distanceUnit(country: Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US')}',
+                      style: TextStyle(
+                        color: accentColor,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     if (totalPrice != null) ...[
                       const Spacer(),
                       Text(
                         'Total: \$${totalPrice.toStringAsFixed(0)}',
-                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w600),
+                        style: const TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ],
                   ],
@@ -2949,16 +3514,25 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => TourismDriverHomeScreen(eventId: eventId),
+                              builder: (_) =>
+                                  TourismDriverHomeScreen(eventId: eventId),
                             ),
                           ).then((_) => _loadMyBids());
                         },
                         icon: const Icon(Icons.emoji_events, size: 16),
-                        label: const Text('Ver Evento', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                        label: const Text(
+                          'Ver Evento',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                          ),
+                        ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.success,
                           foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                           elevation: 0,
                         ),
                       ),
@@ -2970,11 +3544,19 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                     child: OutlinedButton.icon(
                       onPressed: () => _confirmLeaveEvent(eventId),
                       icon: const Icon(Icons.exit_to_app, size: 16),
-                      label: const Text('Salir', style: TextStyle(fontSize: 13)),
+                      label: const Text(
+                        'Salir',
+                        style: TextStyle(fontSize: 13),
+                      ),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.error,
-                        side: const BorderSide(color: AppColors.error, width: 1),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        side: const BorderSide(
+                          color: AppColors.error,
+                          width: 1,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
                     ),
                   ),
@@ -2991,7 +3573,9 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
 
   Widget _buildTripRequestsTab() {
     if (_isLoadingTrips) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.gold));
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.gold),
+      );
     }
 
     if (_tripRequests.isEmpty) {
@@ -3001,11 +3585,19 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
           children: [
             Icon(Icons.auto_fix_high, color: AppColors.textTertiary, size: 48),
             const SizedBox(height: 12),
-            const Text('No hay viajes disponibles',
-                style: TextStyle(color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.w600)),
+            const Text(
+              'No hay viajes disponibles',
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
             const SizedBox(height: 6),
-            const Text('Los riders aún no han publicado viajes a la medida',
-                style: TextStyle(color: AppColors.textTertiary, fontSize: 13)),
+            const Text(
+              'Los riders aún no han publicado viajes a la medida',
+              style: TextStyle(color: AppColors.textTertiary, fontSize: 13),
+            ),
             const SizedBox(height: 16),
             OutlinedButton.icon(
               onPressed: _loadTripRequests,
@@ -3014,7 +3606,9 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.gold,
                 side: const BorderSide(color: AppColors.gold),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
           ],
@@ -3093,8 +3687,14 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                   color: typeColor.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: Text(typeLabels[tripType] ?? tripType,
-                    style: TextStyle(color: typeColor, fontSize: 11, fontWeight: FontWeight.w600)),
+                child: Text(
+                  typeLabels[tripType] ?? tripType,
+                  style: TextStyle(
+                    color: typeColor,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
               const SizedBox(width: 8),
               Container(
@@ -3103,11 +3703,23 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                   color: AppColors.gold.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: Text(vehicleLabels[vehiclePref] ?? vehiclePref,
-                    style: const TextStyle(color: AppColors.gold, fontSize: 10, fontWeight: FontWeight.w600)),
+                child: Text(
+                  vehicleLabels[vehiclePref] ?? vehiclePref,
+                  style: const TextStyle(
+                    color: AppColors.gold,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
               const Spacer(),
-              Text(riderName, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+              Text(
+                riderName,
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 12,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 10),
@@ -3118,7 +3730,11 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
               Expanded(
                 child: Text(
                   '$originName${destinationName != null ? ' → $destinationName' : ''}',
-                  style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w500),
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
                   overflow: TextOverflow.ellipsis,
                   maxLines: 2,
                 ),
@@ -3128,14 +3744,29 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
           const SizedBox(height: 6),
           Row(
             children: [
-              const Icon(Icons.calendar_today, color: AppColors.textTertiary, size: 12),
+              const Icon(
+                Icons.calendar_today,
+                color: AppColors.textTertiary,
+                size: 12,
+              ),
               const SizedBox(width: 6),
-              Text('$tripDate · $pickupTime',
-                  style: const TextStyle(color: AppColors.textTertiary, fontSize: 12)),
+              Text(
+                '$tripDate · $pickupTime',
+                style: const TextStyle(
+                  color: AppColors.textTertiary,
+                  fontSize: 12,
+                ),
+              ),
               const SizedBox(width: 12),
               const Icon(Icons.people, color: AppColors.textTertiary, size: 12),
               const SizedBox(width: 4),
-              Text('$passengerCount', style: const TextStyle(color: AppColors.textTertiary, fontSize: 12)),
+              Text(
+                '$passengerCount',
+                style: const TextStyle(
+                  color: AppColors.textTertiary,
+                  fontSize: 12,
+                ),
+              ),
             ],
           ),
           if (priceMin != null && priceMax != null) ...[
@@ -3144,16 +3775,29 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
               children: [
                 const Icon(Icons.attach_money, color: AppColors.gold, size: 14),
                 const SizedBox(width: 4),
-                Text('Estimado: \$${priceMin.toInt()} - \$${priceMax.toInt()} MXN',
-                    style: const TextStyle(color: AppColors.gold, fontSize: 12, fontWeight: FontWeight.w600)),
+                Text(
+                  'Estimado: ${_money(priceMin)} - ${_money(priceMax)} ${currencyCode(country: _countryCode)}',
+                  style: const TextStyle(
+                    color: AppColors.gold,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ],
             ),
           ],
           if (notes != null && notes.isNotEmpty) ...[
             const SizedBox(height: 6),
-            Text('"$notes"',
-                style: const TextStyle(color: AppColors.textTertiary, fontSize: 12, fontStyle: FontStyle.italic),
-                maxLines: 2, overflow: TextOverflow.ellipsis),
+            Text(
+              '"$notes"',
+              style: const TextStyle(
+                color: AppColors.textTertiary,
+                fontSize: 12,
+                fontStyle: FontStyle.italic,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
           ],
           const SizedBox(height: 12),
           SizedBox(
@@ -3166,7 +3810,9 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                 backgroundColor: AppColors.gold,
                 foregroundColor: Colors.black,
                 padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 elevation: 0,
               ),
             ),
@@ -3218,8 +3864,12 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                   Center(
                     child: Container(
                       margin: const EdgeInsets.only(top: 12),
-                      width: 40, height: 4,
-                      decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)),
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: AppColors.border,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
                   ),
                   Padding(
@@ -3232,12 +3882,22 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                             color: Colors.cyan.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Icon(Icons.local_offer, color: Colors.cyan, size: 22),
+                          child: const Icon(
+                            Icons.local_offer,
+                            color: Colors.cyan,
+                            size: 22,
+                          ),
                         ),
                         const SizedBox(width: 12),
                         const Expanded(
-                          child: Text('Enviar Oferta',
-                            style: TextStyle(color: AppColors.textPrimary, fontSize: 20, fontWeight: FontWeight.w700)),
+                          child: Text(
+                            'Enviar Oferta',
+                            style: TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -3246,15 +3906,21 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Text(
                       '$originName${destinationName != null ? ' → $destinationName' : ''}',
-                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
                   if (priceMin != null && priceMax != null)
                     Padding(
                       padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
                       child: Text(
-                        'Rango estimado: \$${priceMin.toInt()} - \$${priceMax.toInt()} MXN',
-                        style: const TextStyle(color: AppColors.textTertiary, fontSize: 12),
+                        'Rango estimado: ${_money(priceMin)} - ${_money(priceMax)} ${currencyCode(country: _countryCode)}',
+                        style: const TextStyle(
+                          color: AppColors.textTertiary,
+                          fontSize: 12,
+                        ),
                       ),
                     ),
                   const SizedBox(height: 20),
@@ -3262,26 +3928,64 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: TextField(
                       controller: priceController,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: false),
-                      style: const TextStyle(color: AppColors.textPrimary, fontSize: 24, fontWeight: FontWeight.w700),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: false,
+                      ),
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w700,
+                      ),
                       textAlign: TextAlign.center,
                       decoration: InputDecoration(
                         hintText: priceMin?.toInt().toString() ?? '0',
-                        hintStyle: TextStyle(color: AppColors.textTertiary.withValues(alpha: 0.5), fontSize: 24, fontWeight: FontWeight.w700),
+                        hintStyle: TextStyle(
+                          color: AppColors.textTertiary.withValues(alpha: 0.5),
+                          fontSize: 24,
+                          fontWeight: FontWeight.w700,
+                        ),
                         prefixIcon: const Padding(
                           padding: EdgeInsets.only(left: 16),
-                          child: Text('\$', style: TextStyle(color: AppColors.gold, fontSize: 24, fontWeight: FontWeight.w700)),
+                          child: Text(
+                            '\$',
+                            style: TextStyle(
+                              color: AppColors.gold,
+                              fontSize: 24,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                         ),
-                        prefixIconConstraints: const BoxConstraints(minWidth: 40),
-                        suffixText: 'MXN total',
-                        suffixStyle: const TextStyle(color: AppColors.textTertiary, fontSize: 14),
-                        filled: true, fillColor: AppColors.card,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppColors.border)),
-                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppColors.border)),
-                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppColors.gold, width: 1.5)),
+                        prefixIconConstraints: const BoxConstraints(
+                          minWidth: 40,
+                        ),
+                        suffixText:
+                            '${currencyCode(country: _countryCode)} total',
+                        suffixStyle: const TextStyle(
+                          color: AppColors.textTertiary,
+                          fontSize: 14,
+                        ),
+                        filled: true,
+                        fillColor: AppColors.card,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(color: AppColors.border),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(color: AppColors.border),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(
+                            color: AppColors.gold,
+                            width: 1.5,
+                          ),
+                        ),
                       ),
                       onChanged: (val) {
-                        setModalState(() { proposedPrice = double.tryParse(val); });
+                        setModalState(() {
+                          proposedPrice = double.tryParse(val);
+                        });
                       },
                     ),
                   ),
@@ -3293,18 +3997,39 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                       decoration: BoxDecoration(
                         color: AppColors.card,
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: AppColors.success.withValues(alpha: 0.2)),
+                        border: Border.all(
+                          color: AppColors.success.withValues(alpha: 0.2),
+                        ),
                       ),
                       child: Column(
                         children: [
-                          _buildEstimateRow('Pasajeros', '$passengerCount persona(s)'),
-                          _buildEstimateRow('Tu precio total', '\$${price.toInt()} MXN', valueBold: true),
+                          _buildEstimateRow(
+                            'Pasajeros',
+                            '$passengerCount persona(s)',
+                          ),
+                          _buildEstimateRow(
+                            'Tu precio total',
+                            '${_money(price)} ${currencyCode(country: _countryCode)}',
+                            valueBold: true,
+                          ),
                           const Divider(color: AppColors.border, height: 16),
-                          _buildEstimateRow('Comisión TORO (20%)', '-\$${toroFee.toInt()} MXN', valueColor: AppColors.error),
+                          _buildEstimateRow(
+                            'Comisión TORO (20%)',
+                            '-${_money(toroFee)} ${currencyCode(country: _countryCode)}',
+                            valueColor: AppColors.error,
+                          ),
                           const Divider(color: AppColors.border, height: 16),
-                          _buildEstimateRow('Tu ganancia', '\$${driverEarnings.toInt()} MXN',
-                              labelStyle: const TextStyle(color: AppColors.success, fontSize: 15, fontWeight: FontWeight.w700),
-                              valueColor: AppColors.success, valueBold: true),
+                          _buildEstimateRow(
+                            'Tu ganancia',
+                            '${_money(driverEarnings)} ${currencyCode(country: _countryCode)}',
+                            labelStyle: const TextStyle(
+                              color: AppColors.success,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                            ),
+                            valueColor: AppColors.success,
+                            valueBold: true,
+                          ),
                         ],
                       ),
                     ),
@@ -3315,14 +4040,33 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                     child: TextField(
                       controller: messageController,
                       maxLines: 2,
-                      style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 13,
+                      ),
                       decoration: InputDecoration(
                         hintText: 'Mensaje al pasajero (opcional)',
-                        hintStyle: const TextStyle(color: AppColors.textTertiary, fontSize: 13),
-                        filled: true, fillColor: AppColors.card,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.border)),
-                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.border)),
-                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.gold, width: 1.5)),
+                        hintStyle: const TextStyle(
+                          color: AppColors.textTertiary,
+                          fontSize: 13,
+                        ),
+                        filled: true,
+                        fillColor: AppColors.card,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.border),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.border),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: AppColors.gold,
+                            width: 1.5,
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -3338,7 +4082,9 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                               foregroundColor: AppColors.textSecondary,
                               side: const BorderSide(color: AppColors.border),
                               padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
                             ),
                             child: const Text('Cancelar'),
                           ),
@@ -3347,7 +4093,8 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                         Expanded(
                           flex: 2,
                           child: ElevatedButton.icon(
-                            onPressed: (proposedPrice != null && proposedPrice! > 0)
+                            onPressed:
+                                (proposedPrice != null && proposedPrice! > 0)
                                 ? () => Navigator.pop(sheetCtx, true)
                                 : null,
                             icon: const Icon(Icons.send, size: 18),
@@ -3357,7 +4104,9 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                               foregroundColor: Colors.black,
                               disabledBackgroundColor: AppColors.border,
                               padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
                               elevation: 0,
                             ),
                           ),
@@ -3374,12 +4123,16 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
       ),
     );
 
-    if (confirmed != true || proposedPrice == null || proposedPrice! <= 0) return;
+    if (confirmed != true || proposedPrice == null || proposedPrice! <= 0)
+      return;
 
     HapticService.success();
 
     try {
-      final driverProvider = Provider.of<DriverProvider>(context, listen: false);
+      final driverProvider = Provider.of<DriverProvider>(
+        context,
+        listen: false,
+      );
       final driver = driverProvider.driver;
       if (driver == null) return;
 
@@ -3387,7 +4140,9 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
         tripRequestId: tripId,
         driverId: driver.id,
         proposedPrice: proposedPrice!,
-        message: messageController.text.trim().isEmpty ? null : messageController.text.trim(),
+        message: messageController.text.trim().isEmpty
+            ? null
+            : messageController.text.trim(),
       );
 
       if (!ok) throw Exception('Error al enviar oferta');
@@ -3399,7 +4154,9 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Oferta enviada: \$${proposedPrice!.toInt()} MXN'),
+            content: Text(
+              'Oferta enviada: ${_money(proposedPrice)} ${currencyCode(country: _countryCode)}',
+            ),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
             duration: const Duration(seconds: 3),
@@ -3423,14 +4180,16 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
 /// Bottom sheet showing full event details with itinerary timeline.
 class _EventDetailsSheet extends StatelessWidget {
   final Map<String, dynamic> request;
-  final double minPricePerKm;
+  final double minPricePerDistance;
+  final String countryCode;
   final int driverVehicleSeats;
   final VoidCallback? onBid;
   final VoidCallback onReject;
 
   const _EventDetailsSheet({
     required this.request,
-    required this.minPricePerKm,
+    required this.minPricePerDistance,
+    required this.countryCode,
     required this.driverVehicleSeats,
     required this.onBid,
     required this.onReject,
@@ -3462,27 +4221,33 @@ class _EventDetailsSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final title = request['event_name'] as String? ??
-        request['title'] as String? ?? 'Evento';
-    final description = request['event_description'] as String? ??
+    final title =
+        request['event_name'] as String? ??
+        request['title'] as String? ??
+        'Evento';
+    final description =
+        request['event_description'] as String? ??
         request['description'] as String?;
     final organizer = request['organizers'] as Map<String, dynamic>?;
-    final organizerName = organizer?['company_name'] ??
+    final organizerName =
+        organizer?['company_name'] ??
         organizer?['contact_name'] ??
         organizer?['business_name'] ??
         'Chofer';
     final organizerPhone = organizer?['phone'] as String?;
 
-    final startDate = request['event_date'] as String? ??
-        request['start_date'] as String?;
+    final startDate =
+        request['event_date'] as String? ?? request['start_date'] as String?;
     final endDate = request['end_date'] as String?;
     final startTime = request['start_time'] as String?;
     final endTime = request['end_time'] as String?;
 
     final itinerary = request['itinerary'] as List?;
-    final estimatedDistance = request['total_distance_km'] as num? ??
+    final estimatedDistance =
+        request['total_distance_km'] as num? ??
         request['estimated_distance_km'] as num?;
-    final passengers = request['max_passengers'] as int? ??
+    final passengers =
+        request['max_passengers'] as int? ??
         request['expected_passengers'] as int?;
     final organizerNotes = request['organizer_notes'] as String?;
     final eventType = request['event_type'] as String?;
@@ -3538,7 +4303,9 @@ class _EventDetailsSheet extends StatelessWidget {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: AppColors.primaryCyan.withValues(alpha: 0.15),
+                            color: AppColors.primaryCyan.withValues(
+                              alpha: 0.15,
+                            ),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
@@ -3574,7 +4341,11 @@ class _EventDetailsSheet extends StatelessWidget {
                       _formatDate(startDate),
                     ),
                     if (endDate != null && endDate != startDate)
-                      _buildInfoRow(Icons.event, 'Fecha fin', _formatDate(endDate)),
+                      _buildInfoRow(
+                        Icons.event,
+                        'Fecha fin',
+                        _formatDate(endDate),
+                      ),
                     if (startTime != null && startTime.isNotEmpty)
                       _buildInfoRow(
                         Icons.access_time,
@@ -3582,7 +4353,11 @@ class _EventDetailsSheet extends StatelessWidget {
                         '${_formatTime(startTime)}${endTime != null && endTime.isNotEmpty ? ' - ${_formatTime(endTime)}' : ''}',
                       ),
                     if (serviceType != null)
-                      _buildInfoRow(Icons.category, 'Tipo de servicio', serviceType),
+                      _buildInfoRow(
+                        Icons.category,
+                        'Tipo de servicio',
+                        serviceType,
+                      ),
                     if (passengers != null)
                       _buildInfoRow(
                         Icons.people,
@@ -3593,14 +4368,20 @@ class _EventDetailsSheet extends StatelessWidget {
                       _buildInfoRow(
                         Icons.route,
                         'Distancia total',
-                        '${estimatedDistance.toStringAsFixed(0)} km',
+                        formatDistance(
+                          estimatedDistance,
+                          country: countryCode,
+                          decimals: 0,
+                        ),
                       ),
                   ]),
                   const SizedBox(height: 20),
 
                   // Itinerary Timeline
                   if (itinerary != null && itinerary.isNotEmpty) ...[
-                    _buildSectionTitle('Itinerario (${itinerary.length} paradas)'),
+                    _buildSectionTitle(
+                      'Itinerario (${itinerary.length} paradas)',
+                    ),
                     const SizedBox(height: 12),
                     _buildItineraryTimeline(itinerary),
                     const SizedBox(height: 20),
@@ -3643,7 +4424,9 @@ class _EventDetailsSheet extends StatelessWidget {
                   ],
 
                   // Capacity warning
-                  if (driverVehicleSeats > 0 && passengers != null && passengers > driverVehicleSeats) ...[
+                  if (driverVehicleSeats > 0 &&
+                      passengers != null &&
+                      passengers > driverVehicleSeats) ...[
                     const SizedBox(height: 20),
                     Container(
                       width: double.infinity,
@@ -3657,7 +4440,11 @@ class _EventDetailsSheet extends StatelessWidget {
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.lock, color: AppColors.error, size: 24),
+                          const Icon(
+                            Icons.lock,
+                            color: AppColors.error,
+                            size: 24,
+                          ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(
@@ -3709,7 +4496,7 @@ class _EventDetailsSheet extends StatelessWidget {
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            'Propone tu precio por km al enviar tu puja. Precio minimo de mercado: \$${minPricePerKm.toStringAsFixed(0)} MXN/km',
+                            'Propone tu precio por ${distanceUnit(country: countryCode)} al enviar tu puja. Precio minimo de mercado: ${formatMoney(minPricePerDistance, country: countryCode)} ${currencyCode(country: countryCode)}/${distanceUnit(country: countryCode)}',
                             style: const TextStyle(
                               color: AppColors.textSecondary,
                               fontSize: 12,
@@ -3744,7 +4531,9 @@ class _EventDetailsSheet extends StatelessWidget {
                       label: const Text('Rechazar'),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.error,
-                        side: BorderSide(color: AppColors.error.withValues(alpha: 0.5)),
+                        side: BorderSide(
+                          color: AppColors.error.withValues(alpha: 0.5),
+                        ),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -3761,7 +4550,9 @@ class _EventDetailsSheet extends StatelessWidget {
                         onBid == null ? Icons.lock : Icons.gavel_rounded,
                         size: 18,
                       ),
-                      label: Text(onBid == null ? 'Sin capacidad' : 'Enviar Puja'),
+                      label: Text(
+                        onBid == null ? 'Sin capacidad' : 'Enviar Puja',
+                      ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: onBid == null
                             ? AppColors.textTertiary
@@ -3935,9 +4726,7 @@ class _EventDetailsSheet extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.border),
       ),
-      child: Column(
-        children: children,
-      ),
+      child: Column(children: children),
     );
   }
 
@@ -3952,11 +4741,7 @@ class _EventDetailsSheet extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            icon,
-            color: iconColor ?? AppColors.textTertiary,
-            size: 18,
-          ),
+          Icon(icon, color: iconColor ?? AppColors.textTertiary, size: 18),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -3984,5 +4769,4 @@ class _EventDetailsSheet extends StatelessWidget {
       ),
     );
   }
-
 }

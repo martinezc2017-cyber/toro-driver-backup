@@ -17,9 +17,9 @@ int currencyDecimals(String? countryCode) {
 }
 
 /// App-level current user country. Set after driver profile loads.
-String _cachedUserCountry = 'MX';
+String _cachedUserCountry = 'US';
 
-/// Read the cached driver country (defaults to MX).
+/// Read the cached driver country (defaults to US).
 String userCountry() => _cachedUserCountry;
 
 /// Set the current driver country. Call after profile load / sign-in.
@@ -61,21 +61,85 @@ String formatPercent(num? value, {int decimals = 1}) {
   return '${(value ?? 0).toStringAsFixed(decimals)}%';
 }
 
+String currencyCode({String? country}) =>
+    (country?.toUpperCase() ?? userCountry()) == 'MX' ? 'MXN' : 'USD';
+
+String distanceUnit({String? country}) =>
+    (country?.toUpperCase() ?? userCountry()) == 'MX' ? 'km' : 'mi';
+
+/// Convert a canonical kilometer value to the user's display unit.
+double distanceFromKilometers(num? kilometers, {String? country}) {
+  final km = (kilometers ?? 0).toDouble();
+  final isMx = (country?.toUpperCase() ?? userCountry()) == 'MX';
+  return isMx ? km : km * 0.621371;
+}
+
+/// Convert a canonical price-per-kilometer value to the local display unit.
+///
+/// Pricing remains stored per kilometer in Supabase. US drivers enter and see
+/// a price per mile, while MX drivers continue to use a price per kilometer.
+double pricePerKilometerToDisplay(num? pricePerKilometer, {String? country}) {
+  final perKm = (pricePerKilometer ?? 0).toDouble();
+  final isMx = (country?.toUpperCase() ?? userCountry()) == 'MX';
+  return isMx ? perKm : perKm / 0.621371;
+}
+
+/// Convert a locally displayed price back to canonical price per kilometer.
+double displayPriceToPerKilometer(num? displayedPrice, {String? country}) {
+  final localPrice = (displayedPrice ?? 0).toDouble();
+  final isMx = (country?.toUpperCase() ?? userCountry()) == 'MX';
+  return isMx ? localPrice : localPrice * 0.621371;
+}
+
+/// Format a canonical price per kilometer using the user's local unit.
+String formatPricePerDistance(num? pricePerKilometer, {String? country}) {
+  final localPrice = pricePerKilometerToDisplay(
+    pricePerKilometer,
+    country: country,
+  );
+  return '${formatMoney(localPrice, country: country)} '
+      '${currencyCode(country: country)}/${distanceUnit(country: country)}';
+}
+
 /// Format a distance value. Input is always kilometers.
 /// MX shows km, US shows miles. Always 1 decimal.
 String formatDistance(num? kilometers, {String? country, int decimals = 1}) {
-  final km = (kilometers ?? 0).toDouble();
-  final isMx = (country?.toUpperCase() ?? 'MX') == 'MX';
-  if (isMx) return '${km.toStringAsFixed(decimals)} km';
-  final miles = km * 0.621371;
-  return '${miles.toStringAsFixed(decimals)} mi';
+  final isMx = (country?.toUpperCase() ?? userCountry()) == 'MX';
+  final value = distanceFromKilometers(kilometers, country: country);
+  return '${value.toStringAsFixed(decimals)} ${isMx ? 'km' : 'mi'}';
+}
+
+/// Format a distance whose canonical input is meters.
+///
+/// MX uses meters/kilometers. US uses feet/miles so turn-by-turn navigation
+/// never shows metric instructions to a US driver.
+String formatDistanceFromMeters(
+  num? meters, {
+  String? country,
+  int decimals = 1,
+}) {
+  final valueMeters = (meters ?? 0).toDouble();
+  final isMx = (country?.toUpperCase() ?? userCountry()) == 'MX';
+  if (isMx) {
+    if (valueMeters < 1000) return '${valueMeters.round()} m';
+    return '${(valueMeters / 1000).toStringAsFixed(decimals)} km';
+  }
+
+  if (valueMeters < 1609.344) {
+    return '${(valueMeters * 3.28084).round()} ft';
+  }
+  return '${(valueMeters / 1609.344).toStringAsFixed(decimals)} mi';
 }
 
 /// Format a distance value where input is in miles.
 /// MX converts to km, US keeps miles. Always 1 decimal.
-String formatDistanceFromMiles(num? miles, {String? country, int decimals = 1}) {
+String formatDistanceFromMiles(
+  num? miles, {
+  String? country,
+  int decimals = 1,
+}) {
   final mi = (miles ?? 0).toDouble();
-  final isMx = (country?.toUpperCase() ?? 'MX') == 'MX';
+  final isMx = (country?.toUpperCase() ?? userCountry()) == 'MX';
   if (isMx) return '${(mi / 0.621371).toStringAsFixed(decimals)} km';
   return '${mi.toStringAsFixed(decimals)} mi';
 }

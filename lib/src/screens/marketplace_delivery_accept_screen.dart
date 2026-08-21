@@ -7,13 +7,16 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:provider/provider.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../config/supabase_config.dart';
 import '../services/delivery_service.dart';
 import '../services/location_service.dart';
 import '../providers/driver_provider.dart';
+import '../utils/money_format.dart';
 
 class MarketplaceDeliveryAcceptScreen extends StatefulWidget {
   final String deliveryId;
+
   /// True when this offer arrived as a stacked/on-the-way offer to a driver
   /// already holding another delivery. Renders a green "extra ingreso" banner
   /// and a shorter countdown.
@@ -62,20 +65,35 @@ class _State extends State<MarketplaceDeliveryAcceptScreen> {
 
   Future<void> _load() async {
     try {
-      final ctx = await _service.getMarketplaceDeliveryContext(widget.deliveryId);
+      final ctx = await _service.getMarketplaceDeliveryContext(
+        widget.deliveryId,
+      );
       if (!mounted) return;
       if (ctx == null) {
-        setState(() { _error = 'Delivery no encontrada'; _loading = false; });
+        setState(() {
+          _error = 'marketplace_delivery.not_found'.tr();
+          _loading = false;
+        });
         return;
       }
       if (ctx['is_marketplace'] != true) {
-        setState(() { _error = 'No es un pedido marketplace'; _loading = false; });
+        setState(() {
+          _error = 'marketplace_delivery.invalid_order'.tr();
+          _loading = false;
+        });
         return;
       }
-      setState(() { _ctx = ctx; _loading = false; });
+      setState(() {
+        _ctx = ctx;
+        _loading = false;
+      });
       _startCountdown();
     } catch (e) {
-      if (mounted) setState(() { _error = e.toString(); _loading = false; });
+      if (mounted)
+        setState(() {
+          _error = e.toString();
+          _loading = false;
+        });
     }
   }
 
@@ -83,7 +101,10 @@ class _State extends State<MarketplaceDeliveryAcceptScreen> {
     final created = DateTime.tryParse(_ctx?['delivery']?['created_at'] ?? '');
     _countdownTimer?.cancel();
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (!mounted) { t.cancel(); return; }
+      if (!mounted) {
+        t.cancel();
+        return;
+      }
       setState(() {
         if (created != null) _elapsed = DateTime.now().difference(created);
         if (_secsLeft > 0) _secsLeft--;
@@ -97,20 +118,31 @@ class _State extends State<MarketplaceDeliveryAcceptScreen> {
   }
 
   void _autoExpire() {
-    debugPrint('🔔 marketplace offer ${widget.deliveryId} expired after ${_offerTimeoutSec}s');
+    debugPrint(
+      '🔔 marketplace offer ${widget.deliveryId} expired after ${_offerTimeoutSec}s',
+    );
     // Best-effort server-side log (the cron will also catch unanswered offers)
-    SupabaseConfig.client.from('app_logs').insert({
-      'level': 'info',
-      'source': 'driver_marketplace',
-      'event': 'offer_expired',
-      'context': {'delivery_id': widget.deliveryId, 'seconds': _offerTimeoutSec},
-      'app_role': 'driver',
-    }).then((_) {}).catchError((_) {});
+    SupabaseConfig.client
+        .from('app_logs')
+        .insert({
+          'level': 'info',
+          'source': 'driver_marketplace',
+          'event': 'offer_expired',
+          'context': {
+            'delivery_id': widget.deliveryId,
+            'seconds': _offerTimeoutSec,
+          },
+          'app_role': 'driver',
+        })
+        .then((_) {})
+        .catchError((_) {});
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-      content: Text('Oferta expirada — pasa al siguiente chofer'),
-      backgroundColor: Colors.orange,
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('marketplace_delivery.expired'.tr()),
+        backgroundColor: Colors.orange,
+      ),
+    );
     Navigator.of(context).maybePop();
   }
 
@@ -128,7 +160,8 @@ class _State extends State<MarketplaceDeliveryAcceptScreen> {
         try {
           final driverId = context.read<DriverProvider>().driver?.id;
           if (driverId != null) {
-            final buyerName = (_ctx?['order'] as Map?)?['buyer_name']?.toString();
+            final buyerName = (_ctx?['order'] as Map?)?['buyer_name']
+                ?.toString();
             await LocationService().startRideTracking(
               driverId: driverId,
               rideId: widget.deliveryId,
@@ -139,15 +172,17 @@ class _State extends State<MarketplaceDeliveryAcceptScreen> {
           debugPrint('marketplace accept: startRideTracking error: $e');
         }
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Entrega aceptada'),
-          backgroundColor: _green,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('marketplace_delivery.accepted'.tr()),
+            backgroundColor: _green,
+          ),
+        );
         // Volver al home: el viaje activo se navega en el MISMO mapa (tab 1),
         // igual que cualquier otro viaje (NavigationMapScreen).
         if (mounted) Navigator.of(context).maybePop();
       } else {
-        _err('No se pudo aceptar');
+        _err('marketplace_delivery.accept_failed'.tr());
       }
     } catch (e) {
       _err(e.toString().split(',').first);
@@ -161,9 +196,9 @@ class _State extends State<MarketplaceDeliveryAcceptScreen> {
 
   void _err(String msg) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: Colors.red),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
   }
 
   @override
@@ -173,14 +208,17 @@ class _State extends State<MarketplaceDeliveryAcceptScreen> {
       appBar: AppBar(
         backgroundColor: _bg,
         elevation: 0,
-        title: const Text('Nueva entrega', style: TextStyle(color: Colors.white)),
+        title: Text(
+          'marketplace_delivery.title'.tr(),
+          style: const TextStyle(color: Colors.white),
+        ),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: _yellow))
           : _error != null
-              ? _renderError()
-              : _renderContent(),
+          ? _renderError()
+          : _renderContent(),
     );
   }
 
@@ -192,10 +230,16 @@ class _State extends State<MarketplaceDeliveryAcceptScreen> {
         children: [
           const Icon(Icons.error_outline, color: Colors.redAccent, size: 64),
           const SizedBox(height: 16),
-          Text(_error ?? '', style: const TextStyle(color: Colors.white, fontSize: 16),
-            textAlign: TextAlign.center),
+          Text(
+            _error ?? '',
+            style: const TextStyle(color: Colors.white, fontSize: 16),
+            textAlign: TextAlign.center,
+          ),
           const SizedBox(height: 16),
-          ElevatedButton(onPressed: () => Navigator.pop(context), child: const Text('Cerrar')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('close'.tr()),
+          ),
         ],
       ),
     ),
@@ -210,6 +254,11 @@ class _State extends State<MarketplaceDeliveryAcceptScreen> {
     final driverEarn = (delivery['driver_earnings'] as num?)?.toDouble() ?? 0;
     final deliveryFee = (delivery['estimated_price'] as num?)?.toDouble() ?? 0;
     final mins = _elapsed.inMinutes;
+    final countryCode =
+        delivery['country_code']?.toString().toUpperCase() == 'MX' ||
+            order?['country_code']?.toString().toUpperCase() == 'MX'
+        ? 'MX'
+        : context.read<DriverProvider>().driver?.countryCode ?? 'US';
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -222,18 +271,30 @@ class _State extends State<MarketplaceDeliveryAcceptScreen> {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: _green, width: 1.5),
             ),
-            child: const Row(
+            child: Row(
               children: [
-                Icon(Icons.add_road, color: _green, size: 24),
-                SizedBox(width: 10),
+                const Icon(Icons.add_road, color: _green, size: 24),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('OFERTA EXTRA EN TU RUTA',
-                        style: TextStyle(color: _green, fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1)),
-                      Text('Recoge este pedido también — sin desviarte mucho',
-                        style: TextStyle(color: Colors.white70, fontSize: 12)),
+                      Text(
+                        'marketplace_delivery.stacked_title'.tr(),
+                        style: const TextStyle(
+                          color: _green,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 13,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                      Text(
+                        'marketplace_delivery.stacked_desc'.tr(),
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -254,16 +315,31 @@ class _State extends State<MarketplaceDeliveryAcceptScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Tu pago por esta entrega',
-                style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 4),
-              Text('\$${driverEarn.toStringAsFixed(0)}',
+              Text(
+                'marketplace_delivery.your_pay'.tr(),
                 style: const TextStyle(
-                  color: Colors.black, fontSize: 56, fontWeight: FontWeight.w900,
+                  color: Colors.black87,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                formatMoney(driverEarn, country: countryCode),
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontSize: 56,
+                  fontWeight: FontWeight.w900,
                   height: 1.0,
-                )),
-              Text('de \$${deliveryFee.toStringAsFixed(0)} delivery total',
-                style: const TextStyle(color: Colors.black54, fontSize: 12)),
+                ),
+              ),
+              Text(
+                'marketplace_delivery.of_total'.tr(
+                  namedArgs: {
+                    'amount': formatMoney(deliveryFee, country: countryCode),
+                  },
+                ),
+                style: const TextStyle(color: Colors.black54, fontSize: 12),
+              ),
             ],
           ),
         ),
@@ -275,8 +351,10 @@ class _State extends State<MarketplaceDeliveryAcceptScreen> {
         _sectionCard(
           icon: Icons.store,
           iconColor: Colors.orange,
-          title: 'RECOGER EN',
-          name: vendor?['business_name']?.toString() ?? 'Tienda',
+          title: 'marketplace_delivery.pickup_at'.tr(),
+          name:
+              vendor?['business_name']?.toString() ??
+              'marketplace_delivery.store'.tr(),
           address: delivery['pickup_address']?.toString() ?? '',
         ),
         const SizedBox(height: 12),
@@ -284,11 +362,14 @@ class _State extends State<MarketplaceDeliveryAcceptScreen> {
         _sectionCard(
           icon: Icons.location_on,
           iconColor: _green,
-          title: 'ENTREGAR EN',
-          name: order?['buyer_name']?.toString() ?? 'Cliente',
+          title: 'marketplace_delivery.deliver_at'.tr(),
+          name:
+              order?['buyer_name']?.toString() ??
+              'marketplace_delivery.customer'.tr(),
           address: delivery['destination_address']?.toString() ?? '',
           subtitle: (order?['delivery_notes']?.toString().isNotEmpty ?? false)
-              ? '"${order!['delivery_notes']}"' : null,
+              ? '"${order!['delivery_notes']}"'
+              : null,
         ),
         const SizedBox(height: 12),
         // Items
@@ -303,8 +384,15 @@ class _State extends State<MarketplaceDeliveryAcceptScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('PAQUETE',
-                  style: TextStyle(color: _muted, fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: 1.5)),
+                Text(
+                  'marketplace_delivery.package'.tr(),
+                  style: const TextStyle(
+                    color: _muted,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.5,
+                  ),
+                ),
                 const SizedBox(height: 8),
                 ...items.map((i) {
                   final m = i as Map<String, dynamic>;
@@ -312,10 +400,19 @@ class _State extends State<MarketplaceDeliveryAcceptScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 4),
                     child: Row(
                       children: [
-                        Text('${m['quantity']}×  ',
-                          style: const TextStyle(color: _yellow, fontWeight: FontWeight.w800)),
-                        Expanded(child: Text(m['product_name_snapshot']?.toString() ?? '',
-                          style: const TextStyle(color: Colors.white))),
+                        Text(
+                          '${m['quantity']}×  ',
+                          style: const TextStyle(
+                            color: _yellow,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        Expanded(
+                          child: Text(
+                            m['product_name_snapshot']?.toString() ?? '',
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                        ),
                       ],
                     ),
                   );
@@ -327,12 +424,23 @@ class _State extends State<MarketplaceDeliveryAcceptScreen> {
         // Meta info
         Row(
           children: [
-            Expanded(child: _metaChip(Icons.timer, '$mins min en cola')),
+            Expanded(
+              child: _metaChip(
+                Icons.timer,
+                'marketplace_delivery.minutes_waiting'.tr(
+                  namedArgs: {'minutes': '$mins'},
+                ),
+              ),
+            ),
             const SizedBox(width: 8),
-            Expanded(child: _metaChip(
-              order?['payment_method'] == 'cash' ? Icons.payments : Icons.credit_card,
-              order?['payment_method']?.toString().toUpperCase() ?? '',
-            )),
+            Expanded(
+              child: _metaChip(
+                order?['payment_method'] == 'cash'
+                    ? Icons.payments
+                    : Icons.credit_card,
+                order?['payment_method']?.toString().toUpperCase() ?? '',
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 24),
@@ -343,22 +451,39 @@ class _State extends State<MarketplaceDeliveryAcceptScreen> {
             onPressed: _busy ? null : _accept,
             icon: _busy
                 ? const SizedBox(
-                    width: 24, height: 24,
-                    child: CircularProgressIndicator(color: Colors.black, strokeWidth: 3),
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      color: Colors.black,
+                      strokeWidth: 3,
+                    ),
                   )
                 : const Icon(Icons.check_circle, color: Colors.black, size: 28),
-            label: Text(_busy ? 'Aceptando...' : 'ACEPTAR ENTREGA',
-              style: const TextStyle(color: Colors.black, fontSize: 20, fontWeight: FontWeight.w900)),
+            label: Text(
+              _busy
+                  ? 'marketplace_delivery.accepting'.tr()
+                  : 'marketplace_delivery.accept'.tr(),
+              style: const TextStyle(
+                color: Colors.black,
+                fontSize: 20,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
             style: ElevatedButton.styleFrom(
               backgroundColor: _yellow,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
             ),
           ),
         ),
         const SizedBox(height: 12),
         TextButton(
           onPressed: _busy ? null : _reject,
-          child: const Text('Rechazar', style: TextStyle(color: _muted, fontSize: 16)),
+          child: Text(
+            'marketplace_delivery.reject'.tr(),
+            style: const TextStyle(color: _muted, fontSize: 16),
+          ),
         ),
         const SizedBox(height: 24),
       ],
@@ -384,7 +509,13 @@ class _State extends State<MarketplaceDeliveryAcceptScreen> {
               Icon(Icons.timer, color: color, size: 22),
               const SizedBox(width: 8),
               Text(
-                isUrgent ? 'EXPIRA EN ${_secsLeft}s' : 'Responde en $_secsLeft s',
+                isUrgent
+                    ? 'marketplace_delivery.expires_in'.tr(
+                        namedArgs: {'seconds': '$_secsLeft'},
+                      )
+                    : 'marketplace_delivery.respond_in'.tr(
+                        namedArgs: {'seconds': '$_secsLeft'},
+                      ),
                 style: TextStyle(
                   color: color,
                   fontWeight: FontWeight.w900,
@@ -433,7 +564,8 @@ class _State extends State<MarketplaceDeliveryAcceptScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 40, height: 40,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
               color: iconColor.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
@@ -445,18 +577,38 @@ class _State extends State<MarketplaceDeliveryAcceptScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title,
+                Text(
+                  title,
                   style: TextStyle(
-                    color: iconColor, fontSize: 11,
-                    fontWeight: FontWeight.w800, letterSpacing: 1.5,
-                  )),
+                    color: iconColor,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.5,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text(name,
-                  style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
-                Text(address, style: const TextStyle(color: _muted, fontSize: 13)),
+                Text(
+                  name,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                Text(
+                  address,
+                  style: const TextStyle(color: _muted, fontSize: 13),
+                ),
                 if (subtitle != null) ...[
                   const SizedBox(height: 6),
-                  Text(subtitle, style: const TextStyle(color: Colors.white70, fontSize: 12, fontStyle: FontStyle.italic)),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
                 ],
               ],
             ),
@@ -479,7 +631,10 @@ class _State extends State<MarketplaceDeliveryAcceptScreen> {
         children: [
           Icon(icon, color: _muted, size: 16),
           const SizedBox(width: 6),
-          Text(text, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+          Text(
+            text,
+            style: const TextStyle(color: Colors.white70, fontSize: 13),
+          ),
         ],
       ),
     );

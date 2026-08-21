@@ -74,9 +74,8 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
 
     final metadata = user.userMetadata;
     if (metadata != null) {
-      final fullName = metadata['full_name'] as String? ??
-          metadata['name'] as String? ??
-          '';
+      final fullName =
+          metadata['full_name'] as String? ?? metadata['name'] as String? ?? '';
       final parts = fullName.split(' ');
       if (parts.isNotEmpty && _firstNameController.text.isEmpty) {
         _firstNameController.text = parts.first;
@@ -224,21 +223,22 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
         elevation: 0,
         leading: _currentStep > 0
             ? IconButton(
-                icon: const Icon(Icons.arrow_back_rounded,
-                    color: AppColors.textPrimary),
+                icon: const Icon(
+                  Icons.arrow_back_rounded,
+                  color: AppColors.textPrimary,
+                ),
                 onPressed: _previousStep,
               )
             : null,
         actions: const [],
         title: Text(
-          'onb_step_x_of_y'.tr(namedArgs: {
-            'current': '${_currentStep + 1}',
-            'total': '$_totalSteps',
-          }),
-          style: const TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 14,
+          'onb_step_x_of_y'.tr(
+            namedArgs: {
+              'current': '${_currentStep + 1}',
+              'total': '$_totalSteps',
+            },
           ),
+          style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
         ),
         centerTitle: true,
       ),
@@ -252,7 +252,9 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 16),
+                      horizontal: 20,
+                      vertical: 16,
+                    ),
                     child: _currentStep == 0
                         ? _buildRoleSelectionStep()
                         : _buildBasicInfoStep(),
@@ -275,8 +277,7 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
           final isActive = index <= _currentStep;
           return Expanded(
             child: Container(
-              margin:
-                  EdgeInsets.only(right: index < _totalSteps - 1 ? 6 : 0),
+              margin: EdgeInsets.only(right: index < _totalSteps - 1 ? 6 : 0),
               height: 3,
               decoration: BoxDecoration(
                 color: isActive ? AppColors.success : AppColors.border,
@@ -309,7 +310,11 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
             ),
             child: Row(
               children: [
-                Icon(Icons.email_outlined, color: AppColors.textTertiary, size: 18),
+                Icon(
+                  Icons.email_outlined,
+                  color: AppColors.textTertiary,
+                  size: 18,
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
@@ -334,10 +339,7 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
                   ),
                   child: Text(
                     'Not you?',
-                    style: TextStyle(
-                      color: AppColors.error,
-                      fontSize: 11,
-                    ),
+                    style: TextStyle(color: AppColors.error, fontSize: 11),
                   ),
                 ),
               ],
@@ -354,10 +356,7 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
         const SizedBox(height: 4),
         Text(
           'onb_select_role_desc'.tr(),
-          style: TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 12,
-          ),
+          style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
         ),
         const SizedBox(height: 24),
         _buildRoleCard(
@@ -385,9 +384,17 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
         const SizedBox(height: 12),
         Row(
           children: [
-            _buildCountryChip('US', '\u{1F1FA}\u{1F1F8}', 'onb_country_us'.tr()),
+            _buildCountryChip(
+              'US',
+              '\u{1F1FA}\u{1F1F8}',
+              'onb_country_us'.tr(),
+            ),
             const SizedBox(width: 12),
-            _buildCountryChip('MX', '\u{1F1F2}\u{1F1FD}', 'onb_country_mx'.tr()),
+            _buildCountryChip(
+              'MX',
+              '\u{1F1F2}\u{1F1FD}',
+              'onb_country_mx'.tr(),
+            ),
           ],
         ),
       ],
@@ -401,12 +408,6 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
         onTap: () {
           HapticService.buttonPress();
           setState(() => _countryCode = code);
-          // Switch app language based on country
-          if (code == 'MX') {
-            context.setLocale(const Locale('es', 'MX'));
-          } else {
-            context.setLocale(const Locale('en'));
-          }
         },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
@@ -432,8 +433,7 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
                   color: isSelected
                       ? AppColors.primary
                       : AppColors.textSecondary,
-                  fontWeight:
-                      isSelected ? FontWeight.w600 : FontWeight.normal,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                   fontSize: 14,
                 ),
               ),
@@ -491,8 +491,7 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
               ),
               child: Icon(
                 icon,
-                color:
-                    isSelected ? AppColors.primary : AppColors.textTertiary,
+                color: isSelected ? AppColors.primary : AppColors.textTertiary,
                 size: 28,
               ),
             ),
@@ -530,8 +529,9 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
                 shape: BoxShape.circle,
                 color: isSelected ? AppColors.primary : Colors.transparent,
                 border: Border.all(
-                  color:
-                      isSelected ? AppColors.primary : AppColors.textTertiary,
+                  color: isSelected
+                      ? AppColors.primary
+                      : AppColors.textTertiary,
                   width: 2,
                 ),
               ),
@@ -562,10 +562,7 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
         const SizedBox(height: 4),
         Text(
           'onb_quick_setup_desc'.tr(),
-          style: TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 12,
-          ),
+          style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
         ),
         const SizedBox(height: 20),
         _buildTextField(
@@ -593,14 +590,11 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
           decoration: BoxDecoration(
             color: AppColors.primary.withValues(alpha: 0.06),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: AppColors.primary.withValues(alpha: 0.2),
-            ),
+            border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
           ),
           child: Row(
             children: [
-              Icon(Icons.info_outline,
-                  color: AppColors.primary, size: 20),
+              Icon(Icons.info_outline, color: AppColors.primary, size: 20),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
@@ -634,8 +628,10 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
         labelStyle: TextStyle(color: AppColors.textSecondary, fontSize: 13),
         hintStyle: TextStyle(color: AppColors.textTertiary, fontSize: 13),
         prefixIcon: Icon(icon, color: AppColors.textTertiary, size: 20),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 12,
+        ),
         filled: true,
         fillColor: AppColors.card,
         border: OutlineInputBorder(
@@ -661,9 +657,7 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        border: Border(
-          top: BorderSide(color: AppColors.border),
-        ),
+        border: Border(top: BorderSide(color: AppColors.border)),
       ),
       child: SafeArea(
         top: false,

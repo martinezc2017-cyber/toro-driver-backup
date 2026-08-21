@@ -18,7 +18,6 @@ import 'tourism_driver_home_screen.dart';
 /// - Counter-offers from organizers
 /// - History of accepted, rejected, and selected bids
 ///
-/// All text in Spanish for Mexico market.
 class DriverBidScreen extends StatefulWidget {
   const DriverBidScreen({super.key});
 
@@ -34,7 +33,8 @@ class _DriverBidScreenState extends State<DriverBidScreen>
   bool _isLoading = true;
   String? _error;
   RealtimeChannel? _bidsChannel;
-  double _minPricePerKm = 10.0;
+  double _minPricePerDistance = 0;
+  String _countryCode = 'US';
 
   late TabController _tabController;
 
@@ -58,20 +58,56 @@ class _DriverBidScreenState extends State<DriverBidScreen>
 
   Future<void> _loadMinPrice() async {
     try {
-      // Canonical: read ride_per_km from pricing_config (MX/DEFAULT row).
-      final response = await Supabase.instance.client
-          .from('pricing_config')
-          .select('ride_per_km')
-          .eq('country_code', 'MX')
-          .eq('state_code', 'DEFAULT')
-          .maybeSingle();
-      if (response != null && response['ride_per_km'] != null) {
-        setState(() {
-          _minPricePerKm = (response['ride_per_km'] as num).toDouble();
-        });
+      final driver = Provider.of<DriverProvider>(context, listen: false).driver;
+      final country = (driver?.countryCode ?? userCountry()).toUpperCase();
+      final state = driver?.stateCode?.trim().toUpperCase();
+
+      Future<Map<String, dynamic>?> loadRow(String stateCode) async {
+        final row = await Supabase.instance.client
+            .from('pricing_config')
+            .select('ride_per_km')
+            .eq('country_code', country)
+            .eq('state_code', stateCode)
+            .eq('is_active', true)
+            .maybeSingle();
+        return row;
       }
-    } catch (_) {}
+
+      Map<String, dynamic>? response;
+      if (state != null && state.isNotEmpty && state != 'DEFAULT') {
+        response = await loadRow(state);
+      }
+      response ??= await loadRow('DEFAULT');
+
+      if (mounted) {
+        setState(() => _countryCode = country);
+      }
+      if (response != null && response['ride_per_km'] != null) {
+        final canonicalRate = (response['ride_per_km'] as num).toDouble();
+        if (mounted) {
+          setState(() {
+            _minPricePerDistance = pricePerKilometerToDisplay(
+              canonicalRate,
+              country: country,
+            );
+          });
+        }
+      }
+    } catch (error) {
+      debugPrint('DriverBidScreen pricing error: $error');
+    }
   }
+
+  String get _priceUnit =>
+      '${currencyCode(country: _countryCode)}/${distanceUnit(country: _countryCode)}';
+
+  String _money(num? amount) => formatMoney(amount, country: _countryCode);
+
+  String _canonicalRate(num? pricePerKilometer) =>
+      formatPricePerDistance(pricePerKilometer, country: _countryCode);
+
+  double _canonicalPrice(num? displayedPrice) =>
+      displayPriceToPerKilometer(displayedPrice, country: _countryCode);
 
   Future<void> _loadBids() async {
     setState(() {
@@ -80,8 +116,10 @@ class _DriverBidScreenState extends State<DriverBidScreen>
     });
 
     try {
-      final driverProvider =
-          Provider.of<DriverProvider>(context, listen: false);
+      final driverProvider = Provider.of<DriverProvider>(
+        context,
+        listen: false,
+      );
       final driver = driverProvider.driver;
 
       if (driver == null) {
@@ -168,8 +206,7 @@ class _DriverBidScreenState extends State<DriverBidScreen>
     if (bidId == null) return;
 
     final eventName = bid['event_name'] ?? 'Evento';
-    final distanceKm =
-        (bid['total_distance_km'] as num?)?.toDouble();
+    final distanceKm = (bid['total_distance_km'] as num?)?.toDouble();
     final passengers = bid['max_passengers'] as int?;
 
     final priceController = TextEditingController();
@@ -181,11 +218,15 @@ class _DriverBidScreenState extends State<DriverBidScreen>
       isScrollControlled: true,
       builder: (context) => StatefulBuilder(
         builder: (ctx, setModalState) {
-          final price = proposedPrice ?? _minPricePerKm;
-          final estimatedTotal =
-              distanceKm != null ? distanceKm * price : null;
-          final toroFee =
-              estimatedTotal != null ? estimatedTotal * 0.18 : null;
+          final price = proposedPrice ?? _minPricePerDistance;
+          final displayDistance = distanceFromKilometers(
+            distanceKm,
+            country: _countryCode,
+          );
+          final estimatedTotal = distanceKm != null
+              ? displayDistance * price
+              : null;
+          final toroFee = estimatedTotal != null ? estimatedTotal * 0.18 : null;
           final driverEarnings = estimatedTotal != null && toroFee != null
               ? estimatedTotal - toroFee
               : null;
@@ -196,8 +237,7 @@ class _DriverBidScreenState extends State<DriverBidScreen>
             ),
             decoration: const BoxDecoration(
               color: AppColors.surface,
-              borderRadius:
-                  BorderRadius.vertical(top: Radius.circular(24)),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
             ),
             child: SingleChildScrollView(
               child: Column(
@@ -250,7 +290,7 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Text(
-                      'Propone tu precio por km para "$eventName"',
+                      'Propone tu precio por ${distanceUnit(country: _countryCode)} para "$eventName"',
                       style: const TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 13,
@@ -264,7 +304,8 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                     child: TextField(
                       controller: priceController,
                       keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true),
+                        decimal: true,
+                      ),
                       style: const TextStyle(
                         color: AppColors.textPrimary,
                         fontSize: 24,
@@ -272,10 +313,11 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                       ),
                       textAlign: TextAlign.center,
                       decoration: InputDecoration(
-                        hintText: _minPricePerKm.toStringAsFixed(0),
+                        hintText: _minPricePerDistance.toStringAsFixed(
+                          currencyDecimals(_countryCode),
+                        ),
                         hintStyle: TextStyle(
-                          color: AppColors.textTertiary
-                              .withValues(alpha: 0.5),
+                          color: AppColors.textTertiary.withValues(alpha: 0.5),
                           fontSize: 24,
                           fontWeight: FontWeight.w700,
                         ),
@@ -290,9 +332,10 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                             ),
                           ),
                         ),
-                        prefixIconConstraints:
-                            const BoxConstraints(minWidth: 40),
-                        suffixText: 'MXN/km',
+                        prefixIconConstraints: const BoxConstraints(
+                          minWidth: 40,
+                        ),
+                        suffixText: _priceUnit,
                         suffixStyle: const TextStyle(
                           color: AppColors.textTertiary,
                           fontSize: 14,
@@ -301,18 +344,18 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                         fillColor: AppColors.card,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
-                          borderSide:
-                              const BorderSide(color: AppColors.border),
+                          borderSide: const BorderSide(color: AppColors.border),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
-                          borderSide:
-                              const BorderSide(color: AppColors.border),
+                          borderSide: const BorderSide(color: AppColors.border),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
                           borderSide: const BorderSide(
-                              color: AppColors.gold, width: 1.5),
+                            color: AppColors.gold,
+                            width: 1.5,
+                          ),
                         ),
                       ),
                       onChanged: (val) {
@@ -326,7 +369,7 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Text(
-                      'Precio minimo: \$${_minPricePerKm.toStringAsFixed(0)} MXN/km',
+                      'Precio minimo: ${_money(_minPricePerDistance)} $_priceUnit',
                       style: const TextStyle(
                         color: AppColors.textTertiary,
                         fontSize: 12,
@@ -343,15 +386,18 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                         color: AppColors.card,
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
-                          color:
-                              AppColors.success.withValues(alpha: 0.2),
+                          color: AppColors.success.withValues(alpha: 0.2),
                         ),
                       ),
                       child: Column(
                         children: [
                           _buildEstimateRow(
                             'Distancia',
-                            '${distanceKm.toStringAsFixed(0)} km',
+                            formatDistance(
+                              distanceKm,
+                              country: _countryCode,
+                              decimals: 0,
+                            ),
                           ),
                           if (passengers != null)
                             _buildEstimateRow(
@@ -359,26 +405,24 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                               '$passengers personas',
                             ),
                           _buildEstimateRow(
-                            'Tu precio/km',
-                            '\$${price.toStringAsFixed(0)} MXN',
+                            'Tu precio/${distanceUnit(country: _countryCode)}',
+                            '${_money(price)} ${currencyCode(country: _countryCode)}',
                           ),
                           if (estimatedTotal != null) ...[
-                            const Divider(
-                                color: AppColors.border, height: 16),
+                            const Divider(color: AppColors.border, height: 16),
                             _buildEstimateRow(
                               'Total estimado',
-                              '\$${estimatedTotal.toStringAsFixed(0)} MXN',
+                              '${_money(estimatedTotal)} ${currencyCode(country: _countryCode)}',
                             ),
                             _buildEstimateRow(
                               'Comision TORO (18%)',
-                              '-\$${toroFee!.toStringAsFixed(0)} MXN',
+                              '-${_money(toroFee)} ${currencyCode(country: _countryCode)}',
                               valueColor: AppColors.error,
                             ),
-                            const Divider(
-                                color: AppColors.border, height: 16),
+                            const Divider(color: AppColors.border, height: 16),
                             _buildEstimateRow(
                               'Tu ganancia estimada',
-                              '\$${driverEarnings!.toStringAsFixed(0)} MXN',
+                              '${_money(driverEarnings)} ${currencyCode(country: _countryCode)}',
                               labelStyle: const TextStyle(
                                 color: AppColors.success,
                                 fontSize: 15,
@@ -403,10 +447,8 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                             onPressed: () => Navigator.pop(context, false),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: AppColors.textSecondary,
-                              side: const BorderSide(
-                                  color: AppColors.border),
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 14),
+                              side: const BorderSide(color: AppColors.border),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(14),
                               ),
@@ -418,16 +460,13 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                         Expanded(
                           flex: 2,
                           child: ElevatedButton.icon(
-                            onPressed: () =>
-                                Navigator.pop(context, true),
-                            icon: const Icon(Icons.gavel_rounded,
-                                size: 18),
+                            onPressed: () => Navigator.pop(context, true),
+                            icon: const Icon(Icons.gavel_rounded, size: 18),
                             label: const Text('Enviar Puja'),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.gold,
                               foregroundColor: Colors.black,
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 14),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(14),
                               ),
@@ -438,9 +477,7 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                       ],
                     ),
                   ),
-                  SizedBox(
-                      height:
-                          MediaQuery.of(context).padding.bottom + 8),
+                  SizedBox(height: MediaQuery.of(context).padding.bottom + 8),
                 ],
               ),
             ),
@@ -451,11 +488,16 @@ class _DriverBidScreenState extends State<DriverBidScreen>
 
     if (confirmed != true) return;
 
-    final finalPrice = proposedPrice ?? _minPricePerKm;
+    final finalPrice = proposedPrice ?? _minPricePerDistance;
 
-    if (finalPrice < _minPricePerKm) {
+    if (_minPricePerDistance <= 0) {
+      _showSnack('No hay tarifa activa para tu region', AppColors.error);
+      return;
+    }
+
+    if (finalPrice < _minPricePerDistance) {
       _showSnack(
-        'El precio minimo es \$${_minPricePerKm.toStringAsFixed(0)} MXN/km',
+        'El precio minimo es ${_money(_minPricePerDistance)} $_priceUnit',
         AppColors.error,
       );
       return;
@@ -471,11 +513,11 @@ class _DriverBidScreenState extends State<DriverBidScreen>
         eventId,
         true,
         bidId: bidId,
-        pricePerKm: finalPrice,
+        pricePerKm: _canonicalPrice(finalPrice),
       );
 
       _showSnack(
-        'Puja enviada: \$${finalPrice.toStringAsFixed(0)} MXN/km',
+        'Puja enviada: ${_money(finalPrice)} $_priceUnit',
         AppColors.success,
       );
 
@@ -539,8 +581,8 @@ class _DriverBidScreenState extends State<DriverBidScreen>
     final bidId = bid['id'] as String?;
     if (bidId == null) return;
 
-    final organizerPrice =
-        (bid['organizer_proposed_price'] as num?)?.toDouble();
+    final organizerPrice = (bid['organizer_proposed_price'] as num?)
+        ?.toDouble();
 
     final confirmed = await showDialog<bool>(
       context: context,
@@ -555,9 +597,11 @@ class _DriverBidScreenState extends State<DriverBidScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Precio propuesto: ${organizerPrice != null ? formatMoney(organizerPrice, country: 'MX') : '\$?'} MXN/km',
+              'Precio propuesto: ${organizerPrice != null ? _canonicalRate(organizerPrice) : '\$?'}',
               style: const TextStyle(
-                  color: AppColors.textSecondary, fontSize: 14),
+                color: AppColors.textSecondary,
+                fontSize: 14,
+              ),
             ),
             const SizedBox(height: 12),
             Container(
@@ -571,8 +615,7 @@ class _DriverBidScreenState extends State<DriverBidScreen>
               ),
               child: const Row(
                 children: [
-                  Icon(Icons.info_outline,
-                      size: 16, color: AppColors.success),
+                  Icon(Icons.info_outline, size: 16, color: AppColors.success),
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -595,8 +638,7 @@ class _DriverBidScreenState extends State<DriverBidScreen>
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style:
-                TextButton.styleFrom(foregroundColor: AppColors.success),
+            style: TextButton.styleFrom(foregroundColor: AppColors.success),
             child: const Text(
               'Aceptar',
               style: TextStyle(fontWeight: FontWeight.w600),
@@ -615,7 +657,7 @@ class _DriverBidScreenState extends State<DriverBidScreen>
 
       _showSnack(
         organizerPrice != null
-            ? 'Contra-oferta aceptada: \$${organizerPrice.toStringAsFixed(0)} MXN/km'
+            ? 'Contra-oferta aceptada: ${_canonicalRate(organizerPrice)}'
             : 'Contra-oferta aceptada',
         AppColors.success,
       );
@@ -625,13 +667,12 @@ class _DriverBidScreenState extends State<DriverBidScreen>
     }
   }
 
-  Future<void> _showDriverCounterOfferDialog(
-      Map<String, dynamic> bid) async {
+  Future<void> _showDriverCounterOfferDialog(Map<String, dynamic> bid) async {
     final bidId = bid['id'] as String?;
     if (bidId == null) return;
 
-    final organizerPrice =
-        (bid['organizer_proposed_price'] as num?)?.toDouble();
+    final organizerPrice = (bid['organizer_proposed_price'] as num?)
+        ?.toDouble();
     final round = (bid['negotiation_round'] as int?) ?? 0;
     final priceController = TextEditingController();
     double? proposedPrice;
@@ -648,8 +689,7 @@ class _DriverBidScreenState extends State<DriverBidScreen>
             ),
             decoration: const BoxDecoration(
               color: AppColors.surface,
-              borderRadius:
-                  BorderRadius.vertical(top: Radius.circular(24)),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
             ),
             child: SingleChildScrollView(
               child: Column(
@@ -675,8 +715,7 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                         Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: AppColors.warning
-                                .withValues(alpha: 0.15),
+                            color: AppColors.warning.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: const Icon(
@@ -688,8 +727,7 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                         const SizedBox(width: 12),
                         Expanded(
                           child: Column(
-                            crossAxisAlignment:
-                                CrossAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const Text(
                                 'Tu Contra-oferta',
@@ -714,22 +752,19 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                   ),
                   if (organizerPrice != null)
                     Padding(
-                      padding:
-                          const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                      padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
                       child: Container(
                         width: double.infinity,
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: AppColors.warning
-                              .withValues(alpha: 0.08),
+                          color: AppColors.warning.withValues(alpha: 0.08),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: AppColors.warning
-                                .withValues(alpha: 0.2),
+                            color: AppColors.warning.withValues(alpha: 0.2),
                           ),
                         ),
                         child: Text(
-                          'Precio propuesto: \$${organizerPrice.toStringAsFixed(0)} MXN/km',
+                          'Precio propuesto: ${_canonicalRate(organizerPrice)}',
                           style: const TextStyle(
                             color: AppColors.warning,
                             fontSize: 14,
@@ -744,9 +779,9 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: TextField(
                       controller: priceController,
-                      keyboardType:
-                          const TextInputType.numberWithOptions(
-                              decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       style: const TextStyle(
                         color: AppColors.textPrimary,
                         fontSize: 24,
@@ -755,11 +790,19 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                       textAlign: TextAlign.center,
                       decoration: InputDecoration(
                         hintText: organizerPrice != null
-                            ? (organizerPrice + 2).toStringAsFixed(0)
-                            : _minPricePerKm.toStringAsFixed(0),
+                            ? (pricePerKilometerToDisplay(
+                                        organizerPrice,
+                                        country: _countryCode,
+                                      ) +
+                                      2)
+                                  .toStringAsFixed(
+                                    currencyDecimals(_countryCode),
+                                  )
+                            : _minPricePerDistance.toStringAsFixed(
+                                currencyDecimals(_countryCode),
+                              ),
                         hintStyle: TextStyle(
-                          color: AppColors.textTertiary
-                              .withValues(alpha: 0.5),
+                          color: AppColors.textTertiary.withValues(alpha: 0.5),
                           fontSize: 24,
                           fontWeight: FontWeight.w700,
                         ),
@@ -774,9 +817,10 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                             ),
                           ),
                         ),
-                        prefixIconConstraints:
-                            const BoxConstraints(minWidth: 40),
-                        suffixText: 'MXN/km',
+                        prefixIconConstraints: const BoxConstraints(
+                          minWidth: 40,
+                        ),
+                        suffixText: _priceUnit,
                         suffixStyle: const TextStyle(
                           color: AppColors.textTertiary,
                           fontSize: 14,
@@ -785,18 +829,18 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                         fillColor: AppColors.card,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
-                          borderSide: const BorderSide(
-                              color: AppColors.border),
+                          borderSide: const BorderSide(color: AppColors.border),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
-                          borderSide: const BorderSide(
-                              color: AppColors.border),
+                          borderSide: const BorderSide(color: AppColors.border),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
                           borderSide: const BorderSide(
-                              color: AppColors.warning, width: 1.5),
+                            color: AppColors.warning,
+                            width: 1.5,
+                          ),
                         ),
                       ),
                       onChanged: (val) {
@@ -810,7 +854,7 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Text(
-                      'Precio minimo: \$${_minPricePerKm.toStringAsFixed(0)} MXN/km',
+                      'Precio minimo: ${_money(_minPricePerDistance)} $_priceUnit',
                       style: const TextStyle(
                         color: AppColors.textTertiary,
                         fontSize: 12,
@@ -824,18 +868,13 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                       children: [
                         Expanded(
                           child: OutlinedButton(
-                            onPressed: () =>
-                                Navigator.pop(context, false),
+                            onPressed: () => Navigator.pop(context, false),
                             style: OutlinedButton.styleFrom(
-                              foregroundColor:
-                                  AppColors.textSecondary,
-                              side: const BorderSide(
-                                  color: AppColors.border),
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 14),
+                              foregroundColor: AppColors.textSecondary,
+                              side: const BorderSide(color: AppColors.border),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
                               shape: RoundedRectangleBorder(
-                                borderRadius:
-                                    BorderRadius.circular(14),
+                                borderRadius: BorderRadius.circular(14),
                               ),
                             ),
                             child: const Text('Cancelar'),
@@ -845,21 +884,18 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                         Expanded(
                           flex: 2,
                           child: ElevatedButton.icon(
-                            onPressed: () =>
-                                Navigator.pop(context, true),
+                            onPressed: () => Navigator.pop(context, true),
                             icon: const Icon(
-                                Icons.swap_horiz_rounded,
-                                size: 18),
-                            label:
-                                const Text('Enviar Contra-oferta'),
+                              Icons.swap_horiz_rounded,
+                              size: 18,
+                            ),
+                            label: const Text('Enviar Contra-oferta'),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.warning,
                               foregroundColor: Colors.black,
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 14),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
                               shape: RoundedRectangleBorder(
-                                borderRadius:
-                                    BorderRadius.circular(14),
+                                borderRadius: BorderRadius.circular(14),
                               ),
                               elevation: 0,
                             ),
@@ -868,9 +904,7 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                       ],
                     ),
                   ),
-                  SizedBox(
-                      height:
-                          MediaQuery.of(context).padding.bottom + 8),
+                  SizedBox(height: MediaQuery.of(context).padding.bottom + 8),
                 ],
               ),
             ),
@@ -881,11 +915,16 @@ class _DriverBidScreenState extends State<DriverBidScreen>
 
     if (confirmed != true) return;
 
-    final finalPrice = proposedPrice ?? _minPricePerKm;
+    final finalPrice = proposedPrice ?? _minPricePerDistance;
 
-    if (finalPrice < _minPricePerKm) {
+    if (_minPricePerDistance <= 0) {
+      _showSnack('No hay tarifa activa para tu region', AppColors.error);
+      return;
+    }
+
+    if (finalPrice < _minPricePerDistance) {
       _showSnack(
-        'El precio minimo es \$${_minPricePerKm.toStringAsFixed(0)} MXN/km',
+        'El precio minimo es ${_money(_minPricePerDistance)} $_priceUnit',
         AppColors.error,
       );
       return;
@@ -896,11 +935,11 @@ class _DriverBidScreenState extends State<DriverBidScreen>
     try {
       await _eventService.sendDriverCounterOffer(
         bidId: bidId,
-        proposedPrice: finalPrice,
+        proposedPrice: _canonicalPrice(finalPrice),
       );
 
       _showSnack(
-        'Contra-oferta enviada: \$${finalPrice.toStringAsFixed(0)} MXN/km',
+        'Contra-oferta enviada: ${_money(finalPrice)} $_priceUnit',
         AppColors.warning,
       );
       _loadBids();
@@ -938,11 +977,9 @@ class _DriverBidScreenState extends State<DriverBidScreen>
         children: [
           Text(
             label,
-            style: labelStyle ??
-                const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 13,
-                ),
+            style:
+                labelStyle ??
+                const TextStyle(color: AppColors.textSecondary, fontSize: 13),
           ),
           Text(
             value,
@@ -1101,8 +1138,10 @@ class _DriverBidScreenState extends State<DriverBidScreen>
           indicatorColor: AppColors.gold,
           labelColor: AppColors.gold,
           unselectedLabelColor: AppColors.textTertiary,
-          labelStyle:
-              const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+          labelStyle: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
           tabs: [
             Tab(
               child: Row(
@@ -1113,7 +1152,9 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                     const SizedBox(width: 6),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 2),
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.error,
                         borderRadius: BorderRadius.circular(10),
@@ -1140,7 +1181,9 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                     const SizedBox(width: 6),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 2),
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.primary,
                         borderRadius: BorderRadius.circular(10),
@@ -1167,15 +1210,15 @@ class _DriverBidScreenState extends State<DriverBidScreen>
               child: CircularProgressIndicator(color: AppColors.gold),
             )
           : _error != null
-              ? _buildErrorState()
-              : TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildBidList(_actionRequired, isActionRequired: true),
-                    _buildBidList(_activeBids),
-                    _buildBidList(_historyBids, isHistory: true),
-                  ],
-                ),
+          ? _buildErrorState()
+          : TabBarView(
+              controller: _tabController,
+              children: [
+                _buildBidList(_actionRequired, isActionRequired: true),
+                _buildBidList(_activeBids),
+                _buildBidList(_historyBids, isHistory: true),
+              ],
+            ),
     );
   }
 
@@ -1186,14 +1229,18 @@ class _DriverBidScreenState extends State<DriverBidScreen>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.error_outline,
-                size: 48,
-                color: AppColors.error.withValues(alpha: 0.7)),
+            Icon(
+              Icons.error_outline,
+              size: 48,
+              color: AppColors.error.withValues(alpha: 0.7),
+            ),
             const SizedBox(height: 16),
             Text(
               _error ?? 'Error desconocido',
               style: const TextStyle(
-                  color: AppColors.textSecondary, fontSize: 14),
+                color: AppColors.textSecondary,
+                fontSize: 14,
+              ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
@@ -1230,8 +1277,8 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                 isHistory
                     ? Icons.history
                     : isActionRequired
-                        ? Icons.notifications_none
-                        : Icons.local_offer_outlined,
+                    ? Icons.notifications_none
+                    : Icons.local_offer_outlined,
                 size: 48,
                 color: AppColors.textTertiary.withValues(alpha: 0.5),
               ),
@@ -1240,10 +1287,12 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                 isHistory
                     ? 'Sin historial de pujas'
                     : isActionRequired
-                        ? 'Sin pujas pendientes'
-                        : 'Sin pujas activas',
+                    ? 'Sin pujas pendientes'
+                    : 'Sin pujas activas',
                 style: const TextStyle(
-                    color: AppColors.textSecondary, fontSize: 14),
+                  color: AppColors.textSecondary,
+                  fontSize: 14,
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
@@ -1252,7 +1301,9 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                     ? 'Cuando te soliciten, aparecera aqui'
                     : 'Tus pujas enviadas y ganadas aparecen aqui',
                 style: const TextStyle(
-                    color: AppColors.textTertiary, fontSize: 12),
+                  color: AppColors.textTertiary,
+                  fontSize: 12,
+                ),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -1288,19 +1339,16 @@ class _DriverBidScreenState extends State<DriverBidScreen>
     final organizerVerified = bid['organizer_verified'] == true;
     final eventDate = bid['event_date'] as String?;
     final startTime = bid['start_time'] as String?;
-    final distanceKm =
-        (bid['total_distance_km'] as num?)?.toDouble();
+    final distanceKm = (bid['total_distance_km'] as num?)?.toDouble();
     final passengers = bid['max_passengers'] as int?;
     final totalSeats = bid['total_seats'] as int?;
     final vehicleName = bid['vehicle_name'] as String?;
-    final pricePerKm =
-        (bid['proposed_price_per_km'] as num?)?.toDouble();
-    final organizerProposedPrice =
-        (bid['organizer_proposed_price'] as num?)?.toDouble();
+    final pricePerKm = (bid['proposed_price_per_km'] as num?)?.toDouble();
+    final organizerProposedPrice = (bid['organizer_proposed_price'] as num?)
+        ?.toDouble();
     final driverStatus = bid['driver_status'] as String? ?? '';
     final organizerStatus = bid['organizer_status'] as String? ?? '';
-    final negotiationRound =
-        (bid['negotiation_round'] as num?)?.toInt() ?? 0;
+    final negotiationRound = (bid['negotiation_round'] as num?)?.toInt() ?? 0;
     final isWinner =
         organizerStatus == 'selected' && bid['is_winning_bid'] == true;
     final isCounterOffer = organizerStatus == 'counter_offered';
@@ -1312,10 +1360,8 @@ class _DriverBidScreenState extends State<DriverBidScreen>
     final itinerary = bid['itinerary'] as List?;
     String routeSummary = '';
     if (itinerary != null && itinerary.isNotEmpty) {
-      final first =
-          (itinerary.first as Map)['name'] as String? ?? '';
-      final last =
-          (itinerary.last as Map)['name'] as String? ?? '';
+      final first = (itinerary.first as Map)['name'] as String? ?? '';
+      final last = (itinerary.last as Map)['name'] as String? ?? '';
       routeSummary = '$first → $last';
     }
 
@@ -1328,8 +1374,8 @@ class _DriverBidScreenState extends State<DriverBidScreen>
           color: isWinner
               ? AppColors.success.withValues(alpha: 0.4)
               : isActionRequired
-                  ? AppColors.gold.withValues(alpha: 0.3)
-                  : AppColors.border,
+              ? AppColors.gold.withValues(alpha: 0.3)
+              : AppColors.border,
           width: isWinner || isActionRequired ? 1.5 : 0.5,
         ),
       ),
@@ -1342,7 +1388,8 @@ class _DriverBidScreenState extends State<DriverBidScreen>
             decoration: BoxDecoration(
               color: statusColor.withValues(alpha: 0.06),
               borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(16)),
+                top: Radius.circular(16),
+              ),
             ),
             child: Row(
               children: [
@@ -1357,10 +1404,10 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                     isWinner
                         ? Icons.emoji_events
                         : isCounterOffer
-                            ? Icons.swap_horiz
-                            : driverStatus == 'pending'
-                                ? Icons.notifications_active
-                                : Icons.gavel,
+                        ? Icons.swap_horiz
+                        : driverStatus == 'pending'
+                        ? Icons.notifications_active
+                        : Icons.gavel,
                     size: 20,
                     color: statusColor,
                   ),
@@ -1392,9 +1439,11 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                           ),
                           if (organizerVerified) ...[
                             const SizedBox(width: 4),
-                            const Icon(Icons.verified,
-                                size: 12,
-                                color: AppColors.primary),
+                            const Icon(
+                              Icons.verified,
+                              size: 12,
+                              color: AppColors.primary,
+                            ),
                           ],
                         ],
                       ),
@@ -1404,7 +1453,9 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                 // Status badge
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 4),
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: statusColor.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(8),
@@ -1413,8 +1464,7 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       if (negotiationRound > 0) ...[
-                        Icon(Icons.repeat,
-                            size: 10, color: statusColor),
+                        Icon(Icons.repeat, size: 10, color: statusColor),
                         const SizedBox(width: 3),
                       ],
                       Text(
@@ -1438,16 +1488,26 @@ class _DriverBidScreenState extends State<DriverBidScreen>
               padding: const EdgeInsets.fromLTRB(14, 4, 14, 0),
               child: Row(
                 children: [
-                  const Icon(Icons.timer_outlined, size: 11, color: AppColors.textTertiary),
+                  const Icon(
+                    Icons.timer_outlined,
+                    size: 11,
+                    color: AppColors.textTertiary,
+                  ),
                   const SizedBox(width: 4),
                   Text(
                     'Puja creada: ${_formatTimeAgo(bid['created_at'] as String?)}',
-                    style: const TextStyle(color: AppColors.textTertiary, fontSize: 10),
+                    style: const TextStyle(
+                      color: AppColors.textTertiary,
+                      fontSize: 10,
+                    ),
                   ),
                   const SizedBox(width: 8),
                   Text(
                     _formatBidDateTime(bid['created_at'] as String?),
-                    style: const TextStyle(color: AppColors.textTertiary, fontSize: 10),
+                    style: const TextStyle(
+                      color: AppColors.textTertiary,
+                      fontSize: 10,
+                    ),
                   ),
                 ],
               ),
@@ -1471,7 +1531,10 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                   onTap: () => _shareJob(bid),
                   borderRadius: BorderRadius.circular(8),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
@@ -1548,8 +1611,11 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                 if (eventDate != null)
                   Row(
                     children: [
-                      const Icon(Icons.calendar_today,
-                          size: 12, color: AppColors.textTertiary),
+                      const Icon(
+                        Icons.calendar_today,
+                        size: 12,
+                        color: AppColors.textTertiary,
+                      ),
                       const SizedBox(width: 6),
                       Text(
                         _formatDate(eventDate),
@@ -1560,9 +1626,11 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                       ),
                       if (startTime != null) ...[
                         const SizedBox(width: 10),
-                        const Icon(Icons.access_time,
-                            size: 12,
-                            color: AppColors.textTertiary),
+                        const Icon(
+                          Icons.access_time,
+                          size: 12,
+                          color: AppColors.textTertiary,
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           _formatTime(startTime),
@@ -1582,7 +1650,11 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                     if (distanceKm != null)
                       _buildKpiChip(
                         Icons.straighten,
-                        '${distanceKm.toStringAsFixed(0)} km',
+                        formatDistance(
+                          distanceKm,
+                          country: _countryCode,
+                          decimals: 0,
+                        ),
                         AppColors.primary,
                       ),
                     if (passengers != null) ...[
@@ -1627,8 +1699,9 @@ class _DriverBidScreenState extends State<DriverBidScreen>
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 14),
               child: Divider(
-                  color: AppColors.border.withValues(alpha: 0.5),
-                  height: 1),
+                color: AppColors.border.withValues(alpha: 0.5),
+                height: 1,
+              ),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
@@ -1639,15 +1712,20 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Tu precio/km',
+                          Text(
+                            'Tu precio/${distanceUnit(country: _countryCode)}',
                             style: TextStyle(
                               color: AppColors.textTertiary,
                               fontSize: 10,
                             ),
                           ),
                           Text(
-                            formatMoney(pricePerKm, country: 'MX'),
+                            _money(
+                              pricePerKilometerToDisplay(
+                                pricePerKm,
+                                country: _countryCode,
+                              ),
+                            ),
                             style: const TextStyle(
                               color: AppColors.textPrimary,
                               fontSize: 16,
@@ -1657,8 +1735,7 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                         ],
                       ),
                     ),
-                  if (organizerProposedPrice != null &&
-                      isCounterOffer)
+                  if (organizerProposedPrice != null && isCounterOffer)
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
@@ -1671,7 +1748,12 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                             ),
                           ),
                           Text(
-                            formatMoney(organizerProposedPrice, country: 'MX'),
+                            _money(
+                              pricePerKilometerToDisplay(
+                                organizerProposedPrice,
+                                country: _countryCode,
+                              ),
+                            ),
                             style: const TextStyle(
                               color: AppColors.warning,
                               fontSize: 16,
@@ -1694,7 +1776,7 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                             ),
                           ),
                           Text(
-                            '\$${(distanceKm * pricePerKm).toStringAsFixed(0)}',
+                            _money(distanceKm * pricePerKm),
                             style: const TextStyle(
                               color: AppColors.success,
                               fontSize: 16,
@@ -1739,8 +1821,7 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) =>
-                          TourismDriverHomeScreen(eventId: eventId),
+                      builder: (_) => TourismDriverHomeScreen(eventId: eventId),
                     ),
                   );
                 }
@@ -1771,10 +1852,7 @@ class _DriverBidScreenState extends State<DriverBidScreen>
             child: OutlinedButton.icon(
               onPressed: () => _rejectBid(bid),
               icon: const Icon(Icons.close, size: 16),
-              label: const Text(
-                'Rechazar',
-                style: TextStyle(fontSize: 13),
-              ),
+              label: const Text('Rechazar', style: TextStyle(fontSize: 13)),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.error,
                 side: const BorderSide(color: AppColors.error, width: 1),
@@ -1793,8 +1871,7 @@ class _DriverBidScreenState extends State<DriverBidScreen>
               icon: const Icon(Icons.gavel_rounded, size: 16),
               label: const Text(
                 'Enviar Puja',
-                style:
-                    TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.gold,
@@ -1823,8 +1900,7 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                   icon: const Icon(Icons.check_circle, size: 16),
                   label: const Text(
                     'Aceptar',
-                    style: TextStyle(
-                        fontSize: 13, fontWeight: FontWeight.w600),
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.success,
@@ -1848,8 +1924,7 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                   ),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.warning,
-                    side: const BorderSide(
-                        color: AppColors.warning, width: 1),
+                    side: const BorderSide(color: AppColors.warning, width: 1),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -1865,14 +1940,10 @@ class _DriverBidScreenState extends State<DriverBidScreen>
             child: OutlinedButton.icon(
               onPressed: () => _rejectBid(bid),
               icon: const Icon(Icons.close, size: 16),
-              label: const Text(
-                'Rechazar',
-                style: TextStyle(fontSize: 12),
-              ),
+              label: const Text('Rechazar', style: TextStyle(fontSize: 12)),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.textTertiary,
-                side: const BorderSide(
-                    color: AppColors.border, width: 1),
+                side: const BorderSide(color: AppColors.border, width: 1),
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -1915,7 +1986,9 @@ class _DriverBidScreenState extends State<DriverBidScreen>
   /// Organizer credential compact card shown in bid
   Widget _buildOrganizerCredential(Map<String, dynamic> bid) {
     final name = bid['organizer_name'] as String? ?? 'Chofer';
-    final phone = bid['organizer_contact_phone'] as String? ?? bid['organizer_phone'] as String?;
+    final phone =
+        bid['organizer_contact_phone'] as String? ??
+        bid['organizer_phone'] as String?;
     final email = bid['organizer_email'] as String?;
     final facebook = bid['organizer_facebook'] as String?;
     final logo = bid['organizer_logo'] as String?;
@@ -1938,7 +2011,10 @@ class _DriverBidScreenState extends State<DriverBidScreen>
               borderRadius: BorderRadius.circular(8),
               color: AppColors.surface,
               image: logo != null
-                  ? DecorationImage(image: NetworkImage(logo), fit: BoxFit.cover)
+                  ? DecorationImage(
+                      image: NetworkImage(logo),
+                      fit: BoxFit.cover,
+                    )
                   : null,
             ),
             child: logo == null
@@ -1965,7 +2041,11 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                     ),
                     if (verified) ...[
                       const SizedBox(width: 4),
-                      const Icon(Icons.verified, size: 14, color: AppColors.primary),
+                      const Icon(
+                        Icons.verified,
+                        size: 14,
+                        color: AppColors.primary,
+                      ),
                     ],
                   ],
                 ),
@@ -2005,7 +2085,10 @@ class _DriverBidScreenState extends State<DriverBidScreen>
           Flexible(
             child: Text(
               text,
-              style: const TextStyle(color: AppColors.textSecondary, fontSize: 10),
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 10,
+              ),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -2108,9 +2191,13 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                   child: Text(
                     name,
                     style: TextStyle(
-                      color: isFirst || isLast ? AppColors.textPrimary : AppColors.textSecondary,
+                      color: isFirst || isLast
+                          ? AppColors.textPrimary
+                          : AppColors.textSecondary,
                       fontSize: 11,
-                      fontWeight: isFirst || isLast ? FontWeight.w600 : FontWeight.normal,
+                      fontWeight: isFirst || isLast
+                          ? FontWeight.w600
+                          : FontWeight.normal,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -2128,7 +2215,10 @@ class _DriverBidScreenState extends State<DriverBidScreen>
   void _shareJob(Map<String, dynamic> bid) {
     final eventName = bid['event_name'] ?? 'Evento';
     final organizerName = bid['organizer_name'] ?? '';
-    final organizerPhone = bid['organizer_contact_phone'] as String? ?? bid['organizer_phone'] as String? ?? '';
+    final organizerPhone =
+        bid['organizer_contact_phone'] as String? ??
+        bid['organizer_phone'] as String? ??
+        '';
     final eventDate = bid['event_date'] as String?;
     final startTime = bid['start_time'] as String?;
     final distanceKm = (bid['total_distance_km'] as num?)?.toDouble();
@@ -2138,17 +2228,21 @@ class _DriverBidScreenState extends State<DriverBidScreen>
     // Build route string from itinerary
     String routeStr = '';
     if (itinerary != null && itinerary.isNotEmpty) {
-      routeStr = itinerary.map((s) => (s as Map)['name'] ?? '').where((n) => n.isNotEmpty).join(' → ');
+      routeStr = itinerary
+          .map((s) => (s as Map)['name'] ?? '')
+          .where((n) => n.isNotEmpty)
+          .join(' → ');
     }
 
     final dateStr = eventDate != null ? _formatDate(eventDate) : '';
     final timeStr = startTime != null ? _formatTime(startTime) : '';
 
-    final text = '''TRABAJO DISPONIBLE - TORO
+    final text =
+        '''TRABAJO DISPONIBLE - TORO
 Evento: $eventName
 ${dateStr.isNotEmpty ? 'Fecha: $dateStr' : ''}${timeStr.isNotEmpty ? ' | Hora: $timeStr' : ''}
 ${routeStr.isNotEmpty ? 'Ruta: $routeStr' : ''}
-${distanceKm != null ? 'Distancia: ${distanceKm.toStringAsFixed(0)} km' : ''}${passengers != null ? ' | Pasajeros: $passengers' : ''}
+${distanceKm != null ? 'Distancia: ${formatDistance(distanceKm, country: _countryCode, decimals: 0)}' : ''}${passengers != null ? ' | Pasajeros: $passengers' : ''}
 ${organizerName.isNotEmpty ? 'Contacto: $organizerName' : ''}${organizerPhone.isNotEmpty ? ' | Tel: $organizerPhone' : ''}
 Descarga TORO Driver para pujar.''';
 

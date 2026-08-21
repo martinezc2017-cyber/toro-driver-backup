@@ -15,6 +15,7 @@ import '../../services/tourism_event_service.dart';
 import '../../services/tourism_invitation_service.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/haptic_service.dart';
+import '../../utils/money_format.dart';
 import '../../widgets/organizer_connect_banner.dart';
 import '../../widgets/travel_card_widget.dart';
 
@@ -23,10 +24,7 @@ import '../../widgets/travel_card_widget.dart';
 class OrganizerInviteScreen extends StatefulWidget {
   final String eventId;
 
-  const OrganizerInviteScreen({
-    super.key,
-    required this.eventId,
-  });
+  const OrganizerInviteScreen({super.key, required this.eventId});
 
   @override
   State<OrganizerInviteScreen> createState() => _OrganizerInviteScreenState();
@@ -112,8 +110,9 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
     final supabase = Supabase.instance.client;
 
     // Listen to invitation changes (accepted, declined, new, deleted)
-    _invitationsChannel =
-        supabase.channel('invitations_screen_${widget.eventId}');
+    _invitationsChannel = supabase.channel(
+      'invitations_screen_${widget.eventId}',
+    );
     _invitationsChannel!
         .onPostgresChanges(
           event: PostgresChangeEvent.all,
@@ -131,8 +130,7 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
         .subscribe();
 
     // Listen to event changes (seats, price, status, route, organizer/driver profile)
-    _eventChannel =
-        supabase.channel('event_screen_${widget.eventId}');
+    _eventChannel = supabase.channel('event_screen_${widget.eventId}');
     _eventChannel!
         .onPostgresChanges(
           event: PostgresChangeEvent.update,
@@ -152,8 +150,7 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
 
   Future<void> _refreshStats() async {
     try {
-      final stats =
-          await _invitationService.getInvitationStats(widget.eventId);
+      final stats = await _invitationService.getInvitationStats(widget.eventId);
       if (mounted) {
         setState(() => _stats = stats);
       }
@@ -230,7 +227,8 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
   int get _stopsCount => _itinerary.length;
 
   double get _distanceKm {
-    final d = _event?['estimated_distance_km'] ??
+    final d =
+        _event?['estimated_distance_km'] ??
         _event?['total_distance_km'] ??
         _event?['distance_km'];
     if (d is num) return d.toDouble();
@@ -270,9 +268,12 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
     const R = 6371.0; // Earth radius in km
     final dLat = (lat2 - lat1) * pi / 180;
     final dLng = (lng2 - lng1) * pi / 180;
-    final a = sin(dLat / 2) * sin(dLat / 2) +
-        cos(lat1 * pi / 180) * cos(lat2 * pi / 180) *
-        sin(dLng / 2) * sin(dLng / 2);
+    final a =
+        sin(dLat / 2) * sin(dLat / 2) +
+        cos(lat1 * pi / 180) *
+            cos(lat2 * pi / 180) *
+            sin(dLng / 2) *
+            sin(dLng / 2);
     final c = 2 * atan2(sqrt(a), sqrt(1 - a));
     return R * c;
   }
@@ -293,8 +294,7 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
 
   Map<String, dynamic>? get _org =>
       _event?['organizers'] as Map<String, dynamic>?;
-  Map<String, dynamic>? get _drv =>
-      _event?['drivers'] as Map<String, dynamic>?;
+  Map<String, dynamic>? get _drv => _event?['drivers'] as Map<String, dynamic>?;
 
   // Organizer: only use organizer-specific fields (company_name, contact_phone,
   // contact_email, company_logo_url, website). NEVER fall back to auth profile
@@ -376,8 +376,18 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
 
       const days = ['Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab', 'Dom'];
       const months = [
-        'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
-        'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic',
+        'Ene',
+        'Feb',
+        'Mar',
+        'Abr',
+        'May',
+        'Jun',
+        'Jul',
+        'Ago',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dic',
       ];
 
       final dayName = days[date.weekday - 1];
@@ -408,20 +418,14 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
   void _showError(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: AppColors.error,
-      ),
+      SnackBar(content: Text(message), backgroundColor: AppColors.error),
     );
   }
 
   void _showSuccess(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: AppColors.success,
-      ),
+      SnackBar(content: Text(message), backgroundColor: AppColors.success),
     );
   }
 
@@ -430,8 +434,8 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
   Future<Uint8List?> _captureCardImage() async {
     try {
       await Future.delayed(const Duration(milliseconds: 100));
-      final boundary = _cardKey.currentContext?.findRenderObject()
-          as RenderRepaintBoundary?;
+      final boundary =
+          _cardKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
       if (boundary == null) return null;
       final image = await boundary.toImage(pixelRatio: 3.0);
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
@@ -450,14 +454,15 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
     }
     if (_stopsCount > 0 || _distanceKm > 0) {
       buffer.writeln(
-          '\u{1F4CD} $_stopsCount paradas \u2022 ${_distanceKm.toStringAsFixed(1)} km');
+        '\u{1F4CD} $_stopsCount paradas \u2022 ${formatDistance(_distanceKm)}',
+      );
     }
     if (_showPrice && _ticketPrice > 0) {
       buffer.writeln(
-          '\u{1F3AB} \$${_ticketPrice.toStringAsFixed(0)} MXN por boleto');
+        '\u{1F3AB} ${formatMoney(_ticketPrice)} ${currencyCode()} por boleto',
+      );
     }
-    buffer.writeln(
-        '\u{1F465} $_availableSeats lugares disponibles');
+    buffer.writeln('\u{1F465} $_availableSeats lugares disponibles');
     buffer.writeln('\u{1F3AB} Codigo: $_invitationCode');
     return buffer.toString().trim();
   }
@@ -471,12 +476,10 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
       try {
         final tempDir = await getTemporaryDirectory();
         final file = File(
-            '${tempDir.path}/toro_viaje_${_invitationCode.replaceAll('-', '_')}.png');
-        await file.writeAsBytes(bytes);
-        await Share.shareXFiles(
-          [XFile(file.path)],
-          text: _buildShareText(),
+          '${tempDir.path}/toro_viaje_${_invitationCode.replaceAll('-', '_')}.png',
         );
+        await file.writeAsBytes(bytes);
+        await Share.shareXFiles([XFile(file.path)], text: _buildShareText());
         return;
       } catch (_) {}
     }
@@ -672,63 +675,93 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
   // ── Edit Passenger ──
 
   Future<void> _editPassenger(
-      String invitationId, Map<String, dynamic> current) async {
+    String invitationId,
+    Map<String, dynamic> current,
+  ) async {
     final nameCtrl = TextEditingController(
-        text: current['invitee_name'] ?? current['invited_name'] ?? '');
+      text: current['invitee_name'] ?? current['invited_name'] ?? '',
+    );
     final contactCtrl = TextEditingController(
-        text: current['invitee_email'] ??
-            current['invitee_phone'] ??
-            current['invited_email'] ??
-            current['invited_phone'] ??
-            '');
-    final seatCtrl =
-        TextEditingController(text: current['seat_number'] ?? '');
+      text:
+          current['invitee_email'] ??
+          current['invitee_phone'] ??
+          current['invited_email'] ??
+          current['invited_phone'] ??
+          '',
+    );
+    final seatCtrl = TextEditingController(text: current['seat_number'] ?? '');
 
     final result = await showDialog<Map<String, dynamic>?>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
-        title: const Text('Editar Pasajero',
-            style: TextStyle(color: AppColors.textPrimary, fontSize: 16)),
+        title: const Text(
+          'Editar Pasajero',
+          style: TextStyle(color: AppColors.textPrimary, fontSize: 16),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: nameCtrl,
-              style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 14,
+              ),
               decoration: const InputDecoration(
                 labelText: 'Nombre',
-                labelStyle: TextStyle(color: AppColors.textTertiary, fontSize: 13),
+                labelStyle: TextStyle(
+                  color: AppColors.textTertiary,
+                  fontSize: 13,
+                ),
                 enabledBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: AppColors.border)),
+                  borderSide: BorderSide(color: AppColors.border),
+                ),
                 focusedBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: AppColors.primary)),
+                  borderSide: BorderSide(color: AppColors.primary),
+                ),
               ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: contactCtrl,
-              style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 14,
+              ),
               decoration: const InputDecoration(
                 labelText: 'Email o Telefono',
-                labelStyle: TextStyle(color: AppColors.textTertiary, fontSize: 13),
+                labelStyle: TextStyle(
+                  color: AppColors.textTertiary,
+                  fontSize: 13,
+                ),
                 enabledBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: AppColors.border)),
+                  borderSide: BorderSide(color: AppColors.border),
+                ),
                 focusedBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: AppColors.primary)),
+                  borderSide: BorderSide(color: AppColors.primary),
+                ),
               ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: seatCtrl,
-              style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 14,
+              ),
               decoration: const InputDecoration(
                 labelText: 'Asiento (opcional)',
-                labelStyle: TextStyle(color: AppColors.textTertiary, fontSize: 13),
+                labelStyle: TextStyle(
+                  color: AppColors.textTertiary,
+                  fontSize: 13,
+                ),
                 enabledBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: AppColors.border)),
+                  borderSide: BorderSide(color: AppColors.border),
+                ),
                 focusedBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: AppColors.primary)),
+                  borderSide: BorderSide(color: AppColors.primary),
+                ),
               ),
             ),
           ],
@@ -827,54 +860,56 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
                     child: CircularProgressIndicator(color: AppColors.primary),
                   )
                 : Stack(
-              children: [
-                // ── Main content ──
-                RefreshIndicator(
-                  onRefresh: _loadData,
-                  color: AppColors.primary,
-                  child: SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // 1. KPI Bar
-                        _buildKpiBar(),
-                        const SizedBox(height: 16),
-                        // 2. Add Passengers
-                        _buildAddPassengers(),
-                        const SizedBox(height: 16),
-                        // 3. Passengers list
-                        _buildPassengersList(),
-                        SizedBox(
-                            height:
-                                MediaQuery.of(context).padding.bottom + 16),
-                      ],
-                    ),
-                  ),
-                ),
-                // ── Scrim (tap to close) ──
-                AnimatedBuilder(
-                  animation: _panelSlide,
-                  builder: (context, _) {
-                    if (_panelSlide.value == 0) {
-                      return const SizedBox.shrink();
-                    }
-                    return GestureDetector(
-                      onTap: _togglePanel,
-                      child: Container(
-                        color: Colors.black
-                            .withValues(alpha: 0.5 * _panelSlide.value),
+                    children: [
+                      // ── Main content ──
+                      RefreshIndicator(
+                        onRefresh: _loadData,
+                        color: AppColors.primary,
+                        child: SingleChildScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // 1. KPI Bar
+                              _buildKpiBar(),
+                              const SizedBox(height: 16),
+                              // 2. Add Passengers
+                              _buildAddPassengers(),
+                              const SizedBox(height: 16),
+                              // 3. Passengers list
+                              _buildPassengersList(),
+                              SizedBox(
+                                height:
+                                    MediaQuery.of(context).padding.bottom + 16,
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                    );
-                  },
-                ),
-                // ── Slide panel from right ──
-                _buildSlidePanel(),
-                // ── Ear tab (always visible) ──
-                _buildEarTab(),
-              ],
-            ),
+                      // ── Scrim (tap to close) ──
+                      AnimatedBuilder(
+                        animation: _panelSlide,
+                        builder: (context, _) {
+                          if (_panelSlide.value == 0) {
+                            return const SizedBox.shrink();
+                          }
+                          return GestureDetector(
+                            onTap: _togglePanel,
+                            child: Container(
+                              color: Colors.black.withValues(
+                                alpha: 0.5 * _panelSlide.value,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      // ── Slide panel from right ──
+                      _buildSlidePanel(),
+                      // ── Ear tab (always visible) ──
+                      _buildEarTab(),
+                    ],
+                  ),
           ),
         ],
       ),
@@ -893,7 +928,10 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
       decoration: BoxDecoration(
         color: AppColors.card.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.border.withValues(alpha: 0.3), width: 0.5),
+        border: Border.all(
+          color: AppColors.border.withValues(alpha: 0.3),
+          width: 0.5,
+        ),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -904,14 +942,22 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
             '$_availableSeats/$_totalSeats',
             _availableSeats > 0 ? AppColors.success : AppColors.error,
           ),
-          Container(width: 1, height: 24, color: AppColors.border.withValues(alpha: 0.3)),
+          Container(
+            width: 1,
+            height: 24,
+            color: AppColors.border.withValues(alpha: 0.3),
+          ),
           _buildStatItem(
             Icons.check_circle,
             'Aceptados',
             '$_acceptedCount',
             AppColors.success,
           ),
-          Container(width: 1, height: 24, color: AppColors.border.withValues(alpha: 0.3)),
+          Container(
+            width: 1,
+            height: 24,
+            color: AppColors.border.withValues(alpha: 0.3),
+          ),
           _buildStatItem(
             Icons.pending,
             'Pendientes',
@@ -924,7 +970,11 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
   }
 
   Widget _buildStatItem(
-      IconData icon, String label, String value, Color color) {
+    IconData icon,
+    String label,
+    String value,
+    Color color,
+  ) {
     final muted = color.withValues(alpha: 0.7);
     return Column(
       children: [
@@ -971,10 +1021,7 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
           const SizedBox(width: 4),
           Text(
             _showPrice ? 'Ocultar precio' : 'Mostrar precio',
-            style: const TextStyle(
-              color: AppColors.textTertiary,
-              fontSize: 11,
-            ),
+            style: const TextStyle(color: AppColors.textTertiary, fontSize: 11),
           ),
         ],
       ),
@@ -1091,8 +1138,11 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
                 // Panel header
                 Row(
                   children: [
-                    const Icon(Icons.qr_code_2,
-                        color: AppColors.primary, size: 20),
+                    const Icon(
+                      Icons.qr_code_2,
+                      color: AppColors.primary,
+                      size: 20,
+                    ),
                     const SizedBox(width: 8),
                     const Expanded(
                       child: Text(
@@ -1113,8 +1163,11 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
                           color: Colors.white.withValues(alpha: 0.05),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Icon(Icons.close,
-                            color: AppColors.textTertiary, size: 18),
+                        child: const Icon(
+                          Icons.close,
+                          color: AppColors.textTertiary,
+                          size: 18,
+                        ),
                       ),
                     ),
                   ],
@@ -1204,7 +1257,10 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
         decoration: BoxDecoration(
           color: AppColors.card.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.border.withValues(alpha: 0.25), width: 0.5),
+          border: Border.all(
+            color: AppColors.border.withValues(alpha: 0.25),
+            width: 0.5,
+          ),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1274,16 +1330,17 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
               SizedBox(
                 height: 42,
                 child: ElevatedButton(
-                  onPressed:
-                      _isAddingInvitation ? null : _addManualInvitation,
+                  onPressed: _isAddingInvitation ? null : _addManualInvitation,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
-                    disabledBackgroundColor:
-                        AppColors.primary.withValues(alpha: 0.5),
+                    disabledBackgroundColor: AppColors.primary.withValues(
+                      alpha: 0.5,
+                    ),
                     padding: const EdgeInsets.symmetric(horizontal: 14),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10)),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                   child: _isAddingInvitation
                       ? const SizedBox(
@@ -1321,8 +1378,10 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
         style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle:
-              const TextStyle(color: AppColors.textTertiary, fontSize: 12),
+          hintStyle: const TextStyle(
+            color: AppColors.textTertiary,
+            fontSize: 12,
+          ),
           prefixIcon: Icon(icon, size: 16, color: AppColors.textTertiary),
           prefixIconConstraints: const BoxConstraints(minWidth: 36),
           border: InputBorder.none,
@@ -1355,8 +1414,7 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
               TextButton.icon(
                 onPressed: _loadData,
                 icon: const Icon(Icons.refresh, size: 14),
-                label:
-                    const Text('Actualizar', style: TextStyle(fontSize: 12)),
+                label: const Text('Actualizar', style: TextStyle(fontSize: 12)),
                 style: TextButton.styleFrom(
                   foregroundColor: AppColors.primary,
                   padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -1371,10 +1429,7 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
             child: Center(
               child: Text(
                 'Sin pasajeros aun',
-                style: TextStyle(
-                  color: AppColors.textTertiary,
-                  fontSize: 13,
-                ),
+                style: TextStyle(color: AppColors.textTertiary, fontSize: 13),
               ),
             ),
           )
@@ -1401,15 +1456,15 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
   }
 
   Widget _buildInvitationTile(Map<String, dynamic> invitation) {
-    final name = invitation['invitee_name'] ??
-        invitation['invited_name'] ??
-        'Invitado';
-    final email = invitation['invitee_email'] ??
-        invitation['invited_email'] as String?;
-    final phone = invitation['invitee_phone'] ??
-        invitation['invited_phone'] as String?;
+    final name =
+        invitation['invitee_name'] ?? invitation['invited_name'] ?? 'Invitado';
+    final email =
+        invitation['invitee_email'] ?? invitation['invited_email'] as String?;
+    final phone =
+        invitation['invitee_phone'] ?? invitation['invited_phone'] as String?;
     final status = invitation['status'] as String? ?? 'pending';
-    final method = invitation['delivery_method'] ??
+    final method =
+        invitation['delivery_method'] ??
         invitation['invitation_method'] as String? ??
         'manual';
     final createdAt = invitation['created_at'] as String?;
@@ -1449,14 +1504,12 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
 
     return ListTile(
       onTap: () => _showInvitationDetail(invitation),
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
       leading: hasProfile && avatarUrl != null
           ? CircleAvatar(
               radius: 20,
               backgroundImage: NetworkImage(avatarUrl),
-              backgroundColor:
-                  AppColors.primary.withValues(alpha: 0.12),
+              backgroundColor: AppColors.primary.withValues(alpha: 0.12),
             )
           : Container(
               width: 40,
@@ -1465,8 +1518,7 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
                 color: _getStatusColor(status).withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(methodIcon,
-                  color: _getStatusColor(status), size: 20),
+              child: Icon(methodIcon, color: _getStatusColor(status), size: 20),
             ),
       title: Row(
         children: [
@@ -1490,8 +1542,11 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
                 color: AppColors.success.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(4),
               ),
-              child: const Icon(Icons.verified_user,
-                  size: 12, color: AppColors.success),
+              child: const Icon(
+                Icons.verified_user,
+                size: 12,
+                color: AppColors.success,
+              ),
             ),
         ],
       ),
@@ -1500,10 +1555,7 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
         children: [
           Text(
             subtitle,
-            style: const TextStyle(
-              color: AppColors.textTertiary,
-              fontSize: 13,
-            ),
+            style: const TextStyle(color: AppColors.textTertiary, fontSize: 13),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -1512,10 +1564,7 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
               padding: const EdgeInsets.only(top: 2),
               child: Text(
                 'Acepto: ${_formatShortDate(acceptedAt)}',
-                style: const TextStyle(
-                  color: AppColors.success,
-                  fontSize: 12,
-                ),
+                style: const TextStyle(color: AppColors.success, fontSize: 12),
               ),
             ),
           if (invitationCode != null)
@@ -1655,8 +1704,18 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
     try {
       final date = DateTime.parse(isoDate);
       const months = [
-        'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
-        'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic',
+        'Ene',
+        'Feb',
+        'Mar',
+        'Abr',
+        'May',
+        'Jun',
+        'Jul',
+        'Ago',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dic',
       ];
       return '${date.day} ${months[date.month - 1]} ${date.year}, ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
     } catch (e) {
@@ -1669,16 +1728,18 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
   // ═══════════════════════════════════════════════════════════════════════════
 
   Widget _buildInvitationDetailModal(
-      BuildContext ctx, Map<String, dynamic> invitation) {
-    final name = invitation['invitee_name'] ??
-        invitation['invited_name'] ??
-        'Invitado';
-    final email = invitation['invitee_email'] ??
-        invitation['invited_email'] as String?;
-    final phone = invitation['invitee_phone'] ??
-        invitation['invited_phone'] as String?;
+    BuildContext ctx,
+    Map<String, dynamic> invitation,
+  ) {
+    final name =
+        invitation['invitee_name'] ?? invitation['invited_name'] ?? 'Invitado';
+    final email =
+        invitation['invitee_email'] ?? invitation['invited_email'] as String?;
+    final phone =
+        invitation['invitee_phone'] ?? invitation['invited_phone'] as String?;
     final status = invitation['status'] as String? ?? 'pending';
-    final method = invitation['delivery_method'] ??
+    final method =
+        invitation['delivery_method'] ??
         invitation['invitation_method'] as String? ??
         'manual';
     final createdAt = invitation['created_at'] as String?;
@@ -1763,19 +1824,24 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
                     ? CircleAvatar(
                         radius: 28,
                         backgroundImage: NetworkImage(avatarUrl),
-                        backgroundColor:
-                            _getStatusColor(status).withValues(alpha: 0.15),
+                        backgroundColor: _getStatusColor(
+                          status,
+                        ).withValues(alpha: 0.15),
                       )
                     : Container(
                         width: 56,
                         height: 56,
                         decoration: BoxDecoration(
-                          color:
-                              _getStatusColor(status).withValues(alpha: 0.15),
+                          color: _getStatusColor(
+                            status,
+                          ).withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(14),
                         ),
-                        child: Icon(methodIcon,
-                            color: _getStatusColor(status), size: 26),
+                        child: Icon(
+                          methodIcon,
+                          color: _getStatusColor(status),
+                          size: 26,
+                        ),
                       ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -1797,23 +1863,30 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
                           if (hasProfile)
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 6, vertical: 2),
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
                               decoration: BoxDecoration(
-                                color:
-                                    AppColors.success.withValues(alpha: 0.15),
+                                color: AppColors.success.withValues(
+                                  alpha: 0.15,
+                                ),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: const Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.verified_user,
-                                      size: 12, color: AppColors.success),
+                                  Icon(
+                                    Icons.verified_user,
+                                    size: 12,
+                                    color: AppColors.success,
+                                  ),
                                   SizedBox(width: 4),
                                   Text(
                                     'Usuario',
                                     style: TextStyle(
-                                        color: AppColors.success,
-                                        fontSize: 10),
+                                      color: AppColors.success,
+                                      fontSize: 10,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -1848,21 +1921,29 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
               _detailRow('Invitado', _formatDate(createdAt)),
             if (acceptedAt != null)
               _detailRowColored(
-                  'Acepto', _formatDate(acceptedAt), AppColors.success),
+                'Acepto',
+                _formatDate(acceptedAt),
+                AppColors.success,
+              ),
             if (declinedAt != null)
               _detailRowColored(
-                  'Rechazo', _formatDate(declinedAt), AppColors.error),
+                'Rechazo',
+                _formatDate(declinedAt),
+                AppColors.error,
+              ),
             if (lastCheckInAt != null)
               _detailRowColored(
-                  'Check-in', _formatDate(lastCheckInAt), AppColors.primary),
+                'Check-in',
+                _formatDate(lastCheckInAt),
+                AppColors.primary,
+              ),
 
             // Special info
             if (specialNeeds != null || emergencyContact != null) ...[
               const SizedBox(height: 16),
               _sectionTitle('Informacion Adicional'),
               const SizedBox(height: 8),
-              if (specialNeeds != null)
-                _detailRow('Necesidades', specialNeeds),
+              if (specialNeeds != null) _detailRow('Necesidades', specialNeeds),
               if (emergencyContact != null)
                 _detailRow('Emergencia', emergencyContact),
               if (emergencyPhone != null)

@@ -31,7 +31,8 @@ class _RidesScreenState extends State<RidesScreen>
   int _selectedFilterIndex = 0;
 
   // Driver commission percent from pricing_config (dynamic)
-  double _driverPercent = 0; // 0 hasta cargar pricing_config (no hardcodear el % de USA)
+  double _driverPercent =
+      0; // 0 hasta cargar pricing_config (no hardcodear el % de USA)
 
   @override
   void initState() {
@@ -88,10 +89,7 @@ class _RidesScreenState extends State<RidesScreen>
             Expanded(
               child: TabBarView(
                 controller: _tabController,
-                children: [
-                  _buildAvailableRides(),
-                  _buildRideHistory(),
-                ],
+                children: [_buildAvailableRides(), _buildRideHistory()],
               ),
             ),
           ],
@@ -180,7 +178,8 @@ class _RidesScreenState extends State<RidesScreen>
                           action: SnackBarAction(
                             label: 'Documentos',
                             textColor: Colors.white,
-                            onPressed: () => Navigator.pushNamed(context, '/documents'),
+                            onPressed: () =>
+                                Navigator.pushNamed(context, '/documents'),
                           ),
                         ),
                       );
@@ -251,7 +250,13 @@ class _RidesScreenState extends State<RidesScreen>
   }
 
   Widget _buildFilters() {
-    final filters = ['filter_all'.tr(), 'filter_nearby'.tr(), 'filter_best_pay'.tr(), 'filter_short'.tr(), 'filter_long'.tr()];
+    final filters = [
+      'filter_all'.tr(),
+      'filter_nearby'.tr(),
+      'filter_best_pay'.tr(),
+      'filter_short'.tr(),
+      'filter_long'.tr(),
+    ];
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -262,42 +267,49 @@ class _RidesScreenState extends State<RidesScreen>
           final index = entry.key;
           final isSelected = index == _selectedFilterIndex;
           return Padding(
-            padding: const EdgeInsets.only(right: 6),
-            child: GestureDetector(
-              onTap: () {
-                HapticService.selectionClick();
-                setState(() => _selectedFilterIndex = index);
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 250),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  gradient: isSelected ? AppColors.successGradient : null,
-                  color: isSelected ? null : AppColors.card,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: isSelected ? Colors.transparent : AppColors.border.withValues(alpha: 0.5),
+                padding: const EdgeInsets.only(right: 6),
+                child: GestureDetector(
+                  onTap: () {
+                    HapticService.selectionClick();
+                    setState(() => _selectedFilterIndex = index);
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      gradient: isSelected ? AppColors.successGradient : null,
+                      color: isSelected ? null : AppColors.card,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: isSelected
+                            ? Colors.transparent
+                            : AppColors.border.withValues(alpha: 0.5),
+                      ),
+                      boxShadow: isSelected
+                          ? [
+                              BoxShadow(
+                                color: AppColors.success.withValues(alpha: 0.3),
+                                blurRadius: 6,
+                              ),
+                            ]
+                          : null,
+                    ),
+                    child: Text(
+                      filter,
+                      style: TextStyle(
+                        color: isSelected
+                            ? Colors.white
+                            : AppColors.textSecondary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 11,
+                      ),
+                    ),
                   ),
-                  boxShadow: isSelected
-                      ? [
-                          BoxShadow(
-                            color: AppColors.success.withValues(alpha: 0.3),
-                            blurRadius: 6,
-                          ),
-                        ]
-                      : null,
                 ),
-                child: Text(
-                  filter,
-                  style: TextStyle(
-                    color: isSelected ? Colors.white : AppColors.textSecondary,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 11,
-                  ),
-                ),
-              ),
-            ),
-          )
+              )
               .animate(delay: Duration(milliseconds: 50 * index))
               .fadeIn()
               .slideX(begin: 0.2, end: 0);
@@ -331,7 +343,8 @@ class _RidesScreenState extends State<RidesScreen>
               parent: BouncingScrollPhysics(),
             ),
             itemCount: rides.length,
-            itemBuilder: (context, index) => _buildRideCard(rides[index], index),
+            itemBuilder: (context, index) =>
+                _buildRideCard(rides[index], index),
           ),
         );
       },
@@ -358,7 +371,8 @@ class _RidesScreenState extends State<RidesScreen>
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           physics: const BouncingScrollPhysics(),
           itemCount: rides.length,
-          itemBuilder: (context, index) => _buildHistoryCard(rides[index], index),
+          itemBuilder: (context, index) =>
+              _buildHistoryCard(rides[index], index),
         );
       },
     );
@@ -394,7 +408,9 @@ class _RidesScreenState extends State<RidesScreen>
             decoration: BoxDecoration(
               color: AppColors.primary.withValues(alpha: 0.15),
               shape: BoxShape.circle,
-              border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.3),
+              ),
             ),
             child: Icon(
               isHistory ? Icons.history_rounded : Icons.local_taxi_rounded,
@@ -413,14 +429,32 @@ class _RidesScreenState extends State<RidesScreen>
           ),
           const SizedBox(height: 4),
           Text(
-            isHistory
-                ? 'completed_trips_appear'.tr()
-                : 'stay_online'.tr(),
+            isHistory ? 'completed_trips_appear'.tr() : 'stay_online'.tr(),
             style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
           ),
         ],
       ),
     ).animate().fadeIn().scale(begin: const Offset(0.9, 0.9));
+  }
+
+  /// Agendado aún BLOQUEADO para aceptar: se libera 20 min antes de su hora.
+  /// (El candado real vive en la base — trigger block_early_scheduled_accept;
+  /// esto solo evita que el botón truene y explica cuándo abre.)
+  bool _scheduledLocked(RideModel ride) =>
+      ride.scheduledTime != null &&
+      ride.scheduledTime!.isAfter(
+        DateTime.now().add(const Duration(minutes: 20)),
+      );
+
+  String _fmtScheduled(DateTime d) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final day = DateTime(d.year, d.month, d.day);
+    two(int n) => n.toString().padLeft(2, '0');
+    final hhmm = '${two(d.hour)}:${two(d.minute)}';
+    if (day == today) return hhmm;
+    if (day == today.add(const Duration(days: 1))) return 'mañana $hhmm';
+    return '${d.day}/${d.month} $hhmm';
   }
 
   Widget _buildRideCard(RideModel ride, int index) {
@@ -442,9 +476,12 @@ class _RidesScreenState extends State<RidesScreen>
             // Marketplace deliveries have their own canonical accept flow
             // (countdown timer + earnings + ACCEPT triggers driver_accept_marketplace_delivery RPC).
             if (ride.type == RideType.marketplace) {
-              Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => MarketplaceDeliveryAcceptScreen(deliveryId: ride.id),
-              ));
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) =>
+                      MarketplaceDeliveryAcceptScreen(deliveryId: ride.id),
+                ),
+              );
               return;
             }
             _showRideDetails(ride);
@@ -460,14 +497,18 @@ class _RidesScreenState extends State<RidesScreen>
                       height: 40,
                       decoration: BoxDecoration(
                         gradient: ride.type == RideType.marketplace
-                            ? const LinearGradient(colors: [Color(0xFFFFD700), Color(0xFFFFA500)])
+                            ? const LinearGradient(
+                                colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                              )
                             : AppColors.primaryGradient,
                         borderRadius: BorderRadius.circular(10),
                         boxShadow: [
                           BoxShadow(
-                            color: (ride.type == RideType.marketplace
-                                ? const Color(0xFFFFD700)
-                                : AppColors.primary).withValues(alpha: 0.3),
+                            color:
+                                (ride.type == RideType.marketplace
+                                        ? const Color(0xFFFFD700)
+                                        : AppColors.primary)
+                                    .withValues(alpha: 0.3),
                             blurRadius: 6,
                           ),
                         ],
@@ -476,7 +517,9 @@ class _RidesScreenState extends State<RidesScreen>
                         ride.type == RideType.marketplace
                             ? Icons.shopping_bag_rounded
                             : Icons.local_taxi_rounded,
-                        color: ride.type == RideType.marketplace ? Colors.black : Colors.white,
+                        color: ride.type == RideType.marketplace
+                            ? Colors.black
+                            : Colors.white,
                         size: 20,
                       ),
                     ),
@@ -488,15 +531,71 @@ class _RidesScreenState extends State<RidesScreen>
                           if (ride.type == RideType.marketplace)
                             Container(
                               margin: const EdgeInsets.only(bottom: 4),
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
                               decoration: BoxDecoration(
                                 color: const Color(0xFFFFD700),
                                 borderRadius: BorderRadius.circular(4),
                               ),
-                              child: const Text('🛒 MERCADO',
+                              child: Text(
+                                '🛒 ${'rides.marketplace'.tr().toUpperCase()}',
+                                style: const TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 1,
+                                ),
+                              ),
+                            ),
+                          // VIAJE AGENDADO: el rider lo pidió "Para después".
+                          // El chofer lo ve ~15 min antes (RLS) — la hora es el
+                          // dato clave para no llegar antes/después.
+                          if (ride.scheduledTime != null)
+                            Container(
+                              margin: const EdgeInsets.only(bottom: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF4FC3F7),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                '📅 PROGRAMADO · ${_fmtScheduled(ride.scheduledTime!)}',
+                                style: const TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 1,
+                                ),
+                              ),
+                            ),
+                          // MULTI-PARADA: que el chofer vea las rutas extra
+                          // desde la tarjeta (no solo al abrir el detalle).
+                          if (ride.waypoints != null &&
+                              ride.waypoints!.isNotEmpty)
+                            Container(
+                              margin: const EdgeInsets.only(bottom: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                '🚩 ${ride.waypoints!.length} PARADA${ride.waypoints!.length == 1 ? '' : 'S'} EXTRA',
                                 style: TextStyle(
-                                  color: Colors.black, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 1,
-                                )),
+                                  color: AppColors.textPrimary,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 1,
+                                ),
+                              ),
                             ),
                           Row(
                             children: [
@@ -514,10 +613,16 @@ class _RidesScreenState extends State<RidesScreen>
                               if (ride.isRoundTrip) ...[
                                 const SizedBox(width: 6),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
                                   decoration: BoxDecoration(
                                     gradient: const LinearGradient(
-                                      colors: [Color(0xFF00C853), Color(0xFF00BFA5)],
+                                      colors: [
+                                        Color(0xFF00C853),
+                                        Color(0xFF00BFA5),
+                                      ],
                                     ),
                                     borderRadius: BorderRadius.circular(6),
                                   ),
@@ -533,7 +638,11 @@ class _RidesScreenState extends State<RidesScreen>
                               ],
                               if (ride.passengerRating > 0) ...[
                                 const SizedBox(width: 6),
-                                Icon(Icons.star_rounded, color: AppColors.star, size: 12),
+                                Icon(
+                                  Icons.star_rounded,
+                                  color: AppColors.star,
+                                  size: 12,
+                                ),
                                 const SizedBox(width: 2),
                                 Text(
                                   ride.passengerRating.toStringAsFixed(1),
@@ -552,15 +661,28 @@ class _RidesScreenState extends State<RidesScreen>
                               // Distance to pickup (how far driver is from client)
                               Builder(
                                 builder: (context) {
-                                  final distToPickup = _calculateDistanceToPickup(ride);
+                                  final distToPickup =
+                                      _calculateDistanceToPickup(ride);
                                   if (distToPickup != null) {
                                     return Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Icon(Icons.near_me, size: 10, color: AppColors.warning),
+                                        Icon(
+                                          Icons.near_me,
+                                          size: 10,
+                                          color: AppColors.warning,
+                                        ),
                                         const SizedBox(width: 2),
                                         Text(
-                                          formatDistanceFromMiles(distToPickup, country: context.read<DriverProvider>().driver?.countryCode ?? 'US'),
+                                          formatDistanceFromMiles(
+                                            distToPickup,
+                                            country:
+                                                context
+                                                    .read<DriverProvider>()
+                                                    .driver
+                                                    ?.countryCode ??
+                                                'US',
+                                          ),
                                           style: TextStyle(
                                             color: AppColors.warning,
                                             fontSize: 10,
@@ -599,13 +721,24 @@ class _RidesScreenState extends State<RidesScreen>
                                   ),
                                 ),
                               ],
-                              if (ride.type == RideType.carpool && ride.filledSeats > 0) ...[
+                              if (ride.type == RideType.carpool &&
+                                  ride.filledSeats > 0) ...[
                                 const SizedBox(width: 6),
                                 ...List.generate(3, (i) {
-                                  final color = i < ride.filledSeats ? AppColors.success : AppColors.textSecondary.withValues(alpha: 0.3);
+                                  final color = i < ride.filledSeats
+                                      ? AppColors.success
+                                      : AppColors.textSecondary.withValues(
+                                          alpha: 0.3,
+                                        );
                                   return Padding(
-                                    padding: EdgeInsets.only(left: i > 0 ? 1 : 0),
-                                    child: Icon(Icons.person, color: color, size: 12),
+                                    padding: EdgeInsets.only(
+                                      left: i > 0 ? 1 : 0,
+                                    ),
+                                    child: Icon(
+                                      Icons.person,
+                                      color: color,
+                                      size: 12,
+                                    ),
                                   );
                                 }),
                               ],
@@ -618,19 +751,29 @@ class _RidesScreenState extends State<RidesScreen>
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         // PREVIEW: If no real earnings yet, calculate from fare * driver%
-                        Builder(builder: (context) {
-                          final earnings = ride.driverEarnings > 0
-                              ? ride.driverEarnings
-                              : ride.fare * (_driverPercent / 100);
-                          return Text(
-                            formatMoney(earnings, country: context.read<DriverProvider>().driver?.countryCode ?? 'US'),
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.success,
-                            ),
-                          );
-                        }),
+                        Builder(
+                          builder: (context) {
+                            final earnings = ride.driverEarnings > 0
+                                ? ride.driverEarnings
+                                : ride.fare * (_driverPercent / 100);
+                            return Text(
+                              formatMoney(
+                                earnings,
+                                country:
+                                    context
+                                        .read<DriverProvider>()
+                                        .driver
+                                        ?.countryCode ??
+                                    'US',
+                              ),
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.success,
+                              ),
+                            );
+                          },
+                        ),
                         // Payment method badge
                         _buildPaymentMethodBadge(ride.paymentMethod),
                       ],
@@ -643,7 +786,9 @@ class _RidesScreenState extends State<RidesScreen>
                   decoration: BoxDecoration(
                     color: AppColors.surface,
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppColors.border.withValues(alpha: 0.3)),
+                    border: Border.all(
+                      color: AppColors.border.withValues(alpha: 0.3),
+                    ),
                   ),
                   child: Row(
                     children: [
@@ -685,7 +830,8 @@ class _RidesScreenState extends State<RidesScreen>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              ride.pickupLocation.address ?? 'pickup_address'.tr(),
+                              ride.pickupLocation.address ??
+                                  'pickup_address'.tr(),
                               style: TextStyle(
                                 fontWeight: FontWeight.w600,
                                 fontSize: 11,
@@ -696,7 +842,8 @@ class _RidesScreenState extends State<RidesScreen>
                             ),
                             const SizedBox(height: 12),
                             Text(
-                              ride.dropoffLocation.address ?? 'destination_address'.tr(),
+                              ride.dropoffLocation.address ??
+                                  'destination_address'.tr(),
                               style: TextStyle(
                                 color: AppColors.textSecondary,
                                 fontSize: 11,
@@ -725,26 +872,53 @@ class _RidesScreenState extends State<RidesScreen>
                     const SizedBox(width: 8),
                     Expanded(
                       flex: 2,
-                      child: NeonButton(
-                        text: 'accept'.tr(),
-                        icon: Icons.check_rounded,
-                        onPressed: () async {
-                          final driverId = context.read<DriverProvider>().driver?.id;
-                          if (driverId != null) {
-                            final success = await context.read<RideProvider>().acceptRide(ride.id, driverId);
-                            if (success) {
-                              HapticService.success();
-                              if (mounted) {
-                                Navigator.pushNamed(context, '/navigation');
-                              }
-                            } else {
-                              HapticService.error();
-                            }
-                          }
-                        },
-                        gradient: AppColors.successGradient,
-                        height: 38,
-                      ),
+                      child: _scheduledLocked(ride)
+                          ? NeonButton(
+                              text:
+                                  'Se libera ${_fmtScheduled(ride.scheduledTime!.subtract(const Duration(minutes: 20)))}',
+                              icon: Icons.lock_clock,
+                              onPressed: () {
+                                HapticService.lightImpact();
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Viaje agendado para ${_fmtScheduled(ride.scheduledTime!)} — se puede aceptar 20 min antes.',
+                                    ),
+                                  ),
+                                );
+                              },
+                              isOutlined: true,
+                              color: const Color(0xFF4FC3F7),
+                              height: 38,
+                            )
+                          : NeonButton(
+                              text: 'accept'.tr(),
+                              icon: Icons.check_rounded,
+                              onPressed: () async {
+                                final driverId = context
+                                    .read<DriverProvider>()
+                                    .driver
+                                    ?.id;
+                                if (driverId != null) {
+                                  final success = await context
+                                      .read<RideProvider>()
+                                      .acceptRide(ride.id, driverId);
+                                  if (success) {
+                                    HapticService.success();
+                                    if (mounted) {
+                                      Navigator.pushNamed(
+                                        context,
+                                        '/navigation',
+                                      );
+                                    }
+                                  } else {
+                                    HapticService.error();
+                                  }
+                                }
+                              },
+                              gradient: AppColors.successGradient,
+                              height: 38,
+                            ),
                     ),
                   ],
                 ),
@@ -753,10 +927,7 @@ class _RidesScreenState extends State<RidesScreen>
           ),
         ),
       ),
-    )
-        .animate(delay: Duration(milliseconds: 100 * index))
-        .fadeIn()
-        .slideY(begin: 0.1, end: 0);
+    ).animate(delay: Duration(milliseconds: 100 * index)).fadeIn().slideY(begin: 0.1, end: 0);
   }
 
   Widget _buildHistoryCard(RideModel ride, int index) {
@@ -777,7 +948,11 @@ class _RidesScreenState extends State<RidesScreen>
               color: AppColors.success.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(Icons.check_circle_rounded, color: AppColors.success, size: 18),
+            child: Icon(
+              Icons.check_circle_rounded,
+              color: AppColors.success,
+              size: 18,
+            ),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -799,7 +974,10 @@ class _RidesScreenState extends State<RidesScreen>
                     if (ride.isRoundTrip) ...[
                       const SizedBox(width: 6),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 1,
+                        ),
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
                             colors: [Color(0xFF00C853), Color(0xFF00BFA5)],
@@ -831,38 +1009,44 @@ class _RidesScreenState extends State<RidesScreen>
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Builder(builder: (context) {
-                // CANCELADO: no se paga al chofer -> "Cancelado", sin +$ ni
-                // preview (fare*%). Antes caia al preview y mostraba un cobro falso.
-                if (ride.status == RideStatus.cancelled) {
+              Builder(
+                builder: (context) {
+                  // CANCELADO: no se paga al chofer -> "Cancelado", sin +$ ni
+                  // preview (fare*%). Antes caia al preview y mostraba un cobro falso.
+                  if (ride.status == RideStatus.cancelled) {
+                    return Text(
+                      'Cancelado',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.error,
+                        fontSize: 13,
+                      ),
+                    );
+                  }
+                  // Preview (fare*%) SOLO para viajes sin earnings reales aun
+                  // (disponibles); completados usan driverEarnings real.
+                  final earnings = ride.driverEarnings > 0
+                      ? ride.driverEarnings
+                      : ride.fare * (_driverPercent / 100);
                   return Text(
-                    'Cancelado',
+                    '+${formatMoney(earnings, country: context.read<DriverProvider>().driver?.countryCode ?? 'US')}',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: AppColors.error,
-                      fontSize: 13,
+                      color: AppColors.success,
+                      fontSize: 14,
                     ),
                   );
-                }
-                // Preview (fare*%) SOLO para viajes sin earnings reales aun
-                // (disponibles); completados usan driverEarnings real.
-                final earnings = ride.driverEarnings > 0
-                    ? ride.driverEarnings
-                    : ride.fare * (_driverPercent / 100);
-                return Text(
-                  '+${formatMoney(earnings, country: context.read<DriverProvider>().driver?.countryCode ?? 'US')}',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.success,
-                    fontSize: 14,
-                  ),
-                );
-              }),
+                },
+              ),
               if (ride.tip > 0)
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.volunteer_activism_rounded, color: AppColors.star, size: 12),
+                    Icon(
+                      Icons.volunteer_activism_rounded,
+                      color: AppColors.star,
+                      size: 12,
+                    ),
                     const SizedBox(width: 2),
                     Text(
                       '+\$${ride.tip.toStringAsFixed(0)}',
@@ -889,8 +1073,8 @@ class _RidesScreenState extends State<RidesScreen>
                     rideType: ride.type == RideType.carpool
                         ? 'carpool'
                         : ride.type == RideType.package
-                            ? 'delivery'
-                            : 'ride',
+                        ? 'delivery'
+                        : 'ride',
                     reportedUserId: ride.passengerId,
                     reportedUserName: ride.displayName,
                   ),
@@ -912,10 +1096,7 @@ class _RidesScreenState extends State<RidesScreen>
           ),
         ],
       ),
-    )
-        .animate(delay: Duration(milliseconds: 80 * index))
-        .fadeIn()
-        .slideX(begin: 0.1, end: 0);
+    ).animate(delay: Duration(milliseconds: 80 * index)).fadeIn().slideX(begin: 0.1, end: 0);
   }
 
   String _formatDate(DateTime date) {
@@ -950,9 +1131,12 @@ class _RidesScreenState extends State<RidesScreen>
     final double dLat = _toRadians(pickupLat - driverLat);
     final double dLng = _toRadians(pickupLng - driverLng);
 
-    final double a = math.sin(dLat / 2) * math.sin(dLat / 2) +
-        math.cos(_toRadians(driverLat)) * math.cos(_toRadians(pickupLat)) *
-        math.sin(dLng / 2) * math.sin(dLng / 2);
+    final double a =
+        math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(_toRadians(driverLat)) *
+            math.cos(_toRadians(pickupLat)) *
+            math.sin(dLng / 2) *
+            math.sin(dLng / 2);
     final double c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
 
     return earthRadiusMiles * c;
@@ -1007,10 +1191,14 @@ class _RidesScreenState extends State<RidesScreen>
                           backgroundImage: ride.displayImageUrl != null
                               ? NetworkImage(ride.displayImageUrl!)
                               : null,
-                          backgroundColor: AppColors.primary.withValues(alpha: 0.2),
+                          backgroundColor: AppColors.primary.withValues(
+                            alpha: 0.2,
+                          ),
                           child: ride.displayImageUrl == null
                               ? Text(
-                                  ride.displayName.isNotEmpty ? ride.displayName[0] : 'P',
+                                  ride.displayName.isNotEmpty
+                                      ? ride.displayName[0]
+                                      : 'P',
                                   style: TextStyle(
                                     color: AppColors.primary,
                                     fontWeight: FontWeight.bold,
@@ -1039,10 +1227,16 @@ class _RidesScreenState extends State<RidesScreen>
                                   if (ride.isRoundTrip) ...[
                                     const SizedBox(width: 8),
                                     Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 3,
+                                      ),
                                       decoration: BoxDecoration(
                                         gradient: const LinearGradient(
-                                          colors: [Color(0xFF00C853), Color(0xFF00BFA5)],
+                                          colors: [
+                                            Color(0xFF00C853),
+                                            Color(0xFF00BFA5),
+                                          ],
                                         ),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
@@ -1062,26 +1256,37 @@ class _RidesScreenState extends State<RidesScreen>
                               Row(
                                 children: [
                                   if (ride.passengerRating > 0) ...[
-                                    Icon(Icons.star_rounded, color: AppColors.star, size: 16),
+                                    Icon(
+                                      Icons.star_rounded,
+                                      color: AppColors.star,
+                                      size: 16,
+                                    ),
                                     const SizedBox(width: 4),
                                     Text(
                                       ride.passengerRating.toStringAsFixed(1),
-                                      style: TextStyle(color: AppColors.textSecondary),
+                                      style: TextStyle(
+                                        color: AppColors.textSecondary,
+                                      ),
                                     ),
                                     const SizedBox(width: 12),
                                   ],
                                   // Distance to pickup in modal
                                   Builder(
                                     builder: (context) {
-                                      final distToPickup = _calculateDistanceToPickup(ride);
+                                      final distToPickup =
+                                          _calculateDistanceToPickup(ride);
                                       if (distToPickup != null) {
                                         return Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
-                                            Icon(Icons.near_me, size: 12, color: AppColors.warning),
+                                            Icon(
+                                              Icons.near_me,
+                                              size: 12,
+                                              color: AppColors.warning,
+                                            ),
                                             const SizedBox(width: 3),
                                             Text(
-                                              '${distToPickup.toStringAsFixed(1)} mi away',
+                                              '${formatDistanceFromMiles(distToPickup, country: context.read<DriverProvider>().driver?.countryCode ?? 'US')} ${'rides.away'.tr()}',
                                               style: TextStyle(
                                                 color: AppColors.warning,
                                                 fontWeight: FontWeight.w600,
@@ -1089,7 +1294,9 @@ class _RidesScreenState extends State<RidesScreen>
                                             ),
                                             Text(
                                               ' • ',
-                                              style: TextStyle(color: AppColors.textSecondary),
+                                              style: TextStyle(
+                                                color: AppColors.textSecondary,
+                                              ),
                                             ),
                                           ],
                                         );
@@ -1099,33 +1306,50 @@ class _RidesScreenState extends State<RidesScreen>
                                   ),
                                   Text(
                                     '${formatDistance(ride.distanceKm, country: context.read<DriverProvider>().driver?.countryCode ?? 'US')} • ${ride.estimatedMinutes} min',
-                                    style: TextStyle(color: AppColors.textSecondary),
+                                    style: TextStyle(
+                                      color: AppColors.textSecondary,
+                                    ),
                                   ),
                                 ],
                               ),
-                              if (ride.recurringDays.isNotEmpty || (ride.type == RideType.carpool && ride.filledSeats > 1)) ...[
+                              if (ride.recurringDays.isNotEmpty ||
+                                  (ride.type == RideType.carpool &&
+                                      ride.filledSeats > 1)) ...[
                                 const SizedBox(height: 6),
                                 Row(
                                   children: [
                                     if (ride.recurringDays.isNotEmpty)
                                       Text(
-                                        _formatRecurringDays(ride.recurringDays),
+                                        _formatRecurringDays(
+                                          ride.recurringDays,
+                                        ),
                                         style: TextStyle(
                                           color: AppColors.primary,
                                           fontSize: 12,
                                           fontWeight: FontWeight.w600,
                                         ),
                                       ),
-                                    if (ride.recurringDays.isNotEmpty && ride.type == RideType.carpool)
+                                    if (ride.recurringDays.isNotEmpty &&
+                                        ride.type == RideType.carpool)
                                       const SizedBox(width: 12),
-                                    if (ride.type == RideType.carpool && ride.filledSeats > 0)
+                                    if (ride.type == RideType.carpool &&
+                                        ride.filledSeats > 0)
                                       Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: List.generate(3, (i) {
-                                          final color = i < ride.filledSeats ? AppColors.success : AppColors.textSecondary.withValues(alpha: 0.3);
+                                          final color = i < ride.filledSeats
+                                              ? AppColors.success
+                                              : AppColors.textSecondary
+                                                    .withValues(alpha: 0.3);
                                           return Padding(
-                                            padding: EdgeInsets.only(left: i > 0 ? 2 : 0),
-                                            child: Icon(Icons.person, color: color, size: 16),
+                                            padding: EdgeInsets.only(
+                                              left: i > 0 ? 2 : 0,
+                                            ),
+                                            child: Icon(
+                                              Icons.person,
+                                              color: color,
+                                              size: 16,
+                                            ),
                                           );
                                         }),
                                       ),
@@ -1136,33 +1360,43 @@ class _RidesScreenState extends State<RidesScreen>
                           ),
                         ),
                         // PREVIEW: If no real earnings yet, calculate from fare * driver%
-                        Builder(builder: (context) {
-                          final earnings = ride.driverEarnings > 0
-                              ? ride.driverEarnings
-                              : ride.fare * (_driverPercent / 100);
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                formatMoney(earnings, country: context.read<DriverProvider>().driver?.countryCode ?? 'US'),
-                                style: TextStyle(
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.success,
-                                ),
-                              ),
-                              if (ride.driverEarnings <= 0)
+                        Builder(
+                          builder: (context) {
+                            final earnings = ride.driverEarnings > 0
+                                ? ride.driverEarnings
+                                : ride.fare * (_driverPercent / 100);
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
                                 Text(
-                                  'estimated'.tr(),
+                                  formatMoney(
+                                    earnings,
+                                    country:
+                                        context
+                                            .read<DriverProvider>()
+                                            .driver
+                                            ?.countryCode ??
+                                        'US',
+                                  ),
                                   style: TextStyle(
-                                    color: AppColors.warning,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w600,
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.success,
                                   ),
                                 ),
-                            ],
-                          );
-                        }),
+                                if (ride.driverEarnings <= 0)
+                                  Text(
+                                    'estimated'.tr(),
+                                    style: TextStyle(
+                                      color: AppColors.warning,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                              ],
+                            );
+                          },
+                        ),
                       ],
                     ),
                     const SizedBox(height: 28),
@@ -1175,8 +1409,33 @@ class _RidesScreenState extends State<RidesScreen>
                       ),
                     ),
                     const SizedBox(height: 18),
-                    _buildDetailRow(Icons.location_on_rounded, 'pickup'.tr(), ride.pickupLocation.address ?? 'N/A'),
-                    _buildDetailRow(Icons.flag_rounded, 'destination'.tr(), ride.dropoffLocation.address ?? 'N/A'),
+                    // AGENDADO: la hora pactada es lo primero que debe ver
+                    if (ride.scheduledTime != null)
+                      _buildDetailRow(
+                        Icons.event_rounded,
+                        'Programado para',
+                        _fmtScheduled(ride.scheduledTime!),
+                      ),
+                    _buildDetailRow(
+                      Icons.location_on_rounded,
+                      'pickup'.tr(),
+                      ride.pickupLocation.address ?? 'N/A',
+                    ),
+                    // MULTI-PARADA: rutas extra del viaje, en orden
+                    if (ride.waypoints != null && ride.waypoints!.isNotEmpty)
+                      _buildDetailRow(
+                        Icons.alt_route_rounded,
+                        'Paradas',
+                        ride.waypoints!
+                            .map((w) => (w['name'] ?? '').toString())
+                            .where((n) => n.isNotEmpty)
+                            .join('  →  '),
+                      ),
+                    _buildDetailRow(
+                      Icons.flag_rounded,
+                      'destination'.tr(),
+                      ride.dropoffLocation.address ?? 'N/A',
+                    ),
                     _buildDetailRow(
                       ride.paymentMethod == PaymentMethod.cash
                           ? Icons.payments_outlined
@@ -1184,10 +1443,16 @@ class _RidesScreenState extends State<RidesScreen>
                       'payment_method'.tr(),
                       ride.paymentMethod == PaymentMethod.cash
                           ? 'Efectivo'
-                          : (ride.paymentMethod == PaymentMethod.wallet ? 'Wallet' : 'Tarjeta'),
+                          : (ride.paymentMethod == PaymentMethod.wallet
+                                ? 'Wallet'
+                                : 'Tarjeta'),
                     ),
                     if (ride.notes != null && ride.notes!.isNotEmpty)
-                      _buildDetailRow(Icons.note_rounded, 'note'.tr(), ride.notes!),
+                      _buildDetailRow(
+                        Icons.note_rounded,
+                        'note'.tr(),
+                        ride.notes!,
+                      ),
                     const Spacer(),
                     Row(
                       children: [
@@ -1206,33 +1471,59 @@ class _RidesScreenState extends State<RidesScreen>
                         const SizedBox(width: 16),
                         Expanded(
                           flex: 2,
-                          child: NeonButton(
-                            text: 'accept_trip_btn'.tr(),
-                            icon: Icons.check_rounded,
-                            onPressed: () async {
-                              final navigator = Navigator.of(context);
-                              final rideProvider = context.read<RideProvider>();
-                              final driverId = context.read<DriverProvider>().driver?.id;
-                              if (driverId != null) {
-                                final success = await rideProvider.acceptRide(ride.id, driverId);
-                                if (success) {
-                                  HapticService.success();
-                                  if (mounted) {
-                                    navigator.pop();
-                                    navigator.pushNamed('/navigation');
-                                  }
-                                } else {
-                                  HapticService.error();
-                                }
-                              }
-                            },
-                            gradient: AppColors.successGradient,
-                            height: 54,
-                          ),
+                          child: _scheduledLocked(ride)
+                              ? NeonButton(
+                                  text:
+                                      'Se libera ${_fmtScheduled(ride.scheduledTime!.subtract(const Duration(minutes: 20)))}',
+                                  icon: Icons.lock_clock,
+                                  onPressed: () {
+                                    HapticService.lightImpact();
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          'Viaje agendado para ${_fmtScheduled(ride.scheduledTime!)} — se puede aceptar 20 min antes.',
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  isOutlined: true,
+                                  color: const Color(0xFF4FC3F7),
+                                  height: 54,
+                                )
+                              : NeonButton(
+                                  text: 'accept_trip_btn'.tr(),
+                                  icon: Icons.check_rounded,
+                                  onPressed: () async {
+                                    final navigator = Navigator.of(context);
+                                    final rideProvider = context
+                                        .read<RideProvider>();
+                                    final driverId = context
+                                        .read<DriverProvider>()
+                                        .driver
+                                        ?.id;
+                                    if (driverId != null) {
+                                      final success = await rideProvider
+                                          .acceptRide(ride.id, driverId);
+                                      if (success) {
+                                        HapticService.success();
+                                        if (mounted) {
+                                          navigator.pop();
+                                          navigator.pushNamed('/navigation');
+                                        }
+                                      } else {
+                                        HapticService.error();
+                                      }
+                                    }
+                                  },
+                                  gradient: AppColors.successGradient,
+                                  height: 54,
+                                ),
                         ),
                       ],
                     ),
-                    SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
+                    SizedBox(
+                      height: MediaQuery.of(context).padding.bottom + 16,
+                    ),
                   ],
                 ),
               ),
@@ -1329,10 +1620,7 @@ class _OnlineStatusButton extends StatefulWidget {
   final bool isOnline;
   final VoidCallback onTap;
 
-  const _OnlineStatusButton({
-    required this.isOnline,
-    required this.onTap,
-  });
+  const _OnlineStatusButton({required this.isOnline, required this.onTap});
 
   @override
   State<_OnlineStatusButton> createState() => _OnlineStatusButtonState();
@@ -1383,7 +1671,9 @@ class _OnlineStatusButtonState extends State<_OnlineStatusButton> {
               width: 6,
               height: 6,
               decoration: BoxDecoration(
-                color: widget.isOnline ? AppColors.success : AppColors.textSecondary,
+                color: widget.isOnline
+                    ? AppColors.success
+                    : AppColors.textSecondary,
                 shape: BoxShape.circle,
               ),
             ),

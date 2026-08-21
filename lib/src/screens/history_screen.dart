@@ -106,8 +106,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
         }
 
         // Duration: prefer duration_minutes, else estimated_minutes.
-        int duration = (t['duration_minutes'] as num?)?.toInt() ??
-                       (t['estimated_minutes'] as num?)?.toInt() ?? 0;
+        int duration =
+            (t['duration_minutes'] as num?)?.toInt() ??
+            (t['estimated_minutes'] as num?)?.toInt() ??
+            0;
 
         // Status: map delivered → completed for UI.
         final rawStatus = (t['status'] as String?) ?? 'completed';
@@ -125,9 +127,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
             : ((t['driver_earnings'] as num?)?.toDouble() ?? 0);
 
         // Date: prefer completed_at/delivered_at, else created_at.
-        final dateStr = (t['completed_at'] as String?) ??
-                        (t['delivered_at'] as String?) ??
-                        (t['created_at'] as String?) ?? '';
+        final dateStr =
+            (t['completed_at'] as String?) ??
+            (t['delivered_at'] as String?) ??
+            (t['created_at'] as String?) ??
+            '';
 
         return TripHistory(
           id: t['id'] ?? '',
@@ -138,13 +142,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
           duration: duration,
           status: status,
           createdAt: DateTime.tryParse(dateStr) ?? DateTime.now(),
-          rating: (t['driver_rating'] as num?)?.toDouble() ??
-                  (t['rider_rating'] as num?)?.toDouble(),
+          rating:
+              (t['driver_rating'] as num?)?.toDouble() ??
+              (t['rider_rating'] as num?)?.toDouble(),
         );
       }).toList();
 
       // Calculate summary from completed trips only.
-      final completedTrips = _trips.where((t) => t.status == 'completed').toList();
+      final completedTrips = _trips
+          .where((t) => t.status == 'completed')
+          .toList();
       _summary = HistorySummary(
         totalTrips: completedTrips.length,
         totalEarnings: completedTrips.fold(0, (sum, t) => sum + t.fare),
@@ -165,14 +172,65 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   void _loadMockData() {
     _trips = [
-      TripHistory(id: '1', pickupAddress: 'Villetta Apartments', dropoffAddress: 'Phoenix Sky Harbor Airport', fare: 45.00, distance: 10.4, duration: 18, status: 'completed', createdAt: DateTime.now(), rating: 5.0),
-      TripHistory(id: '2', pickupAddress: 'Downtown Phoenix', dropoffAddress: 'Tempe Marketplace', fare: 32.50, distance: 8.2, duration: 15, status: 'completed', createdAt: DateTime.now().subtract(const Duration(hours: 2)), rating: 5.0),
-      TripHistory(id: '3', pickupAddress: 'ASU Campus', dropoffAddress: 'Scottsdale Fashion Square', fare: 28.00, distance: 12.1, duration: 22, status: 'completed', createdAt: DateTime.now().subtract(const Duration(hours: 4)), rating: 4.0),
-      TripHistory(id: '4', pickupAddress: 'Mesa Arts Center', dropoffAddress: 'Gilbert Town Square', fare: 22.50, distance: 7.5, duration: 14, status: 'cancelled', createdAt: DateTime.now().subtract(const Duration(days: 1))),
-      TripHistory(id: '5', pickupAddress: 'Chandler Mall', dropoffAddress: 'Phoenix Zoo', fare: 35.00, distance: 15.3, duration: 25, status: 'completed', createdAt: DateTime.now().subtract(const Duration(days: 1)), rating: 5.0),
+      TripHistory(
+        id: '1',
+        pickupAddress: 'Villetta Apartments',
+        dropoffAddress: 'Phoenix Sky Harbor Airport',
+        fare: 45.00,
+        distance: 10.4,
+        duration: 18,
+        status: 'completed',
+        createdAt: DateTime.now(),
+        rating: 5.0,
+      ),
+      TripHistory(
+        id: '2',
+        pickupAddress: 'Downtown Phoenix',
+        dropoffAddress: 'Tempe Marketplace',
+        fare: 32.50,
+        distance: 8.2,
+        duration: 15,
+        status: 'completed',
+        createdAt: DateTime.now().subtract(const Duration(hours: 2)),
+        rating: 5.0,
+      ),
+      TripHistory(
+        id: '3',
+        pickupAddress: 'ASU Campus',
+        dropoffAddress: 'Scottsdale Fashion Square',
+        fare: 28.00,
+        distance: 12.1,
+        duration: 22,
+        status: 'completed',
+        createdAt: DateTime.now().subtract(const Duration(hours: 4)),
+        rating: 4.0,
+      ),
+      TripHistory(
+        id: '4',
+        pickupAddress: 'Mesa Arts Center',
+        dropoffAddress: 'Gilbert Town Square',
+        fare: 22.50,
+        distance: 7.5,
+        duration: 14,
+        status: 'cancelled',
+        createdAt: DateTime.now().subtract(const Duration(days: 1)),
+      ),
+      TripHistory(
+        id: '5',
+        pickupAddress: 'Chandler Mall',
+        dropoffAddress: 'Phoenix Zoo',
+        fare: 35.00,
+        distance: 15.3,
+        duration: 25,
+        status: 'completed',
+        createdAt: DateTime.now().subtract(const Duration(days: 1)),
+        rating: 5.0,
+      ),
     ];
 
-    final completedTrips = _trips.where((t) => t.status == 'completed').toList();
+    final completedTrips = _trips
+        .where((t) => t.status == 'completed')
+        .toList();
     _summary = HistorySummary(
       totalTrips: completedTrips.length,
       totalEarnings: completedTrips.fold(0, (sum, t) => sum + t.fare),
@@ -198,17 +256,41 @@ class _HistoryScreenState extends State<HistoryScreen> {
             Container(
               width: 32,
               height: 4,
-              decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)),
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
             const SizedBox(height: 16),
-            Text('export_data'.tr(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+            Text(
+              'export_data'.tr(),
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+            ),
             const SizedBox(height: 16),
             ListTile(
               dense: true,
-              leading: Icon(Icons.description, color: AppColors.primary, size: 20),
-              title: const Text('CSV', style: TextStyle(color: AppColors.textPrimary, fontSize: 14)),
-              subtitle: Text('Excel compatible', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-              trailing: Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 18),
+              leading: Icon(
+                Icons.description,
+                color: AppColors.primary,
+                size: 20,
+              ),
+              title: const Text(
+                'CSV',
+                style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
+              ),
+              subtitle: Text(
+                'Excel compatible',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+              ),
+              trailing: Icon(
+                Icons.chevron_right,
+                color: AppColors.textSecondary,
+                size: 18,
+              ),
               onTap: () {
                 Navigator.pop(context);
                 _exportToCSV();
@@ -217,9 +299,19 @@ class _HistoryScreenState extends State<HistoryScreen> {
             ListTile(
               dense: true,
               leading: Icon(Icons.picture_as_pdf, color: Colors.red, size: 20),
-              title: const Text('PDF', style: TextStyle(color: AppColors.textPrimary, fontSize: 14)),
-              subtitle: Text('report_format'.tr(), style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-              trailing: Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 18),
+              title: const Text(
+                'PDF',
+                style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
+              ),
+              subtitle: Text(
+                'report_format'.tr(),
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+              ),
+              trailing: Icon(
+                Icons.chevron_right,
+                color: AppColors.textSecondary,
+                size: 18,
+              ),
               onTap: () {
                 Navigator.pop(context);
                 _exportToPDF();
@@ -228,9 +320,22 @@ class _HistoryScreenState extends State<HistoryScreen> {
             ListTile(
               dense: true,
               leading: Icon(Icons.share, color: AppColors.primary, size: 20),
-              title: Text('share'.tr(), style: const TextStyle(color: AppColors.textPrimary, fontSize: 14)),
-              subtitle: Text('share_summary'.tr(), style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-              trailing: Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 18),
+              title: Text(
+                'share'.tr(),
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 14,
+                ),
+              ),
+              subtitle: Text(
+                'share_summary'.tr(),
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+              ),
+              trailing: Icon(
+                Icons.chevron_right,
+                color: AppColors.textSecondary,
+                size: 18,
+              ),
               onTap: () {
                 Navigator.pop(context);
                 _shareData();
@@ -246,28 +351,40 @@ class _HistoryScreenState extends State<HistoryScreen> {
   Future<void> _exportToCSV() async {
     try {
       final csvContent = StringBuffer();
-      csvContent.writeln('Date,Pickup,Dropoff,Fare,Miles,Minutes,Status,Rating');
+      csvContent.writeln(
+        '${'date'.tr()},${'pickup'.tr()},${'dropoff'.tr()},${'history.fare'.tr()},${'distance'.tr()},${'history.minutes'.tr()},${'status_label'.tr()},${'rating'.tr()}',
+      );
 
       for (final trip in _trips) {
         final date = DateFormat('yyyy-MM-dd HH:mm').format(trip.createdAt);
-        csvContent.writeln('$date,"${trip.pickupAddress}","${trip.dropoffAddress}",${trip.fare},${trip.distance},${trip.duration},${trip.status},${trip.rating ?? ""}');
+        csvContent.writeln(
+          '$date,"${trip.pickupAddress}","${trip.dropoffAddress}",${trip.fare},${trip.distance},${trip.duration},${trip.status},${trip.rating ?? ""}',
+        );
       }
 
       final directory = await getTemporaryDirectory();
       final file = File('${directory.path}/toro_history.csv');
       await file.writeAsString(csvContent.toString());
 
-      await Share.shareXFiles([XFile(file.path)], text: 'TORO Driver History');
+      await Share.shareXFiles([
+        XFile(file.path),
+      ], text: 'history.report_title'.tr());
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('export_success'.tr()), backgroundColor: AppColors.success),
+          SnackBar(
+            content: Text('export_success'.tr()),
+            backgroundColor: AppColors.success,
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: AppColors.error,
+          ),
         );
       }
     }
@@ -279,17 +396,18 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Future<void> _shareData() async {
-    final summary = '''
-TORO Driver - History Report
-Period: ${_getPeriodName()}
+    final summary =
+        '''
+${'history.report_title'.tr()}
+${'history.period'.tr()}: ${_getPeriodName()}
 
-Summary:
-- Total Trips: ${_summary.totalTrips}
-- Total Earnings: ${formatMoney(_summary.totalEarnings, country: _countryCode)}
-- Total Miles: ${_summary.totalMiles.toStringAsFixed(1)} mi
-${_countryCode != 'MX' ? '- Time Online: ${_summary.onlineHours.toStringAsFixed(1)}h\n' : ''}- Average Rating: ${_summary.avgRating.toStringAsFixed(1)}
+${'history.summary'.tr()}:
+- ${'history.total_trips'.tr()}: ${_summary.totalTrips}
+- ${'history.total_earnings'.tr()}: ${formatMoney(_summary.totalEarnings, country: _countryCode)}
+ - ${'distance'.tr()}: ${formatDistanceFromMiles(_summary.totalMiles, country: _countryCode)}
+${_countryCode != 'MX' ? '- ${'history.time_online'.tr()}: ${_summary.onlineHours.toStringAsFixed(1)}h\n' : ''}- ${'history.average_rating'.tr()}: ${_summary.avgRating.toStringAsFixed(1)}
 
-Recent Trips:
+${'history.recent_trips'.tr()}:
 ${_trips.take(5).map((t) => '- ${t.pickupAddress} → ${t.dropoffAddress}: ${formatMoney(t.fare, country: _countryCode)}').join('\n')}
 ''';
 
@@ -298,10 +416,14 @@ ${_trips.take(5).map((t) => '- ${t.pickupAddress} → ${t.dropoffAddress}: ${for
 
   String _getPeriodName() {
     switch (_selectedPeriod) {
-      case 'today': return 'today'.tr();
-      case 'week': return 'this_week'.tr();
-      case 'month': return 'this_month'.tr();
-      default: return 'all_time'.tr();
+      case 'today':
+        return 'today'.tr();
+      case 'week':
+        return 'this_week'.tr();
+      case 'month':
+        return 'this_month'.tr();
+      default:
+        return 'all_time'.tr();
     }
   }
 
@@ -320,7 +442,10 @@ ${_trips.take(5).map((t) => '- ${t.pickupAddress} → ${t.dropoffAddress}: ${for
           children: [
             Icon(Icons.history, size: 18, color: AppColors.primary),
             const SizedBox(width: 8),
-            Text('history'.tr(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            Text(
+              'history'.tr(),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
           ],
         ),
         actions: [
@@ -362,16 +487,27 @@ ${_trips.take(5).map((t) => '- ${t.pickupAddress} → ${t.dropoffAddress}: ${for
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.history, size: 48, color: AppColors.textSecondary),
+                              Icon(
+                                Icons.history,
+                                size: 48,
+                                color: AppColors.textSecondary,
+                              ),
                               const SizedBox(height: 12),
-                              Text('no_trips'.tr(), style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+                              Text(
+                                'no_trips'.tr(),
+                                style: TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 14,
+                                ),
+                              ),
                             ],
                           ),
                         )
                       : ListView.builder(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           itemCount: _trips.length,
-                          itemBuilder: (context, index) => _buildTripItem(_trips[index]),
+                          itemBuilder: (context, index) =>
+                              _buildTripItem(_trips[index]),
                         ),
                 ),
               ],
@@ -417,11 +553,33 @@ ${_trips.take(5).map((t) => '- ${t.pickupAddress} → ${t.dropoffAddress}: ${for
         children: [
           Row(
             children: [
-              Expanded(child: _buildStatItem(Icons.drive_eta, '${_summary.totalTrips}', 'trips'.tr())),
+              Expanded(
+                child: _buildStatItem(
+                  Icons.drive_eta,
+                  '${_summary.totalTrips}',
+                  'trips'.tr(),
+                ),
+              ),
               Container(width: 1, height: 36, color: AppColors.border),
-              Expanded(child: _buildStatItem(Icons.attach_money, '\$${_summary.totalEarnings.toStringAsFixed(0)}', 'earned'.tr())),
+              Expanded(
+                child: _buildStatItem(
+                  Icons.attach_money,
+                  formatMoney(_summary.totalEarnings, country: _countryCode),
+                  'earned'.tr(),
+                ),
+              ),
               Container(width: 1, height: 36, color: AppColors.border),
-              Expanded(child: _buildStatItem(Icons.route, _summary.totalMiles.toStringAsFixed(0), 'miles'.tr())),
+              Expanded(
+                child: _buildStatItem(
+                  Icons.route,
+                  formatDistanceFromMiles(
+                    _summary.totalMiles,
+                    country: _countryCode,
+                    decimals: 0,
+                  ),
+                  'distance'.tr(),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -430,12 +588,30 @@ ${_trips.take(5).map((t) => '- ${t.pickupAddress} → ${t.dropoffAddress}: ${for
           Row(
             children: [
               if (_countryCode != 'MX') ...[
-                Expanded(child: _buildStatItem(Icons.access_time, '${_summary.onlineHours.toStringAsFixed(1)}h', 'online'.tr())),
+                Expanded(
+                  child: _buildStatItem(
+                    Icons.access_time,
+                    '${_summary.onlineHours.toStringAsFixed(1)}h',
+                    'online'.tr(),
+                  ),
+                ),
                 Container(width: 1, height: 36, color: AppColors.border),
               ],
-              Expanded(child: _buildStatItem(Icons.timer, '${(_summary.totalMinutes / 60).toStringAsFixed(1)}h', 'driving'.tr())),
+              Expanded(
+                child: _buildStatItem(
+                  Icons.timer,
+                  '${(_summary.totalMinutes / 60).toStringAsFixed(1)}h',
+                  'driving'.tr(),
+                ),
+              ),
               Container(width: 1, height: 36, color: AppColors.border),
-              Expanded(child: _buildStatItem(Icons.star, _summary.avgRating.toStringAsFixed(1), 'rating'.tr())),
+              Expanded(
+                child: _buildStatItem(
+                  Icons.star,
+                  _summary.avgRating.toStringAsFixed(1),
+                  'rating'.tr(),
+                ),
+              ),
             ],
           ),
         ],
@@ -448,8 +624,18 @@ ${_trips.take(5).map((t) => '- ${t.pickupAddress} → ${t.dropoffAddress}: ${for
       children: [
         Icon(icon, color: AppColors.primary, size: 18),
         const SizedBox(height: 4),
-        Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-        Text(label, style: TextStyle(fontSize: 10, color: AppColors.textSecondary)),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        Text(
+          label,
+          style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
+        ),
       ],
     );
   }
@@ -462,13 +648,13 @@ ${_trips.take(5).map((t) => '- ${t.pickupAddress} → ${t.dropoffAddress}: ${for
     final statusColor = isCancelled
         ? AppColors.error
         : isDone
-            ? AppColors.success
-            : AppColors.warning;
+        ? AppColors.success
+        : AppColors.warning;
     final statusIcon = isCancelled
         ? Icons.cancel
         : isDone
-            ? Icons.check_circle
-            : Icons.schedule;
+        ? Icons.check_circle
+        : Icons.schedule;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -486,15 +672,15 @@ ${_trips.take(5).map((t) => '- ${t.pickupAddress} → ${t.dropoffAddress}: ${for
             color: statusColor.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(
-            statusIcon,
-            color: statusColor,
-            size: 18,
-          ),
+          child: Icon(statusIcon, color: statusColor, size: 18),
         ),
         title: Text(
           '${trip.pickupAddress} → ${trip.dropoffAddress}',
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textPrimary),
+          style: const TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 12,
+            color: AppColors.textPrimary,
+          ),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
@@ -502,16 +688,25 @@ ${_trips.take(5).map((t) => '- ${t.pickupAddress} → ${t.dropoffAddress}: ${for
           children: [
             Icon(Icons.route, size: 12, color: AppColors.textSecondary),
             const SizedBox(width: 4),
-            Text(formatDistanceFromMiles(trip.distance, country: _countryCode), style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
+            Text(
+              formatDistanceFromMiles(trip.distance, country: _countryCode),
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
+            ),
             const SizedBox(width: 8),
             Icon(Icons.timer, size: 12, color: AppColors.textSecondary),
             const SizedBox(width: 4),
-            Text('${trip.duration} min', style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
+            Text(
+              '${trip.duration} min',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
+            ),
             if (trip.rating != null) ...[
               const SizedBox(width: 8),
               Icon(Icons.star, size: 12, color: AppColors.star),
               const SizedBox(width: 2),
-              Text('${trip.rating}', style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
+              Text(
+                '${trip.rating}',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
+              ),
             ],
           ],
         ),
@@ -522,11 +717,15 @@ ${_trips.take(5).map((t) => '- ${t.pickupAddress} → ${t.dropoffAddress}: ${for
             Text(
               // Muestra lo que GANÓ el chofer (no-show le paga su parte aunque
               // el viaje sea 'cancelled'); $0 solo si de verdad no ganó nada.
-              trip.fare > 0 ? formatMoney(trip.fare, country: _countryCode) : formatMoney(0, country: _countryCode),
+              trip.fare > 0
+                  ? formatMoney(trip.fare, country: _countryCode)
+                  : formatMoney(0, country: _countryCode),
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
-                color: trip.fare > 0 ? AppColors.success : AppColors.textSecondary,
+                color: trip.fare > 0
+                    ? AppColors.success
+                    : AppColors.textSecondary,
               ),
             ),
             Text(
@@ -572,20 +771,51 @@ ${_trips.take(5).map((t) => '- ${t.pickupAddress} → ${t.dropoffAddress}: ${for
                 Icon(Icons.receipt, color: AppColors.primary, size: 24),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Text('trip_details'.tr(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                  child: Text(
+                    'trip_details'.tr(),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
                 ),
                 Text(
                   formatMoney(trip.fare, country: _countryCode),
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.success),
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.success,
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
-            _buildDetailRow(Icons.my_location, 'pickup'.tr(), trip.pickupAddress),
-            _buildDetailRow(Icons.location_on, 'dropoff'.tr(), trip.dropoffAddress),
-            _buildDetailRow(Icons.route, 'distance'.tr(), formatDistanceFromMiles(trip.distance, country: _countryCode)),
-            _buildDetailRow(Icons.timer, 'duration'.tr(), '${trip.duration} min'),
-            _buildDetailRow(Icons.calendar_today, 'date'.tr(), DateFormat('MMM dd, yyyy HH:mm').format(trip.createdAt)),
+            _buildDetailRow(
+              Icons.my_location,
+              'pickup'.tr(),
+              trip.pickupAddress,
+            ),
+            _buildDetailRow(
+              Icons.location_on,
+              'dropoff'.tr(),
+              trip.dropoffAddress,
+            ),
+            _buildDetailRow(
+              Icons.route,
+              'distance'.tr(),
+              formatDistanceFromMiles(trip.distance, country: _countryCode),
+            ),
+            _buildDetailRow(
+              Icons.timer,
+              'duration'.tr(),
+              '${trip.duration} min',
+            ),
+            _buildDetailRow(
+              Icons.calendar_today,
+              'date'.tr(),
+              DateFormat('MMM dd, yyyy HH:mm').format(trip.createdAt),
+            ),
             if (trip.rating != null)
               _buildDetailRow(Icons.star, 'rating'.tr(), '${trip.rating}'),
             const SizedBox(height: 16),
@@ -597,7 +827,9 @@ ${_trips.take(5).map((t) => '- ${t.pickupAddress} → ${t.dropoffAddress}: ${for
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.black,
                   padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
                 child: Text('close'.tr()),
               ),
@@ -618,10 +850,20 @@ ${_trips.take(5).map((t) => '- ${t.pickupAddress} → ${t.dropoffAddress}: ${for
           const SizedBox(width: 10),
           SizedBox(
             width: 70,
-            child: Text(label, style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+            child: Text(
+              label,
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+            ),
           ),
           Expanded(
-            child: Text(value, style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w500)),
+            child: Text(
+              value,
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
         ],
       ),

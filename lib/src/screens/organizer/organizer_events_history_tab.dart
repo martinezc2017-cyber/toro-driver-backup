@@ -22,7 +22,8 @@ class OrganizerEventsHistoryTab extends StatefulWidget {
   const OrganizerEventsHistoryTab({super.key});
 
   @override
-  State<OrganizerEventsHistoryTab> createState() => _OrganizerEventsHistoryTabState();
+  State<OrganizerEventsHistoryTab> createState() =>
+      _OrganizerEventsHistoryTabState();
 }
 
 class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
@@ -32,6 +33,17 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
   List<Map<String, dynamic>> _filteredEvents = [];
   String _filterStatus = 'all';
   String? _organizerId;
+
+  String get _driverCountry =>
+      (context.read<AuthProvider>().driver?.countryCode ?? userCountry())
+          .toUpperCase();
+
+  String _eventCountry(Map<String, dynamic> event) =>
+      ((event['country_code'] as String?) ?? _driverCountry).toUpperCase();
+
+  String _eventCurrency(Map<String, dynamic> event) =>
+      (event['currency'] as String?) ??
+      currencyCode(country: _eventCountry(event));
 
   @override
   void initState() {
@@ -98,7 +110,8 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
   Map<String, double> _calcFinancials(Map<String, dynamic> event) {
     final pricePerKm = (event['price_per_km'] as num?)?.toDouble() ?? 0;
     final distance = (event['total_distance_km'] as num?)?.toDouble() ?? 0;
-    final commissionRate = (event['toro_commission_rate'] as num?)?.toDouble() ?? 0.18;
+    final commissionRate =
+        (event['toro_commission_rate'] as num?)?.toDouble() ?? 0.18;
     final isMX = (event['country_code'] as String?) == 'MX';
 
     final driverPayment = pricePerKm * distance;
@@ -117,7 +130,7 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
   }
 
   String _formatCurrency(double amount, String? currency) {
-    final cur = currency ?? 'MXN';
+    final cur = currency ?? currencyCode(country: _driverCountry);
     final country = cur == 'MXN' ? 'MX' : 'US';
     return '${formatMoney(amount, country: country)} $cur';
   }
@@ -129,20 +142,21 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
       final report = _generateReport(event);
 
       final directory = await getTemporaryDirectory();
-      final fileName = 'TORO_Evento_${event['event_name']}_${DateFormat('yyyyMMdd').format(DateTime.parse(event['event_date']))}.txt';
+      final fileName =
+          'TORO_Evento_${event['event_name']}_${DateFormat('yyyyMMdd').format(DateTime.parse(event['event_date']))}.txt';
       final file = File('${directory.path}/$fileName');
       await file.writeAsString(report);
 
       await Share.shareXFiles(
         [XFile(file.path)],
-        subject: '${'event_history.report_title'.tr()} - ${event['event_name']}',
+        subject:
+            '${'event_history.report_title'.tr()} - ${event['event_name']}',
       );
-
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }
@@ -151,7 +165,8 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
     final buffer = StringBuffer();
     final dateFormat = DateFormat('dd/MM/yyyy HH:mm');
     final fin = _calcFinancials(event);
-    final currency = event['currency'] as String? ?? 'MXN';
+    final currency = _eventCurrency(event);
+    final country = _eventCountry(event);
     final isMX = (event['country_code'] as String?) == 'MX';
     final commissionPct = ((fin['commissionRate']! * 100)).toStringAsFixed(0);
 
@@ -165,7 +180,10 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
     buffer.writeln('${'event_history.date'.tr()}: ${event['event_date']}');
     buffer.writeln('${'event_history.time'.tr()}: ${event['start_time']}');
     buffer.writeln('${'event_history.status'.tr()}: ${event['status']}');
-    buffer.writeln('${'event_history.distance'.tr()}: ${event['total_distance_km']} km');
+    buffer.writeln(
+      '${'event_history.distance'.tr()}: '
+      '${formatDistance(event['total_distance_km'] as num?, country: country)}',
+    );
     buffer.writeln();
 
     if (event['vehicle_id'] != null) {
@@ -177,12 +195,20 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
 
     buffer.writeln('event_history.report_financial'.tr());
     buffer.writeln('-' * 40);
-    buffer.writeln('${'event_history.driver_payment'.tr()} ${_formatCurrency(fin['driverPayment']!, currency)}');
-    buffer.writeln('${'event_history.toro_commission'.tr(namedArgs: {'rate': commissionPct})} ${_formatCurrency(fin['commission']!, currency)}');
+    buffer.writeln(
+      '${'event_history.driver_payment'.tr()} ${_formatCurrency(fin['driverPayment']!, currency)}',
+    );
+    buffer.writeln(
+      '${'event_history.toro_commission'.tr(namedArgs: {'rate': commissionPct})} ${_formatCurrency(fin['commission']!, currency)}',
+    );
     if (isMX) {
-      buffer.writeln('${'event_history.iva_tax'.tr()} ${_formatCurrency(fin['iva']!, currency)}');
+      buffer.writeln(
+        '${'event_history.iva_tax'.tr()} ${_formatCurrency(fin['iva']!, currency)}',
+      );
     }
-    buffer.writeln('${'event_history.total'.tr()} ${_formatCurrency(fin['total']!, currency)}');
+    buffer.writeln(
+      '${'event_history.total'.tr()} ${_formatCurrency(fin['total']!, currency)}',
+    );
     buffer.writeln();
 
     buffer.writeln('event_history.report_itinerary'.tr());
@@ -192,31 +218,26 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
       final stop = itinerary[i] as Map<String, dynamic>;
       buffer.writeln('${i + 1}. ${stop['name']}');
       if (stop['address'] != null) buffer.writeln('   ${stop['address']}');
-      if (stop['estimated_time'] != null) buffer.writeln('   ${stop['estimated_time']}');
+      if (stop['estimated_time'] != null)
+        buffer.writeln('   ${stop['estimated_time']}');
       buffer.writeln();
     }
 
     buffer.writeln('event_history.report_passengers'.tr());
     buffer.writeln('-' * 40);
-    buffer.writeln('${'event_history.max_capacity'.tr()}: ${event['max_passengers'] ?? 'N/A'}');
+    buffer.writeln(
+      '${'event_history.max_capacity'.tr()}: ${event['max_passengers'] ?? 'N/A'}',
+    );
     buffer.writeln();
 
     buffer.writeln('=' * 60);
-    buffer.writeln('${'event_history.report_generated'.tr()}: ${dateFormat.format(DateTime.now())}');
+    buffer.writeln(
+      '${'event_history.report_generated'.tr()}: ${dateFormat.format(DateTime.now())}',
+    );
     buffer.writeln('event_history.report_confidential'.tr());
     buffer.writeln('=' * 60);
 
     return buffer.toString();
-  }
-
-  void _showCfdiInfo() {
-    HapticService.lightImpact();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('event_history.cfdi_coming_soon'.tr()),
-        duration: const Duration(seconds: 4),
-      ),
-    );
   }
 
   @override
@@ -248,10 +269,12 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
             OrganizerConnectBanner(organizerId: _organizerId!),
           Expanded(
             child: _isLoading
-                ? Center(child: CircularProgressIndicator(color: AppColors.primary))
+                ? Center(
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  )
                 : _error != null
-                    ? _buildErrorState()
-                    : _buildContent(),
+                ? _buildErrorState()
+                : _buildContent(),
           ),
         ],
       ),
@@ -309,11 +332,20 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
           children: [
             _buildFilterChip('event_history.filter_all'.tr(), 'all'),
             SizedBox(width: 8),
-            _buildFilterChip('event_history.filter_completed'.tr(), 'completed'),
+            _buildFilterChip(
+              'event_history.filter_completed'.tr(),
+              'completed',
+            ),
             SizedBox(width: 8),
-            _buildFilterChip('event_history.filter_in_progress'.tr(), 'in_progress'),
+            _buildFilterChip(
+              'event_history.filter_in_progress'.tr(),
+              'in_progress',
+            ),
             SizedBox(width: 8),
-            _buildFilterChip('event_history.filter_cancelled'.tr(), 'cancelled'),
+            _buildFilterChip(
+              'event_history.filter_cancelled'.tr(),
+              'cancelled',
+            ),
           ],
         ),
       ),
@@ -360,10 +392,7 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
             _filterStatus == 'all'
                 ? 'event_history.no_events'.tr()
                 : 'event_history.no_filter_results'.tr(),
-            style: TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 16,
-            ),
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
           ),
         ],
       ),
@@ -373,7 +402,8 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
   Widget _buildEventCard(Map<String, dynamic> event, int index) {
     final itinerary = event['itinerary'] as List<dynamic>? ?? [];
     final fin = _calcFinancials(event);
-    final currency = event['currency'] as String? ?? 'MXN';
+    final currency = _eventCurrency(event);
+    final country = _eventCountry(event);
     final isMX = (event['country_code'] as String?) == 'MX';
     final commissionPct = ((fin['commissionRate']! * 100)).toStringAsFixed(0);
 
@@ -407,7 +437,8 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          event['event_name'] ?? 'event_history.unnamed_event'.tr(),
+                          event['event_name'] ??
+                              'event_history.unnamed_event'.tr(),
                           style: TextStyle(
                             color: AppColors.textPrimary,
                             fontSize: 16,
@@ -438,7 +469,10 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
                     CircleAvatar(
                       radius: 20,
                       backgroundColor: AppColors.primary.withOpacity(0.2),
-                      child: Icon(Icons.directions_bus, color: AppColors.primary),
+                      child: Icon(
+                        Icons.directions_bus,
+                        color: AppColors.primary,
+                      ),
                     ),
                     SizedBox(width: 12),
                     Expanded(
@@ -466,7 +500,7 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
                   SizedBox(width: 24),
                   _buildStat(
                     Icons.route,
-                    '${fin['distance']!.toStringAsFixed(1)} km',
+                    formatDistance(fin['distance'], country: country),
                     'event_history.distance'.tr(),
                   ),
                   SizedBox(width: 24),
@@ -480,24 +514,17 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
 
               SizedBox(height: 12),
 
-              // Actions row (download + CFDI)
+              // Actions row
               Row(
                 children: [
-                  if (isMX)
-                    TextButton.icon(
-                      onPressed: _showCfdiInfo,
-                      icon: Icon(Icons.receipt_long, size: 16),
-                      label: Text('event_history.request_cfdi'.tr(), style: TextStyle(fontSize: 12)),
-                      style: TextButton.styleFrom(
-                        foregroundColor: AppColors.textSecondary,
-                        padding: EdgeInsets.symmetric(horizontal: 8),
-                      ),
-                    ),
                   Spacer(),
                   TextButton.icon(
                     onPressed: () => _downloadEventReport(event),
                     icon: Icon(Icons.download, size: 16),
-                    label: Text('event_history.download_report'.tr(), style: TextStyle(fontSize: 12)),
+                    label: Text(
+                      'event_history.download_report'.tr(),
+                      style: TextStyle(fontSize: 12),
+                    ),
                     style: TextButton.styleFrom(
                       foregroundColor: AppColors.primary,
                       padding: EdgeInsets.symmetric(horizontal: 8),
@@ -522,7 +549,9 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
                     ),
                     SizedBox(height: 4),
                     _buildFinancialRow(
-                      'event_history.toro_commission'.tr(namedArgs: {'rate': commissionPct}),
+                      'event_history.toro_commission'.tr(
+                        namedArgs: {'rate': commissionPct},
+                      ),
                       _formatCurrency(fin['commission']!, currency),
                       color: AppColors.primary,
                     ),
@@ -552,7 +581,9 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
     );
   }
 
-  Widget _buildFinancialRow(String label, String value, {
+  Widget _buildFinancialRow(
+    String label,
+    String value, {
     Color? color,
     bool isBold = false,
     double fontSize = 14,
@@ -586,7 +617,7 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
     double totalIva = 0;
     double totalDistance = 0;
     int eventCount = 0;
-    String currency = 'MXN';
+    String currency = currencyCode(country: _driverCountry);
 
     for (final event in _filteredEvents) {
       final fin = _calcFinancials(event);
@@ -635,7 +666,7 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
               Expanded(
                 child: _buildSummaryItem(
                   'event_history.summary_total_distance'.tr(),
-                  '${totalDistance.toStringAsFixed(1)} km',
+                  formatDistance(totalDistance, country: _driverCountry),
                   Icons.route,
                 ),
               ),
@@ -679,10 +710,7 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
         ),
         Text(
           label,
-          style: TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 12,
-          ),
+          style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
         ),
       ],
     );
@@ -745,10 +773,7 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
             ),
             Text(
               label,
-              style: TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 11,
-              ),
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
             ),
           ],
         ),
@@ -759,9 +784,7 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
   void _showEventDetails(Map<String, dynamic> event) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => _EventDetailsScreen(event: event),
-      ),
+      MaterialPageRoute(builder: (_) => _EventDetailsScreen(event: event)),
     );
   }
 }
@@ -776,6 +799,8 @@ class _EventDetailsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final vehicle = event['vehicle'] as Map<String, dynamic>?;
     final itinerary = event['itinerary'] as List<dynamic>? ?? [];
+    final country = ((event['country_code'] as String?) ?? userCountry())
+        .toUpperCase();
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -794,28 +819,59 @@ class _EventDetailsScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildSection('event_history.general_info'.tr(), [
-              _buildInfoRow('event_history.date'.tr(), event['event_date'] ?? 'N/A'),
-              _buildInfoRow('event_history.time'.tr(), event['start_time'] ?? 'N/A'),
-              _buildInfoRow('event_history.status'.tr(), event['status'] ?? 'N/A'),
-              _buildInfoRow('event_history.distance'.tr(), '${event['total_distance_km'] ?? 0} km'),
+              _buildInfoRow(
+                'event_history.date'.tr(),
+                event['event_date'] ?? 'N/A',
+              ),
+              _buildInfoRow(
+                'event_history.time'.tr(),
+                event['start_time'] ?? 'N/A',
+              ),
+              _buildInfoRow(
+                'event_history.status'.tr(),
+                event['status'] ?? 'N/A',
+              ),
+              _buildInfoRow(
+                'event_history.distance'.tr(),
+                formatDistance(
+                  event['total_distance_km'] as num?,
+                  country: country,
+                ),
+              ),
             ]),
 
             if (vehicle != null)
               _buildSection('event_history.vehicle_info'.tr(), [
-                _buildInfoRow('event_history.vehicle'.tr(), vehicle['vehicle_name'] ?? 'N/A'),
-                _buildInfoRow('event_history.brand_model'.tr(), '${vehicle['make'] ?? ''} ${vehicle['model'] ?? ''} ${vehicle['year'] ?? ''}'),
-                _buildInfoRow('event_history.seats'.tr(), '${vehicle['total_seats'] ?? 'N/A'}'),
+                _buildInfoRow(
+                  'event_history.vehicle'.tr(),
+                  vehicle['vehicle_name'] ?? 'N/A',
+                ),
+                _buildInfoRow(
+                  'event_history.brand_model'.tr(),
+                  '${vehicle['make'] ?? ''} ${vehicle['model'] ?? ''} ${vehicle['year'] ?? ''}',
+                ),
+                _buildInfoRow(
+                  'event_history.seats'.tr(),
+                  '${vehicle['total_seats'] ?? 'N/A'}',
+                ),
               ]),
 
-            _buildSection('event_history.itinerary'.tr(),
+            _buildSection(
+              'event_history.itinerary'.tr(),
               itinerary.map((stop) {
                 final s = stop as Map<String, dynamic>;
-                return _buildInfoRow('•', '${s['name']}${s['estimated_time'] != null ? ' - ${s['estimated_time']}' : ''}');
+                return _buildInfoRow(
+                  '•',
+                  '${s['name']}${s['estimated_time'] != null ? ' - ${s['estimated_time']}' : ''}',
+                );
               }).toList(),
             ),
 
             _buildSection('event_history.passengers'.tr(), [
-              _buildInfoRow('event_history.max_capacity'.tr(), '${event['max_passengers'] ?? 'N/A'}'),
+              _buildInfoRow(
+                'event_history.max_capacity'.tr(),
+                '${event['max_passengers'] ?? 'N/A'}',
+              ),
               _buildInfoRow('', 'event_history.passengers_note'.tr()),
             ]),
 
@@ -858,19 +914,13 @@ class _EventDetailsScreen extends StatelessWidget {
           if (label.isNotEmpty) ...[
             Text(
               '$label ',
-              style: TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 13,
-              ),
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
             ),
           ],
           Expanded(
             child: Text(
               value,
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 13,
-              ),
+              style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
             ),
           ),
         ],

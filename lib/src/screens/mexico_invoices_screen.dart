@@ -388,7 +388,7 @@ class _MexicoInvoicesScreenState extends State<MexicoInvoicesScreen> {
             ),
             Text(
               'MXN',
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 10),
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
             ),
           ],
         ),

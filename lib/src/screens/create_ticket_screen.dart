@@ -531,7 +531,7 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
                             Text(
                               formattedDate,
                               style: const TextStyle(
-                                fontSize: 10,
+                                fontSize: 11,
                                 color: AppColors.textSecondary,
                               ),
                             ),

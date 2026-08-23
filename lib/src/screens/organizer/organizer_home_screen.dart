@@ -314,14 +314,14 @@ class _OrganizerHomeScreenState extends State<OrganizerHomeScreen> {
               icon: Badge(
                 isLabelVisible: _activeBidCount > 0,
                 label: Text('$_activeBidCount',
-                    style: const TextStyle(fontSize: 9, color: Colors.white)),
+                    style: const TextStyle(fontSize: 11, color: Colors.white)),
                 backgroundColor: Colors.orange,
                 child: const Icon(Icons.gavel_outlined),
               ),
               activeIcon: Badge(
                 isLabelVisible: _activeBidCount > 0,
                 label: Text('$_activeBidCount',
-                    style: const TextStyle(fontSize: 9, color: Colors.white)),
+                    style: const TextStyle(fontSize: 11, color: Colors.white)),
                 backgroundColor: Colors.orange,
                 child: const Icon(Icons.gavel),
               ),

@@ -1273,7 +1273,7 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
                       '${((completedStops / totalStops) * 100).round()}%',
                       style: const TextStyle(
                         color: AppColors.textPrimary,
-                        fontSize: 9,
+                        fontSize: 11,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -1750,7 +1750,7 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
                           statusLabel,
                           style: TextStyle(
                             color: statusColor,
-                            fontSize: 10,
+                            fontSize: 11,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -1972,7 +1972,7 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
               label,
               style: TextStyle(
                 color: color.withOpacity(0.7),
-                fontSize: 9,
+                fontSize: 11,
                 fontWeight: FontWeight.w500,
               ),
             ),

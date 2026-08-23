@@ -243,7 +243,7 @@ class _AccountScreenState extends State<AccountScreen> {
                   color: AppColors.textSecondary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: Text('read_only'.tr(), style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+                child: Text('read_only'.tr(), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
               ),
             ],
           ),

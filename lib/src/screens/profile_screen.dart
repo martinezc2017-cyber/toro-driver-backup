@@ -594,7 +594,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                           Text(
                             'Facebook',
                             style: TextStyle(
-                              fontSize: 10,
+                              fontSize: 11,
                               fontWeight: FontWeight.w500,
                               color: AppColors.facebook.withValues(alpha: 0.9),
                             ),
@@ -675,7 +675,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                     subtitle,
                     style: TextStyle(
                       color: AppColors.textTertiary,
-                      fontSize: 10,
+                      fontSize: 11,
                     ),
                   ),
                 ],

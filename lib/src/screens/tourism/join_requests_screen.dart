@@ -812,7 +812,7 @@ class _JoinRequestsScreenState extends State<JoinRequestsScreen> {
                           color: status == 'accepted'
                               ? AppColors.success
                               : AppColors.error,
-                          fontSize: 10,
+                          fontSize: 11,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -831,7 +831,7 @@ class _JoinRequestsScreenState extends State<JoinRequestsScreen> {
                         'NUEVA',
                         style: TextStyle(
                           color: AppColors.warning,
-                          fontSize: 10,
+                          fontSize: 11,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 0.5,
                         ),

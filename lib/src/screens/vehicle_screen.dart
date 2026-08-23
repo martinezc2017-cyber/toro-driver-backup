@@ -166,7 +166,7 @@ class _VehicleScreenState extends State<VehicleScreen> {
                     const SizedBox(width: 4),
                     Text(
                       vehicle.isVerified ? 'verified'.tr() : 'pending'.tr(),
-                      style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.w600),
+                      style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.w600),
                     ),
                   ],
                 ),
@@ -179,7 +179,7 @@ class _VehicleScreenState extends State<VehicleScreen> {
                 ),
                 child: Text(
                   vehicle.status.name.toUpperCase(),
-                  style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600),
+                  style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
                 ),
               ),
             ],
@@ -239,7 +239,7 @@ class _VehicleScreenState extends State<VehicleScreen> {
           Icon(icon, color: AppColors.primary, size: 18),
           const SizedBox(height: 6),
           Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-          Text(label, style: TextStyle(fontSize: 10, color: AppColors.textSecondary)),
+          Text(label, style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
         ],
       ),
     );
@@ -321,7 +321,7 @@ class _VehicleScreenState extends State<VehicleScreen> {
                           ),
                           child: Text(
                             vehicle.insuranceVerified ? 'verified'.tr() : 'pending'.tr(),
-                            style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: vehicle.insuranceVerified ? AppColors.success : Colors.orange),
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: vehicle.insuranceVerified ? AppColors.success : Colors.orange),
                           ),
                         ),
                         if (vehicle.hasRideshareEndorsement) ...[
@@ -332,7 +332,7 @@ class _VehicleScreenState extends State<VehicleScreen> {
                               color: AppColors.primary.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(6),
                             ),
-                            child: const Text('TNC', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: AppColors.primary)),
+                            child: const Text('TNC', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.primary)),
                           ),
                         ],
                       ],

@@ -3063,7 +3063,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                       typeLabel,
                       style: TextStyle(
                         color: typeColor,
-                        fontSize: 9,
+                        fontSize: 11,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -3218,7 +3218,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                       context.read<DriverProvider>().driver?.countryCode ??
                       'US',
                 ),
-                style: const TextStyle(color: Colors.white54, fontSize: 10),
+                style: const TextStyle(color: Colors.white54, fontSize: 11),
               ),
               const SizedBox(width: 8),
               // Time
@@ -3226,7 +3226,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
               const SizedBox(width: 2),
               Text(
                 '~${ride.estimatedMinutes} min',
-                style: const TextStyle(color: Colors.white54, fontSize: 10),
+                style: const TextStyle(color: Colors.white54, fontSize: 11),
               ),
               const SizedBox(width: 8),
               // Payment
@@ -3618,7 +3618,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                                         textAlign: TextAlign.center,
                                         style: const TextStyle(
                                           color: Colors.white,
-                                          fontSize: 10,
+                                          fontSize: 11,
                                           fontWeight: FontWeight.bold,
                                           height: 1.0,
                                         ),
@@ -4209,7 +4209,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                                   : 'Cerca del destino',
                               style: const TextStyle(
                                 color: Colors.white54,
-                                fontSize: 10,
+                                fontSize: 11,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,

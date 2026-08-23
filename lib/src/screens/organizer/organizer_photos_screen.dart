@@ -881,7 +881,7 @@ class _OrganizerPhotosScreenState extends State<OrganizerPhotosScreen> {
               _formatTime(photo.createdAt),
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 10,
+                fontSize: 11,
                 fontWeight: FontWeight.w500,
                 shadows: [
                   Shadow(

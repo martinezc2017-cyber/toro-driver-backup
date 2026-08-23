@@ -346,7 +346,7 @@ class _QRPointsScreenState extends State<QRPointsScreen>
                       Text(
                         '-${reduction.toStringAsFixed(0)}%',
                         style: const TextStyle(
-                          fontSize: 10,
+                          fontSize: 11,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF00FF66),
                         ),
@@ -503,10 +503,10 @@ class _QRPointsScreenState extends State<QRPointsScreen>
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Row(
               children: [
-                const SizedBox(width: 50, child: Text('Tier', style: TextStyle(fontSize: 10, color: AppColors.textSecondary, fontWeight: FontWeight.bold))),
-                const Expanded(child: Text('QRs', style: TextStyle(fontSize: 10, color: AppColors.textSecondary, fontWeight: FontWeight.bold))),
-                const SizedBox(width: 55, child: Text('Toro', style: TextStyle(fontSize: 10, color: AppColors.textSecondary, fontWeight: FontWeight.bold), textAlign: TextAlign.center)),
-                const SizedBox(width: 55, child: Text('Driver', style: TextStyle(fontSize: 10, color: AppColors.textSecondary, fontWeight: FontWeight.bold), textAlign: TextAlign.center)),
+                const SizedBox(width: 50, child: Text('Tier', style: TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.bold))),
+                const Expanded(child: Text('QRs', style: TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.bold))),
+                const SizedBox(width: 55, child: Text('Toro', style: TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.bold), textAlign: TextAlign.center)),
+                const SizedBox(width: 55, child: Text('Driver', style: TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.bold), textAlign: TextAlign.center)),
               ],
             ),
           ),
@@ -732,7 +732,7 @@ class _QRPointsScreenState extends State<QRPointsScreen>
         Text(
           '$value',
           style: TextStyle(
-            fontSize: 9,
+            fontSize: 11,
             color: isActive ? const Color(0xFF1E88E5) : AppColors.textSecondary,
             fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
           ),
@@ -796,7 +796,7 @@ class _QRPointsScreenState extends State<QRPointsScreen>
           ),
           Text(
             label,
-            style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+            style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
           ),
         ],
       ),
@@ -1316,7 +1316,7 @@ class _QRPointsScreenState extends State<QRPointsScreen>
                           child: Text(
                             '${tip.pointsSpent} pts',
                             style: const TextStyle(
-                              fontSize: 10,
+                              fontSize: 11,
                               fontWeight: FontWeight.bold,
                               color: Color(0xFF00FF66),
                             ),

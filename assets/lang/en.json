@@ -216,6 +216,8 @@
   "referrals_stat": "Referrals",
   "register_driver_payments": "Register for payments",
   "reject": "Reject",
+  "report_bug": "Report a bug",
+  "report_bug_desc": "Screenshot + description",
   "resting": "Resting",
   "ride_history": "Ride history",
   "ride_type_carpool": "Carpool",

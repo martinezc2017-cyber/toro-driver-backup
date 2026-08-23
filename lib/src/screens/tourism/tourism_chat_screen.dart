@@ -549,7 +549,7 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
                   'ANUNCIO',
                   style: TextStyle(
                     color: AppColors.warning,
-                    fontSize: 10,
+                    fontSize: 11,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.5,
                   ),
@@ -690,7 +690,7 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
                             _getRoleLabel(message.senderType),
                             style: TextStyle(
                               color: _getColorForRole(message.senderType),
-                              fontSize: 10,
+                              fontSize: 11,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -737,7 +737,7 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
                             color: isMe
                                 ? Colors.white.withOpacity(0.7)
                                 : AppColors.textTertiary,
-                            fontSize: 10,
+                            fontSize: 11,
                           ),
                         ),
                       ],

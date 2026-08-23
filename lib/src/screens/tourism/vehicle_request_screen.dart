@@ -1600,7 +1600,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                       '${_openEvents.length}',
                       style: const TextStyle(
                         color: Colors.black,
-                        fontSize: 10,
+                        fontSize: 11,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -1629,7 +1629,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                       '${_requests.length}',
                       style: const TextStyle(
                         color: Colors.black,
-                        fontSize: 10,
+                        fontSize: 11,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -1658,7 +1658,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                       '${_myBids.length}',
                       style: const TextStyle(
                         color: Colors.black,
-                        fontSize: 10,
+                        fontSize: 11,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -1687,7 +1687,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                       '${_tripRequests.length}',
                       style: const TextStyle(
                         color: Colors.black,
-                        fontSize: 10,
+                        fontSize: 11,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -1878,7 +1878,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                     alreadyBid ? 'ENVIADA' : 'ABIERTO',
                     style: TextStyle(
                       color: alreadyBid ? AppColors.success : AppColors.gold,
-                      fontSize: 8,
+                      fontSize: 11,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
@@ -1893,7 +1893,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                   organizerName,
                   style: const TextStyle(
                     color: AppColors.textTertiary,
-                    fontSize: 10,
+                    fontSize: 11,
                   ),
                 ),
                 if (isVerified) ...[
@@ -1913,7 +1913,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                       routeText,
                       style: const TextStyle(
                         color: AppColors.textSecondary,
-                        fontSize: 10,
+                        fontSize: 11,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -1948,7 +1948,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                     _formatTimeAgo(createdAt),
                     style: const TextStyle(
                       color: AppColors.textTertiary,
-                      fontSize: 9,
+                      fontSize: 11,
                     ),
                   ),
                 if (!alreadyBid) ...[
@@ -1966,7 +1966,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                       'Pujar',
                       style: TextStyle(
                         color: Colors.black,
-                        fontSize: 10,
+                        fontSize: 11,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -2580,7 +2580,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                     badgeText,
                     style: TextStyle(
                       color: badgeColor,
-                      fontSize: 9,
+                      fontSize: 11,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 0.5,
                     ),
@@ -3282,7 +3282,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
             '$count',
             style: TextStyle(
               color: color,
-              fontSize: 10,
+              fontSize: 11,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -3419,7 +3419,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                         statusLabel,
                         style: TextStyle(
                           color: accentColor,
-                          fontSize: 9,
+                          fontSize: 11,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
@@ -3707,7 +3707,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                   vehicleLabels[vehiclePref] ?? vehiclePref,
                   style: const TextStyle(
                     color: AppColors.gold,
-                    fontSize: 10,
+                    fontSize: 11,
                     fontWeight: FontWeight.w600,
                   ),
                 ),

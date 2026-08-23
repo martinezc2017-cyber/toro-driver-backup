@@ -637,7 +637,7 @@ class _OrganizerPassengersScreenState extends State<OrganizerPassengersScreen> {
                   label,
                   style: TextStyle(
                     color: color.withValues(alpha: 0.7),
-                    fontSize: 9,
+                    fontSize: 11,
                     fontWeight: FontWeight.w500,
                   ),
                   maxLines: 1,
@@ -861,7 +861,7 @@ class _OrganizerPassengersScreenState extends State<OrganizerPassengersScreen> {
                             '#$seatNumber',
                             style: const TextStyle(
                               color: AppColors.primary,
-                              fontSize: 10,
+                              fontSize: 11,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -924,7 +924,7 @@ class _OrganizerPassengersScreenState extends State<OrganizerPassengersScreen> {
                             emergencyPhone ?? emergencyContact ?? '',
                             style: TextStyle(
                               color: AppColors.error.withValues(alpha: 0.7),
-                              fontSize: 10,
+                              fontSize: 11,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -944,7 +944,7 @@ class _OrganizerPassengersScreenState extends State<OrganizerPassengersScreen> {
                           'Check-in: ${_formatShortTime(lastCheckInAt)}',
                           style: const TextStyle(
                             color: AppColors.success,
-                            fontSize: 10,
+                            fontSize: 11,
                           ),
                         ),
                       ],
@@ -1019,7 +1019,7 @@ class _OrganizerPassengersScreenState extends State<OrganizerPassengersScreen> {
         label,
         style: TextStyle(
           color: color,
-          fontSize: 9,
+          fontSize: 11,
           fontWeight: FontWeight.w700,
         ),
       ),

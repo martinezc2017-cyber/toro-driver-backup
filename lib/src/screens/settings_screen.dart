@@ -6,6 +6,7 @@ import '../providers/auth_provider.dart';
 import '../services/biometric_service.dart';
 import '../utils/app_colors.dart';
 import '../widgets/bug_report_button.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -193,17 +194,50 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 24),
 
           // Soporte: reportar bug + contacto
-          _buildSectionTitle('Soporte'),
+          _buildSectionTitle('support'.tr()),
           _buildActionTile(
             icon: Icons.bug_report_rounded,
             iconColor: const Color(0xFFFF3B30),
-            title: 'Reportar un bug',
-            subtitle: 'Captura de pantalla + descripcion',
+            title: 'report_bug'.tr(),
+            subtitle: 'report_bug_desc'.tr(),
             onTap: () {
               showDialog(
                 context: context,
                 builder: (ctx) => const BugReportDialog(screenName: 'settings'),
               );
+            },
+          ),
+
+          const SizedBox(height: 24),
+
+          // Legal - Apple requires Privacy Policy + Terms accessible in-app (5.1.1)
+          _buildSectionTitle('legal'.tr()),
+          const SizedBox(height: 8),
+          _buildActionTile(
+            icon: Icons.privacy_tip,
+            iconColor: Colors.green,
+            title: 'privacy_policy'.tr(),
+            subtitle: 'privacy_subtitle'.tr(),
+            onTap: () async {
+              final url = context.locale.languageCode == 'es'
+                  ? 'https://toro-ride.com/privacidad.html'
+                  : 'https://toro-ride.com/privacy.html';
+              final uri = Uri.parse(url);
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              }
+            },
+          ),
+          _buildActionTile(
+            icon: Icons.description,
+            iconColor: Colors.blue,
+            title: 'terms_conditions'.tr(),
+            subtitle: 'terms_subtitle'.tr(),
+            onTap: () async {
+              final uri = Uri.parse('https://toro-ride.com/terms.html');
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              }
             },
           ),
 

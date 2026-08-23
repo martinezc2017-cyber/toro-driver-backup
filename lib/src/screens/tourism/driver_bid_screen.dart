@@ -1163,7 +1163,7 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                         '${_actionRequired.length}',
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 10,
+                          fontSize: 11,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -1192,7 +1192,7 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                         '${_activeBids.length}',
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 10,
+                          fontSize: 11,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -1471,7 +1471,7 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                         statusLabel,
                         style: TextStyle(
                           color: statusColor,
-                          fontSize: 9,
+                          fontSize: 11,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -1498,7 +1498,7 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                     'Puja creada: ${_formatTimeAgo(bid['created_at'] as String?)}',
                     style: const TextStyle(
                       color: AppColors.textTertiary,
-                      fontSize: 10,
+                      fontSize: 11,
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -1506,7 +1506,7 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                     _formatBidDateTime(bid['created_at'] as String?),
                     style: const TextStyle(
                       color: AppColors.textTertiary,
-                      fontSize: 10,
+                      fontSize: 11,
                     ),
                   ),
                 ],
@@ -1680,7 +1680,7 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                           vehicleName,
                           style: const TextStyle(
                             color: AppColors.textTertiary,
-                            fontSize: 10,
+                            fontSize: 11,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -1716,7 +1716,7 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                             'Tu precio/${distanceUnit(country: _countryCode)}',
                             style: TextStyle(
                               color: AppColors.textTertiary,
-                              fontSize: 10,
+                              fontSize: 11,
                             ),
                           ),
                           Text(
@@ -1744,7 +1744,7 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                             'Contra-oferta',
                             style: TextStyle(
                               color: AppColors.warning,
-                              fontSize: 10,
+                              fontSize: 11,
                             ),
                           ),
                           Text(
@@ -1772,7 +1772,7 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                             'Total estimado',
                             style: TextStyle(
                               color: AppColors.textTertiary,
-                              fontSize: 10,
+                              fontSize: 11,
                             ),
                           ),
                           Text(
@@ -1974,7 +1974,7 @@ class _DriverBidScreenState extends State<DriverBidScreen>
             label,
             style: TextStyle(
               color: color,
-              fontSize: 10,
+              fontSize: 11,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -2087,7 +2087,7 @@ class _DriverBidScreenState extends State<DriverBidScreen>
               text,
               style: const TextStyle(
                 color: AppColors.textSecondary,
-                fontSize: 10,
+                fontSize: 11,
               ),
               overflow: TextOverflow.ellipsis,
             ),

@@ -407,7 +407,7 @@ class _RankingScreenState extends State<RankingScreen> with SingleTickerProvider
                           color: AppColors.primary,
                           borderRadius: BorderRadius.circular(4),
                         ),
-                        child: const Text('Tú', style: TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.bold)),
+                        child: const Text('Tú', style: TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.bold)),
                       ),
                     ],
                   ],
@@ -458,7 +458,7 @@ class _RankingScreenState extends State<RankingScreen> with SingleTickerProvider
           Text(
             '${change.abs()}',
             style: TextStyle(
-              fontSize: 10,
+              fontSize: 11,
               color: isPositive ? AppColors.success : AppColors.error,
               fontWeight: FontWeight.bold,
             ),

@@ -1044,7 +1044,7 @@ class _TourismDriverHomeScreenState extends State<TourismDriverHomeScreen>
           const SizedBox(width: 3),
           Text(
             text,
-            style: const TextStyle(color: AppColors.textSecondary, fontSize: 10),
+            style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
             overflow: TextOverflow.ellipsis,
           ),
         ],
@@ -2739,7 +2739,7 @@ class _TourismDriverHomeScreenState extends State<TourismDriverHomeScreen>
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 10,
+                          fontSize: 11,
                           fontWeight: FontWeight.w800,
                         ),
                       ),

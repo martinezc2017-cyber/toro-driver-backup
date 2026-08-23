@@ -998,7 +998,7 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
           label,
           style: TextStyle(
             color: AppColors.textTertiary.withValues(alpha: 0.6),
-            fontSize: 10,
+            fontSize: 11,
           ),
         ),
       ],
@@ -1885,7 +1885,7 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
                                     'Usuario',
                                     style: TextStyle(
                                       color: AppColors.success,
-                                      fontSize: 10,
+                                      fontSize: 11,
                                     ),
                                   ),
                                 ],

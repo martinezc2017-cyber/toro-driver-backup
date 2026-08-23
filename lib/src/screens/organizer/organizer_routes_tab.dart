@@ -348,7 +348,7 @@ class _OrganizerRoutesTabState extends State<OrganizerRoutesTab> {
         _statusLabel(status),
         style: TextStyle(
           color: _statusColor(status),
-          fontSize: 10,
+          fontSize: 11,
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -645,7 +645,7 @@ class _PassengerListSheetState extends State<_PassengerListSheet> {
                 color: status == 'confirmed'
                     ? AppColors.success
                     : AppColors.warning,
-                fontSize: 10,
+                fontSize: 11,
                 fontWeight: FontWeight.w600,
               ),
             ),

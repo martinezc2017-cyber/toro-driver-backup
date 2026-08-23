@@ -634,7 +634,7 @@ ${_trips.take(5).map((t) => '- ${t.pickupAddress} → ${t.dropoffAddress}: ${for
         ),
         Text(
           label,
-          style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
+          style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
         ),
       ],
     );
@@ -730,7 +730,7 @@ ${_trips.take(5).map((t) => '- ${t.pickupAddress} → ${t.dropoffAddress}: ${for
             ),
             Text(
               _formatDate(trip.createdAt),
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 10),
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
             ),
           ],
         ),

@@ -1656,14 +1656,14 @@ class _OrganizerCreateEventSimpleScreenState
                                 _displayDistanceText(1),
                                 style: TextStyle(
                                   color: AppColors.textSecondary,
-                                  fontSize: 10,
+                                  fontSize: 11,
                                 ),
                               ),
                               Text(
                                 _displayDistanceText(5),
                                 style: TextStyle(
                                   color: AppColors.textSecondary,
-                                  fontSize: 10,
+                                  fontSize: 11,
                                 ),
                               ),
                             ],
@@ -2903,7 +2903,7 @@ class _OrganizerCreateEventSimpleScreenState
                             'Predeterminado',
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: 10,
+                              fontSize: 11,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -4885,7 +4885,7 @@ class _OrganizerCreateEventSimpleScreenState
                 'IDA Y VUELTA',
                 style: TextStyle(
                   color: AppColors.primary,
-                  fontSize: 10,
+                  fontSize: 11,
                   fontWeight: FontWeight.w700,
                 ),
               ),

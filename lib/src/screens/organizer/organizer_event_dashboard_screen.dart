@@ -1277,7 +1277,7 @@ Enviado desde TORO
                                 'BLACK ROSE',
                                 style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 10,
+                                  fontSize: 11,
                                   fontWeight: FontWeight.w900,
                                   letterSpacing: 1,
                                 ),
@@ -2467,7 +2467,7 @@ Enviado desde TORO
                                             '${entry.key + 2}',
                                             style: const TextStyle(
                                               color: Colors.white,
-                                              fontSize: 9,
+                                              fontSize: 11,
                                               fontWeight: FontWeight.bold,
                                             ),
                                           ),
@@ -5682,7 +5682,7 @@ Enviado desde TORO
                           'Driver',
                           style: TextStyle(
                             color: AppColors.textTertiary,
-                            fontSize: 10,
+                            fontSize: 11,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -5752,7 +5752,7 @@ Enviado desde TORO
             text,
             style: const TextStyle(
               color: AppColors.textSecondary,
-              fontSize: 10,
+              fontSize: 11,
             ),
             overflow: TextOverflow.ellipsis,
           ),
@@ -6218,7 +6218,7 @@ Enviado desde TORO
                           '#$order',
                           style: const TextStyle(
                             color: AppColors.primary,
-                            fontSize: 10,
+                            fontSize: 11,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -6507,7 +6507,7 @@ Enviado desde TORO
                             'NIVEL 4',
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: 9,
+                              fontSize: 11,
                               fontWeight: FontWeight.w800,
                               letterSpacing: 0.5,
                             ),
@@ -7829,7 +7829,7 @@ Enviado desde TORO
                         phone,
                         style: const TextStyle(
                           color: AppColors.textTertiary,
-                          fontSize: 10,
+                          fontSize: 11,
                         ),
                       ),
                     ],
@@ -7848,7 +7848,7 @@ Enviado desde TORO
                         formatDistance(kmTraveled),
                         style: const TextStyle(
                           color: AppColors.textTertiary,
-                          fontSize: 10,
+                          fontSize: 11,
                         ),
                       ),
                     ],
@@ -7960,14 +7960,14 @@ Enviado desde TORO
             label,
             style: TextStyle(
               color: color,
-              fontSize: 9,
+              fontSize: 11,
               fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(width: 3),
           Text(
             time,
-            style: TextStyle(color: color.withValues(alpha: 0.7), fontSize: 9),
+            style: TextStyle(color: color.withValues(alpha: 0.7), fontSize: 11),
           ),
         ],
       ),
@@ -8612,7 +8612,7 @@ Enviado desde TORO
               label,
               style: TextStyle(
                 color: color.withValues(alpha: 0.7),
-                fontSize: 10,
+                fontSize: 11,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -9120,7 +9120,7 @@ Enviado desde TORO
                         badgeCount > 99 ? '99+' : '$badgeCount',
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 9,
+                          fontSize: 11,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -9746,7 +9746,7 @@ class _EventLiveMapScreenState extends State<_EventLiveMapScreen> {
                                 'GPS',
                                 style: TextStyle(
                                   color: AppColors.textTertiary,
-                                  fontSize: 10,
+                                  fontSize: 11,
                                 ),
                               ),
                               const SizedBox(width: 8),
@@ -9763,7 +9763,7 @@ class _EventLiveMapScreenState extends State<_EventLiveMapScreen> {
                                 'tourism_no_gps'.tr(),
                                 style: const TextStyle(
                                   color: AppColors.textTertiary,
-                                  fontSize: 10,
+                                  fontSize: 11,
                                 ),
                               ),
                             ],
@@ -9953,7 +9953,7 @@ class _EventLiveMapScreenState extends State<_EventLiveMapScreen> {
                 _getStatusLabel(status),
                 style: TextStyle(
                   color: _getStatusColor(status),
-                  fontSize: 9,
+                  fontSize: 11,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -9984,7 +9984,7 @@ class _EventLiveMapScreenState extends State<_EventLiveMapScreen> {
                   'tourism_no_gps'.tr(),
                   style: const TextStyle(
                     color: AppColors.textTertiary,
-                    fontSize: 10,
+                    fontSize: 11,
                   ),
                 ),
               ),
@@ -10092,7 +10092,7 @@ class _EventLiveMapScreenState extends State<_EventLiveMapScreen> {
                   'tourism_no_gps'.tr(),
                   style: const TextStyle(
                     color: AppColors.textTertiary,
-                    fontSize: 10,
+                    fontSize: 11,
                   ),
                 ),
               ),

@@ -316,7 +316,7 @@ class _MexicoDocumentsScreenState extends State<MexicoDocumentsScreen> {
             if (doc != null && doc.expiryDate != null)
               Text(
                 'mx_expires'.tr(namedArgs: {'date': DateFormat('dd/MM/yyyy').format(doc.expiryDate!)}),
-                style: TextStyle(color: doc.isExpiringSoon ? AppColors.warning : AppColors.textSecondary, fontSize: 10),
+                style: TextStyle(color: doc.isExpiringSoon ? AppColors.warning : AppColors.textSecondary, fontSize: 11),
               ),
           ],
         ),
@@ -331,7 +331,7 @@ class _MexicoDocumentsScreenState extends State<MexicoDocumentsScreen> {
             children: [
               Icon(statusIcon, color: statusColor, size: 12),
               const SizedBox(width: 4),
-              Text(statusText, style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.w600)),
+              Text(statusText, style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.w600)),
             ],
           ),
         ),

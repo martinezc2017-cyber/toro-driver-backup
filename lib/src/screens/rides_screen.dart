@@ -543,7 +543,7 @@ class _RidesScreenState extends State<RidesScreen>
                                 '🛒 ${'rides.marketplace'.tr().toUpperCase()}',
                                 style: const TextStyle(
                                   color: Colors.black,
-                                  fontSize: 9,
+                                  fontSize: 11,
                                   fontWeight: FontWeight.w900,
                                   letterSpacing: 1,
                                 ),
@@ -567,7 +567,7 @@ class _RidesScreenState extends State<RidesScreen>
                                 '📅 PROGRAMADO · ${_fmtScheduled(ride.scheduledTime!)}',
                                 style: const TextStyle(
                                   color: Colors.black,
-                                  fontSize: 9,
+                                  fontSize: 11,
                                   fontWeight: FontWeight.w900,
                                   letterSpacing: 1,
                                 ),
@@ -591,7 +591,7 @@ class _RidesScreenState extends State<RidesScreen>
                                 '🚩 ${ride.waypoints!.length} PARADA${ride.waypoints!.length == 1 ? '' : 'S'} EXTRA',
                                 style: TextStyle(
                                   color: AppColors.textPrimary,
-                                  fontSize: 9,
+                                  fontSize: 11,
                                   fontWeight: FontWeight.w900,
                                   letterSpacing: 1,
                                 ),
@@ -630,7 +630,7 @@ class _RidesScreenState extends State<RidesScreen>
                                     'ROUND TRIP',
                                     style: TextStyle(
                                       color: Colors.white,
-                                      fontSize: 8,
+                                      fontSize: 11,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
@@ -685,7 +685,7 @@ class _RidesScreenState extends State<RidesScreen>
                                           ),
                                           style: TextStyle(
                                             color: AppColors.warning,
-                                            fontSize: 10,
+                                            fontSize: 11,
                                             fontWeight: FontWeight.w600,
                                           ),
                                         ),
@@ -693,7 +693,7 @@ class _RidesScreenState extends State<RidesScreen>
                                           ' → ',
                                           style: TextStyle(
                                             color: AppColors.textSecondary,
-                                            fontSize: 10,
+                                            fontSize: 11,
                                           ),
                                         ),
                                       ],
@@ -716,7 +716,7 @@ class _RidesScreenState extends State<RidesScreen>
                                   _formatRecurringDays(ride.recurringDays),
                                   style: TextStyle(
                                     color: AppColors.primary,
-                                    fontSize: 10,
+                                    fontSize: 11,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
@@ -988,7 +988,7 @@ class _RidesScreenState extends State<RidesScreen>
                           'RT',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 8,
+                            fontSize: 11,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -999,7 +999,7 @@ class _RidesScreenState extends State<RidesScreen>
                 Text(
                   '${formatDistance(ride.distanceKm, country: context.read<DriverProvider>().driver?.countryCode ?? 'US')} • ${_formatDate(ride.createdAt)}',
                   style: TextStyle(
-                    fontSize: 10,
+                    fontSize: 11,
                     color: AppColors.textSecondary,
                   ),
                 ),
@@ -1052,7 +1052,7 @@ class _RidesScreenState extends State<RidesScreen>
                       '+\$${ride.tip.toStringAsFixed(0)}',
                       style: TextStyle(
                         color: AppColors.star,
-                        fontSize: 10,
+                        fontSize: 11,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -1244,7 +1244,7 @@ class _RidesScreenState extends State<RidesScreen>
                                         'ROUND TRIP',
                                         style: TextStyle(
                                           color: Colors.white,
-                                          fontSize: 10,
+                                          fontSize: 11,
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
@@ -1389,7 +1389,7 @@ class _RidesScreenState extends State<RidesScreen>
                                     'estimated'.tr(),
                                     style: TextStyle(
                                       color: AppColors.warning,
-                                      fontSize: 10,
+                                      fontSize: 11,
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
@@ -1602,7 +1602,7 @@ class _RidesScreenState extends State<RidesScreen>
             text,
             style: TextStyle(
               color: color,
-              fontSize: 9,
+              fontSize: 11,
               fontWeight: FontWeight.w600,
             ),
           ),

@@ -438,7 +438,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
                                   'S',
                                 ][d.date.weekday - 1],
                                 style: TextStyle(
-                                  fontSize: 10,
+                                  fontSize: 11,
                                   fontWeight: isToday
                                       ? FontWeight.bold
                                       : FontWeight.normal,

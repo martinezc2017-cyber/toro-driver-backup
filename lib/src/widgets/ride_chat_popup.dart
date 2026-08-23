@@ -374,7 +374,7 @@ class _RideChatPopupState extends State<RideChatPopup> {
                   timeStr,
                   style: TextStyle(
                     color: isMe ? Colors.white70 : AppColors.textTertiary,
-                    fontSize: 10,
+                    fontSize: 11,
                   ),
                 ),
               ],

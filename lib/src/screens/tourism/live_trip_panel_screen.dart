@@ -1789,7 +1789,7 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
                       color: payment == 'efectivo'
                           ? AppColors.warning
                           : AppColors.success,
-                      fontSize: 10,
+                      fontSize: 11,
                       fontWeight: FontWeight.w600,
                     ),
                   ),

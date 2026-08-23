@@ -282,7 +282,7 @@ class _OrganizerEarningsTabState extends State<OrganizerEarningsTab> {
                     '3% comision',
                     style: TextStyle(
                       color: AppColors.success,
-                      fontSize: 10,
+                      fontSize: 11,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -449,7 +449,7 @@ class _OrganizerEarningsTabState extends State<OrganizerEarningsTab> {
                   _formatDate(createdAt),
                   style: const TextStyle(
                     color: AppColors.textDisabled,
-                    fontSize: 10,
+                    fontSize: 11,
                   ),
                 ),
               ],
@@ -469,7 +469,7 @@ class _OrganizerEarningsTabState extends State<OrganizerEarningsTab> {
               ),
               const Text(
                 'comision',
-                style: TextStyle(color: AppColors.textTertiary, fontSize: 10),
+                style: TextStyle(color: AppColors.textTertiary, fontSize: 11),
               ),
             ],
           ),

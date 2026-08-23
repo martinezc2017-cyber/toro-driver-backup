@@ -1680,7 +1680,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
         const SizedBox(height: 4),
         Text(
           'VIN, Poliza, Compañia',
-          style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
+          style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
         ),
       ],
     );

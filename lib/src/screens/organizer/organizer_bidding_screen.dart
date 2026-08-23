@@ -710,7 +710,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                         '${_bids.length} puja${_bids.length == 1 ? '' : 's'}',
                         style: const TextStyle(
                           color: AppColors.success,
-                          fontSize: 10,
+                          fontSize: 11,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -1029,7 +1029,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                   '${comparableBids.length} ofertas',
                   style: const TextStyle(
                     color: AppColors.primary,
-                    fontSize: 10,
+                    fontSize: 11,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -1053,7 +1053,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                     'Chofer / Vehiculo',
                     style: TextStyle(
                       color: AppColors.textTertiary,
-                      fontSize: 10,
+                      fontSize: 11,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -1064,7 +1064,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                     'Asientos',
                     style: TextStyle(
                       color: AppColors.textTertiary,
-                      fontSize: 10,
+                      fontSize: 11,
                       fontWeight: FontWeight.w600,
                     ),
                     textAlign: TextAlign.center,
@@ -1077,7 +1077,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                     '${distanceUnit(country: _countryCode)}',
                     style: TextStyle(
                       color: AppColors.textTertiary,
-                      fontSize: 10,
+                      fontSize: 11,
                       fontWeight: FontWeight.w600,
                     ),
                     textAlign: TextAlign.center,
@@ -1089,7 +1089,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                     'Total Est.',
                     style: TextStyle(
                       color: AppColors.textTertiary,
-                      fontSize: 10,
+                      fontSize: 11,
                       fontWeight: FontWeight.w600,
                     ),
                     textAlign: TextAlign.end,
@@ -1193,7 +1193,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                               vehicleName,
                               style: const TextStyle(
                                 color: AppColors.textTertiary,
-                                fontSize: 10,
+                                fontSize: 11,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -1263,14 +1263,14 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
               const SizedBox(width: 4),
               const Text(
                 'Mas economico',
-                style: TextStyle(color: AppColors.textTertiary, fontSize: 9),
+                style: TextStyle(color: AppColors.textTertiary, fontSize: 11),
               ),
               const Spacer(),
               Text(
                 '${_distance(totalDistance)} total',
                 style: const TextStyle(
                   color: AppColors.textTertiary,
-                  fontSize: 9,
+                  fontSize: 11,
                 ),
               ),
             ],
@@ -1349,7 +1349,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                       'Enviado',
                       style: TextStyle(
                         color: AppColors.success,
-                        fontSize: 9,
+                        fontSize: 11,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -1433,7 +1433,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                     'Dueño: $ownerName | Chofer: $driverName',
                     style: const TextStyle(
                       color: AppColors.textTertiary,
-                      fontSize: 10,
+                      fontSize: 11,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -1579,7 +1579,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                         'GANADOR',
                         style: TextStyle(
                           color: AppColors.success,
-                          fontSize: 10,
+                          fontSize: 11,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -1609,7 +1609,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                         'Ronda $negotiationRound',
                         style: const TextStyle(
                           color: AppColors.warning,
-                          fontSize: 10,
+                          fontSize: 11,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -1672,7 +1672,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                   '${_formatTimeAgo(bid['created_at'] as String?)}  •  ${_formatBidDateTime(bid['created_at'] as String?)}',
                   style: const TextStyle(
                     color: AppColors.textTertiary,
-                    fontSize: 10,
+                    fontSize: 11,
                   ),
                 ),
               ],
@@ -1741,7 +1741,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                           '(${_distance(totalDistance)})',
                           style: const TextStyle(
                             color: AppColors.textTertiary,
-                            fontSize: 9,
+                            fontSize: 11,
                           ),
                         ),
                       ],
@@ -1808,7 +1808,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                       'Esperando respuesta',
                       style: TextStyle(
                         color: AppColors.warning,
-                        fontSize: 10,
+                        fontSize: 11,
                         fontWeight: FontWeight.w600,
                       ),
                     ),

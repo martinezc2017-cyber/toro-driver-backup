@@ -507,7 +507,7 @@ class _EarningsBreakdownScreenState extends ConsumerState<EarningsBreakdownScree
                                 ),
                                 child: const Text(
                                   '🏆 Mejor día',
-                                  style: TextStyle(color: AppTheme.success, fontSize: 10),
+                                  style: TextStyle(color: AppTheme.success, fontSize: 11),
                                 ),
                               ),
                             ],

@@ -458,7 +458,7 @@ class _OrganizerEarningsTabNewState extends State<OrganizerEarningsTabNew> {
                   statusText,
                   style: TextStyle(
                     color: statusColor,
-                    fontSize: 10,
+                    fontSize: 11,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -530,14 +530,14 @@ class _OrganizerEarningsTabNewState extends State<OrganizerEarningsTabNew> {
                 'Límite Total: \$${creditLimit.toStringAsFixed(0)}',
                 style: const TextStyle(
                   color: AppColors.textTertiary,
-                  fontSize: 10,
+                  fontSize: 11,
                 ),
               ),
               const Text(
                 '⚠️ Pago en efectivo',
                 style: TextStyle(
                   color: AppColors.warning,
-                  fontSize: 10,
+                  fontSize: 11,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -678,7 +678,7 @@ class _OrganizerEarningsTabNewState extends State<OrganizerEarningsTabNew> {
                         'Deuda Pendiente',
                         style: TextStyle(
                           color: AppColors.textTertiary,
-                          fontSize: 10,
+                          fontSize: 11,
                         ),
                       ),
                       Text(
@@ -890,7 +890,7 @@ class _OrganizerEarningsTabNewState extends State<OrganizerEarningsTabNew> {
                   '$count',
                   style: TextStyle(
                     color: isSelected ? Colors.white : AppColors.primary,
-                    fontSize: 10,
+                    fontSize: 11,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -980,14 +980,14 @@ class _OrganizerEarningsTabNewState extends State<OrganizerEarningsTabNew> {
                   'Corte: ${DateFormat('dd MMM yyyy').format(weekEnd)}',
                   style: const TextStyle(
                     color: AppColors.textTertiary,
-                    fontSize: 10,
+                    fontSize: 11,
                   ),
                 ),
                 Text(
                   'Pago antes: ${DateFormat('dd MMM').format(dueDate)}',
                   style: const TextStyle(
                     color: AppColors.warning,
-                    fontSize: 10,
+                    fontSize: 11,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -1061,7 +1061,7 @@ class _OrganizerEarningsTabNewState extends State<OrganizerEarningsTabNew> {
               label,
               style: const TextStyle(
                 color: AppColors.textTertiary,
-                fontSize: 10,
+                fontSize: 11,
               ),
             ),
           ],
@@ -1255,14 +1255,14 @@ class _OrganizerEarningsTabNewState extends State<OrganizerEarningsTabNew> {
                     formatDistance(km, country: country, decimals: 0),
                     style: const TextStyle(
                       color: AppColors.textTertiary,
-                      fontSize: 10,
+                      fontSize: 11,
                     ),
                   ),
                   Text(
                     'TORO: ${formatMoney(commission, country: country)}',
                     style: const TextStyle(
                       color: AppColors.error,
-                      fontSize: 10,
+                      fontSize: 11,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -1501,7 +1501,7 @@ class _OrganizerEarningsTabNewState extends State<OrganizerEarningsTabNew> {
                                       _formatDate(changeDate),
                                       style: const TextStyle(
                                         color: AppColors.textDisabled,
-                                        fontSize: 9,
+                                        fontSize: 11,
                                       ),
                                     ),
                                 ],
@@ -1556,7 +1556,7 @@ class _OrganizerEarningsTabNewState extends State<OrganizerEarningsTabNew> {
                 title,
                 style: const TextStyle(
                   color: AppColors.textSecondary,
-                  fontSize: 10,
+                  fontSize: 11,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -1702,7 +1702,7 @@ class _OrganizerEarningsTabNewState extends State<OrganizerEarningsTabNew> {
                   statusText,
                   style: TextStyle(
                     color: statusColor,
-                    fontSize: 10,
+                    fontSize: 11,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -1753,7 +1753,7 @@ class _OrganizerEarningsTabNewState extends State<OrganizerEarningsTabNew> {
             const SizedBox(height: 4),
             Text(
               'Pagado: ${_formatDate(paidAt)}',
-              style: const TextStyle(color: AppColors.success, fontSize: 9),
+              style: const TextStyle(color: AppColors.success, fontSize: 11),
             ),
           ],
         ],

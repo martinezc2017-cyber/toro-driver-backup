@@ -542,7 +542,7 @@ class _OrganizerDashboardTabState extends State<OrganizerDashboardTab> {
                           destination,
                           style: const TextStyle(
                             color: AppColors.textTertiary,
-                            fontSize: 10,
+                            fontSize: 11,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -571,7 +571,7 @@ class _OrganizerDashboardTabState extends State<OrganizerDashboardTab> {
         _statusLabel(status),
         style: TextStyle(
           color: _statusColor(status),
-          fontSize: 10,
+          fontSize: 11,
           fontWeight: FontWeight.w600,
         ),
       ),

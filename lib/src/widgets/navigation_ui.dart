@@ -605,7 +605,7 @@ class NavigationUI extends StatelessWidget {
                                   children: [
                                     Icon(Icons.toll, color: Colors.amber, size: 14),
                                     SizedBox(width: 3),
-                                    Text('TOLL', style: TextStyle(color: Colors.amber, fontSize: 10, fontWeight: FontWeight.bold)),
+                                    Text('TOLL', style: TextStyle(color: Colors.amber, fontSize: 11, fontWeight: FontWeight.bold)),
                                   ],
                                 ),
                               ),
@@ -756,7 +756,7 @@ class NavigationUI extends StatelessWidget {
                         typeLabel.toUpperCase(),
                         style: TextStyle(
                           color: typeColor,
-                          fontSize: 9,
+                          fontSize: 11,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -788,7 +788,7 @@ class NavigationUI extends StatelessWidget {
                           children: [
                             Icon(Icons.star, color: Colors.green, size: 10),
                             SizedBox(width: 2),
-                            Text('TIP', style: TextStyle(color: Colors.green, fontSize: 8, fontWeight: FontWeight.bold)),
+                            Text('TIP', style: TextStyle(color: Colors.green, fontSize: 11, fontWeight: FontWeight.bold)),
                           ],
                         ),
                       ),
@@ -1079,7 +1079,7 @@ class NavigationUI extends StatelessWidget {
             text,
             style: TextStyle(
               color: color,
-              fontSize: 8,
+              fontSize: 11,
               fontWeight: FontWeight.bold,
             ),
           ),

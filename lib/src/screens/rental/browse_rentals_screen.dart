@@ -603,7 +603,7 @@ class _VehicleCard extends StatelessWidget {
                                   '${imageUrls.length}',
                                   style: const TextStyle(
                                     color: Colors.white,
-                                    fontSize: 10,
+                                    fontSize: 11,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
@@ -654,7 +654,7 @@ class _VehicleCard extends StatelessWidget {
                             type.toUpperCase(),
                             style: const TextStyle(
                               color: Color(0xFF8B5CF6),
-                              fontSize: 8,
+                              fontSize: 11,
                               fontWeight: FontWeight.w700,
                               letterSpacing: 0.5,
                             ),
@@ -718,7 +718,7 @@ class _VehicleCard extends StatelessWidget {
                             ' $currency/dia',
                             style: TextStyle(
                               color: AppColors.textTertiary,
-                              fontSize: 10,
+                              fontSize: 11,
                             ),
                           ),
                         ],
@@ -743,7 +743,7 @@ class _VehicleCard extends StatelessWidget {
                             ' $currency/sem',
                             style: TextStyle(
                               color: AppColors.textTertiary,
-                              fontSize: 10,
+                              fontSize: 11,
                             ),
                           ),
                         ],

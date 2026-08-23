@@ -874,7 +874,7 @@ class _BusLocationMapScreenState extends State<BusLocationMapScreen> {
                             destination,
                             style: const TextStyle(
                               color: AppColors.textTertiary,
-                              fontSize: 10,
+                              fontSize: 11,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -897,7 +897,7 @@ class _BusLocationMapScreenState extends State<BusLocationMapScreen> {
                 _getStatusLabel(status),
                 style: TextStyle(
                   color: _getStatusColor(status),
-                  fontSize: 10,
+                  fontSize: 11,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -1073,7 +1073,7 @@ class _BusLocationMapScreenState extends State<BusLocationMapScreen> {
                       color: isCheckedIn
                           ? AppColors.purple
                           : AppColors.textTertiary,
-                      fontSize: 9,
+                      fontSize: 11,
                       fontWeight: FontWeight.w600,
                     ),
                   ),

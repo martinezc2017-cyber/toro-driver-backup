@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:ui' show PlatformDispatcher;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -18,6 +19,9 @@ class ToroSplashScreen extends StatefulWidget {
 
 class _ToroSplashScreenState extends State<ToroSplashScreen>
     with TickerProviderStateMixin {
+  bool get _isSpanish =>
+      PlatformDispatcher.instance.locale.languageCode.toLowerCase() == 'es';
+
   late AnimationController _logoController;
   late AnimationController _particleController;
   late AnimationController _textController;
@@ -216,7 +220,7 @@ class _ToroSplashScreenState extends State<ToroSplashScreen>
                       ),
                       const SizedBox(height: 10),
                       Text(
-                        'CONDUCE EL FUTURO',
+                        _isSpanish ? 'CONDUCE EL FUTURO' : 'DRIVE THE FUTURE',
                         style: TextStyle(
                           fontSize: 12,
                           letterSpacing: 4,
@@ -271,11 +275,11 @@ class _ToroSplashScreenState extends State<ToroSplashScreen>
                       ),
                       const SizedBox(height: 15),
                       Text(
-                        'CARGANDO...',
+                        _isSpanish ? 'CARGANDO...' : 'LOADING...',
                         style: TextStyle(
-                          fontSize: 10,
+                          fontSize: 11,
                           letterSpacing: 3,
-                          color: Colors.white.withOpacity(0.5),
+                          color: Colors.white.withOpacity(0.8),
                         ),
                       ),
                     ],

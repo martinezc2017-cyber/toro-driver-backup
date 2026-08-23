@@ -1056,7 +1056,7 @@ class _DocumentsScreenState extends State<DocumentsScreen>
                   color: doc.isExpiringSoon
                       ? AppColors.warning
                       : AppColors.textSecondary,
-                  fontSize: 10,
+                  fontSize: 11,
                 ),
               ),
           ],
@@ -1076,7 +1076,7 @@ class _DocumentsScreenState extends State<DocumentsScreen>
                 statusText,
                 style: TextStyle(
                   color: statusColor,
-                  fontSize: 10,
+                  fontSize: 11,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -1664,7 +1664,7 @@ class _DocumentsScreenState extends State<DocumentsScreen>
                     doc.description,
                     style: TextStyle(
                       color: statusColor,
-                      fontSize: 10,
+                      fontSize: 11,
                       fontWeight: FontWeight.w500,
                     ),
                     overflow: TextOverflow.ellipsis,
@@ -1684,7 +1684,7 @@ class _DocumentsScreenState extends State<DocumentsScreen>
             statusText,
             style: TextStyle(
               color: statusColor,
-              fontSize: 10,
+              fontSize: 11,
               fontWeight: FontWeight.w600,
             ),
           ),

@@ -244,12 +244,12 @@ class AppTheme {
         showSelectedLabels: true,
         showUnselectedLabels: true,
         selectedLabelStyle: GoogleFonts.inter(
-          fontSize: 10,
+          fontSize: 11,
           fontWeight: FontWeight.w600,
           letterSpacing: 0,
         ),
         unselectedLabelStyle: GoogleFonts.inter(
-          fontSize: 10,
+          fontSize: 11,
           fontWeight: FontWeight.w400,
         ),
         selectedIconTheme: const IconThemeData(size: 24),
@@ -273,13 +273,13 @@ class AppTheme {
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
             return GoogleFonts.inter(
-              fontSize: 10,
+              fontSize: 11,
               fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
             );
           }
           return GoogleFonts.inter(
-            fontSize: 10,
+            fontSize: 11,
             fontWeight: FontWeight.w400,
             color: AppColors.textTertiary,
           );
@@ -631,7 +631,7 @@ class AppTheme {
         backgroundColor: AppColors.error,
         textColor: AppColors.textPrimary,
         textStyle: GoogleFonts.inter(
-          fontSize: 10,
+          fontSize: 11,
           fontWeight: FontWeight.w600,
         ),
         padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
@@ -812,7 +812,7 @@ class AppTheme {
         height: 1.4,
       ),
       labelSmall: GoogleFonts.inter(
-        fontSize: 10,
+        fontSize: 11,
         fontWeight: FontWeight.w500,
         color: AppColors.textTertiary,
         letterSpacing: 0.2,

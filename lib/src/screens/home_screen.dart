@@ -2190,7 +2190,7 @@ class _HomeScreenState extends State<HomeScreen>
                     'trial_badge'.tr(),
                     style: const TextStyle(
                       color: Color(0xFFFF9500),
-                      fontSize: 9,
+                      fontSize: 11,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -3459,7 +3459,7 @@ class _HomeScreenState extends State<HomeScreen>
                                   'Disponible',
                                   style: TextStyle(
                                     color: AppColors.textSecondary,
-                                    fontSize: 10,
+                                    fontSize: 11,
                                   ),
                                 ),
                                 Icon(
@@ -3526,7 +3526,7 @@ class _HomeScreenState extends State<HomeScreen>
                                   'Pendiente',
                                   style: TextStyle(
                                     color: AppColors.textSecondary,
-                                    fontSize: 10,
+                                    fontSize: 11,
                                   ),
                                 ),
                                 Icon(
@@ -3668,7 +3668,7 @@ class _HomeScreenState extends State<HomeScreen>
         ),
         Text(
           label,
-          style: TextStyle(color: AppColors.textTertiary, fontSize: 9),
+          style: TextStyle(color: AppColors.textTertiary, fontSize: 11),
         ),
       ],
     );
@@ -4166,7 +4166,7 @@ class _LuxuryIconButtonState extends State<_LuxuryIconButton> {
                         : widget.badgeCount.toString(),
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 10,
+                      fontSize: 11,
                       fontWeight: FontWeight.w600,
                       height: 1.0,
                     ),
@@ -5005,7 +5005,7 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                           'round_trip'.tr(),
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 8,
+                            fontSize: 11,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -5143,7 +5143,7 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                             '📅 PROGRAMADO · ${_fmtSchedHome(widget.ride.scheduledTime!)}',
                             style: const TextStyle(
                               color: Colors.black,
-                              fontSize: 10,
+                              fontSize: 11,
                               fontWeight: FontWeight.w900,
                               letterSpacing: 0.5,
                             ),
@@ -5163,7 +5163,7 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                             '🚩 ${widget.ride.waypoints!.length} PARADA${widget.ride.waypoints!.length == 1 ? '' : 'S'} EXTRA',
                             style: TextStyle(
                               color: AppColors.textPrimary,
-                              fontSize: 10,
+                              fontSize: 11,
                               fontWeight: FontWeight.w900,
                               letterSpacing: 0.5,
                             ),
@@ -5364,7 +5364,7 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                               _formatRecurringDays(widget.ride.recurringDays),
                               style: const TextStyle(
                                 color: Colors.blue,
-                                fontSize: 10,
+                                fontSize: 11,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -5392,7 +5392,7 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                         '${widget.ride.filledSeats}/3',
                         style: TextStyle(
                           color: AppColors.textSecondary,
-                          fontSize: 10,
+                          fontSize: 11,
                         ),
                       ),
                       // Return time if available
@@ -5420,7 +5420,7 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                                 widget.ride.returnTime!,
                                 style: const TextStyle(
                                   color: Colors.purple,
-                                  fontSize: 10,
+                                  fontSize: 11,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -6583,7 +6583,7 @@ class _TamagotchiPetState extends State<_TamagotchiPet>
               // Sparkle/heart decoration
               Text(
                 _expression == 3 ? '💕' : '✨',
-                style: const TextStyle(fontSize: 10),
+                style: const TextStyle(fontSize: 11),
               ),
             ],
           ),
@@ -7691,7 +7691,7 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
                                 : isDone
                                 ? AppColors.success
                                 : AppColors.textDisabled,
-                            fontSize: 10,
+                            fontSize: 11,
                             fontWeight: isActive
                                 ? FontWeight.w700
                                 : FontWeight.w500,
@@ -7967,7 +7967,7 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
                         'rental.primary'.tr(),
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 9,
+                          fontSize: 11,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -10735,7 +10735,7 @@ class _MyVehiclesSheetState extends State<_MyVehiclesSheet> {
                               : (unitNumber ?? 'BUS'),
                           style: TextStyle(
                             color: accentColor,
-                            fontSize: 9,
+                            fontSize: 11,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -10822,7 +10822,7 @@ class _MyVehiclesSheetState extends State<_MyVehiclesSheet> {
                             color: isActive
                                 ? AppColors.success
                                 : AppColors.error,
-                            fontSize: 10,
+                            fontSize: 11,
                             fontWeight: FontWeight.w600,
                           ),
                         ),

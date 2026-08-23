@@ -652,7 +652,7 @@ class TourismChatWidgetState extends State<TourismChatWidget> {
                 const Text('ANUNCIO FIJADO',
                     style: TextStyle(
                         color: AppColors.warning,
-                        fontSize: 9,
+                        fontSize: 11,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0.5)),
                 const SizedBox(height: 2),
@@ -667,7 +667,7 @@ class TourismChatWidgetState extends State<TourismChatWidget> {
                   '${ann.senderName ?? "Organizador"} - $timeStr',
                   style: TextStyle(
                       color: AppColors.textTertiary.withOpacity(0.7),
-                      fontSize: 10),
+                      fontSize: 11),
                 ),
               ],
             ),
@@ -792,7 +792,7 @@ class TourismChatWidgetState extends State<TourismChatWidget> {
                             _roleLabel(message.senderType),
                             style: TextStyle(
                               color: _roleColor(message.senderType),
-                              fontSize: 9,
+                              fontSize: 11,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -867,7 +867,7 @@ class TourismChatWidgetState extends State<TourismChatWidget> {
                               color: isMe
                                   ? Colors.white.withOpacity(0.6)
                                   : AppColors.warning,
-                              fontSize: 9,
+                              fontSize: 11,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -879,7 +879,7 @@ class TourismChatWidgetState extends State<TourismChatWidget> {
                             color: isMe
                                 ? Colors.white.withOpacity(0.7)
                                 : AppColors.textTertiary,
-                            fontSize: 10,
+                            fontSize: 11,
                           ),
                         ),
                       ],
@@ -1006,7 +1006,7 @@ class TourismChatWidgetState extends State<TourismChatWidget> {
                 Text(
                   '${message.senderName ?? "Organizador"} - $timeStr',
                   style: const TextStyle(
-                      color: AppColors.textSecondary, fontSize: 10),
+                      color: AppColors.textSecondary, fontSize: 11),
                 ),
               ],
             ),
@@ -1203,7 +1203,7 @@ class TourismChatWidgetState extends State<TourismChatWidget> {
             Text(
               label,
               style: TextStyle(
-                  color: color, fontSize: 10, fontWeight: FontWeight.w600),
+                  color: color, fontSize: 11, fontWeight: FontWeight.w600),
             ),
           ],
         ),
@@ -1343,7 +1343,7 @@ class _TourismChatFabState extends State<TourismChatFab> {
                 _unreadCount > 99 ? '99+' : '$_unreadCount',
                 style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 10,
+                    fontSize: 11,
                     fontWeight: FontWeight.w700),
               ),
             ),

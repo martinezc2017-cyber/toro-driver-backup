@@ -837,7 +837,7 @@ class _OrganizerPassengersTrackingScreenState
           label,
           style: const TextStyle(
             color: AppColors.textTertiary,
-            fontSize: 10,
+            fontSize: 11,
           ),
         ),
       ],
@@ -892,7 +892,7 @@ class _OrganizerPassengersTrackingScreenState
           label,
           style: const TextStyle(
             color: AppColors.textTertiary,
-            fontSize: 10,
+            fontSize: 11,
           ),
         ),
       ],
@@ -1025,7 +1025,7 @@ class _OrganizerPassengersTrackingScreenState
                               '${_passengerLocations.length} activos',
                               style: const TextStyle(
                                 color: AppColors.success,
-                                fontSize: 10,
+                                fontSize: 11,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -1471,7 +1471,7 @@ class _OrganizerPassengersTrackingScreenState
                         _getCheckInStatusLabel(checkInStatus),
                         style: TextStyle(
                           color: _getCheckInStatusColor(checkInStatus),
-                          fontSize: 10,
+                          fontSize: 11,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -1485,18 +1485,18 @@ class _OrganizerPassengersTrackingScreenState
                     'GPS: ${_formatDateTime(lastGpsUpdate)}',
                     style: const TextStyle(
                       color: AppColors.textTertiary,
-                      fontSize: 10,
+                      fontSize: 11,
                     ),
                   )
                 else if (gpsEnabled)
                   const Text(
                     'GPS: Activado (sin señal)',
-                    style: TextStyle(color: AppColors.textTertiary, fontSize: 10),
+                    style: TextStyle(color: AppColors.textTertiary, fontSize: 11),
                   )
                 else
                   const Text(
                     'GPS: Apagado',
-                    style: TextStyle(color: AppColors.textTertiary, fontSize: 10),
+                    style: TextStyle(color: AppColors.textTertiary, fontSize: 11),
                   ),
                 const Spacer(),
                 // Focus on map button

@@ -293,7 +293,7 @@ class _ReferScreenState extends State<ReferScreen> {
             child: Icon(icon, color: color, size: 18),
           ),
           const SizedBox(height: 4),
-          Text(label, style: TextStyle(fontSize: 10, color: AppColors.textSecondary)),
+          Text(label, style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
         ],
       ),
     );
@@ -333,7 +333,7 @@ class _ReferScreenState extends State<ReferScreen> {
       child: Column(
         children: [
           Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color)),
-          Text(label, style: TextStyle(fontSize: 10, color: AppColors.textSecondary)),
+          Text(label, style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
         ],
       ),
     );

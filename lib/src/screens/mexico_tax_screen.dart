@@ -315,7 +315,7 @@ class _MexicoTaxScreenState extends State<MexicoTaxScreen> {
           const SizedBox(height: 4),
           Text(rate, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.primary)),
           const SizedBox(height: 4),
-          Text(description, style: TextStyle(color: AppColors.textSecondary, fontSize: 10)),
+          Text(description, style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
         ],
       ),
     );
@@ -452,7 +452,7 @@ class _MexicoTaxScreenState extends State<MexicoTaxScreen> {
                         summary.hadRfc ? 'RFC 2.5%' : 'Sin RFC 20%',
                         style: TextStyle(
                           color: summary.hadRfc ? AppColors.success : AppColors.warning,
-                          fontSize: 10,
+                          fontSize: 11,
                           fontWeight: FontWeight.w600,
                         ),
                       ),

@@ -81,7 +81,7 @@ class LegalScreen extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   '2025 Toro Driver Inc.',
-                  style: TextStyle(fontSize: 10, color: AppColors.textTertiary),
+                  style: TextStyle(fontSize: 11, color: AppColors.textTertiary),
                 ),
               ],
             ),
@@ -170,7 +170,7 @@ class LegalScreen extends StatelessWidget {
                           children: [
                             Icon(Icons.lock, size: 10, color: AppColors.textSecondary),
                             const SizedBox(width: 4),
-                            Text('protected_document'.tr(), style: TextStyle(fontSize: 10, color: AppColors.textSecondary)),
+                            Text('protected_document'.tr(), style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
                           ],
                         ),
                       ],

@@ -292,7 +292,7 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
                 label,
                 style: const TextStyle(
                   color: AppColors.textTertiary,
-                  fontSize: 10,
+                  fontSize: 11,
                 ),
               ),
             ),
@@ -650,7 +650,7 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
                             color: urgentDate
                                 ? AppColors.error
                                 : AppColors.textSecondary,
-                            fontSize: 10,
+                            fontSize: 11,
                           ),
                         ),
                         const SizedBox(width: 6),
@@ -670,7 +670,7 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
                             color: urgentDate
                                 ? AppColors.error
                                 : AppColors.textSecondary,
-                            fontSize: 10,
+                            fontSize: 11,
                           ),
                         ),
                         const SizedBox(width: 6),
@@ -686,7 +686,7 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
                           formatDistance(distKm, country: country, decimals: 0),
                           style: const TextStyle(
                             color: AppColors.textSecondary,
-                            fontSize: 10,
+                            fontSize: 11,
                           ),
                         ),
                         const SizedBox(width: 6),
@@ -701,7 +701,7 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
                         '$confirmedPassengers/${maxPassengers > 0 ? maxPassengers : totalSeats ?? 0}',
                         style: const TextStyle(
                           color: AppColors.success,
-                          fontSize: 10,
+                          fontSize: 11,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -726,7 +726,7 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
                             originName,
                             style: const TextStyle(
                               color: AppColors.textTertiary,
-                              fontSize: 10,
+                              fontSize: 11,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -755,7 +755,7 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
                               destinationName,
                               style: const TextStyle(
                                 color: AppColors.textTertiary,
-                                fontSize: 10,
+                                fontSize: 11,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -781,7 +781,7 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
                                 .trim(),
                             style: const TextStyle(
                               color: AppColors.textTertiary,
-                              fontSize: 10,
+                              fontSize: 11,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -805,7 +805,7 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
                           child: Text(
                             'Puja ganada — ${event['organizers']?['company_name'] ?? 'Chofer'}',
                             style: TextStyle(
-                              fontSize: 10,
+                              fontSize: 11,
                               color: AppColors.success,
                               fontWeight: FontWeight.w600,
                             ),
@@ -833,7 +833,7 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
                               ? 'Falta chofer'
                               : 'Falta unidad',
                           style: TextStyle(
-                            fontSize: 10,
+                            fontSize: 11,
                             color: Colors.orange,
                             fontWeight: FontWeight.w500,
                           ),
@@ -1082,7 +1082,7 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
                                   '${currencyCode(country: country)}',
                                   style: const TextStyle(
                                     color: AppColors.textTertiary,
-                                    fontSize: 10,
+                                    fontSize: 11,
                                   ),
                                 ),
                             ],

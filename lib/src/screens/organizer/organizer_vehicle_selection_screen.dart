@@ -467,7 +467,7 @@ class _OrganizerVehicleSelectionScreenState
                           typeLabel,
                           style: const TextStyle(
                             color: AppColors.primaryLight,
-                            fontSize: 10,
+                            fontSize: 11,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -726,7 +726,7 @@ class _OrganizerVehicleSelectionScreenState
                                 dayLabel,
                                 style: const TextStyle(
                                   color: AppColors.primary,
-                                  fontSize: 10,
+                                  fontSize: 11,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
@@ -868,7 +868,7 @@ class _OrganizerVehicleSelectionScreenState
                         email,
                         style: TextStyle(
                           color: AppColors.textSecondary,
-                          fontSize: 10,
+                          fontSize: 11,
                         ),
                       ),
                   ],

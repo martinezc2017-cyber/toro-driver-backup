@@ -21,6 +21,9 @@
     <!-- Push Notifications (required for Android 13+ / API 33+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Restart notification listeners after device reboot -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
     <!-- Vibration for notifications -->
     <uses-permission android:name="android.permission.VIBRATE" />
 

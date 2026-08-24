@@ -17,19 +17,27 @@ import '../screens/marketplace_delivery_accept_screen.dart';
 
 /// Top-level background message handler (must be top-level function).
 /// Runs in its own isolate — no access to NotificationService instance.
-/// Must initialise FlutterLocalNotificationsPlugin locally and show the
-/// notification so drivers see it even with the screen locked.
+/// Must initialise Firebase + FlutterLocalNotificationsPlugin locally and
+/// show the notification so drivers see it even with the screen locked.
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  debugPrint('🔔 FCM Background message: ${message.messageId}');
+  // CRITICAL: must initialize Firebase in this isolate — it has NO access
+  // to the main isolate's Firebase instance. Without this, any Firebase call
+  // can crash when the app is killed.
+  await Firebase.initializeApp();
+  debugPrint('FCM Background message: ${message.messageId}');
 
+  // Support both notification payload AND data-only messages.
+  // data-only messages have notification == null but carry title/body in data.
+  final data = message.data;
   final notification = message.notification;
-  if (notification == null) return;
+  final title = data['title'] ?? notification?.title ?? 'TORO Driver';
+  final body = data['body'] ?? notification?.body ?? '';
 
-  final title = notification.title ?? 'TORO Driver';
-  final body = notification.body ?? '';
-  final type = message.data['type'] as String? ??
-      message.data['notification_type'] as String? ??
+  if (title.toString().isEmpty && body.toString().isEmpty) return;
+
+  final type = data['type'] as String? ??
+      data['notification_type'] as String? ??
       '';
 
   // Determine channel
@@ -58,6 +66,24 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   const iosSettings = DarwinInitializationSettings();
   const initSettings = InitializationSettings(android: androidSettings, iOS: iosSettings);
   await plugin.initialize(initSettings);
+
+  // Create notification channel in this isolate BEFORE showing notification.
+  // On Android 8+ the channel MUST exist or the notification is silently dropped.
+  // createNotificationChannel is idempotent — safe to call every time.
+  if (Platform.isAndroid) {
+    final androidPlugin = plugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    await androidPlugin?.createNotificationChannel(
+      AndroidNotificationChannel(
+        channelId,
+        channelName,
+        importance: Importance.max,
+        playSound: true,
+        enableVibration: true,
+        showBadge: true,
+      ),
+    );
+  }
 
   final androidDetails = AndroidNotificationDetails(
     channelId,
@@ -689,6 +715,16 @@ class NotificationService {
       FirebaseMessaging.onBackgroundMessage(
         _firebaseMessagingBackgroundHandler,
       );
+
+      // CRITICAL: Request POST_NOTIFICATIONS permission on Android 13+ (API 33+).
+      // Without this runtime request, notifications are silently blocked —
+      // especially with the screen locked / app closed.
+      final settings = await _messaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+      debugPrint('FCM permission: ${settings.authorizationStatus}');
 
       // Foreground messages → show in-app banner + local notification
       _foregroundSub = FirebaseMessaging.onMessage.listen((

@@ -128,9 +128,10 @@ void main() async {
     EasyLocalization(
       supportedLocales: const [Locale('en'), Locale('es'), Locale('es', 'MX')],
       path: 'assets/lang',
-      fallbackLocale: const Locale('en'),
+      fallbackLocale: const Locale('es'),
+      startLocale: const Locale('es'),
       saveLocale: true,
-      useOnlyLangCode: false, // Allow country codes for es-MX
+      useOnlyLangCode: false,
       child: const ToroDriverApp(),
     ),
   );

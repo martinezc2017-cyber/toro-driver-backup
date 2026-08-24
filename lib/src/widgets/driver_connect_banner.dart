@@ -1,17 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 import '../config/supabase_config.dart';
 import '../services/stripe_connect_service.dart';
 
 /// Recordatorio en el home del chofer: si todavía NO conectó su Stripe Connect
 /// (no puede recibir payouts), muestra un banner → 1 toque → onboarding.
-///
-/// Mismo principio que el banner del vendedor/organizador: multiusuario, el chofer
-/// recibe el recordatorio automático. Sin esto, el dinero de sus entregas queda
-/// atrapado en el balance de TORO (le pasó a Carlos).
-///
-/// IMPORTANTE: `provider` DEBE casar con la cuenta donde corren los cobros
-/// (MX = la cuenta del marketplace). Para choferes MX pasar 'mx'.
 class DriverConnectBanner extends StatefulWidget {
   final String driverId;
   final String email;
@@ -49,9 +43,6 @@ class _DriverConnectBannerState extends State<DriverConnectBanner> with WidgetsB
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // El usuario sale al navegador a hacer el KYC de Stripe y vuelve -> la app
-    // se REANUDA. Re-consultamos el estado para que el banner se actualice SOLO,
-    // sin que el usuario tenga que cerrar/reabrir la app.
     if (state == AppLifecycleState.resumed) _load();
   }
 
@@ -60,15 +51,12 @@ class _DriverConnectBannerState extends State<DriverConnectBanner> with WidgetsB
       final s = await StripeConnectService.instance
           .getAccountStatus(widget.driverId, provider: widget.provider);
       if (mounted) setState(() => _status = s);
-    } catch (_) {/* offline / sin cuenta → no mostrar hasta saber */}
+    } catch (_) {}
   }
 
   Future<void> _activate() async {
     setState(() => _busy = true);
     try {
-      // Email robusto: usa el de la cuenta (auth) si el del perfil viene vacio.
-      // Stripe rechaza email vacio con "Invalid email address" -> el edge da 500
-      // -> createConnectAccount retorna null -> el banner fallaba justo aqui.
       final authEmail = SupabaseConfig.client.auth.currentUser?.email ?? '';
       final email = widget.email.trim().isNotEmpty ? widget.email.trim() : authEmail;
 
@@ -78,7 +66,6 @@ class _DriverConnectBannerState extends State<DriverConnectBanner> with WidgetsB
         provider: widget.provider,
       );
       String? url = result.url;
-      // Fallback: si la cuenta ya existia y create no regreso link, pide solo el link.
       url ??= await StripeConnectService.instance
           .getOnboardingLink(widget.driverId, provider: widget.provider);
 
@@ -87,8 +74,8 @@ class _DriverConnectBannerState extends State<DriverConnectBanner> with WidgetsB
           final errorDetail = result.error ?? '';
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text(email.isEmpty
-                ? 'Tu perfil no tiene correo — agrega uno para conectar Stripe.'
-                : 'Stripe error: $errorDetail'),
+                ? 'banner.no_email_stripe'.tr()
+                : 'banner.stripe_error'.tr(namedArgs: {'error': errorDetail})),
             backgroundColor: Colors.red[700],
             duration: const Duration(seconds: 6),
           ));
@@ -105,10 +92,6 @@ class _DriverConnectBannerState extends State<DriverConnectBanner> with WidgetsB
   @override
   Widget build(BuildContext context) {
     final s = _status;
-    // Mostrar SOLO si el chofer aun NO conectó (cuenta no creada o incompleta).
-    // Si ya envió sus datos (pending), ya está activa, o aún cargando/error -> NO
-    // molestar. Asi el banner desaparece SOLO en cuanto conecta — incluido al
-    // volver del navegador, por el refresh en didChangeAppLifecycleState.
     final needsConnect = s == StripeAccountStatus.notCreated ||
         s == StripeAccountStatus.incomplete ||
         s == StripeAccountStatus.notFound;
@@ -124,13 +107,13 @@ class _DriverConnectBannerState extends State<DriverConnectBanner> with WidgetsB
       child: Row(children: [
         const Icon(Icons.account_balance, color: Colors.white, size: 28),
         const SizedBox(width: 12),
-        const Expanded(
+        Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Conecta tu banco para recibir tus pagos',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14, height: 1.15)),
-            SizedBox(height: 3),
-            Text('Sin esto, el dinero de tus entregas queda detenido y no te llega.',
-                style: TextStyle(color: Colors.white, fontSize: 11.5, height: 1.2)),
+            Text('banner.connect_bank_title'.tr(),
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14, height: 1.15)),
+            const SizedBox(height: 3),
+            Text('banner.connect_bank_subtitle'.tr(),
+                style: const TextStyle(color: Colors.white, fontSize: 11.5, height: 1.2)),
           ]),
         ),
         const SizedBox(width: 10),
@@ -143,7 +126,7 @@ class _DriverConnectBannerState extends State<DriverConnectBanner> with WidgetsB
           ),
           child: _busy
               ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-              : const Text('Conectar', style: TextStyle(fontWeight: FontWeight.bold)),
+              : Text('banner.connect_btn'.tr(), style: const TextStyle(fontWeight: FontWeight.bold)),
         ),
       ]),
     );

@@ -128,10 +128,9 @@ void main() async {
     EasyLocalization(
       supportedLocales: const [Locale('en'), Locale('es'), Locale('es', 'MX')],
       path: 'assets/lang',
-      fallbackLocale: const Locale('es'),
-      startLocale: const Locale('es'),
+      fallbackLocale: const Locale('en'),
       saveLocale: true,
-      useOnlyLangCode: false,
+      useOnlyLangCode: true,
       child: const ToroDriverApp(),
     ),
   );
@@ -367,9 +366,9 @@ class ToroDriverApp extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  const Text(
-                    '¿Cerrar Sesión?',
-                    style: TextStyle(
+                  Text(
+                    'dialog.logout_title'.tr(),
+                    style: const TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
                       color: AppColors.textPrimary,
@@ -377,7 +376,7 @@ class ToroDriverApp extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '¿Estás seguro que deseas salir de tu cuenta?',
+                    'dialog.logout_message'.tr(),
                     style: TextStyle(
                       fontSize: 14,
                       color: AppColors.textSecondary,
@@ -403,10 +402,10 @@ class ToroDriverApp extends StatelessWidget {
                                 width: 1.5,
                               ),
                             ),
-                            child: const Center(
+                            child: Center(
                               child: Text(
-                                'Cancelar',
-                                style: TextStyle(
+                                'cancel'.tr(),
+                                style: const TextStyle(
                                   color: AppColors.textSecondary,
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
@@ -452,10 +451,10 @@ class ToroDriverApp extends StatelessWidget {
                                 ),
                               ],
                             ),
-                            child: const Center(
+                            child: Center(
                               child: Text(
-                                'Salir',
-                                style: TextStyle(
+                                'btn.exit'.tr(),
+                                style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,

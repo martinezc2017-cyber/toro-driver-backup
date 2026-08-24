@@ -1624,5 +1624,40 @@
   "login.enter_email_first": "Enter your email first",
   "login.recovery_sent": "Recovery email sent",
   "login.recovery_error": "Could not send recovery email",
-  "login.forgot_password": "Forgot your password?"
+  "login.forgot_password": "Forgot your password?",
+
+  "banner.connect_bank_title": "Connect your bank to receive payments",
+  "banner.connect_bank_subtitle": "Without this, the money from your deliveries will be held and won't reach you.",
+  "banner.connect_btn": "Connect",
+  "banner.no_email_stripe": "Your profile has no email — add one to connect Stripe.",
+  "banner.stripe_error": "Stripe error: {error}",
+
+  "btn.save": "Save",
+  "btn.delete": "Delete",
+  "btn.exit": "Exit",
+  "btn.close": "Close",
+  "btn.accept": "Accept",
+  "btn.processing": "Processing...",
+  "btn.later": "Later",
+  "btn.activate_payments": "Activate payments",
+  "btn.opening": "Opening…",
+
+  "status.pending": "Pending",
+  "status.paid": "Paid",
+  "status.deposit": "Deposit",
+
+  "dialog.logout_title": "Log out?",
+  "dialog.logout_message": "Are you sure you want to log out?",
+
+  "organizer_banner.stripe_reviewing": "Stripe is reviewing your identity",
+  "organizer_banner.cannot_receive_yet": "You can't receive money yet",
+  "organizer_banner.stripe_verifying_docs": "Once Stripe verifies your documents, you'll be able to collect bookings and receive payouts.",
+  "organizer_banner.connect_stripe_msg": "Connect your Stripe account to receive passenger payments. Without this, the money will be held.",
+  "organizer_banner.cannot_action_yet": "You can't {action} yet",
+  "organizer_banner.activate_stripe_msg": "For TORO to send you passenger money, you first need to complete your Stripe account.\n\nIt takes 3 minutes to set up.",
+
+  "error.generic": "Error: {error}",
+  "error.could_not_open_link": "Could not open link",
+  "error.could_not_cancel": "Could not cancel: {error}",
+  "error.not_found_marketplace": "Marketplace order not found"
 }

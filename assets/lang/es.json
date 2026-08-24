@@ -1658,5 +1658,40 @@
   "login.enter_email_first": "Ingresa primero tu correo",
   "login.recovery_sent": "Correo de recuperación enviado",
   "login.recovery_error": "No se pudo enviar el correo de recuperación",
-  "login.forgot_password": "¿Olvidaste tu contraseña?"
+  "login.forgot_password": "¿Olvidaste tu contraseña?",
+
+  "banner.connect_bank_title": "Conecta tu banco para recibir tus pagos",
+  "banner.connect_bank_subtitle": "Sin esto, el dinero de tus entregas queda detenido y no te llega.",
+  "banner.connect_btn": "Conectar",
+  "banner.no_email_stripe": "Tu perfil no tiene correo — agrega uno para conectar Stripe.",
+  "banner.stripe_error": "Stripe error: {error}",
+
+  "btn.save": "Guardar",
+  "btn.delete": "Eliminar",
+  "btn.exit": "Salir",
+  "btn.close": "Cerrar",
+  "btn.accept": "Aceptar",
+  "btn.processing": "Procesando...",
+  "btn.later": "Más tarde",
+  "btn.activate_payments": "Activar pagos",
+  "btn.opening": "Abriendo…",
+
+  "status.pending": "Pendiente",
+  "status.paid": "Pagado",
+  "status.deposit": "Depósito",
+
+  "dialog.logout_title": "¿Cerrar Sesión?",
+  "dialog.logout_message": "¿Estás seguro que deseas salir de tu cuenta?",
+
+  "organizer_banner.stripe_reviewing": "Stripe está revisando tu identidad",
+  "organizer_banner.cannot_receive_yet": "No puedes recibir dinero todavía",
+  "organizer_banner.stripe_verifying_docs": "En cuanto Stripe verifique tus documentos podrás cobrar reservas y recibir payouts.",
+  "organizer_banner.connect_stripe_msg": "Conecta tu cuenta de Stripe para recibir pagos de pasajeros. Sin esto, el dinero queda detenido.",
+  "organizer_banner.cannot_action_yet": "No puedes {action} todavía",
+  "organizer_banner.activate_stripe_msg": "Para que TORO pueda enviarte el dinero de los pasajeros, primero tienes que completar tu cuenta de Stripe.\n\nTu cuenta queda lista en 3 minutos.",
+
+  "error.generic": "Error: {error}",
+  "error.could_not_open_link": "No se pudo abrir el enlace",
+  "error.could_not_cancel": "No se pudo cancelar: {error}",
+  "error.not_found_marketplace": "No se encontró el pedido marketplace"
 }

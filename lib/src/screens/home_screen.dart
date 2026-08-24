@@ -3166,18 +3166,18 @@ class _HomeScreenState extends State<HomeScreen>
                   color: Colors.white.withValues(alpha: 0.06),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Row(
+                child: Row(
                   children: [
-                    Icon(
+                    const Icon(
                       Icons.lightbulb_outline,
                       color: Colors.amber,
                       size: 16,
                     ),
-                    SizedBox(width: 8),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'home.qr_tier_info'.tr(),
-                        style: TextStyle(color: Colors.white60, fontSize: 11),
+                        style: const TextStyle(color: Colors.white60, fontSize: 11),
                       ),
                     ),
                   ],

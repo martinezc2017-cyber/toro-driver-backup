@@ -72,21 +72,25 @@ class _DriverConnectBannerState extends State<DriverConnectBanner> with WidgetsB
       final authEmail = SupabaseConfig.client.auth.currentUser?.email ?? '';
       final email = widget.email.trim().isNotEmpty ? widget.email.trim() : authEmail;
 
-      String? url = await StripeConnectService.instance.createConnectAccount(
+      final result = await StripeConnectService.instance.createConnectAccount(
         driverId: widget.driverId,
         email: email,
         provider: widget.provider,
       );
+      String? url = result.url;
       // Fallback: si la cuenta ya existia y create no regreso link, pide solo el link.
       url ??= await StripeConnectService.instance
           .getOnboardingLink(widget.driverId, provider: widget.provider);
 
       if (url == null) {
         if (mounted) {
+          final errorDetail = result.error ?? '';
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text(email.isEmpty
                 ? 'Tu perfil no tiene correo — agrega uno para conectar Stripe.'
-                : 'No se pudo abrir el registro de Stripe. Intenta de nuevo.'),
+                : 'Stripe error: $errorDetail'),
+            backgroundColor: Colors.red[700],
+            duration: const Duration(seconds: 6),
           ));
         }
         return;

@@ -14,9 +14,11 @@ class BankAccountScreen extends StatefulWidget {
   State<BankAccountScreen> createState() => _BankAccountScreenState();
 }
 
-class _BankAccountScreenState extends State<BankAccountScreen> {
+class _BankAccountScreenState extends State<BankAccountScreen>
+    with WidgetsBindingObserver {
   bool _isLoading = true;
   bool _isConnecting = false;
+  bool _waitingForReturn = false;
   Map<String, dynamic>? _driverData;
   StripeAccountStatus _accountStatus = StripeAccountStatus.notCreated;
 
@@ -28,7 +30,23 @@ class _BankAccountScreenState extends State<BankAccountScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadDriverData();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Auto-refresh when driver returns from Safari/Chrome after Stripe onboarding
+    if (state == AppLifecycleState.resumed && _waitingForReturn) {
+      _waitingForReturn = false;
+      _loadDriverData();
+    }
   }
 
   Future<void> _loadDriverData() async {
@@ -76,7 +94,7 @@ class _BankAccountScreenState extends State<BankAccountScreen> {
       String? onboardingUrl;
 
       if (_accountStatus == StripeAccountStatus.notCreated) {
-        onboardingUrl = await StripeConnectService.instance
+        final result = await StripeConnectService.instance
             .createConnectAccount(
               driverId: _driverData!['id'],
               email: user?.email ?? '',
@@ -84,6 +102,7 @@ class _BankAccountScreenState extends State<BankAccountScreen> {
               lastName: _driverData!['last_name'],
               provider: _stripeProvider,
             );
+        onboardingUrl = result.url;
       } else if (_accountStatus == StripeAccountStatus.incomplete) {
         onboardingUrl = await StripeConnectService.instance.getOnboardingLink(
           _driverData!['id'],
@@ -92,11 +111,13 @@ class _BankAccountScreenState extends State<BankAccountScreen> {
       }
 
       if (onboardingUrl != null) {
+        _waitingForReturn = true;
         final opened = await StripeConnectService.instance.openOnboardingLink(
           onboardingUrl,
         );
 
         if (!opened && mounted) {
+          _waitingForReturn = false;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('no_open_link'.tr()),
@@ -130,7 +151,6 @@ class _BankAccountScreenState extends State<BankAccountScreen> {
     } finally {
       if (mounted) {
         setState(() => _isConnecting = false);
-        Future.delayed(const Duration(seconds: 2), _loadDriverData);
       }
     }
   }

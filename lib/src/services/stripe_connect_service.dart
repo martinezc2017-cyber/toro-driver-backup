@@ -1,6 +1,14 @@
+import 'package:supabase_flutter/supabase_flutter.dart' show FunctionException;
 import 'package:url_launcher/url_launcher.dart';
 import '../config/supabase_config.dart';
 import '../core/logging/app_logger.dart';
+
+/// Result from Stripe Connect onboarding attempt — carries URL or error detail.
+class ConnectResult {
+  final String? url;
+  final String? error;
+  ConnectResult({this.url, this.error});
+}
 
 /// Servicio para manejar Stripe Connect Express
 /// Permite a los drivers conectar su cuenta bancaria para recibir pagos
@@ -34,9 +42,9 @@ class StripeConnectService {
   }
 
   /// Crear cuenta de Stripe Connect y obtener link de onboarding
-  /// Retorna el URL para que el driver complete su registro
+  /// Retorna ConnectResult con el URL o el error detail.
   /// provider: 'us' para Estados Unidos, 'mx' para México
-  Future<String?> createConnectAccount({
+  Future<ConnectResult> createConnectAccount({
     required String driverId,
     required String email,
     String? firstName,
@@ -46,6 +54,9 @@ class StripeConnectService {
     try {
       final supabase = SupabaseConfig.client;
       final resolvedProvider = await _resolveProvider(driverId, provider);
+      AppLogger.log(
+        'STRIPE CONNECT -> createConnectAccount driver=$driverId provider=$resolvedProvider email=$email',
+      );
 
       // Llamar a la Edge Function que crea la cuenta en Stripe
       final response = await supabase.functions.invoke(
@@ -60,11 +71,16 @@ class StripeConnectService {
       );
 
       if (response.status != 200) {
-        AppLogger.log('STRIPE CONNECT -> Error: ${response.data}');
-        return null;
+        final msg = 'HTTP ${response.status}: ${response.data}';
+        AppLogger.log('STRIPE CONNECT -> Error: $msg');
+        return ConnectResult(error: msg);
       }
 
-      final data = response.data as Map<String, dynamic>;
+      final data = response.data;
+      if (data is! Map<String, dynamic>) {
+        AppLogger.log('STRIPE CONNECT -> Unexpected response type: ${data.runtimeType}');
+        return ConnectResult(error: 'Unexpected response: $data');
+      }
       final onboardingUrl = data['url'] as String?;
       final accountId = data['account_id'] as String?;
 
@@ -74,10 +90,15 @@ class StripeConnectService {
         );
       }
 
-      return onboardingUrl;
+      return ConnectResult(url: onboardingUrl);
+    } on FunctionException catch (e) {
+      // supabase_flutter v2+ throws FunctionException for non-2xx
+      final detail = e.details?.toString() ?? e.reasonPhrase ?? e.toString();
+      AppLogger.log('STRIPE CONNECT -> FunctionException: status=${e.status} detail=$detail');
+      return ConnectResult(error: detail);
     } catch (e) {
       AppLogger.log('STRIPE CONNECT -> Error creating account: $e');
-      return null;
+      return ConnectResult(error: e.toString());
     }
   }
 

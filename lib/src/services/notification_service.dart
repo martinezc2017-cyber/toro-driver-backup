@@ -40,24 +40,24 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
       data['notification_type'] as String? ??
       '';
 
-  // Determine channel
-  String channelId = 'general_notifications';
+  // Determine channel — v2 IDs to reset cached Android channel settings
+  String channelId = 'general_notifications_v2';
   if (type.contains('ride') || type.contains('trip') ||
       type.contains('bid_request') || type.contains('bid_counter_offer')) {
-    channelId = 'ride_notifications';
+    channelId = 'ride_notifications_v2';
   } else if (type.contains('message') || type.contains('chat')) {
-    channelId = 'chat_notifications';
+    channelId = 'chat_notifications_v2';
   } else if (type.contains('earning') || type.contains('payment') ||
       type.contains('payout') || type.contains('bid_won') ||
       type.contains('bid_response') || type.contains('weekly_statement')) {
-    channelId = 'earnings_notifications';
+    channelId = 'earnings_notifications_v2';
   }
 
-  final channelName = channelId == 'ride_notifications'
+  final channelName = channelId == 'ride_notifications_v2'
       ? 'Solicitudes de viaje'
-      : channelId == 'chat_notifications'
+      : channelId == 'chat_notifications_v2'
           ? 'Mensajes'
-          : channelId == 'earnings_notifications'
+          : channelId == 'earnings_notifications_v2'
               ? 'Ganancias'
               : 'General';
 
@@ -135,11 +135,12 @@ class NotificationService {
   StreamSubscription<RemoteMessage>? _foregroundSub;
   StreamSubscription<RemoteMessage>? _openedAppSub;
 
-  // Notification channels
-  static const String rideChannel = 'ride_notifications';
-  static const String chatChannel = 'chat_notifications';
-  static const String earningsChannel = 'earnings_notifications';
-  static const String generalChannel = 'general_notifications';
+  // Notification channels — v2: bumped IDs to reset cached Android channel
+  // settings (Android keeps original importance/sound even after code changes).
+  static const String rideChannel = 'ride_notifications_v2';
+  static const String chatChannel = 'chat_notifications_v2';
+  static const String earningsChannel = 'earnings_notifications_v2';
+  static const String generalChannel = 'general_notifications_v2';
 
   // Initialize notification service (no permission dialog)
   Future<void> initialize() async {
@@ -216,7 +217,9 @@ class NotificationService {
           earningsChannel,
           'Ganancias',
           description: 'Notificaciones de pagos y ganancias',
-          importance: Importance.defaultImportance,
+          importance: Importance.high,
+          playSound: true,
+          enableVibration: true,
         ),
       );
 
@@ -225,7 +228,9 @@ class NotificationService {
           generalChannel,
           'General',
           description: 'Notificaciones generales de la aplicación',
-          importance: Importance.defaultImportance,
+          importance: Importance.high,
+          playSound: true,
+          enableVibration: true,
         ),
       );
     }

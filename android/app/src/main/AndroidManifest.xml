@@ -92,7 +92,7 @@
         <!-- FCM: Default notification channel for Android 8+ -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
-            android:value="ride_notifications" />
+            android:value="ride_notifications_v2" />
 
         <!-- Firebase Messaging Service - handles ALL FCM with TORO logo (MessagingStyle) -->
         <service

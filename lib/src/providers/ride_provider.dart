@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart' show ChangeNotifier, debugPrint;
+import 'package:easy_localization/easy_localization.dart';
 import '../services/ride_service.dart';
 import '../services/driver_service.dart';
 import '../services/location_service.dart';
@@ -263,7 +264,7 @@ class RideProvider with ChangeNotifier {
       debugPrint('🚗 RideProvider: viaje $rideId ya lo tomó otro chofer');
       _availableRides = _availableRides.where((r) => r.id != rideId).toList();
       _locallyDismissedIds.add(rideId);
-      _error = 'Ese viaje ya lo tomó otro chofer';
+      _error = 'driver.ride_taken'.tr();
       _status = _activeRide != null
           ? RideProviderStatus.hasActiveRide
           : RideProviderStatus.idle;
@@ -271,7 +272,7 @@ class RideProvider with ChangeNotifier {
       return false;
     } catch (e) {
       debugPrint('🚗 RideProvider: ERROR accepting ride: $e');
-      _error = 'Error al aceptar viaje: $e';
+      _error = 'error.accept_ride'.tr(namedArgs: {'error': '$e'});
       _status = RideProviderStatus.error;
       notifyListeners();
       return false;

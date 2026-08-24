@@ -1,6 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../core/logging/app_logger.dart';
 
 /// Service for biometric authentication (Face ID / Fingerprint)
@@ -62,7 +63,7 @@ class BiometricService {
     try {
       // First authenticate to confirm it's the driver
       final authenticated = await authenticate(
-        reason: 'Confirma tu identidad para activar el acceso biométrico',
+        reason: 'biometric.confirm_identity'.tr(),
       );
 
       if (!authenticated) {
@@ -94,7 +95,7 @@ class BiometricService {
   Future<bool> authenticate({String? reason}) async {
     try {
       return await _localAuth.authenticate(
-        localizedReason: reason ?? 'Usa Face ID o huella para iniciar sesión',
+        localizedReason: reason ?? 'biometric.use_faceid'.tr(),
         options: const AuthenticationOptions(
           stickyAuth: true,
           biometricOnly: true,

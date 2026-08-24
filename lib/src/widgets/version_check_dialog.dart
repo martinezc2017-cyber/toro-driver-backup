@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 import '../services/version_check_service.dart';
 
@@ -62,7 +63,7 @@ class VersionCheckDialog extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                isHardUpdate ? 'Actualización Requerida' : 'Actualización Disponible',
+                isHardUpdate ? 'version_check.update_required'.tr() : 'version_check.update_available'.tr(),
                 style: theme.textTheme.titleMedium,
               ),
             ),
@@ -74,9 +75,7 @@ class VersionCheckDialog extends StatelessWidget {
           children: [
             Text(
               result.getMessage(locale) ??
-                  (isHardUpdate
-                      ? 'Tu versión de la app ya no es compatible. Por favor actualiza para continuar.'
-                      : 'Una nueva versión está disponible. Actualiza para una mejor experiencia.'),
+                  'version_check.update_msg'.tr(),
               style: theme.textTheme.bodyMedium,
             ),
             if (isHardUpdate) ...[
@@ -94,7 +93,7 @@ class VersionCheckDialog extends StatelessWidget {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'No puedes continuar sin actualizar.',
+                        'version_check.cannot_continue'.tr(),
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: errorColor,
                           fontWeight: FontWeight.w500,
@@ -112,7 +111,7 @@ class VersionCheckDialog extends StatelessWidget {
             TextButton(
               onPressed: onLater,
               child: Text(
-                'Más Tarde',
+                'version_check.later'.tr(),
                 style: TextStyle(color: colorScheme.onSurfaceVariant),
               ),
             ),
@@ -125,7 +124,7 @@ class VersionCheckDialog extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
-            child: const Text('Actualizar Ahora'),
+            child: Text('update_now'.tr()),
           ),
         ],
       ),

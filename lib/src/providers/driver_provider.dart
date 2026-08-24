@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show ChangeNotifier, debugPrint;
 import 'package:geolocator/geolocator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../services/driver_service.dart';
 import '../services/notification_service.dart';
 import '../services/background_location_service.dart';
@@ -225,15 +226,14 @@ class DriverProvider with ChangeNotifier {
               // This happens when canGoOnline changes from false to true
               if (!couldGoOnline && driver.canGoOnline) {
                 _wasJustApproved = true;
-                _approvalMessage =
-                    '¡Tu cuenta ha sido aprobada! Ya puedes comenzar a recibir viajes.';
+                _approvalMessage = 'driver.account_approved'.tr();
               }
 
               notifyListeners();
             }
           },
           onError: (e) {
-            _error = 'Error en actualizaciones: $e';
+            _error = 'error.realtime_updates'.tr(namedArgs: {'error': '$e'});
             notifyListeners();
           },
         );
@@ -274,12 +274,12 @@ class DriverProvider with ChangeNotifier {
 
     // 1. Verificar status no suspendido/rechazado
     if (driver.status == DriverStatus.suspended) {
-      _error = 'Tu cuenta está suspendida. Contacta a soporte.';
+      _error = 'driver.account_suspended'.tr();
       notifyListeners();
       throw Exception(_error);
     }
     if (driver.status == DriverStatus.rejected) {
-      _error = 'Tu cuenta fue rechazada. Contacta a soporte.';
+      _error = 'driver.account_rejected'.tr();
       notifyListeners();
       throw Exception(_error);
     }
@@ -299,7 +299,7 @@ class DriverProvider with ChangeNotifier {
         notifyListeners();
         return;
       } catch (e) {
-        _error = 'Error al ponerse online: $e';
+        _error = 'error.going_online'.tr(namedArgs: {'error': '$e'});
         notifyListeners();
         throw Exception(_error);
       }
@@ -308,42 +308,42 @@ class DriverProvider with ChangeNotifier {
     // 2. Verificar documentos firmados
     if (!driver.allDocumentsSigned) {
       final missing = <String>[];
-      if (!driver.agreementSigned) missing.add('Acuerdo de driver');
-      if (!driver.icaSigned) missing.add('Contrato ICA');
-      if (!driver.safetyPolicySigned) missing.add('Política de seguridad');
-      if (!driver.bgcConsentSigned) missing.add('Consentimiento BGC');
-      _error = 'Faltan documentos por firmar: ${missing.join(", ")}';
+      if (!driver.agreementSigned) missing.add('driver.doc_agreement'.tr());
+      if (!driver.icaSigned) missing.add('driver.doc_ica'.tr());
+      if (!driver.safetyPolicySigned) missing.add('driver.safety_policy'.tr());
+      if (!driver.bgcConsentSigned) missing.add('driver.doc_bgc'.tr());
+      _error = 'driver.missing_docs'.tr(namedArgs: {'docs': missing.join(", ")});
       notifyListeners();
       throw Exception(_error);
     }
 
     // 3. Verificar documentos vigentes (licencia + seguro)
     if (driver.licenseNumber == null || driver.licenseNumber!.isEmpty) {
-      _error = 'Falta subir tu licencia de conducir';
+      _error = 'driver.missing_license'.tr();
       notifyListeners();
       throw Exception(_error);
     }
     if (driver.licenseExpiry != null &&
         driver.licenseExpiry!.isBefore(DateTime.now())) {
-      _error = 'Tu licencia está vencida';
+      _error = 'driver.license_expired'.tr();
       notifyListeners();
       throw Exception(_error);
     }
     if (driver.insurancePolicy == null || driver.insurancePolicy!.isEmpty) {
-      _error = 'Falta subir tu seguro';
+      _error = 'driver.missing_insurance'.tr();
       notifyListeners();
       throw Exception(_error);
     }
     if (driver.insuranceExpiry != null &&
         driver.insuranceExpiry!.isBefore(DateTime.now())) {
-      _error = 'Tu seguro está vencido';
+      _error = 'driver.insurance_expired'.tr();
       notifyListeners();
       throw Exception(_error);
     }
 
     // 4. Verificar vehículo registrado
     if (driver.vehiclePlate == null || driver.vehiclePlate!.isEmpty) {
-      _error = 'Debes registrar tu vehículo';
+      _error = 'driver.register_vehicle'.tr();
       notifyListeners();
       throw Exception(_error);
     }
@@ -353,9 +353,7 @@ class DriverProvider with ChangeNotifier {
     //    (trg_protect_driver_approval_cols) revierte cualquier intento de auto-aprobarse.
     //    El modo prueba (trial) sigue permitido para el bootstrap.
     if (!driver.adminApproved && !driver.trialModeAccepted) {
-      _error =
-          'Tu cuenta está en revisión. Un administrador debe aprobarte '
-          'antes de que puedas ponerte en línea.';
+      _error = 'driver.pending_review'.tr();
       notifyListeners();
       throw Exception(_error);
     }
@@ -368,7 +366,7 @@ class DriverProvider with ChangeNotifier {
       _startHeartbeat(); // presencia EN VIVO mientras esté online
       notifyListeners();
     } catch (e) {
-      _error = 'Error al ponerse online: $e';
+      _error = 'error.going_online'.tr(namedArgs: {'error': '$e'});
       notifyListeners();
       throw Exception(_error);
     }
@@ -525,7 +523,7 @@ class DriverProvider with ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _error = 'Error al actualizar perfil: $e';
+      _error = 'error.update_profile'.tr(namedArgs: {'error': '$e'});
       _isLoading = false;
       notifyListeners();
       return false;
@@ -550,7 +548,7 @@ class DriverProvider with ChangeNotifier {
       notifyListeners();
       return imageUrl;
     } catch (e) {
-      _error = 'Error al subir imagen: $e';
+      _error = 'error.upload_image'.tr(namedArgs: {'error': '$e'});
       _isLoading = false;
       notifyListeners();
       return null;
@@ -566,7 +564,7 @@ class DriverProvider with ChangeNotifier {
       _driver = _driver!.copyWith(currentVehicleId: vehicleId);
       notifyListeners();
     } catch (e) {
-      _error = 'Error al actualizar vehículo: $e';
+      _error = 'error.update_vehicle'.tr(namedArgs: {'error': '$e'});
       notifyListeners();
     }
   }
@@ -579,7 +577,7 @@ class DriverProvider with ChangeNotifier {
       _stats = await _driverService.getDriverStats(_driver!.id);
       notifyListeners();
     } catch (e) {
-      _error = 'Error al cargar estadísticas: $e';
+      _error = 'error.load_stats'.tr(namedArgs: {'error': '$e'});
       notifyListeners();
     }
   }
@@ -614,12 +612,12 @@ class DriverProvider with ChangeNotifier {
     try {
       final success = await _driverService.applyReferralCode(_driver!.id, code);
       if (!success) {
-        _error = 'Código de referido inválido';
+        _error = 'error.invalid_referral'.tr();
         notifyListeners();
       }
       return success;
     } catch (e) {
-      _error = 'Error al aplicar código: $e';
+      _error = 'error.apply_code'.tr(namedArgs: {'error': '$e'});
       notifyListeners();
       return false;
     }
@@ -642,7 +640,7 @@ class DriverProvider with ChangeNotifier {
       _driver = _driver!.copyWith(preferences: updatedPreferences);
       notifyListeners();
     } catch (e) {
-      _error = 'Error al actualizar preferencia: $e';
+      _error = 'error.update_preference'.tr(namedArgs: {'error': '$e'});
       notifyListeners();
     }
   }
@@ -679,7 +677,7 @@ class DriverProvider with ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _error = 'Error al actualizar perfil: $e';
+      _error = 'error.update_profile'.tr(namedArgs: {'error': '$e'});
       _isLoading = false;
       notifyListeners();
       return false;

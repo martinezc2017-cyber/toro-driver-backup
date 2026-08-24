@@ -1,6 +1,7 @@
 import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:easy_localization/easy_localization.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import '../utils/app_colors.dart';
@@ -328,9 +329,9 @@ class _PermissionsGateScreenState extends State<PermissionsGateScreen>
                       child: OutlinedButton.icon(
                         onPressed: _checkPermissions,
                         icon: const Icon(Icons.refresh, size: 18),
-                        label: const Text(
-                          'Ya los activé',
-                          style: TextStyle(
+                        label: Text(
+                          'permissions.already_activated'.tr(),
+                          style: const TextStyle(
                               fontSize: 13, fontWeight: FontWeight.w600),
                         ),
                         style: OutlinedButton.styleFrom(

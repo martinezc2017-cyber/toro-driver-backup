@@ -15,10 +15,80 @@ import '../utils/money_format.dart';
 import 'in_app_banner_service.dart';
 import '../screens/marketplace_delivery_accept_screen.dart';
 
-/// Top-level background message handler (must be top-level function)
+/// Top-level background message handler (must be top-level function).
+/// Runs in its own isolate — no access to NotificationService instance.
+/// Must initialise FlutterLocalNotificationsPlugin locally and show the
+/// notification so drivers see it even with the screen locked.
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   debugPrint('🔔 FCM Background message: ${message.messageId}');
+
+  final notification = message.notification;
+  if (notification == null) return;
+
+  final title = notification.title ?? 'TORO Driver';
+  final body = notification.body ?? '';
+  final type = message.data['type'] as String? ??
+      message.data['notification_type'] as String? ??
+      '';
+
+  // Determine channel
+  String channelId = 'general_notifications';
+  if (type.contains('ride') || type.contains('trip') ||
+      type.contains('bid_request') || type.contains('bid_counter_offer')) {
+    channelId = 'ride_notifications';
+  } else if (type.contains('message') || type.contains('chat')) {
+    channelId = 'chat_notifications';
+  } else if (type.contains('earning') || type.contains('payment') ||
+      type.contains('payout') || type.contains('bid_won') ||
+      type.contains('bid_response') || type.contains('weekly_statement')) {
+    channelId = 'earnings_notifications';
+  }
+
+  final channelName = channelId == 'ride_notifications'
+      ? 'Solicitudes de viaje'
+      : channelId == 'chat_notifications'
+          ? 'Mensajes'
+          : channelId == 'earnings_notifications'
+              ? 'Ganancias'
+              : 'General';
+
+  final plugin = FlutterLocalNotificationsPlugin();
+  const androidSettings = AndroidInitializationSettings('@drawable/ic_notification');
+  const iosSettings = DarwinInitializationSettings();
+  const initSettings = InitializationSettings(android: androidSettings, iOS: iosSettings);
+  await plugin.initialize(initSettings);
+
+  final androidDetails = AndroidNotificationDetails(
+    channelId,
+    channelName,
+    importance: Importance.max,
+    priority: Priority.max,
+    icon: '@drawable/ic_notification',
+    color: const Color(0xFF0D0D1A),
+    visibility: NotificationVisibility.public,
+    playSound: true,
+    enableVibration: true,
+    enableLights: true,
+    ledColor: const Color(0xFFFFD700),
+    ledOnMs: 1000,
+    ledOffMs: 500,
+    fullScreenIntent: type.contains('ride') || type.contains('trip'),
+  );
+
+  const iosDetails = DarwinNotificationDetails(
+    presentAlert: true,
+    presentBadge: true,
+    presentSound: true,
+  );
+
+  await plugin.show(
+    DateTime.now().millisecondsSinceEpoch.remainder(100000),
+    title,
+    body,
+    NotificationDetails(android: androidDetails, iOS: iosDetails),
+    payload: jsonEncode(message.data),
+  );
 }
 
 class NotificationService {

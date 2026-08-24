@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -12,9 +13,10 @@ enum StripeProvider {
 }
 
 class StripeConfig {
-  // US must come from country-scoped integration_config. Never fall back to
-  // the MX account because that silently connects US drivers to the wrong Stripe.
-  static const String publishableKeyUS = '';
+  // US Stripe Account — LIVE (TORO USA 51SjZ6OR). Fallback if integration_config
+  // RPC fails. Must match the pk_live in integration_config table.
+  static const String publishableKeyUS =
+      'pk_live_51SjZ6OR8wYuQaWnUJmQDgB6Dwp8yaF3ZurQEbsv85pJGss6rwKKnzdon4HOhzQRfbXQXi6hgqS4yJAQM68rPZGfh00PbhvMhXG';
 
   // Mexico Stripe Account — LIVE (TORO MEXICO 51SvLIZJL). Debe matchear la sk_live que
   // usan las funciones (STRIPE_MX_SECRET_KEY). La fuente REAL es integration_config en
@@ -42,8 +44,8 @@ class StripeConfig {
       );
       final pk = (cfg is Map ? cfg['stripe_publishable_key'] as String? : null);
       if (pk != null && pk.isNotEmpty) _serverPks[provider] = pk;
-    } catch (_) {
-      /* si falla, usa las hardcodeadas de fallback */
+    } catch (e) {
+      debugPrint('STRIPE_CONFIG -> loadServerPk($provider) failed: $e — using hardcoded fallback');
     }
   }
 
@@ -70,10 +72,14 @@ class StripeConfig {
     _currentProvider = provider;
     await loadServerPk(provider);
     final key = getPublishableKey(provider);
-    if (key.isEmpty) return;
+    if (key.isEmpty) {
+      debugPrint('STRIPE_CONFIG -> ERROR: No publishable key for $provider — Stripe will NOT work');
+      return;
+    }
     Stripe.publishableKey = key;
     Stripe.merchantIdentifier = merchantId;
     await Stripe.instance.applySettings();
+    debugPrint('STRIPE_CONFIG -> Initialized with $provider (key=${key.substring(0, 12)}...)');
   }
 
   /// Switch to a different provider at runtime

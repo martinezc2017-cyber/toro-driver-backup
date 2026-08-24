@@ -484,10 +484,10 @@ class _HomeScreenState extends State<HomeScreen>
 
     switch (messageType) {
       case 'emergency':
-        title = 'ALERTA DE EMERGENCIA';
+        title = 'home.emergency_alert'.tr().toUpperCase();
         body = message.isNotEmpty
             ? message
-            : 'Alerta de emergencia en el evento';
+            : 'home.emergency_alert'.tr();
         // Use high-priority channel for emergencies
         _notificationService.showRideRequestNotification(
           rideId: eventId,
@@ -500,24 +500,24 @@ class _HomeScreenState extends State<HomeScreen>
         }
         return;
       case 'call_to_bus':
-        title = 'Regresen al autobus';
+        title = 'home.return_to_bus'.tr();
         body = senderName.isNotEmpty ? 'De: $senderName' : '';
         break;
       case 'announcement':
-        title = 'Aviso del evento';
+        title = 'home.event_notice'.tr();
         body = message;
         break;
       case 'image':
       case 'gif':
-        title = senderName.isNotEmpty ? senderName : 'Nuevo mensaje';
-        body = 'Imagen';
+        title = senderName.isNotEmpty ? senderName : 'home.new_message'.tr();
+        body = 'image'.tr();
         break;
       case 'location':
-        title = senderName.isNotEmpty ? senderName : 'Nuevo mensaje';
-        body = 'Ubicacion compartida';
+        title = senderName.isNotEmpty ? senderName : 'home.new_message'.tr();
+        body = 'home.location_shared'.tr();
         break;
       default:
-        title = senderName.isNotEmpty ? senderName : 'Nuevo mensaje';
+        title = senderName.isNotEmpty ? senderName : 'home.new_message'.tr();
         body = message;
     }
 
@@ -575,7 +575,7 @@ class _HomeScreenState extends State<HomeScreen>
           ],
         ),
         content: Text(
-          body.isNotEmpty ? body : 'Se ha emitido una alerta de emergencia.',
+          body.isNotEmpty ? body : 'home.emergency_issued'.tr(),
           style: const TextStyle(
             color: Colors.white,
             fontSize: 15,
@@ -1418,7 +1418,7 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'Tu ganancia: ${formatMoney(estimatedEarnings, country: Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US')}',
+                    'home.your_earnings'.tr(namedArgs: {'amount': formatMoney(estimatedEarnings, country: Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US')}),
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.9),
                       fontSize: 13,
@@ -2511,7 +2511,7 @@ class _HomeScreenState extends State<HomeScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    isSuspended ? 'CUENTA SUSPENDIDA' : 'Comisión por pagar',
+                    isSuspended ? 'home.suspended_account'.tr() : 'home.commission_to_pay'.tr(),
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 13,
@@ -2538,8 +2538,8 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                   Text(
                     isSuspended
-                        ? 'Deposita para reactivar tu cuenta'
-                        : 'De viajes en efectivo',
+                        ? 'home.deposit_to_reactivate'.tr()
+                        : 'home.from_cash_trips'.tr(),
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.85),
                       fontSize: 12,
@@ -2665,9 +2665,9 @@ class _HomeScreenState extends State<HomeScreen>
                               SnackBar(
                                 content: Text(
                                   success
-                                      ? 'Oferta enviada: ${formatMoney(proposedPrice, country: Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US')}'
+                                      ? 'home.offer_sent'.tr(namedArgs: {'amount': formatMoney(proposedPrice, country: Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US')})
                                       : rideProvider.error ??
-                                            'Error al enviar oferta',
+                                            'home.offer_error'.tr(),
                                 ),
                                 backgroundColor: success
                                     ? const Color(0xFF1E88E5)
@@ -2881,9 +2881,9 @@ class _HomeScreenState extends State<HomeScreen>
                       children: [
                         Row(
                           children: [
-                            const Text(
-                              'Mi Nivel QR',
-                              style: TextStyle(
+                            Text(
+                              'home.my_qr_level'.tr(),
+                              style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
@@ -2921,9 +2921,9 @@ class _HomeScreenState extends State<HomeScreen>
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'Comisión Toro: ${currentCommission.toStringAsFixed(0)}%'
-                          '${myRank > 0 ? ' · #$myRank en ranking' : ''}'
-                          '${currentTier < 5 ? ' · $nextTierQRs QRs para ${nextCommission.toStringAsFixed(0)}%' : ' · Máximo'}',
+                          'home.toro_commission'.tr(namedArgs: {'percent': currentCommission.toStringAsFixed(0)})
+                          + (myRank > 0 ? 'home.ranking'.tr(namedArgs: {'rank': '$myRank'}) : '')
+                          + (currentTier < 5 ? 'home.qrs_for_next'.tr(namedArgs: {'count': '$nextTierQRs', 'percent': nextCommission.toStringAsFixed(0)}) : 'home.qrs_max'.tr()),
                           style: const TextStyle(
                             color: Colors.white70,
                             fontSize: 12,
@@ -3176,7 +3176,7 @@ class _HomeScreenState extends State<HomeScreen>
                     SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Riders escanean tu QR → ambos ganan puntos → baja el % que te cobra TORO (ganas más)',
+                        'home.qr_tier_info'.tr(),
                         style: TextStyle(color: Colors.white60, fontSize: 11),
                       ),
                     ),
@@ -3251,9 +3251,9 @@ class _HomeScreenState extends State<HomeScreen>
               ),
             ),
             const SizedBox(height: 20),
-            const Text(
-              'Comparte tu código QR',
-              style: TextStyle(
+            Text(
+              'home.share_qr'.tr(),
+              style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
@@ -3261,7 +3261,7 @@ class _HomeScreenState extends State<HomeScreen>
             ),
             const SizedBox(height: 8),
             Text(
-              'Riders escanean → ambos ganan puntos → baja el % TORO (ganas más)',
+              'home.share_qr_msg'.tr(),
               style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
               textAlign: TextAlign.center,
             ),
@@ -3368,12 +3368,9 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _shareDriverQR(String code, String link) async {
-    final message =
-        'Únete a TORO y escanea mi QR. '
-        'Ambos ganan puntos: baja el % que te cobra TORO y ganas más.\n'
-        'Código: $code\n$link';
+    final message = 'home.share_qr_msg'.tr() + '\n' + 'home.share_code_text'.tr(namedArgs: {'code': code, 'link': link});
     await Clipboard.setData(ClipboardData(text: link));
-    await Share.share(message, subject: 'TORO Driver - Mi código QR');
+    await Share.share(message, subject: 'home.share_code_subject'.tr());
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -3456,7 +3453,7 @@ class _HomeScreenState extends State<HomeScreen>
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
-                                  'Disponible',
+                                  'home.available'.tr(),
                                   style: TextStyle(
                                     color: AppColors.textSecondary,
                                     fontSize: 11,
@@ -3523,7 +3520,7 @@ class _HomeScreenState extends State<HomeScreen>
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
-                                  'Pendiente',
+                                  'home.pending'.tr(),
                                   style: TextStyle(
                                     color: AppColors.textSecondary,
                                     fontSize: 11,
@@ -4670,8 +4667,8 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Precio original',
+                          Text(
+                            'home.original_price'.tr(),
                             style: TextStyle(
                               fontSize: 12,
                               color: AppColors.textSecondary,
@@ -4698,8 +4695,8 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          const Text(
-                            'Tu oferta',
+                          Text(
+                            'home.your_offer'.tr(),
                             style: TextStyle(
                               fontSize: 12,
                               color: Color(0xFF1E88E5),
@@ -4835,7 +4832,7 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
 
                   const SizedBox(height: 8),
                   Text(
-                    'El rider tiene 30 seg para aceptar o rechazar',
+                    'home.rider_30s'.tr(),
                     style: TextStyle(
                       fontSize: 11,
                       color: AppColors.textTertiary,
@@ -5200,7 +5197,7 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Total viaje',
+                            'home.trip_total'.tr(),
                             style: TextStyle(
                               color: AppColors.textTertiary,
                               fontSize: 14,
@@ -5235,7 +5232,7 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Text(
-                            'Tu ganancia',
+                            'home.your_earnings_label'.tr(),
                             style: TextStyle(
                               color: AppColors.success,
                               fontSize: 14,
@@ -5589,7 +5586,7 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: Text(
-                                      'Viaje agendado para ${_fmtSchedHome(st)} — se puede aceptar 20 min antes.',
+                                      'home.scheduled_trip'.tr(namedArgs: {'time': _fmtSchedHome(st)}),
                                     ),
                                   ),
                                 );
@@ -7249,8 +7246,8 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
       if (mounted) {
         setState(
           () => _error = useCamera
-              ? 'Error tomando foto: $e'
-              : 'Error seleccionando fotos: $e',
+              ? 'home.photo_error'.tr(namedArgs: {'error': '$e'})
+              : 'home.gallery_error'.tr(namedArgs: {'error': '$e'}),
         );
       }
     } finally {
@@ -7584,8 +7581,8 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
           SnackBar(
             content: Text(
               _vehicleType == 'autobus'
-                  ? 'Autobus publicado exitosamente para turismo'
-                  : 'Vehiculo publicado exitosamente',
+                  ? 'home.publish_success_tourism'.tr()
+                  : 'home.publish_success'.tr(),
             ),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
@@ -7598,7 +7595,7 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = 'Error al publicar: $e';
+          _error = 'home.publish_error'.tr(namedArgs: {'error': '$e'});
           _isSubmitting = false;
         });
       }
@@ -9336,7 +9333,7 @@ class _MyRentalsSheetState extends State<_MyRentalsSheet> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = 'Error al cargar: $e';
+          _error = 'home.load_error'.tr(namedArgs: {'error': '$e'});
           _isLoading = false;
         });
       }
@@ -9473,7 +9470,7 @@ class _MyRentalsSheetState extends State<_MyRentalsSheet> {
                           ),
                           const SizedBox(height: 16),
                           Text(
-                            'No tienes vehiculos publicados',
+                            'home.no_published_vehicles'.tr(),
                             style: TextStyle(
                               color: AppColors.textTertiary,
                               fontSize: 15,
@@ -9482,7 +9479,7 @@ class _MyRentalsSheetState extends State<_MyRentalsSheet> {
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            'Publica un vehiculo para comenzar a rentar',
+                            'home.publish_to_start_renting'.tr(),
                             style: TextStyle(
                               color: AppColors.textDisabled,
                               fontSize: 13,
@@ -9698,7 +9695,7 @@ class _MyRentalsSheetState extends State<_MyRentalsSheet> {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      'Vehiculo en uso',
+                      'home.vehicle_in_use'.tr(),
                       style: TextStyle(
                         color: AppColors.warning,
                         fontSize: 13,
@@ -9707,7 +9704,7 @@ class _MyRentalsSheetState extends State<_MyRentalsSheet> {
                     ),
                     const Spacer(),
                     Text(
-                      'Ver actividad →',
+                      'home.see_activity'.tr(),
                       style: TextStyle(
                         color: AppColors.warning.withValues(alpha: 0.7),
                         fontSize: 12,
@@ -9815,7 +9812,7 @@ class _MyRentalsSheetState extends State<_MyRentalsSheet> {
                   const Icon(Icons.analytics_rounded, color: _accent, size: 24),
                   const SizedBox(width: 12),
                   Text(
-                    'Actividad del Vehiculo',
+                    'home.vehicle_activity'.tr(),
                     style: TextStyle(
                       color: AppColors.textPrimary,
                       fontSize: 18,
@@ -9853,7 +9850,7 @@ class _MyRentalsSheetState extends State<_MyRentalsSheet> {
                         _detailRow('Placa', plate),
                         _detailRow(
                           'Estado',
-                          agrStatus == 'active' ? 'En uso' : agrStatus,
+                          agrStatus == 'active' ? 'home.in_use'.tr() : agrStatus,
                         ),
                         if (startDate != null)
                           _detailRow('Inicio', startDate.substring(0, 10)),
@@ -9992,7 +9989,7 @@ class _GpsTrackingSheetState extends State<_GpsTrackingSheet> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = 'Error al cargar rastreo: $e';
+          _error = 'home.load_tracking_error'.tr(namedArgs: {'error': '$e'});
           _isLoading = false;
         });
       }
@@ -10101,7 +10098,7 @@ class _GpsTrackingSheetState extends State<_GpsTrackingSheet> {
                           ),
                           const SizedBox(height: 16),
                           Text(
-                            'Sin vehiculos rastreados',
+                            'home.no_tracked_vehicles'.tr(),
                             style: TextStyle(
                               color: AppColors.textTertiary,
                               fontSize: 15,
@@ -10110,7 +10107,7 @@ class _GpsTrackingSheetState extends State<_GpsTrackingSheet> {
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            'El rastreo GPS se activa cuando un vehiculo esta rentado',
+                            'home.tracking_info'.tr(),
                             style: TextStyle(
                               color: AppColors.textDisabled,
                               fontSize: 13,
@@ -10441,7 +10438,7 @@ class _MyVehiclesSheetState extends State<_MyVehiclesSheet> {
       });
     } catch (e) {
       setState(() {
-        _error = 'Error al cargar vehiculos: $e';
+        _error = 'home.load_vehicles_error'.tr(namedArgs: {'error': '$e'});
         _isLoading = false;
       });
     }
@@ -10597,13 +10594,13 @@ class _MyVehiclesSheetState extends State<_MyVehiclesSheet> {
               color: AppColors.textTertiary.withValues(alpha: 0.5),
             ),
             const SizedBox(height: 16),
-            const Text(
-              'No tienes vehiculos publicados',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            Text(
+              'home.no_published_vehicles'.tr(),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
             Text(
-              'Publica tu primer vehiculo para empezar',
+              'home.publish_first_vehicle'.tr(),
               style: TextStyle(color: AppColors.textSecondary),
               textAlign: TextAlign.center,
             ),
@@ -10643,7 +10640,7 @@ class _MyVehiclesSheetState extends State<_MyVehiclesSheet> {
     // Bus-specific
     final vehicleName = isRental
         ? (vehicle['title'] ?? '$make $model')
-        : (vehicle['vehicle_name'] ?? 'Sin nombre');
+        : (vehicle['vehicle_name'] ?? 'home.no_name'.tr());
     final totalSeats = vehicle['total_seats'] ?? 0;
     final unitNumber = vehicle['unit_number'] as String?;
 

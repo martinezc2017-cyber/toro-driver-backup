@@ -37,11 +37,11 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
   bool _isManualEntry = false;
   bool _isLoadingTrips = false;
 
-  final Map<String, String> _priorityLabels = {
-    'low': 'Baja',
-    'medium': 'Media',
-    'high': 'Alta',
-    'urgent': 'Urgente',
+  Map<String, String> get _priorityLabels => {
+    'low': 'ticket.low'.tr(),
+    'medium': 'ticket.medium'.tr(),
+    'high': 'ticket.high'.tr(),
+    'urgent': 'ticket.urgent'.tr(),
   };
 
   final Map<String, Color> _priorityColors = {

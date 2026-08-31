@@ -152,7 +152,7 @@ class _BrowseRentalsScreenState extends State<BrowseRentalsScreen> {
               onPressed: () => Navigator.pop(context),
             ),
             title: Text(
-              'Vehiculos Disponibles',
+              'rental.available_vehicles'.tr(),
               style: TextStyle(
                 color: AppColors.textPrimary,
                 fontSize: 20,
@@ -182,7 +182,7 @@ class _BrowseRentalsScreenState extends State<BrowseRentalsScreen> {
                           fontSize: 15,
                         ),
                         decoration: InputDecoration(
-                          hintText: 'Buscar por marca, modelo...',
+                          hintText: 'rental.search_brand_model'.tr(),
                           hintStyle: TextStyle(
                             color: AppColors.textDisabled,
                             fontSize: 15,
@@ -222,7 +222,7 @@ class _BrowseRentalsScreenState extends State<BrowseRentalsScreen> {
                       scrollDirection: Axis.horizontal,
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       children: [
-                        _buildFilterChip('Todos', ''),
+                        _buildFilterChip('all'.tr(), ''),
                         _buildFilterChip('Sedan', 'sedan'),
                         _buildFilterChip('SUV', 'SUV'),
                         _buildFilterChip('Van', 'van'),
@@ -249,7 +249,7 @@ class _BrowseRentalsScreenState extends State<BrowseRentalsScreen> {
               child: Row(
                 children: [
                   Text(
-                    '${_listings.length} vehiculo${_listings.length != 1 ? 's' : ''} disponible${_listings.length != 1 ? 's' : ''}',
+                    'rental.vehicles_available_count'.tr(namedArgs: {'count': _listings.length.toString()}),
                     style: TextStyle(
                       color: AppColors.textTertiary,
                       fontSize: 13,
@@ -296,7 +296,7 @@ class _BrowseRentalsScreenState extends State<BrowseRentalsScreen> {
                     TextButton(
                       onPressed: _loadListings,
                       child: Text(
-                        'Reintentar',
+                        'retry'.tr(),
                         style: TextStyle(color: _accent),
                       ),
                     ),
@@ -324,7 +324,7 @@ class _BrowseRentalsScreenState extends State<BrowseRentalsScreen> {
                     ),
                     const SizedBox(height: 20),
                     Text(
-                      'No hay vehiculos disponibles',
+                      'rental.no_vehicles_available'.tr(),
                       style: TextStyle(
                         color: AppColors.textPrimary,
                         fontSize: 18,
@@ -333,7 +333,7 @@ class _BrowseRentalsScreenState extends State<BrowseRentalsScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Intenta con otros filtros o vuelve mas tarde',
+                      'rental.try_other_filters'.tr(),
                       style: TextStyle(
                         color: AppColors.textTertiary,
                         fontSize: 14,
@@ -424,7 +424,7 @@ class _BrowseRentalsScreenState extends State<BrowseRentalsScreen> {
               else
                 const SizedBox(width: 16),
               const SizedBox(width: 8),
-              const Text('Todos'),
+              Text('all'.tr()),
             ],
           ),
         ),
@@ -465,7 +465,7 @@ class _BrowseRentalsScreenState extends State<BrowseRentalsScreen> {
             ),
             const SizedBox(width: 4),
             Text(
-              hasFilter ? _selectedState : 'Estado',
+              hasFilter ? _selectedState : 'rental.state'.tr(),
               style: TextStyle(
                 color: hasFilter ? _accent : AppColors.textSecondary,
                 fontSize: 12,
@@ -479,9 +479,9 @@ class _BrowseRentalsScreenState extends State<BrowseRentalsScreen> {
 
   Widget _buildSortChip() {
     final labels = {
-      'newest': 'Recientes',
-      'price_low': 'Precio ↑',
-      'price_high': 'Precio ↓',
+      'newest': 'rental.sort_newest'.tr(),
+      'price_low': 'rental.sort_price_low'.tr(),
+      'price_high': 'rental.sort_price_high'.tr(),
     };
     return PopupMenuButton<String>(
       onSelected: (val) {
@@ -518,7 +518,7 @@ class _BrowseRentalsScreenState extends State<BrowseRentalsScreen> {
             Icon(Icons.sort_rounded, color: AppColors.textTertiary, size: 14),
             const SizedBox(width: 4),
             Text(
-              labels[_sortBy] ?? 'Ordenar',
+              labels[_sortBy] ?? 'rental.sort'.tr(),
               style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
             ),
           ],

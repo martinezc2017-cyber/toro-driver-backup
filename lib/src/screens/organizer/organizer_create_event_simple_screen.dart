@@ -180,49 +180,45 @@ class _OrganizerCreateEventSimpleScreenState
   static const _eventTypes = [
     {
       'value': 'tour',
-      'label': 'Tour',
+      'label': 'organizer.type_tour',
       'icon': Icons.tour,
       'visibility': 'private',
-      'desc':
-          'Evento privado. Pasajeros se unen solo por invitacion. Puedes invitar de otros estados.',
+      'desc': 'organizer.type_tour_desc',
     },
     {
       'value': 'charter',
-      'label': 'Transporte Publico',
+      'label': 'organizer.type_charter',
       'icon': Icons.directions_bus,
       'visibility': 'public',
-      'desc':
-          'Evento publico tipo autobus. Los pasajeros cercanos al chofer en ruta pueden solicitar abordaje dentro del radio que configures.',
+      'desc': 'organizer.type_charter_desc',
     },
     {
       'value': 'excursion',
-      'label': 'Excursion',
+      'label': 'organizer.type_excursion',
       'icon': Icons.hiking,
       'visibility': 'private',
-      'desc': 'Evento privado. Solo pasajeros invitados.',
+      'desc': 'organizer.type_excursion_desc',
     },
     {
       'value': 'corporate',
-      'label': 'Corporativo',
+      'label': 'organizer.type_corporate',
       'icon': Icons.business,
       'visibility': 'private',
-      'desc':
-          'Evento privado empresarial. Solo invitaciones de la organizacion.',
+      'desc': 'organizer.type_corporate_desc',
     },
     {
       'value': 'wedding',
-      'label': 'Boda',
+      'label': 'organizer.type_wedding',
       'icon': Icons.favorite,
       'visibility': 'private',
-      'desc': 'Evento privado. El organizador selecciona a los invitados.',
+      'desc': 'organizer.type_wedding_desc',
     },
     {
       'value': 'other',
-      'label': 'Otro',
+      'label': 'organizer.type_other',
       'icon': Icons.category,
       'visibility': null, // toggle
-      'desc':
-          'Personalizable. Puedes elegir si el evento es publico o privado.',
+      'desc': 'organizer.type_other_desc',
     },
   ];
 
@@ -237,15 +233,15 @@ class _OrganizerCreateEventSimpleScreenState
   String get _appBarTitle {
     switch (widget.serviceType) {
       case 'fixed_route':
-        return 'Nueva Ruta';
+        return 'organizer.new_route'.tr();
       case 'tourism':
-        return 'Nuevo Tour';
+        return 'organizer.new_tour'.tr();
       case 'special_event':
-        return 'Nuevo Evento';
+        return 'organizer.new_event'.tr();
       case 'shared_trip':
-        return 'Nuevo Viaje';
+        return 'organizer.new_trip'.tr();
       default:
-        return 'Crear Evento';
+        return 'organizer.create_event'.tr();
     }
   }
 
@@ -609,18 +605,18 @@ class _OrganizerCreateEventSimpleScreenState
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Logo subido exitosamente'),
+              content: Text('organizer.logo_uploaded'.tr()),
               backgroundColor: Colors.green,
             ),
           );
         }
       } else {
-        if (mounted) _showError('Error al subir el logo');
+        if (mounted) _showError('error.upload_failed'.tr());
       }
     } catch (e) {
       if (mounted) Navigator.pop(context); // Close loading if still open
       AppLogger.log('Error uploading company logo: $e');
-      if (mounted) _showError('Error al subir el logo: $e');
+      if (mounted) _showError('${'error.upload_failed'.tr()}: $e');
     }
   }
 
@@ -642,14 +638,14 @@ class _OrganizerCreateEventSimpleScreenState
 
     // Validate itinerary for route service type
     if (_serviceType == 'route' && _stops.length < 2) {
-      _showError('Agrega al menos 2 paradas (origen y destino)');
+      _showError('organizer.no_stops_yet'.tr());
       return;
     }
 
     // Validate seats
     final eventSeats = int.tryParse(_eventSeatsController.text);
     if (eventSeats == null || eventSeats <= 0) {
-      _showError('Indica cuántos asientos necesitas');
+      _showError('org_seats_required'.tr());
       return;
     }
 
@@ -742,7 +738,7 @@ class _OrganizerCreateEventSimpleScreenState
                   SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Evento Publicado',
+                      'organizer.changes_saved'.tr(),
                       style: TextStyle(
                         color: AppColors.textPrimary,
                         fontSize: 18,
@@ -752,9 +748,9 @@ class _OrganizerCreateEventSimpleScreenState
                   ),
                 ],
               ),
-              content: const Text(
-                'Tu evento está activo con tu vehículo. Los pasajeros ya pueden verlo y reservar.',
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+              content: Text(
+                'organizer.changes_saved'.tr(),
+                style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
               ),
               actions: [
                 ElevatedButton(
@@ -767,9 +763,9 @@ class _OrganizerCreateEventSimpleScreenState
                     ),
                     elevation: 0,
                   ),
-                  child: const Text(
-                    'Listo',
-                    style: TextStyle(fontWeight: FontWeight.w600),
+                  child: Text(
+                    'done'.tr(),
+                    style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                 ),
               ],
@@ -788,14 +784,14 @@ class _OrganizerCreateEventSimpleScreenState
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
-              title: const Row(
+              title: Row(
                 children: [
-                  Icon(Icons.check_circle, color: AppColors.success, size: 24),
-                  SizedBox(width: 10),
+                  const Icon(Icons.check_circle, color: AppColors.success, size: 24),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Esperando Puja',
-                      style: TextStyle(
+                      'organizer.pending_filter'.tr(),
+                      style: const TextStyle(
                         color: AppColors.textPrimary,
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
@@ -808,9 +804,9 @@ class _OrganizerCreateEventSimpleScreenState
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Tu evento ya es visible para todos los choferes. Ellos pueden enviarte pujas con su precio.',
-                    style: TextStyle(
+                  Text(
+                    'organizer.send_requests_hint'.tr(),
+                    style: const TextStyle(
                       color: AppColors.textSecondary,
                       fontSize: 14,
                     ),
@@ -825,14 +821,14 @@ class _OrganizerCreateEventSimpleScreenState
                         color: AppColors.gold.withValues(alpha: 0.2),
                       ),
                     ),
-                    child: const Row(
+                    child: Row(
                       children: [
-                        Icon(Icons.person_add, color: AppColors.gold, size: 20),
-                        SizedBox(width: 10),
+                        const Icon(Icons.person_add, color: AppColors.gold, size: 20),
+                        const SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            'Tambien puedes invitar choferes directamente si no recibes pujas.',
-                            style: TextStyle(
+                            'organizer.invite_driver'.tr(),
+                            style: const TextStyle(
                               color: AppColors.textSecondary,
                               fontSize: 12,
                             ),
@@ -846,17 +842,17 @@ class _OrganizerCreateEventSimpleScreenState
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(ctx, false),
-                  child: const Text(
-                    'Listo',
-                    style: TextStyle(color: AppColors.textTertiary),
+                  child: Text(
+                    'done'.tr(),
+                    style: const TextStyle(color: AppColors.textTertiary),
                   ),
                 ),
                 ElevatedButton.icon(
                   onPressed: () => Navigator.pop(ctx, true),
                   icon: const Icon(Icons.person_add, size: 16),
-                  label: const Text(
-                    'Invitar Choferes',
-                    style: TextStyle(fontWeight: FontWeight.w600),
+                  label: Text(
+                    'organizer.invite_driver'.tr(),
+                    style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.gold,
@@ -886,7 +882,7 @@ class _OrganizerCreateEventSimpleScreenState
         }
       }
     } catch (e) {
-      if (mounted) _showError('Error al crear evento: $e');
+      if (mounted) _showError('${'error_saving'.tr()}: $e');
     }
   }
 
@@ -1471,7 +1467,7 @@ class _OrganizerCreateEventSimpleScreenState
                           : AppColors.textSecondary,
                     ),
                     const SizedBox(width: 4),
-                    Text(type['label'] as String),
+                    Text((type['label'] as String).tr()),
                   ],
                 ),
                 selected: isSelected,
@@ -1501,7 +1497,7 @@ class _OrganizerCreateEventSimpleScreenState
                 (t) => t['value'] == _eventType,
                 orElse: () => _eventTypes.first,
               );
-              final desc = selectedType['desc'] as String? ?? '';
+              final desc = (selectedType['desc'] as String? ?? '').tr();
               final visibility = selectedType['visibility'] as String?;
               final isPublic =
                   _eventType == 'charter' ||
@@ -1763,7 +1759,7 @@ class _OrganizerCreateEventSimpleScreenState
                 const Spacer(),
                 if (_stops.length >= 2)
                   Text(
-                    '${_stops.length} paradas',
+                    'org_stops_count'.tr(namedArgs: {'count': '${_stops.length}'}),
                     style: TextStyle(
                       color: AppColors.textSecondary,
                       fontSize: 13,
@@ -2096,7 +2092,7 @@ class _OrganizerCreateEventSimpleScreenState
         setState(() {});
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Foto actualizada'),
+            content: Text('organizer.photo_updated'.tr()),
             backgroundColor: Colors.green,
           ),
         );
@@ -2106,7 +2102,7 @@ class _OrganizerCreateEventSimpleScreenState
         Navigator.pop(context); // Close loading if open
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error al subir foto: $e'),
+            content: Text('${'error.upload_failed'.tr()}: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -2125,7 +2121,7 @@ class _OrganizerCreateEventSimpleScreenState
       });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Credencial guardada'),
+          content: Text('organizer.profile_saved'.tr()),
           backgroundColor: Colors.green,
           duration: Duration(seconds: 2),
         ),
@@ -2727,7 +2723,7 @@ class _OrganizerCreateEventSimpleScreenState
             ),
             const SizedBox(height: 16),
             Text(
-              'No tienes vehículos registrados',
+              'organizer.no_vehicles_found'.tr(),
               style: TextStyle(
                 color: AppColors.textSecondary,
                 fontSize: 16,
@@ -2736,7 +2732,7 @@ class _OrganizerCreateEventSimpleScreenState
             ),
             const SizedBox(height: 8),
             Text(
-              'Agrega un vehículo de turismo en "Publicar Vehículo"',
+              'organizer.add_vehicle'.tr(),
               style: TextStyle(color: AppColors.textTertiary, fontSize: 14),
               textAlign: TextAlign.center,
             ),
@@ -2748,7 +2744,7 @@ class _OrganizerCreateEventSimpleScreenState
     return Column(
       children: _vehicles.map((vehicle) {
         final isSelected = _selectedVehicle?['id'] == vehicle['id'];
-        final vehicleName = vehicle['vehicle_name'] as String? ?? 'Sin nombre';
+        final vehicleName = vehicle['vehicle_name'] as String? ?? 'no_name'.tr();
         final totalSeats = vehicle['total_seats'] as int? ?? 0;
         final imageUrls = vehicle['image_urls'] as List<dynamic>? ?? [];
 
@@ -3057,7 +3053,7 @@ class _OrganizerCreateEventSimpleScreenState
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    'Agrega las paradas del itinerario para calcular la distancia y ver el precio del boleto.',
+                    'organizer.no_stops_yet'.tr(),
                     style: TextStyle(
                       color: AppColors.textTertiary,
                       fontSize: 11,
@@ -3114,7 +3110,7 @@ class _OrganizerCreateEventSimpleScreenState
           ),
           const SizedBox(height: 6),
           Text(
-            'Esto define cómo se publica tu evento',
+            'organizer.how_to_operate'.tr(),
             style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
           ),
           const SizedBox(height: 16),
@@ -3122,8 +3118,8 @@ class _OrganizerCreateEventSimpleScreenState
           // Option 1: I have a vehicle
           _buildWizardOption(
             icon: Icons.directions_bus_filled,
-            title: 'Tengo vehículo',
-            subtitle: 'Publicaré con mi propio carro o autobús',
+            title: 'organizer.have_vehicle'.tr(),
+            subtitle: 'organizer.my_vehicle'.tr(),
             color: Colors.green,
             onTap: () async {
               HapticService.lightImpact();
@@ -3157,9 +3153,9 @@ class _OrganizerCreateEventSimpleScreenState
           // Option 2: I need a driver
           _buildWizardOption(
             icon: Icons.groups_rounded,
-            title: 'Necesito conductor',
+            title: 'organizer.looking_driver'.tr(),
             subtitle:
-                'Soy organizador / dispatcher — busco chofer con vehículo',
+                'organizer.looking_driver'.tr(),
             color: AppColors.gold,
             onTap: () async {
               HapticService.lightImpact();
@@ -3259,7 +3255,7 @@ class _OrganizerCreateEventSimpleScreenState
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Mi vehículo',
+                  'organizer.my_vehicle'.tr(),
                   style: TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 14,
@@ -3310,7 +3306,7 @@ class _OrganizerCreateEventSimpleScreenState
               GestureDetector(
                 onTap: () => _showOwnVehiclePicker(ownVehicles),
                 child: Text(
-                  'Ver mis ${ownVehicles.length} vehículos',
+                  '${'organizer.my_vehicles'.tr()} (${ownVehicles.length})',
                   style: TextStyle(
                     color: AppColors.primary,
                     fontSize: 12,
@@ -3329,7 +3325,7 @@ class _OrganizerCreateEventSimpleScreenState
               style: const TextStyle(color: AppColors.textPrimary),
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
-                labelText: 'Asientos disponibles',
+                labelText: 'organizer.seats_available'.tr(),
                 labelStyle: TextStyle(color: AppColors.textSecondary),
                 prefixIcon: Icon(
                   Icons.event_seat,
@@ -3371,7 +3367,7 @@ class _OrganizerCreateEventSimpleScreenState
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Publicarás este evento con tu vehículo',
+                      'organizer.my_vehicle'.tr(),
                       style: TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 12,
@@ -3442,7 +3438,7 @@ class _OrganizerCreateEventSimpleScreenState
             Icon(Icons.add_circle_outline, color: AppColors.primary, size: 40),
             const SizedBox(height: 10),
             Text(
-              'Agregar Vehículo',
+              'organizer.add_vehicle'.tr(),
               style: TextStyle(
                 color: AppColors.primary,
                 fontSize: 15,
@@ -3451,7 +3447,7 @@ class _OrganizerCreateEventSimpleScreenState
             ),
             const SizedBox(height: 4),
             Text(
-              'Registra tu carro o autobús para poder publicar',
+              'organizer.add_vehicle'.tr(),
               style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
               textAlign: TextAlign.center,
             ),
@@ -3463,7 +3459,7 @@ class _OrganizerCreateEventSimpleScreenState
 
   Widget _buildSelectedVehicleCard() {
     if (_selectedVehicle == null) return const SizedBox.shrink();
-    final name = _selectedVehicle!['vehicle_name'] as String? ?? 'Sin nombre';
+    final name = _selectedVehicle!['vehicle_name'] as String? ?? 'no_name'.tr();
     final seats = _selectedVehicle!['total_seats'] as int? ?? 0;
     final plate = _selectedVehicle!['plate'] as String? ?? '';
     final imageUrls = _selectedVehicle!['image_urls'] as List<dynamic>? ?? [];
@@ -3553,7 +3549,7 @@ class _OrganizerCreateEventSimpleScreenState
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Mis Vehículos',
+              'organizer.my_vehicles'.tr(),
               style: TextStyle(
                 color: AppColors.textPrimary,
                 fontSize: 17,
@@ -3563,7 +3559,7 @@ class _OrganizerCreateEventSimpleScreenState
             const SizedBox(height: 16),
             ...ownVehicles.map((v) {
               final isSelected = _selectedVehicle?['id'] == v['id'];
-              final vName = v['vehicle_name'] as String? ?? 'Sin nombre';
+              final vName = v['vehicle_name'] as String? ?? 'no_name'.tr();
               final vSeats = v['total_seats'] as int? ?? 0;
               return ListTile(
                 leading: Icon(
@@ -3621,7 +3617,7 @@ class _OrganizerCreateEventSimpleScreenState
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Buscar conductor',
+                  'search_driver'.tr(),
                   style: TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 14,
@@ -3832,7 +3828,7 @@ class _OrganizerCreateEventSimpleScreenState
             ),
             const SizedBox(height: 16),
             Text(
-              'Selecciona Vehículo',
+              'organizer.select_vehicle'.tr(),
               style: TextStyle(
                 color: AppColors.textPrimary,
                 fontSize: 20,
@@ -4205,8 +4201,8 @@ class _OrganizerCreateEventSimpleScreenState
                           const SizedBox(width: 12),
                           Text(
                             existingStop != null
-                                ? 'Editar Parada'
-                                : 'Nueva Parada',
+                                ? 'organizer.edit_stop'.tr()
+                                : 'organizer.new_stop'.tr(),
                             style: TextStyle(
                               color: AppColors.textPrimary,
                               fontSize: 20,
@@ -4236,8 +4232,8 @@ class _OrganizerCreateEventSimpleScreenState
                                     color: AppColors.textPrimary,
                                   ),
                                   decoration: InputDecoration(
-                                    labelText: 'Dirección',
-                                    hintText: 'Escribe o selecciona en mapa',
+                                    labelText: 'address'.tr(),
+                                    hintText: 'organizer.address_hint'.tr(),
                                     prefixIcon: Icon(
                                       Icons.place,
                                       color: AppColors.textSecondary,
@@ -4285,7 +4281,7 @@ class _OrganizerCreateEventSimpleScreenState
                                           context: context,
                                           builder: (context) =>
                                               _SimpleMapPicker(
-                                                title: 'Seleccionar Ubicación',
+                                                title: 'select_location'.tr(),
                                                 initialLocation:
                                                     lat != null && lng != null
                                                     ? LatLng(lat!, lng!)
@@ -4451,7 +4447,7 @@ class _OrganizerCreateEventSimpleScreenState
                                               onPressed: () =>
                                                   Navigator.pop(context),
                                               child: Text(
-                                                'Cancelar',
+                                                'cancel'.tr(),
                                                 style: TextStyle(
                                                   color:
                                                       AppColors.textSecondary,
@@ -4459,7 +4455,7 @@ class _OrganizerCreateEventSimpleScreenState
                                               ),
                                             ),
                                             Text(
-                                              'Fecha y Hora',
+                                              'select_date_time'.tr(),
                                               style: TextStyle(
                                                 color: AppColors.textPrimary,
                                                 fontWeight: FontWeight.w600,
@@ -4513,7 +4509,7 @@ class _OrganizerCreateEventSimpleScreenState
                         },
                         child: InputDecorator(
                           decoration: InputDecoration(
-                            labelText: 'Fecha y hora estimada (opcional)',
+                            labelText: '${'select_date_time'.tr()} (${'optional_field'.tr()})',
                             prefixIcon: Icon(
                               Icons.event,
                               color: AppColors.textSecondary,
@@ -4525,7 +4521,7 @@ class _OrganizerCreateEventSimpleScreenState
                           child: Text(
                             selectedDateTime != null
                                 ? '${selectedDateTime!.day}/${selectedDateTime!.month}/${selectedDateTime!.year} ${_formatTimeAMPM(selectedDateTime!)}'
-                                : 'Seleccionar fecha y hora',
+                                : 'select_date_time'.tr(),
                             style: TextStyle(
                               color: selectedDateTime != null
                                   ? AppColors.textPrimary
@@ -4540,8 +4536,8 @@ class _OrganizerCreateEventSimpleScreenState
                         keyboardType: TextInputType.number,
                         style: TextStyle(color: AppColors.textPrimary),
                         decoration: InputDecoration(
-                          labelText: 'Duración de parada (minutos, opcional)',
-                          hintText: 'Ej: 15',
+                          labelText: 'organizer.stop_duration'.tr(),
+                          hintText: 'organizer.eg_15'.tr(),
                           prefixIcon: Icon(
                             Icons.timer,
                             color: AppColors.textSecondary,
@@ -4558,7 +4554,7 @@ class _OrganizerCreateEventSimpleScreenState
                         style: TextStyle(color: AppColors.textPrimary),
                         decoration: InputDecoration(
                           labelText: 'Notas (opcional)',
-                          hintText: 'Información adicional sobre esta parada',
+                          hintText: 'organizer.additional_info'.tr(),
                           prefixIcon: Icon(
                             Icons.notes,
                             color: AppColors.textSecondary,
@@ -4578,7 +4574,7 @@ class _OrganizerCreateEventSimpleScreenState
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                   content: Text(
-                                    'Ingresa la dirección de la parada',
+                                    'organizer.enter_address'.tr(),
                                   ),
                                 ),
                               );
@@ -4601,12 +4597,12 @@ class _OrganizerCreateEventSimpleScreenState
                           icon: Icon(Icons.check, color: Colors.white),
                           label: Text(
                             existingStop != null
-                                ? 'Guardar Cambios'
+                                ? 'organizer.save_changes'.tr()
                                 : _stops.isEmpty
-                                ? 'Agregar Origen'
+                                ? 'organizer.add_origin'.tr()
                                 : _stops.length == 1
-                                ? 'Agregar Destino'
-                                : 'Agregar Parada',
+                                ? 'organizer.add_destination'.tr()
+                                : 'organizer.add_stop'.tr(),
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
@@ -4649,7 +4645,7 @@ class _OrganizerCreateEventSimpleScreenState
           Icon(Icons.explore_outlined, size: 48, color: AppColors.textTertiary),
           const SizedBox(height: 12),
           Text(
-            'Sin paradas todavía',
+            'organizer.no_stops_yet'.tr(),
             style: TextStyle(
               color: AppColors.textSecondary,
               fontSize: 16,
@@ -4658,7 +4654,7 @@ class _OrganizerCreateEventSimpleScreenState
           ),
           const SizedBox(height: 4),
           Text(
-            'Agrega al menos 2 paradas (origen y destino)',
+            'organizer.add_first_stop'.tr(),
             style: TextStyle(color: AppColors.textTertiary, fontSize: 13),
             textAlign: TextAlign.center,
           ),
@@ -4827,7 +4823,7 @@ class _OrganizerCreateEventSimpleScreenState
           ),
           const SizedBox(width: 12),
           Text(
-            'Calculando distancia total...',
+            'loading_ellipsis'.tr(),
             style: TextStyle(
               color: Colors.blue,
               fontSize: 13,
@@ -4914,7 +4910,7 @@ class _SimpleMapPickerState extends State<_SimpleMapPicker> {
   late MapController _mapController;
   late LatLng _currentCenter;
   late TextEditingController _searchController;
-  String _addressText = 'Mueve el mapa para seleccionar';
+  String _addressText = '';
   bool _isLoadingAddress = false;
   bool _isLoadingGPS = false;
   bool _isDragging = false;
@@ -5094,8 +5090,8 @@ class _SimpleMapPickerState extends State<_SimpleMapPicker> {
       if (!serviceEnabled) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('GPS desactivado. Activa la ubicación.'),
+            SnackBar(
+              content: Text('organizer.gps_disabled'.tr()),
             ),
           );
         }
@@ -5109,7 +5105,7 @@ class _SimpleMapPickerState extends State<_SimpleMapPicker> {
         if (permission == LocationPermission.denied) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Permiso de ubicación denegado')),
+              SnackBar(content: Text('organizer.location_denied'.tr())),
             );
           }
           setState(() => _isLoadingGPS = false);
@@ -5136,7 +5132,7 @@ class _SimpleMapPickerState extends State<_SimpleMapPicker> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al obtener ubicación: $e')),
+          SnackBar(content: Text('organizer.location_error'.tr(namedArgs: {'error': e.toString()}))),
         );
         setState(() => _isLoadingGPS = false);
       }
@@ -5147,7 +5143,7 @@ class _SimpleMapPickerState extends State<_SimpleMapPicker> {
     final query = _searchController.text.trim();
     if (query.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ingresa una dirección para buscar')),
+        SnackBar(content: Text('organizer.enter_address'.tr())),
       );
       return;
     }
@@ -5179,7 +5175,7 @@ class _SimpleMapPickerState extends State<_SimpleMapPicker> {
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('No se encontró la dirección')),
+            SnackBar(content: Text('organizer.address_not_found'.tr())),
           );
         }
         setState(() => _isSearching = false);
@@ -5187,7 +5183,7 @@ class _SimpleMapPickerState extends State<_SimpleMapPicker> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al buscar: ${e.toString()}')),
+          SnackBar(content: Text('organizer.search_error'.tr(namedArgs: {'error': e.toString()}))),
         );
         setState(() => _isSearching = false);
       }
@@ -5281,7 +5277,7 @@ class _SimpleMapPickerState extends State<_SimpleMapPicker> {
                       controller: _searchController,
                       style: const TextStyle(fontSize: 14, color: Colors.white),
                       decoration: InputDecoration(
-                        hintText: 'Buscar dirección...',
+                        hintText: 'organizer.search_address'.tr(),
                         hintStyle: const TextStyle(color: Color(0xFF888888)),
                         prefixIcon: const Icon(
                           Icons.search,
@@ -5624,7 +5620,7 @@ class _SimpleMapPickerState extends State<_SimpleMapPicker> {
                                         ),
                                         SizedBox(width: 10),
                                         Text(
-                                          'Obteniendo dirección...',
+                                          'tourism.getting_address'.tr(),
                                           style: TextStyle(
                                             color: Color(0xFF999999),
                                             fontSize: 14,
@@ -5686,7 +5682,7 @@ class _SimpleMapPickerState extends State<_SimpleMapPicker> {
                               ),
                               SizedBox(width: 10),
                               Text(
-                                'Confirmar Ubicación',
+                                'organizer.confirm_location'.tr(),
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,

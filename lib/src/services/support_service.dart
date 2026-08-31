@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import '../config/supabase_config.dart';
 import 'ticket_service.dart';
 
@@ -82,7 +83,7 @@ class SupportService {
   String _getSubjectForCategory(String category) {
     switch (category) {
       case 'account_recovery':
-        return 'Solicitud de Recuperación de Cuenta';
+        return 'support.account_recovery'.tr();
       case 'documents':
         return 'Problema con Documentos';
       case 'approval':
@@ -92,7 +93,7 @@ class SupportService {
       case 'technical':
         return 'Problema Técnico';
       default:
-        return 'Solicitud de Ayuda';
+        return 'support.help_request'.tr();
     }
   }
 

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 import 'dart:ui' as ui;
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -592,12 +593,12 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancelar'),
+            child: Text('cancel'.tr()),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: AppColors.error),
-            child: const Text('Eliminar'),
+            child: Text('delete'.tr()),
           ),
         ],
       ),
@@ -653,7 +654,7 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: AppColors.warning),
-            child: const Text('Si, Cancelar'),
+            child: Text('yes_cancel'.tr()),
           ),
         ],
       ),
@@ -695,8 +696,8 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
-        title: const Text(
-          'Editar Pasajero',
+        title: Text(
+          'org_invite.edit_passenger'.tr(),
           style: TextStyle(color: AppColors.textPrimary, fontSize: 16),
         ),
         content: Column(
@@ -708,8 +709,8 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
                 color: AppColors.textPrimary,
                 fontSize: 14,
               ),
-              decoration: const InputDecoration(
-                labelText: 'Nombre',
+              decoration: InputDecoration(
+                labelText: 'org_invite.name_hint'.tr(),
                 labelStyle: TextStyle(
                   color: AppColors.textTertiary,
                   fontSize: 13,
@@ -729,8 +730,8 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
                 color: AppColors.textPrimary,
                 fontSize: 14,
               ),
-              decoration: const InputDecoration(
-                labelText: 'Email o Telefono',
+              decoration: InputDecoration(
+                labelText: 'org_invite.email_or_phone'.tr(),
                 labelStyle: TextStyle(
                   color: AppColors.textTertiary,
                   fontSize: 13,
@@ -769,7 +770,7 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancelar'),
+            child: Text('cancel'.tr()),
           ),
           TextButton(
             onPressed: () {
@@ -791,7 +792,7 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
               Navigator.pop(ctx, updates);
             },
             style: TextButton.styleFrom(foregroundColor: AppColors.primary),
-            child: const Text('Guardar'),
+            child: Text('save'.tr()),
           ),
         ],
       ),
@@ -938,7 +939,7 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
         children: [
           _buildStatItem(
             Icons.event_seat,
-            'Disponibles',
+            'org_invite.available'.tr(),
             '$_availableSeats/$_totalSeats',
             _availableSeats > 0 ? AppColors.success : AppColors.error,
           ),
@@ -960,7 +961,7 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
           ),
           _buildStatItem(
             Icons.pending,
-            'Pendientes',
+            'tab_pending'.tr(),
             '${_stats['pending'] ?? 0}',
             AppColors.warning,
           ),
@@ -1221,7 +1222,7 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
         Expanded(
           child: _buildActionButton(
             icon: Icons.share,
-            label: 'Compartir',
+            label: 'share'.tr(),
             onTap: _shareCardAsImage,
           ),
         ),
@@ -1314,7 +1315,7 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
               Expanded(
                 child: _buildCompactInput(
                   controller: _nameController,
-                  hint: 'Nombre',
+                  hint: 'org_invite.name_hint'.tr(),
                   icon: Icons.person_outline,
                 ),
               ),
@@ -1322,7 +1323,7 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
               Expanded(
                 child: _buildCompactInput(
                   controller: _contactController,
-                  hint: 'Email o Tel.',
+                  hint: 'org_invite.email_or_phone_short'.tr(),
                   icon: Icons.contact_mail_outlined,
                 ),
               ),
@@ -1414,7 +1415,7 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
               TextButton.icon(
                 onPressed: _loadData,
                 icon: const Icon(Icons.refresh, size: 14),
-                label: const Text('Actualizar', style: TextStyle(fontSize: 12)),
+                label: Text('update'.tr(), style: const TextStyle(fontSize: 12)),
                 style: TextButton.styleFrom(
                   foregroundColor: AppColors.primary,
                   padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -1633,7 +1634,7 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
         bgColor = AppColors.primary.withValues(alpha: 0.15);
         textColor = AppColors.primary;
         icon = Icons.how_to_reg;
-        label = 'Check-in';
+        label = 'check_in'.tr();
         break;
       case 'no_show':
         bgColor = AppColors.error.withValues(alpha: 0.15);
@@ -1645,7 +1646,7 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
         bgColor = AppColors.warning.withValues(alpha: 0.15);
         textColor = AppColors.warning;
         icon = Icons.schedule;
-        label = 'Pendiente';
+        label = 'pending_status'.tr();
     }
 
     return Container(
@@ -1759,7 +1760,7 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
     IconData methodIcon;
     switch (method) {
       case 'email':
-        methodLabel = 'Email';
+        methodLabel = 'email'.tr();
         methodIcon = Icons.email_outlined;
         break;
       case 'sms':
@@ -1907,8 +1908,8 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
             // Contact info
             _sectionTitle('Informacion de Contacto'),
             const SizedBox(height: 8),
-            if (email != null) _detailRow('Email', email),
-            if (phone != null) _detailRow('Telefono', phone),
+            if (email != null) _detailRow('email'.tr(), email),
+            if (phone != null) _detailRow('phone'.tr(), phone),
             if (invitationCode != null) _detailRow('Codigo', invitationCode),
             _detailRow('Metodo', methodLabel),
             if (seatNumber != null) _detailRow('Asiento', seatNumber),
@@ -1933,7 +1934,7 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
               ),
             if (lastCheckInAt != null)
               _detailRowColored(
-                'Check-in',
+                'check_in'.tr(),
                 _formatDate(lastCheckInAt),
                 AppColors.primary,
               ),
@@ -1965,7 +1966,7 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
                     _editPassenger(invitationId, invitation);
                   },
                   icon: const Icon(Icons.edit, size: 18),
-                  label: const Text('Editar Pasajero'),
+                  label: Text('org_invite.edit_passenger'.tr()),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.primary,
                     side: const BorderSide(color: AppColors.primary),
@@ -2010,7 +2011,7 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
                       _deleteInvitation(invitationId);
                     },
                     icon: const Icon(Icons.delete_outline, size: 18),
-                    label: const Text('Eliminar'),
+                    label: Text('delete'.tr()),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.error,
                       side: const BorderSide(color: AppColors.error),
@@ -2030,7 +2031,7 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
                         await _cancelInvitation(invitationId);
                       },
                       icon: const Icon(Icons.cancel_outlined, size: 18),
-                      label: const Text('Cancelar'),
+                      label: Text('cancel'.tr()),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.warning,
                         side: const BorderSide(color: AppColors.warning),

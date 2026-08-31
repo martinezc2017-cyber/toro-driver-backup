@@ -269,7 +269,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
                                   ),
                                   SizedBox(width: 6),
                                   Text(
-                                    'Disponible Stripe',
+                                    'earnings.available_stripe'.tr(),
                                     style: TextStyle(
                                       fontSize: 11,
                                       color: AppColors.textSecondary,
@@ -311,7 +311,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
                                   ),
                                   SizedBox(width: 6),
                                   Text(
-                                    'Pendiente',
+                                    'pending_status'.tr(),
                                     style: TextStyle(
                                       fontSize: 11,
                                       color: AppColors.textSecondary,
@@ -819,7 +819,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
                 AppColors.textPrimary,
               ),
               _cashRow(
-                'Comisión por pagar',
+                'earnings.commission_payable'.tr(),
                 formatMoney(cashOwed, country: countryCode),
                 Icons.payments,
                 cashOwed > 0 ? AppColors.warning : AppColors.success,
@@ -929,7 +929,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
                         : null,
                     icon: const Icon(Icons.payment, size: 18),
                     label: Text(
-                      cashOwed > 0 ? 'Pagar Ahora' : 'Sin saldo pendiente',
+                      cashOwed > 0 ? 'earnings.pay_now'.tr() : 'earnings.no_pending_balance'.tr(),
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
@@ -957,9 +957,9 @@ class _EarningsScreenState extends State<EarningsScreen> {
                   child: OutlinedButton.icon(
                     onPressed: _contactSupport,
                     icon: const Icon(Icons.headset_mic, size: 14),
-                    label: const Text(
-                      'Contactar Soporte',
-                      style: TextStyle(fontSize: 11),
+                    label: Text(
+                      'earnings.contact_support'.tr(),
+                      style: const TextStyle(fontSize: 11),
                     ),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.textSecondary,
@@ -1163,8 +1163,8 @@ class _EarningsScreenState extends State<EarningsScreen> {
                           SnackBar(
                             content: Text(
                               success
-                                  ? 'Solicitud de pago enviada. El admin sera notificado.'
-                                  : 'Error al enviar solicitud. Intenta de nuevo.',
+                                  ? 'earnings.payment_request_sent'.tr()
+                                  : 'earnings.error_sending_request'.tr(),
                             ),
                             backgroundColor: success
                                 ? AppColors.success

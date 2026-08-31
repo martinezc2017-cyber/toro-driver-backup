@@ -503,7 +503,7 @@ class _OrganizerEventDashboardScreenState
               const SizedBox(height: 24),
               _buildMenuItem(
                 icon: Icons.qr_code_2,
-                label: 'Mostrar QR del Evento',
+                label: 'organizer.show_qr'.tr(),
                 onTap: () {
                   Navigator.pop(ctx);
                   _showEventQR();
@@ -511,7 +511,7 @@ class _OrganizerEventDashboardScreenState
               ),
               _buildMenuItem(
                 icon: Icons.share_outlined,
-                label: 'Compartir Evento',
+                label: 'organizer.share_event'.tr(),
                 onTap: () {
                   Navigator.pop(ctx);
                   _shareEvent();
@@ -527,8 +527,8 @@ class _OrganizerEventDashboardScreenState
                         ? Icons.chat_bubble
                         : Icons.chat_bubble_outline,
                     label: chatEnabled
-                        ? 'Desactivar Chat al Chofer'
-                        : 'Activar Chat al Chofer',
+                        ? 'organizer.disable_driver_chat'.tr()
+                        : 'organizer.enable_driver_chat'.tr(),
                     color: chatEnabled ? AppColors.warning : AppColors.success,
                     onTap: () {
                       Navigator.pop(ctx);
@@ -544,8 +544,8 @@ class _OrganizerEventDashboardScreenState
                   return _buildMenuItem(
                     icon: fareVisible ? Icons.attach_money : Icons.money_off,
                     label: fareVisible
-                        ? 'Ocultar Tarifa al Pasajero'
-                        : 'Mostrar Tarifa al Pasajero',
+                        ? 'organizer.hide_fare_passenger'.tr()
+                        : 'organizer.show_fare_passenger'.tr(),
                     color: fareVisible ? AppColors.warning : AppColors.success,
                     onTap: () {
                       Navigator.pop(ctx);
@@ -562,7 +562,7 @@ class _OrganizerEventDashboardScreenState
               const SizedBox(height: 8),
               _buildMenuItem(
                 icon: Icons.play_circle_outline,
-                label: 'Iniciar Evento',
+                label: 'organizer.start_event'.tr(),
                 color: AppColors.success,
                 onTap: () async {
                   Navigator.pop(ctx);
@@ -571,7 +571,7 @@ class _OrganizerEventDashboardScreenState
               ),
               _buildMenuItem(
                 icon: Icons.stop_circle_outlined,
-                label: 'Finalizar Evento',
+                label: 'organizer.end_event'.tr(),
                 color: AppColors.primary,
                 onTap: () async {
                   Navigator.pop(ctx);
@@ -580,7 +580,7 @@ class _OrganizerEventDashboardScreenState
               ),
               _buildMenuItem(
                 icon: Icons.delete_forever,
-                label: 'Eliminar Evento',
+                label: 'organizer.delete_event'.tr(),
                 color: AppColors.error,
                 onTap: () async {
                   Navigator.pop(ctx);
@@ -777,17 +777,17 @@ class _OrganizerEventDashboardScreenState
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text(
-          'Eliminar Evento',
-          style: TextStyle(
+        title: Text(
+          'organizer.delete_event'.tr(),
+          style: const TextStyle(
             color: AppColors.textPrimary,
             fontSize: 20,
             fontWeight: FontWeight.w700,
           ),
         ),
-        content: const Text(
-          'Se eliminara permanentemente este evento. Esta accion no se puede deshacer.',
-          style: TextStyle(color: AppColors.textSecondary, fontSize: 15),
+        content: Text(
+          'organizer.delete_event_confirm'.tr(),
+          style: const TextStyle(color: AppColors.textSecondary, fontSize: 15),
         ),
         actions: [
           TextButton(
@@ -805,9 +805,9 @@ class _OrganizerEventDashboardScreenState
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
-            child: const Text(
-              'Si, Eliminar',
-              style: TextStyle(
+            child: Text(
+              'organizer.yes_delete'.tr(),
+              style: const TextStyle(
                 color: AppColors.error,
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -938,7 +938,7 @@ class _OrganizerEventDashboardScreenState
 
   void _showEventQR() {
     final eventName = _event?['event_name'] ?? 'Evento';
-    final inviteUrl = 'https://toro.app/event/${widget.eventId}';
+    final inviteUrl = 'https://toro-ride.com/event/${widget.eventId}';
 
     HapticService.mediumImpact();
     showModalBottomSheet(
@@ -1019,7 +1019,7 @@ class _OrganizerEventDashboardScreenState
                 },
                 icon: const Icon(Icons.copy, size: 20),
                 label: const Text(
-                  'Copiar Link',
+                  'organizer.share_event'.tr(),
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                 ),
                 style: ElevatedButton.styleFrom(
@@ -1049,7 +1049,7 @@ class _OrganizerEventDashboardScreenState
     final eventName = _event?['event_name'] ?? 'Evento';
     final eventDate = _event?['event_date'] ?? '';
     final startTime = _event?['start_time'] ?? '';
-    final inviteUrl = 'https://toro.app/event/${widget.eventId}';
+    final inviteUrl = 'https://toro-ride.com/event/${widget.eventId}';
 
     HapticService.lightImpact();
 
@@ -1163,7 +1163,7 @@ Enviado desde TORO
             ),
           ),
           onPressed: _toggleVisibility,
-          tooltip: isPublic ? 'Evento público' : 'Solo invitados',
+          tooltip: isPublic ? 'org_visibility_public'.tr() : 'org_visibility_private'.tr(),
         ),
         // Menú
         IconButton(
@@ -1320,7 +1320,7 @@ Enviado desde TORO
         backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text(
-          'Nombre del Evento',
+          'organizer.event_name'.tr(),
           style: TextStyle(
             color: AppColors.textPrimary,
             fontSize: 18,
@@ -1333,7 +1333,7 @@ Enviado desde TORO
           style: const TextStyle(color: AppColors.textPrimary, fontSize: 15),
           maxLength: 80,
           decoration: InputDecoration(
-            hintText: 'Ej: Frida Turismo Y Transporte',
+            hintText: 'organizer.eg_company'.tr(),
             hintStyle: const TextStyle(
               color: AppColors.textTertiary,
               fontSize: 14,
@@ -1419,7 +1419,7 @@ Enviado desde TORO
         backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
-          newValue == 'public' ? 'Hacer Público' : 'Hacer Privado',
+          newValue == 'public' ? 'org_visibility_public'.tr() : 'org_visibility_private'.tr(),
           style: const TextStyle(
             color: AppColors.textPrimary,
             fontWeight: FontWeight.w700,
@@ -1628,7 +1628,7 @@ Enviado desde TORO
             ),
             const SizedBox(height: 24),
             Text(
-              'Error al cargar',
+              'organizer.error_loading'.tr(),
               style: const TextStyle(
                 color: AppColors.textPrimary,
                 fontSize: 20,
@@ -1637,7 +1637,7 @@ Enviado desde TORO
             ),
             const SizedBox(height: 8),
             Text(
-              _error ?? 'Error desconocido',
+              _error ?? 'organizer.error_loading'.tr(),
               style: const TextStyle(
                 color: AppColors.textSecondary,
                 fontSize: 15,
@@ -3024,7 +3024,7 @@ Enviado desde TORO
                         fontSize: 15,
                       ),
                       decoration: InputDecoration(
-                        hintText: 'Buscar dirección...',
+                        hintText: 'organizer.search_address'.tr(),
                         hintStyle: TextStyle(color: AppColors.textTertiary),
                         filled: true,
                         fillColor: AppColors.surface,
@@ -3590,7 +3590,7 @@ Enviado desde TORO
                         fontSize: 15,
                       ),
                       decoration: InputDecoration(
-                        hintText: 'Buscar dirección...',
+                        hintText: 'organizer.search_address'.tr(),
                         hintStyle: TextStyle(color: AppColors.textTertiary),
                         filled: true,
                         fillColor: AppColors.surface,
@@ -5099,8 +5099,8 @@ Enviado desde TORO
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(ctx),
-                  child: const Text(
-                    'Cancelar',
+                  child: Text(
+                    'cancel'.tr(),
                     style: TextStyle(color: AppColors.textSecondary),
                   ),
                 ),
@@ -5114,8 +5114,8 @@ Enviado desde TORO
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  child: const Text(
-                    'Guardar',
+                  child: Text(
+                    'save'.tr(),
                     style: TextStyle(color: Colors.white),
                   ),
                 ),
@@ -6926,7 +6926,7 @@ Enviado desde TORO
                           ),
                         ),
                         _buildAudienceChip(
-                          label: 'Pendientes',
+                          label: 'tab_pending'.tr(),
                           value: 'pendientes',
                           icon: Icons.hourglass_top_rounded,
                           selected: selectedAudience,
@@ -6956,7 +6956,7 @@ Enviado desde TORO
                         fontSize: 14,
                       ),
                       decoration: InputDecoration(
-                        hintText: 'Ej: Recordatorio de salida',
+                        hintText: 'organizer.eg_departure_reminder'.tr(),
                         hintStyle: TextStyle(
                           color: AppColors.textTertiary,
                           fontSize: 13,
@@ -7005,7 +7005,7 @@ Enviado desde TORO
                         fontSize: 14,
                       ),
                       decoration: InputDecoration(
-                        hintText: 'Escribe el mensaje para los pasajeros...',
+                        hintText: 'organizer.write_message_passengers'.tr(),
                         hintStyle: TextStyle(
                           color: AppColors.textTertiary,
                           fontSize: 13,
@@ -7673,7 +7673,7 @@ Enviado desde TORO
         break;
       default:
         dotColor = AppColors.border;
-        statusText = 'Pendiente';
+        statusText = 'pending_status'.tr();
     }
 
     // Build timeline chips
@@ -7708,7 +7708,7 @@ Enviado desde TORO
     if (lastCheckInAt != null && lastCheckInAt != boardedAt) {
       timelineChips.add(
         _buildTimeChip(
-          'Check-in',
+          'check_in'.tr(),
           _formatTimeShort(lastCheckInAt),
           Colors.cyan,
         ),
@@ -8536,7 +8536,7 @@ Enviado desde TORO
                     ),
                     const SizedBox(width: 12),
                     _buildFullScreenStat(
-                      'Aceptaron',
+                      'org_events.accepted'.tr(),
                       '$accepted',
                       AppColors.success,
                     ),
@@ -9178,13 +9178,13 @@ Enviado desde TORO
       case 'vehicle_accepted':
         return 'Vehiculo Confirmado';
       case 'vehicle_rejected':
-        return 'Vehiculo Rechazado';
+        return 'org_events.vehicle_rejected'.tr();
       case 'active':
-        return 'Activo';
+        return 'active_status'.tr();
       case 'in_progress':
-        return 'En Progreso';
+        return 'in_progress_status'.tr();
       case 'completed':
-        return 'Completado';
+        return 'completed_status'.tr();
       case 'cancelled':
         return 'Cancelado';
       default:
@@ -10142,9 +10142,9 @@ class _EventLiveMapScreenState extends State<_EventLiveMapScreen> {
       case 'checked_in':
         return 'A bordo';
       case 'pending':
-        return 'Pendiente';
+        return 'pending_status'.tr();
       case 'declined':
-        return 'Rechazado';
+        return 'rejected_status'.tr();
       default:
         return status;
     }

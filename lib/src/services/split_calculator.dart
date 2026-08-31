@@ -5,12 +5,11 @@
 /// This file handles the breakdown of ride payments:
 ///   GROSS → Platform Fee → Insurance → Tax → Driver Base → Tips
 ///
-/// NEW QR MODEL (v2):
-///   QR tiers REDUCE platform commission, NOT add bonus %.
-///   Base percentages come from pricing_config per state:
-///     US/AZ: Platform 20.4%, Driver 57%, Insurance 17%, Tax 5.6%
-///     MX/CDMX: Platform 25%, Driver 75%, Insurance 17%, Tax 5.6%
-///   Each tier reduces platform by 1%, driver gains the difference.
+/// QR MODEL (v3):
+///   QR tiers DIRECTLY REDUCE platform commission in the split.
+///   Base percentages come from pricing_config per state.
+///   Each tier reduces platform by 3%, driver gains the difference.
+///   Tier 5 max: platform drops to ~5%.
 ///   Insurance + Tax stay fixed.
 ///
 /// MUST be kept in sync with:
@@ -31,18 +30,18 @@ class SplitConfig {
   /// Currency decimal places. MX/MXN = 0 (whole pesos). US/USD = 2.
   final int currencyDecimals;
 
-  // QR Commission Reduction Tiers (replaces old bonus % system)
-  // Each tier reduces platform commission by 1% (configurable)
-  final int qrMaxLevel; // max QR scans per week (30 for MX)
+  // QR Commission Reduction Tiers — applied directly to the split.
+  // Each tier reduces platform commission by 3% (15% total at Tier 5).
+  final int qrMaxLevel; // max QR scans per week
   final int qrTier1Max;
-  final double qrTier1CommissionReduction; // 1% = platform goes from 20→19
+  final double qrTier1CommissionReduction; // 3% = platform goes from 20→17
   final int qrTier2Max;
-  final double qrTier2CommissionReduction; // 2%
+  final double qrTier2CommissionReduction; // 6%
   final int qrTier3Max;
-  final double qrTier3CommissionReduction; // 3%
+  final double qrTier3CommissionReduction; // 9%
   final int qrTier4Max;
-  final double qrTier4CommissionReduction; // 4%
-  final double qrTier5CommissionReduction; // 5% (max, platform = 15%)
+  final double qrTier4CommissionReduction; // 12%
+  final double qrTier5CommissionReduction; // 15% (max, platform = 5%)
 
   const SplitConfig({
     required this.platformFeePercent,
@@ -52,22 +51,22 @@ class SplitConfig {
     this.currencyDecimals = 0,
     this.qrMaxLevel = 30,
     this.qrTier1Max = 6,
-    this.qrTier1CommissionReduction = 1.0,
+    this.qrTier1CommissionReduction = 3.0,
     this.qrTier2Max = 12,
-    this.qrTier2CommissionReduction = 2.0,
+    this.qrTier2CommissionReduction = 6.0,
     this.qrTier3Max = 18,
-    this.qrTier3CommissionReduction = 3.0,
+    this.qrTier3CommissionReduction = 9.0,
     this.qrTier4Max = 24,
-    this.qrTier4CommissionReduction = 4.0,
-    this.qrTier5CommissionReduction = 5.0,
+    this.qrTier4CommissionReduction = 12.0,
+    this.qrTier5CommissionReduction = 15.0,
   });
 
   /// Get effective platform % after QR tier commission reduction
-  /// Tier 0: base from pricing_config | Tier 5: base - 5%
+  /// Tier 0: base from pricing_config | Tier 5: base - 15% (minimum 5%)
   double getEffectivePlatformPercent({int driverQRLevel = 0}) {
     final reduction = getQRCommissionReduction(driverQRLevel);
-    // Minimum 15% platform fee (safety floor)
-    return math.max(15.0, platformFeePercent - reduction);
+    // Minimum 5% platform fee — Tier 5 max brings platform to ~5%
+    return math.max(5.0, platformFeePercent - reduction);
   }
 
   /// Get the commission reduction for a given QR level
@@ -222,10 +221,9 @@ class SplitCalculator {
 
   /// Calculate the complete split breakdown.
   ///
-  /// CANONICAL: the platform/driver split DOES NOT depend on the driver's QR
-  /// tier at fare time — both rider and driver must agree on the same numbers.
-  /// QR commission reduction is emitted as `qrCreditOwed` and paid out as a
-  /// post-trip credit from a platform pool (see `driver_qr_credits` table).
+  /// QR tier DIRECTLY reduces platform commission and increases driver share.
+  /// Tier 0: base rates | Tier 5: platform drops to ~5%, driver gets the rest.
+  /// The split uses EFFECTIVE percentages (base ± tier reduction).
   SplitBreakdown calculate({
     required double grossAmount,
     double tipAmount = 0,
@@ -235,22 +233,23 @@ class SplitCalculator {
     tipAmount = math.max(0, tipAmount);
     driverQRLevel = driverQRLevel.clamp(0, config.qrMaxLevel);
 
-    // QR tier is informational ONLY — we record what credit the driver will be
-    // paid post-trip, but we DO NOT change the live split.
     final qrReduction = config.getQRCommissionReduction(driverQRLevel);
     final qrTier = config.getQRTier(driverQRLevel);
 
-    final roundedGross = _round(grossAmount);
-    final platformFee = _round(
-      roundedGross * (config.platformFeePercent / 100),
+    // Apply QR tier reduction: platform % shrinks, driver gets the difference.
+    final effectivePlatformPct = config.getEffectivePlatformPercent(
+      driverQRLevel: driverQRLevel,
     );
+
+    final roundedGross = _round(grossAmount);
+    final platformFee = _round(roundedGross * (effectivePlatformPct / 100));
     final insuranceFee = _round(roundedGross * (config.insurancePercent / 100));
     final taxFee = _round(roundedGross * (config.taxPercent / 100));
     // Driver absorbs the residue so sum(parts) == roundedGross EXACTLY. No .01 loss.
     final driverBase = roundedGross - platformFee - insuranceFee - taxFee;
     final effectiveDriverPercent = grossAmount > 0
         ? (driverBase / grossAmount) * 100
-        : config.driverPercent;
+        : config.getEffectiveDriverPercent(driverQRLevel: driverQRLevel);
     final driverTotalEarnings = _round(driverBase + tipAmount);
     final riderPaid = _round(grossAmount + tipAmount);
 
@@ -260,7 +259,7 @@ class SplitCalculator {
       driverQRLevel: driverQRLevel,
       driverQRTier: qrTier,
       platformFee: platformFee,
-      platformPercent: config.platformFeePercent,
+      platformPercent: effectivePlatformPct,
       insuranceFee: insuranceFee,
       taxFee: taxFee,
       driverBase: driverBase,

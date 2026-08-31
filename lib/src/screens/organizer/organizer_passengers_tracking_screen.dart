@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -537,15 +538,15 @@ class _OrganizerPassengersTrackingScreenState
       case 'accepted':
         return 'Aceptado';
       case 'declined':
-        return 'Rechazado';
+        return 'rejected_status'.tr();
       case 'checked_in':
-        return 'Check-in';
+        return 'check_in'.tr();
       case 'expired':
         return 'Expirado';
       case 'no_show':
         return 'No Show';
       default:
-        return 'Pendiente';
+        return 'pending_status'.tr();
     }
   }
 
@@ -1115,7 +1116,7 @@ class _OrganizerPassengersTrackingScreenState
           },
           style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
           decoration: InputDecoration(
-            hintText: 'Buscar por nombre, email o telefono...',
+            hintText: 'organizer.search_name_email_phone'.tr(),
             hintStyle: const TextStyle(
               color: AppColors.textTertiary,
               fontSize: 13,
@@ -1167,7 +1168,7 @@ class _OrganizerPassengersTrackingScreenState
           ),
           const SizedBox(width: 8),
           _buildFilterChip(
-            label: 'GPS Activo',
+            label: 'org_tracking.gps_active'.tr(),
             isSelected: _statusFilter == 'gps_active',
             color: AppColors.purple,
             icon: Icons.gps_fixed,
@@ -1201,7 +1202,7 @@ class _OrganizerPassengersTrackingScreenState
           ),
           const SizedBox(width: 8),
           _buildFilterChip(
-            label: 'Pendientes',
+            label: 'org_tracking.pending'.tr(),
             isSelected: _statusFilter == 'pending',
             color: AppColors.warning,
             onTap: () {
@@ -1212,7 +1213,7 @@ class _OrganizerPassengersTrackingScreenState
           ),
           const SizedBox(width: 8),
           _buildFilterChip(
-            label: 'Rechazados',
+            label: 'org_tracking.rejected'.tr(),
             isSelected: _statusFilter == 'declined',
             color: AppColors.error,
             onTap: () {
@@ -1887,9 +1888,9 @@ class _PassengerDetailModal extends StatelessWidget {
             const SizedBox(height: 16),
             // Contact info
             if (email.isNotEmpty)
-              _buildDetailRow(Icons.email_outlined, 'Email', email),
+              _buildDetailRow(Icons.email_outlined, 'email'.tr(), email),
             if (phone.isNotEmpty)
-              _buildDetailRow(Icons.phone_outlined, 'Telefono', phone),
+              _buildDetailRow(Icons.phone_outlined, 'phone'.tr(), phone),
             if (invitationCode != null)
               _buildDetailRow(Icons.qr_code, 'Codigo', invitationCode),
             // Seat info
@@ -1908,7 +1909,7 @@ class _PassengerDetailModal extends StatelessWidget {
                   Icons.check_circle_outline, 'Acepto', formatDateTime(acceptedAt)),
             if (lastCheckInAt != null)
               _buildDetailRow(
-                  Icons.how_to_reg, 'Check-in', formatDateTime(lastCheckInAt)),
+                  Icons.how_to_reg, 'check_in'.tr(), formatDateTime(lastCheckInAt)),
             // GPS info
             if (passengerLocation != null) ...[
               const SizedBox(height: 8),

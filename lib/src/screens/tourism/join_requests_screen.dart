@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -115,7 +116,7 @@ class _JoinRequestsScreenState extends State<JoinRequestsScreen> {
       );
 
       if (!success) {
-        throw Exception('No se pudo aceptar la solicitud');
+        throw Exception('join_error_accept'.tr());
       }
 
       // Remove from list with animation delay
@@ -128,7 +129,7 @@ class _JoinRequestsScreenState extends State<JoinRequestsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Pasajero ${request['passenger_name'] ?? ''} aceptado',
+              'join_passenger_accepted'.tr(namedArgs: {'name': request['passenger_name'] ?? ''}),
             ),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
@@ -170,7 +171,7 @@ class _JoinRequestsScreenState extends State<JoinRequestsScreen> {
       );
 
       if (!success) {
-        throw Exception('No se pudo rechazar la solicitud');
+        throw Exception('join_error_reject'.tr());
       }
 
       if (mounted) {
@@ -180,8 +181,8 @@ class _JoinRequestsScreenState extends State<JoinRequestsScreen> {
         });
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Solicitud rechazada'),
+          SnackBar(
+            content: Text('join_request_rejected'.tr()),
             backgroundColor: AppColors.textTertiary,
             behavior: SnackBarBehavior.floating,
           ),
@@ -206,12 +207,12 @@ class _JoinRequestsScreenState extends State<JoinRequestsScreen> {
     String? selectedReason;
     final customController = TextEditingController();
 
-    const reasons = [
-      'Evento lleno, no hay lugares disponibles',
-      'La ubicacion de recogida no esta en la ruta',
-      'El pasajero no cumple los requisitos',
-      'Evento cancelado o reprogramado',
-      'Otro',
+    final reasons = [
+      'join_reason_full'.tr(),
+      'join_reason_location'.tr(),
+      'join_reason_requirements'.tr(),
+      'join_reason_cancelled'.tr(),
+      'join_reason_other'.tr(),
     ];
 
     return showModalBottomSheet<String>(
@@ -244,10 +245,10 @@ class _JoinRequestsScreenState extends State<JoinRequestsScreen> {
                     ),
                   ),
                 ),
-                const Padding(
-                  padding: EdgeInsets.all(20),
+                Padding(
+                  padding: const EdgeInsets.all(20),
                   child: Text(
-                    'Razon del rechazo (opcional)',
+                    'join_rejection_reason'.tr(),
                     style: TextStyle(
                       color: AppColors.textPrimary,
                       fontSize: 18,
@@ -311,14 +312,14 @@ class _JoinRequestsScreenState extends State<JoinRequestsScreen> {
                   );
                 }),
                 // Custom reason field
-                if (selectedReason == 'Otro')
+                if (selectedReason == 'join_reason_other'.tr())
                   Padding(
                     padding: const EdgeInsets.all(16),
                     child: TextField(
                       controller: customController,
                       style: const TextStyle(color: AppColors.textPrimary),
                       decoration: InputDecoration(
-                        hintText: 'Escribe la razon...',
+                        hintText: 'organizer.write_reason'.tr(),
                         hintStyle: const TextStyle(
                           color: AppColors.textTertiary,
                         ),
@@ -358,14 +359,14 @@ class _JoinRequestsScreenState extends State<JoinRequestsScreen> {
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          child: const Text('Cancelar'),
+                          child: Text('cancel'.tr()),
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: ElevatedButton(
                           onPressed: () {
-                            final finalReason = selectedReason == 'Otro'
+                            final finalReason = selectedReason == 'join_reason_other'.tr()
                                 ? customController.text
                                 : (selectedReason ?? '');
                             Navigator.pop(context, finalReason);
@@ -378,7 +379,7 @@ class _JoinRequestsScreenState extends State<JoinRequestsScreen> {
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          child: const Text('Rechazar'),
+                          child: Text('reject'.tr()),
                         ),
                       ),
                     ],
@@ -404,11 +405,11 @@ class _JoinRequestsScreenState extends State<JoinRequestsScreen> {
       final now = DateTime.now().toUtc();
       final diff = now.difference(date);
 
-      if (diff.inSeconds < 60) return 'Hace un momento';
-      if (diff.inMinutes < 60) return 'Hace ${diff.inMinutes} min';
-      if (diff.inHours < 24) return 'Hace ${diff.inHours} h';
-      if (diff.inDays < 7) return 'Hace ${diff.inDays} d';
-      return 'Hace ${(diff.inDays / 7).floor()} sem';
+      if (diff.inSeconds < 60) return 'time_just_now'.tr();
+      if (diff.inMinutes < 60) return 'time_minutes_ago'.tr(namedArgs: {'min': '${diff.inMinutes}'});
+      if (diff.inHours < 24) return 'time_hours_ago'.tr(namedArgs: {'hours': '${diff.inHours}'});
+      if (diff.inDays < 7) return 'time_days_ago'.tr(namedArgs: {'days': '${diff.inDays}'});
+      return 'time_weeks_ago'.tr(namedArgs: {'weeks': '${(diff.inDays / 7).floor()}'});
     } catch (_) {
       return '';
     }
@@ -499,8 +500,8 @@ class _JoinRequestsScreenState extends State<JoinRequestsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Solicitudes de Pasajeros',
+                Text(
+                  'join_passenger_requests'.tr(),
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w600,
@@ -509,7 +510,7 @@ class _JoinRequestsScreenState extends State<JoinRequestsScreen> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '$_pendingCount pendientes',
+                  'join_pending_count'.tr(namedArgs: {'count': '$_pendingCount'}),
                   style: const TextStyle(
                     fontSize: 13,
                     color: AppColors.textSecondary,
@@ -581,8 +582,8 @@ class _JoinRequestsScreenState extends State<JoinRequestsScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            const Text(
-              'No hay solicitudes pendientes',
+            Text(
+              'join_no_pending'.tr(),
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
@@ -591,8 +592,8 @@ class _JoinRequestsScreenState extends State<JoinRequestsScreen> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Cuando un pasajero solicite unirse a este evento, aparecera aqui para que lo aceptes o rechaces.',
+            Text(
+              'join_empty_desc'.tr(),
               style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
               textAlign: TextAlign.center,
             ),
@@ -609,15 +610,15 @@ class _JoinRequestsScreenState extends State<JoinRequestsScreen> {
         children: [
           const Icon(Icons.error_outline, size: 48, color: AppColors.error),
           const SizedBox(height: 16),
-          const Text(
-            'Error al cargar solicitudes',
+          Text(
+            'join_error_loading'.tr(),
             style: TextStyle(fontSize: 16, color: AppColors.textPrimary),
           ),
           const SizedBox(height: 8),
           TextButton.icon(
             onPressed: _loadRequests,
             icon: const Icon(Icons.refresh),
-            label: const Text('Reintentar'),
+            label: Text('tourism_retry'.tr()),
           ),
         ],
       ),
@@ -648,7 +649,7 @@ class _JoinRequestsScreenState extends State<JoinRequestsScreen> {
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     child: Text(
-                      'Solicitudes respondidas',
+                      'join_responded_requests'.tr(),
                       style: TextStyle(
                         color: AppColors.textTertiary,
                         fontSize: 12,
@@ -681,7 +682,7 @@ class _JoinRequestsScreenState extends State<JoinRequestsScreen> {
     final isPending = status == 'pending';
     final isProcessing = _processingIds.contains(requestId);
 
-    final passengerName = request['passenger_name'] as String? ?? 'Sin nombre';
+    final passengerName = request['passenger_name'] as String? ?? 'join_no_name'.tr();
     final avatarUrl = request['passenger_avatar_url'] as String?;
     final phone = request['passenger_phone'] as String?;
 
@@ -807,7 +808,7 @@ class _JoinRequestsScreenState extends State<JoinRequestsScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        status == 'accepted' ? 'Aceptado' : 'Rechazado',
+                        status == 'accepted' ? 'join_accepted'.tr() : 'join_rejected'.tr(),
                         style: TextStyle(
                           color: status == 'accepted'
                               ? AppColors.success
@@ -827,8 +828,8 @@ class _JoinRequestsScreenState extends State<JoinRequestsScreen> {
                         color: AppColors.warning.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Text(
-                        'NUEVA',
+                      child: Text(
+                        'join_new'.tr(),
                         style: TextStyle(
                           color: AppColors.warning,
                           fontSize: 11,
@@ -848,7 +849,7 @@ class _JoinRequestsScreenState extends State<JoinRequestsScreen> {
             _buildAddressRow(
               Icons.trip_origin,
               AppColors.success,
-              'Recogida',
+              'join_pickup'.tr(),
               pickupAddress,
             ),
             const SizedBox(height: 6),
@@ -859,7 +860,7 @@ class _JoinRequestsScreenState extends State<JoinRequestsScreen> {
             _buildAddressRow(
               Icons.place,
               AppColors.error,
-              'Destino',
+              'destination'.tr(),
               dropoffAddress,
             ),
             const SizedBox(height: 10),
@@ -879,7 +880,7 @@ class _JoinRequestsScreenState extends State<JoinRequestsScreen> {
                 ),
               if (estimatedPrice != null) const SizedBox(width: 8),
               if (passengers > 1)
-                _buildStatChip(Icons.people, '$passengers personas'),
+                _buildStatChip(Icons.people, 'join_persons'.tr(namedArgs: {'count': '$passengers'})),
             ],
           ),
 
@@ -934,7 +935,7 @@ class _JoinRequestsScreenState extends State<JoinRequestsScreen> {
                         ? null
                         : () => _rejectRequest(request),
                     icon: const Icon(Icons.close, size: 16),
-                    label: const Text('Rechazar'),
+                    label: Text('reject'.tr()),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.error,
                       side: BorderSide(
@@ -965,7 +966,7 @@ class _JoinRequestsScreenState extends State<JoinRequestsScreen> {
                             ),
                           )
                         : const Icon(Icons.check_circle_outline, size: 18),
-                    label: Text(isProcessing ? 'Procesando...' : 'Aceptar'),
+                    label: Text(isProcessing ? 'join_processing'.tr() : 'accept'.tr()),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.success,
                       foregroundColor: Colors.white,

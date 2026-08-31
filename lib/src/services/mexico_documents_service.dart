@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
 
@@ -7,7 +8,7 @@ class MexicoDocumentsService {
   final SupabaseClient _client = SupabaseConfig.client;
 
   /// Document types for Mexico
-  static const List<MexicoDocumentType> allDocumentTypes = [
+  static final List<MexicoDocumentType> allDocumentTypes = [
     MexicoDocumentType(
       type: 'ine',
       displayName: 'INE/IFE',
@@ -62,7 +63,7 @@ class MexicoDocumentsService {
     ),
     MexicoDocumentType(
       type: 'seguroERT',
-      displayName: 'Seguro ERT',
+      displayName: 'mexico_docs.ert_insurance'.tr(),
       description: 'Póliza de seguro para plataformas de transporte',
       isRequired: true,
       hasExpiry: true,
@@ -71,7 +72,7 @@ class MexicoDocumentsService {
     MexicoDocumentType(
       type: 'comprobanteDomicilio',
       displayName: 'Comprobante de Domicilio',
-      description: 'Recibo de servicios no mayor a 3 meses',
+      description: 'mexico_docs.utility_bill'.tr(),
       isRequired: true,
       hasExpiry: true,
       hasFrontBack: false,

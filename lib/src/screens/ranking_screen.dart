@@ -260,9 +260,9 @@ class _RankingScreenState extends State<RankingScreen> with SingleTickerProvider
                               ],
                             ),
                             const SizedBox(height: 4),
-                            const Text(
-                              'Aceptación',
-                              style: TextStyle(
+                            Text(
+                              'ranking.acceptance'.tr(),
+                              style: const TextStyle(
                                 fontSize: 11,
                                 color: AppColors.textSecondary,
                                 fontWeight: FontWeight.w500,
@@ -327,8 +327,8 @@ class _RankingScreenState extends State<RankingScreen> with SingleTickerProvider
             const SizedBox(height: 16),
             Text(
               isStateTab
-                  ? 'No hay drivers en $_myState'
-                  : 'No hay datos de top 10 USA',
+                  ? 'ranking.no_drivers_state'.tr(namedArgs: {'state': _myState ?? ''})
+                  : 'ranking.no_top10_data'.tr(),
               style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
             ),
           ],
@@ -407,7 +407,7 @@ class _RankingScreenState extends State<RankingScreen> with SingleTickerProvider
                           color: AppColors.primary,
                           borderRadius: BorderRadius.circular(4),
                         ),
-                        child: const Text('Tú', style: TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.bold)),
+                        child: Text('you'.tr(), style: const TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.bold)),
                       ),
                     ],
                   ],

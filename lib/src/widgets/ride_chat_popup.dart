@@ -127,7 +127,7 @@ class _RideChatPopupState extends State<RideChatPopup> {
     if (!success && mounted) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Error al enviar mensaje')));
+      ).showSnackBar(SnackBar(content: Text('chat.error_sending'.tr())));
     }
 
     if (mounted) {
@@ -196,7 +196,7 @@ class _RideChatPopupState extends State<RideChatPopup> {
                           ),
                         ),
                         Text(
-                          widget.myType == 'driver' ? 'Pasajero' : 'Conductor',
+                          widget.myType == 'driver' ? 'chat.passenger'.tr() : 'chat.driver'.tr(),
                           style: TextStyle(
                             color: AppColors.textSecondary,
                             fontSize: 12,
@@ -251,7 +251,7 @@ class _RideChatPopupState extends State<RideChatPopup> {
                       controller: _messageController,
                       style: TextStyle(color: AppColors.textPrimary),
                       decoration: InputDecoration(
-                        hintText: 'Escribe un mensaje...',
+                        hintText: 'chat.write_message'.tr(),
                         hintStyle: TextStyle(color: AppColors.textTertiary),
                         filled: true,
                         fillColor: AppColors.surface,
@@ -314,12 +314,12 @@ class _RideChatPopupState extends State<RideChatPopup> {
           ),
           const SizedBox(height: 16),
           Text(
-            'Sin mensajes',
+            'chat.no_messages'.tr(),
             style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
           ),
           const SizedBox(height: 4),
           Text(
-            'Inicia la conversacion',
+            'chat.start_conversation'.tr(),
             style: TextStyle(color: AppColors.textTertiary, fontSize: 14),
           ),
         ],

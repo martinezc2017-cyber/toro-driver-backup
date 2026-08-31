@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -68,7 +69,7 @@ class _MyRatingsScreenState extends State<MyRatingsScreen>
     try {
       final userId = Supabase.instance.client.auth.currentUser?.id;
       if (userId == null) {
-        throw Exception('No autenticado');
+        throw Exception('ratings_not_authenticated'.tr());
       }
 
       final results = await Future.wait([
@@ -119,41 +120,41 @@ class _MyRatingsScreenState extends State<MyRatingsScreen>
     if (_avgOverall >= 4.8 && _totalReviews >= 10) {
       badges.add({
         'icon': Icons.workspace_premium,
-        'label': 'Excelencia',
+        'label': 'ratings_badge_excellence'.tr(),
         'color': AppColors.gold,
-        'description': 'Promedio >= 4.8 con 10+ resenas',
+        'description': 'ratings_badge_excellence_desc'.tr(),
       });
     }
     if (_avgOverall >= 4.5 && _totalReviews >= 5) {
       badges.add({
         'icon': Icons.star_rounded,
-        'label': 'Destacado',
+        'label': 'ratings_badge_outstanding'.tr(),
         'color': AppColors.star,
-        'description': 'Promedio >= 4.5 con 5+ resenas',
+        'description': 'ratings_badge_outstanding_desc'.tr(),
       });
     }
     if (_recommendPct >= 90 && _totalReviews >= 5) {
       badges.add({
         'icon': Icons.thumb_up_rounded,
-        'label': 'Recomendado',
+        'label': 'ratings_badge_recommended'.tr(),
         'color': AppColors.success,
-        'description': '90%+ de pasajeros te recomiendan',
+        'description': 'ratings_badge_recommended_desc'.tr(),
       });
     }
     if (_totalEvents >= 10) {
       badges.add({
         'icon': Icons.emoji_events_rounded,
-        'label': 'Veterano',
+        'label': 'ratings_badge_veteran'.tr(),
         'color': AppColors.purple,
-        'description': '10+ eventos completados',
+        'description': 'ratings_badge_veteran_desc'.tr(),
       });
     }
     if (_totalEvents >= 1 && _totalReviews == 0) {
       badges.add({
         'icon': Icons.rocket_launch_rounded,
-        'label': 'Nuevo',
+        'label': 'ratings_badge_new'.tr(),
         'color': AppColors.info,
-        'description': 'Recien comenzando',
+        'description': 'ratings_badge_new_desc'.tr(),
       });
     }
 
@@ -234,9 +235,9 @@ class _MyRatingsScreenState extends State<MyRatingsScreen>
             ),
           ),
           const SizedBox(width: 16),
-          const Expanded(
+          Expanded(
             child: Text(
-              'Mis Calificaciones',
+              'ratings_my_ratings'.tr(),
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w600,
@@ -275,8 +276,8 @@ class _MyRatingsScreenState extends State<MyRatingsScreen>
           const Icon(Icons.error_outline,
               size: 48, color: AppColors.error),
           const SizedBox(height: 16),
-          const Text(
-            'Error al cargar calificaciones',
+          Text(
+            'ratings_error_loading'.tr(),
             style: TextStyle(
                 fontSize: 16, color: AppColors.textPrimary),
           ),
@@ -284,7 +285,7 @@ class _MyRatingsScreenState extends State<MyRatingsScreen>
           TextButton.icon(
             onPressed: _loadRatings,
             icon: const Icon(Icons.refresh),
-            label: const Text('Reintentar'),
+            label: Text('tourism_retry'.tr()),
           ),
         ],
       ),
@@ -342,8 +343,8 @@ class _MyRatingsScreenState extends State<MyRatingsScreen>
       ),
       child: Column(
         children: [
-          const Text(
-            'Calificacion General',
+          Text(
+            'ratings_overall'.tr(),
             style: TextStyle(
               color: AppColors.textSecondary,
               fontSize: 14,
@@ -385,7 +386,7 @@ class _MyRatingsScreenState extends State<MyRatingsScreen>
           ),
           const SizedBox(height: 8),
           Text(
-            'Basado en $_totalReviews resenas',
+            'ratings_based_on'.tr(namedArgs: {'count': '$_totalReviews'}),
             style: const TextStyle(
               color: AppColors.textTertiary,
               fontSize: 13,
@@ -397,14 +398,14 @@ class _MyRatingsScreenState extends State<MyRatingsScreen>
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               _buildMiniCategoryStat(
-                  'Conductor', _avgDriver, AppColors.primary),
+                  'reviews_driver_category'.tr(), _avgDriver, AppColors.primary),
               Container(
                 width: 1,
                 height: 30,
                 color: AppColors.border,
               ),
               _buildMiniCategoryStat(
-                  'Recomienda', _recommendPct.toDouble(),
+                  'reviews_recommends'.tr(), _recommendPct.toDouble(),
                   AppColors.success,
                   isPercent: true),
             ],
@@ -467,7 +468,7 @@ class _MyRatingsScreenState extends State<MyRatingsScreen>
           child: _buildStatCard(
             Icons.reviews_rounded,
             '$_totalReviews',
-            'Resenas recibidas',
+            'ratings_reviews_received'.tr(),
             AppColors.primary,
           ),
         ),
@@ -476,7 +477,7 @@ class _MyRatingsScreenState extends State<MyRatingsScreen>
           child: _buildStatCard(
             Icons.event_available_rounded,
             '$_totalEvents',
-            'Eventos completados',
+            'ratings_events_completed'.tr(),
             AppColors.success,
           ),
         ),
@@ -538,13 +539,13 @@ class _MyRatingsScreenState extends State<MyRatingsScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.trending_up_rounded,
+              const Icon(Icons.trending_up_rounded,
                   color: AppColors.primaryCyan, size: 18),
-              SizedBox(width: 8),
+              const SizedBox(width: 8),
               Text(
-                'Ultimos 5 eventos',
+                'ratings_last_5_events'.tr(),
                 style: TextStyle(
                   color: AppColors.textPrimary,
                   fontSize: 15,
@@ -660,13 +661,13 @@ class _MyRatingsScreenState extends State<MyRatingsScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.lightbulb_outline,
+              const Icon(Icons.lightbulb_outline,
                   color: AppColors.warning, size: 18),
-              SizedBox(width: 8),
+              const SizedBox(width: 8),
               Text(
-                'Areas de mejora principales',
+                'ratings_top_improvements'.tr(),
                 style: TextStyle(
                   color: AppColors.textPrimary,
                   fontSize: 15,
@@ -725,13 +726,13 @@ class _MyRatingsScreenState extends State<MyRatingsScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.military_tech_rounded,
+              const Icon(Icons.military_tech_rounded,
                   color: AppColors.gold, size: 18),
-              SizedBox(width: 8),
+              const SizedBox(width: 8),
               Text(
-                'Credenciales obtenidas',
+                'ratings_credentials'.tr(),
                 style: TextStyle(
                   color: AppColors.textPrimary,
                   fontSize: 15,

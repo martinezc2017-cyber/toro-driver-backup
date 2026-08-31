@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -554,6 +555,9 @@ class _SplashWrapperState extends State<_SplashWrapper> {
   }
 
   Future<void> _checkForUpdates() async {
+    // OTA APK updates are Android-only; iOS updates via App Store
+    if (!Platform.isAndroid) return;
+
     try {
       final updateService = UpdateService();
       await updateService.initialize();

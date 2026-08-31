@@ -123,7 +123,7 @@ class RideProvider with ChangeNotifier {
         notifyListeners();
       },
       onError: (e) {
-        _error = 'Error al cargar viajes: $e';
+        _error = 'error.loading_rides'.tr(namedArgs: {'error': e.toString()});
         notifyListeners();
       },
     );
@@ -182,7 +182,7 @@ class RideProvider with ChangeNotifier {
         notifyListeners();
       },
       onError: (e) {
-        _error = 'Error en viaje activo: $e';
+        _error = 'error.active_ride'.tr(namedArgs: {'error': e.toString()});
         notifyListeners();
       },
     );
@@ -315,7 +315,7 @@ class RideProvider with ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _error = 'Error al enviar oferta: $e';
+      _error = 'error.sending_offer'.tr(namedArgs: {'error': e.toString()});
       notifyListeners();
       return false;
     }
@@ -377,7 +377,7 @@ class RideProvider with ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _error = 'Error al marcar llegada: $e';
+      _error = 'error.marking_arrival'.tr(namedArgs: {'error': e.toString()});
       notifyListeners();
       return false;
     }
@@ -401,7 +401,7 @@ class RideProvider with ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _error = 'Error al iniciar viaje: $e';
+      _error = 'error.starting_trip'.tr(namedArgs: {'error': e.toString()});
       notifyListeners();
       return false;
     }
@@ -424,7 +424,7 @@ class RideProvider with ChangeNotifier {
       }
       return res;
     } catch (e) {
-      _error = 'Error al reportar no-show: $e';
+      _error = 'error.reporting_no_show'.tr(namedArgs: {'error': e.toString()});
       notifyListeners();
       return {'ok': false, 'error': e.toString()};
     }
@@ -466,7 +466,7 @@ class RideProvider with ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _error = 'Error al completar viaje: $e';
+      _error = 'error.completing_trip'.tr(namedArgs: {'error': e.toString()});
       notifyListeners();
       return false;
     }
@@ -516,7 +516,7 @@ class RideProvider with ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _error = 'Error al confirmar pago en efectivo: $e';
+      _error = 'error.confirming_cash'.tr(namedArgs: {'error': e.toString()});
       _status = RideProviderStatus.hasActiveRide;
       notifyListeners();
       return false;
@@ -543,7 +543,7 @@ class RideProvider with ChangeNotifier {
       // Then complete the ride
       return await completeRide(tip: tip, driverId: driverId);
     } catch (e) {
-      _error = 'Error al completar viaje con pago en efectivo: $e';
+      _error = 'error.completing_cash_trip'.tr(namedArgs: {'error': e.toString()});
       notifyListeners();
       return false;
     }
@@ -604,7 +604,7 @@ class RideProvider with ChangeNotifier {
       _activeRide = null;
       _status = RideProviderStatus.idle;
 
-      _error = 'Error al cancelar viaje: $e';
+      _error = 'error.cancelling_trip'.tr(namedArgs: {'error': e.toString()});
       notifyListeners();
       return false;
     }
@@ -664,7 +664,7 @@ class RideProvider with ChangeNotifier {
       _status = _activeRide != null ? RideProviderStatus.hasActiveRide : RideProviderStatus.idle;
       notifyListeners();
     } catch (e) {
-      _error = 'Error al cargar historial: $e';
+      _error = 'error.loading_history'.tr(namedArgs: {'error': e.toString()});
       _status = RideProviderStatus.error;
       notifyListeners();
     }
@@ -676,7 +676,7 @@ class RideProvider with ChangeNotifier {
       await _rideService.ratePassenger(rideId, rating, comment);
       return true;
     } catch (e) {
-      _error = 'Error al calificar: $e';
+      _error = 'error.rating'.tr(namedArgs: {'error': e.toString()});
       notifyListeners();
       return false;
     }
@@ -692,7 +692,7 @@ class RideProvider with ChangeNotifier {
       );
       notifyListeners();
     } catch (e) {
-      _error = 'Error al actualizar viajes: $e';
+      _error = 'error.updating_rides'.tr(namedArgs: {'error': e.toString()});
       notifyListeners();
     }
   }

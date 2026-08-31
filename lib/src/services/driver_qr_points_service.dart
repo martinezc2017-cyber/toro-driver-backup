@@ -143,7 +143,8 @@ class StateRankEntry {
 }
 
 /// Driver QR Points Service - Commission Reduction Model
-/// QR scans reduce Toro's platform commission from 20% → 15%
+/// QR scans reduce Toro's platform commission from 20% → 5% (Tier 5 max)
+/// Each tier reduces platform by 3%, driver gains that 3%.
 class DriverQRPointsService extends ChangeNotifier {
   final SupabaseClient _client = SupabaseConfig.client;
 
@@ -154,15 +155,17 @@ class DriverQRPointsService extends ChangeNotifier {
   // la carga no corría, a un chofer de México se le mostraba el % gringo.
   double _basePlatformPercent = 0;
   double _baseDriverPercent = 0;
+  double _insurancePercent = 0;
+  double _ivaPercent = 0;
   int _qrTier1Max = 6;
-  double _qrTier1Reduction = 1.0; // 20% → 19%
+  double _qrTier1Reduction = 3.0; // 20% → 17%
   int _qrTier2Max = 12;
-  double _qrTier2Reduction = 2.0; // 20% → 18%
+  double _qrTier2Reduction = 6.0; // 20% → 14%
   int _qrTier3Max = 18;
-  double _qrTier3Reduction = 3.0; // 20% → 17%
+  double _qrTier3Reduction = 9.0; // 20% → 11%
   int _qrTier4Max = 24;
-  double _qrTier4Reduction = 4.0; // 20% → 16%
-  double _qrTier5Reduction = 5.0; // 20% → 15%
+  double _qrTier4Reduction = 12.0; // 20% → 8%
+  double _qrTier5Reduction = 15.0; // 20% → 5%
 
   DriverQRPointsLevel _currentLevel = DriverQRPointsLevel();
   List<QRTipReceived> _tipsReceived = [];
@@ -184,6 +187,8 @@ class DriverQRPointsService extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
   int get qrMaxLevel => _qrMaxLevel;
+  double get insurancePercent => _insurancePercent;
+  double get ivaPercent => _ivaPercent;
 
   /// Get current tier number (0-5) based on QR level
   int get currentTier {
@@ -197,7 +202,7 @@ class DriverQRPointsService extends ChangeNotifier {
   }
 
   /// Get the commission reduction % for current tier
-  /// Tier 0: 0% | Tier 1: 1% | ... | Tier 5: 5%
+  /// Tier 0: 0% | Tier 1: 3% | Tier 2: 6% | ... | Tier 5: 15%
   double get currentCommissionReduction {
     switch (currentTier) {
       case 1: return _qrTier1Reduction;
@@ -224,6 +229,27 @@ class DriverQRPointsService extends ChangeNotifier {
   /// Driver base comes from pricing_config (US/AZ=57%, MX/CDMX=75%)
   double get effectiveDriverPercent =>
       _baseDriverPercent + currentCommissionReduction;
+
+  /// Get the commission reduction for a specific tier number (0-5).
+  /// Used by home screen and QR screen to preview tier percentages.
+  double reductionForTier(int tier) {
+    switch (tier) {
+      case 1: return _qrTier1Reduction;
+      case 2: return _qrTier2Reduction;
+      case 3: return _qrTier3Reduction;
+      case 4: return _qrTier4Reduction;
+      case 5: return _qrTier5Reduction;
+      default: return 0;
+    }
+  }
+
+  /// Platform % for a specific tier (for preview/display)
+  double platformPercentForTier(int tier) =>
+      _basePlatformPercent - reductionForTier(tier);
+
+  /// Driver % for a specific tier (for preview/display)
+  double driverPercentForTier(int tier) =>
+      _baseDriverPercent + reductionForTier(tier);
 
   /// Get QRs needed for next tier (0 if already max)
   int get qrsForNextTier {
@@ -291,6 +317,8 @@ class DriverQRPointsService extends ChangeNotifier {
       if (live != null) {
         _basePlatformPercent = live.platform;
         _baseDriverPercent = live.driver;
+        _insurancePercent = live.insurance;
+        _ivaPercent = live.iva;
       }
 
       // qr_max_level, con el mismo criterio: estado del chofer -> DEFAULT.
@@ -316,16 +344,17 @@ class DriverQRPointsService extends ChangeNotifier {
         _qrMaxLevel = (row['qr_max_level'] as num?)?.toInt() ?? 30;
       }
 
-      // Los cortes de tier no viven en pricing_config: quedan aqui.
+      // Tier breakpoints: 6/12/18/24 QRs.
+      // Tier reductions: 3% per tier → Tier 5 = 15% (platform goes from ~20% to 5%).
       _qrTier1Max = 6;
-      _qrTier1Reduction = 1.0;
+      _qrTier1Reduction = 3.0;
       _qrTier2Max = 12;
-      _qrTier2Reduction = 2.0;
+      _qrTier2Reduction = 6.0;
       _qrTier3Max = 18;
-      _qrTier3Reduction = 3.0;
+      _qrTier3Reduction = 9.0;
       _qrTier4Max = 24;
-      _qrTier4Reduction = 4.0;
-      _qrTier5Reduction = 5.0;
+      _qrTier4Reduction = 12.0;
+      _qrTier5Reduction = 15.0;
 
       // OJO: aqui habia un override que forzaba _qrMaxLevel = 30 para MX. Eso
       // pisaba el valor del admin (hoy qr_max_level = 10) y la pantalla decia
@@ -523,6 +552,7 @@ class DriverQRPointsService extends ChangeNotifier {
     final weekStartStr = _currentLevel.weekStart.toIso8601String().split('T')[0];
     final newQrs = _currentLevel.qrsAccepted + 1;
     final newLevel = newQrs.clamp(0, _qrMaxLevel);
+    final oldTier = currentTier;
 
     try {
       await _client
@@ -543,8 +573,41 @@ class DriverQRPointsService extends ChangeNotifier {
 
       notifyListeners();
       AppLogger.log('DRIVER_QR -> Level incremented to $newLevel (Tier $currentTier, platform $effectivePlatformPercent%)');
+
+      // Detect tier change and notify
+      final newTier = currentTier;
+      if (newTier > oldTier) {
+        _onTierUp(oldTier, newTier);
+      }
     } catch (e) {
       AppLogger.log('DRIVER_QR -> Error incrementing level: $e');
+    }
+  }
+
+  /// Called when driver reaches a higher tier. Records audit + sends notification.
+  Future<void> _onTierUp(int oldTier, int newTier) async {
+    final newPlatform = platformPercentForTier(newTier);
+    final newDriver = driverPercentForTier(newTier);
+
+    AppLogger.log('DRIVER_QR -> TIER UP! $oldTier → $newTier (platform ${newPlatform.toStringAsFixed(0)}%, driver ${newDriver.toStringAsFixed(0)}%)');
+
+    // Record tier change in notifications table for in-app display
+    try {
+      await _client.from('notifications').insert({
+        'user_id': _driverId,
+        'type': 'qr_tier_change',
+        'title': 'Tier $newTier Unlocked!',
+        'body': 'Commission reduced to ${newPlatform.toStringAsFixed(0)}%. You now earn ${newDriver.toStringAsFixed(0)}% of every ride.',
+        'read': false,
+        'data': {
+          'old_tier': oldTier,
+          'new_tier': newTier,
+          'effective_platform_pct': newPlatform,
+          'effective_driver_pct': newDriver,
+        },
+      });
+    } catch (e) {
+      AppLogger.log('DRIVER_QR -> Error recording tier notification: $e');
     }
   }
 

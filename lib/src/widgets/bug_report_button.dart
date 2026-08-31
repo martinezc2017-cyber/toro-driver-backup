@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../services/bug_report_service.dart';
 import '../providers/driver_provider.dart';
 import '../utils/app_colors.dart';
@@ -22,7 +23,7 @@ class BugReportButton extends StatelessWidget {
       heroTag: 'bug_report_$screenName',
       backgroundColor: const Color(0xFFFF3B30).withValues(alpha: 0.9),
       onPressed: () => _showBugReportDialog(context),
-      tooltip: 'Reportar Bug',
+      tooltip: 'bug.report_bug'.tr(),
       child: const Icon(Icons.bug_report_rounded, color: Colors.white, size: 20),
     );
   }
@@ -90,7 +91,7 @@ class _BugReportDialogState extends State<BugReportDialog> {
   Future<void> _submit() async {
     if (_descController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Por favor describe el problema')),
+        SnackBar(content: Text('bug.describe_problem'.tr())),
       );
       return;
     }
@@ -123,8 +124,8 @@ class _BugReportDialogState extends State<BugReportDialog> {
             ),
             const SizedBox(width: 12),
             Text(success
-                ? '¡Bug reportado! Gracias por ayudar 🐛'
-                : 'Error al enviar reporte'),
+                ? 'bug.reported_thanks'.tr()
+                : 'chat.error_sending'.tr()),
           ],
         ),
         backgroundColor: success ? Colors.green : Colors.red,
@@ -148,7 +149,7 @@ class _BugReportDialogState extends State<BugReportDialog> {
                 const Icon(Icons.bug_report_rounded, color: Color(0xFFFF3B30), size: 28),
                 const SizedBox(width: 12),
                 Text(
-                  'Reportar Bug',
+                  'bug.report_bug'.tr(),
                   style: TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 20,
@@ -159,7 +160,7 @@ class _BugReportDialogState extends State<BugReportDialog> {
             ),
             const SizedBox(height: 4),
             Text(
-              'Pantalla: ${widget.screenName}',
+              'bug.screen_label'.tr(namedArgs: {'screen': widget.screenName}),
               style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
             ),
             const SizedBox(height: 16),
@@ -170,7 +171,7 @@ class _BugReportDialogState extends State<BugReportDialog> {
               maxLines: 4,
               style: TextStyle(color: AppColors.textPrimary),
               decoration: InputDecoration(
-                hintText: 'Describe el problema en detalle...',
+                hintText: 'bug.describe_detail'.tr(),
                 hintStyle: TextStyle(color: AppColors.textSecondary),
                 filled: true,
                 fillColor: AppColors.background,
@@ -180,15 +181,15 @@ class _BugReportDialogState extends State<BugReportDialog> {
             const SizedBox(height: 16),
 
             // Severity
-            Text('Severidad:', style: TextStyle(color: AppColors.textPrimary)),
+            Text('severity'.tr(), style: TextStyle(color: AppColors.textPrimary)),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
               children: [
-                _SeverityChip(label: 'Baja', value: 'low', selected: _severity, onTap: (v) => setState(() => _severity = v)),
-                _SeverityChip(label: 'Media', value: 'medium', selected: _severity, onTap: (v) => setState(() => _severity = v)),
-                _SeverityChip(label: 'Alta', value: 'high', selected: _severity, onTap: (v) => setState(() => _severity = v)),
-                _SeverityChip(label: 'Crítica', value: 'critical', selected: _severity, onTap: (v) => setState(() => _severity = v)),
+                _SeverityChip(label: 'severity_low'.tr(), value: 'low', selected: _severity, onTap: (v) => setState(() => _severity = v)),
+                _SeverityChip(label: 'severity_medium'.tr(), value: 'medium', selected: _severity, onTap: (v) => setState(() => _severity = v)),
+                _SeverityChip(label: 'severity_high'.tr(), value: 'high', selected: _severity, onTap: (v) => setState(() => _severity = v)),
+                _SeverityChip(label: 'severity_critical'.tr(), value: 'critical', selected: _severity, onTap: (v) => setState(() => _severity = v)),
               ],
             ),
             const SizedBox(height: 16),
@@ -222,7 +223,7 @@ class _BugReportDialogState extends State<BugReportDialog> {
               OutlinedButton.icon(
                 onPressed: _pickFromGallery,
                 icon: const Icon(Icons.image_outlined),
-                label: const Text('Subir captura desde galería'),
+                label: Text('bug.upload_screenshot'.tr()),
               ),
             const SizedBox(height: 20),
 
@@ -232,7 +233,7 @@ class _BugReportDialogState extends State<BugReportDialog> {
               children: [
                 TextButton(
                   onPressed: _submitting ? null : () => Navigator.pop(context),
-                  child: Text('Cancelar', style: TextStyle(color: AppColors.textSecondary)),
+                  child: Text('cancel'.tr(), style: TextStyle(color: AppColors.textSecondary)),
                 ),
                 const SizedBox(width: 8),
                 ElevatedButton(
@@ -243,7 +244,7 @@ class _BugReportDialogState extends State<BugReportDialog> {
                   ),
                   child: _submitting
                       ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Text('Enviar Reporte'),
+                      : Text('bug.send_report'.tr()),
                 ),
               ],
             ),

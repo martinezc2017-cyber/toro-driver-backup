@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -245,8 +246,8 @@ class _OrganizerPassengersScreenState extends State<OrganizerPassengersScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text(
-              'Cancelar',
+            child: Text(
+              'cancel'.tr(),
               style: TextStyle(color: AppColors.textTertiary),
             ),
           ),
@@ -259,7 +260,7 @@ class _OrganizerPassengersScreenState extends State<OrganizerPassengersScreen> {
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
-            child: const Text('Confirmar'),
+            child: Text('confirm'.tr()),
           ),
         ],
       ),
@@ -593,9 +594,9 @@ class _OrganizerPassengersScreenState extends State<OrganizerPassengersScreen> {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    Expanded(child: _buildCompactStat(Icons.schedule, '$pending', 'Pendientes', AppColors.warning)),
+                    Expanded(child: _buildCompactStat(Icons.schedule, '$pending', 'tab_pending'.tr(), AppColors.warning)),
                     const SizedBox(width: 8),
-                    Expanded(child: _buildCompactStat(Icons.cancel, '$declined', 'Rechazados', AppColors.error)),
+                    Expanded(child: _buildCompactStat(Icons.cancel, '$declined', 'org_passengers.rejected'.tr(), AppColors.error)),
                   ],
                 ),
               ],
@@ -666,7 +667,7 @@ class _OrganizerPassengersScreenState extends State<OrganizerPassengersScreen> {
           onChanged: _onSearchChanged,
           style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
           decoration: InputDecoration(
-            hintText: 'Buscar nombre o telefono...',
+            hintText: 'organizer.search_name_phone'.tr(),
             hintStyle: const TextStyle(
               color: AppColors.textTertiary,
               fontSize: 12,
@@ -1094,7 +1095,7 @@ class _OrganizerPassengersScreenState extends State<OrganizerPassengersScreen> {
         bgColor = AppColors.primary.withValues(alpha: 0.15);
         textColor = AppColors.primary;
         icon = Icons.how_to_reg;
-        label = 'Check-in';
+        label = 'check_in'.tr();
         break;
       case 'no_show':
         bgColor = AppColors.error.withValues(alpha: 0.15);
@@ -1106,7 +1107,7 @@ class _OrganizerPassengersScreenState extends State<OrganizerPassengersScreen> {
         bgColor = AppColors.warning.withValues(alpha: 0.15);
         textColor = AppColors.warning;
         icon = Icons.schedule;
-        label = 'Pendiente';
+        label = 'pending_status'.tr();
     }
 
     return Container(
@@ -1227,8 +1228,8 @@ class _OrganizerPassengersScreenState extends State<OrganizerPassengersScreen> {
           const Divider(color: AppColors.border),
           const SizedBox(height: 16),
           // Details
-          if (email != null) _buildDetailRow(Icons.email_outlined, 'Email', email),
-          if (phone != null) _buildDetailRow(Icons.phone_outlined, 'Telefono', phone),
+          if (email != null) _buildDetailRow(Icons.email_outlined, 'email'.tr(), email),
+          if (phone != null) _buildDetailRow(Icons.phone_outlined, 'phone'.tr(), phone),
           if (invitationCode != null)
             _buildDetailRow(Icons.qr_code, 'Codigo', invitationCode),
           if (createdAt != null)
@@ -1239,7 +1240,7 @@ class _OrganizerPassengersScreenState extends State<OrganizerPassengersScreen> {
                 Icons.check_circle_outline, 'Acepto', _formatDateTime(acceptedAt)),
           if (lastCheckInAt != null)
             _buildDetailRow(
-                Icons.how_to_reg, 'Check-in', _formatDateTime(lastCheckInAt)),
+                Icons.how_to_reg, 'check_in'.tr(), _formatDateTime(lastCheckInAt)),
           const SizedBox(height: 24),
           // Contact buttons
           if (phone != null)
@@ -1315,7 +1316,7 @@ class _OrganizerPassengersScreenState extends State<OrganizerPassengersScreen> {
                   _checkInPassenger(passenger);
                 },
                 icon: const Icon(Icons.how_to_reg, size: 20),
-                label: const Text('Registrar Check-in Manual'),
+                label: Text('org_invite.register_manual_checkin'.tr()),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.success,
                   foregroundColor: Colors.white,

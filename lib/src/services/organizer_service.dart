@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart';
 import '../utils/money_format.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -390,7 +391,7 @@ class OrganizerService {
         final driver = vehicle.remove('drivers') as Map<String, dynamic>?;
         if (driver != null) {
           // Driver info (person who will operate the bus)
-          vehicle['driver_name'] = driver['name'] ?? 'Sin nombre';
+          vehicle['driver_name'] = driver['name'] ?? 'no_name'.tr();
           vehicle['driver_phone'] = driver['phone'] ?? '';
           vehicle['driver_phone_hidden'] =
               false; // No privacy setting without profiles
@@ -708,7 +709,7 @@ class OrganizerService {
           if (driverId != null) {
             await _sendDbNotification(
               userId: driverId,
-              title: 'Nueva Solicitud de Puja',
+              title: 'organizer_service.new_bid_request'.tr(),
               body:
                   '$orgName te invita a pujar en: $eventName '
                   '(${formatDistance(distKm, country: country, decimals: 0)})',

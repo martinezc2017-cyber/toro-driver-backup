@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:intl/intl.dart';
 import '../services/tourism_messaging_service.dart';
 import '../services/tourism_invitation_service.dart';
@@ -281,8 +282,8 @@ class TourismChatWidgetState extends State<TourismChatWidget> {
 
     if (!success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Error al enviar mensaje'),
+        SnackBar(
+          content: Text('chat.error_sending'.tr()),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
         ),
@@ -300,23 +301,23 @@ class TourismChatWidgetState extends State<TourismChatWidget> {
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.card,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
-          'Llamar al autobus',
-          style: TextStyle(color: AppColors.textPrimary),
+        title: Text(
+          'tourism_chat.call_to_bus'.tr(),
+          style: const TextStyle(color: AppColors.textPrimary),
         ),
-        content: const Text(
-          'Se enviara una alerta a todos los pasajeros para que regresen al autobus.',
-          style: TextStyle(color: AppColors.textSecondary),
+        content: Text(
+          'tourism_chat.call_to_bus_description'.tr(),
+          style: const TextStyle(color: AppColors.textSecondary),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancelar'),
+            child: Text('cancel'.tr()),
           ),
           ElevatedButton.icon(
             onPressed: () => Navigator.pop(ctx, true),
             icon: const Icon(Icons.directions_bus, size: 18),
-            label: const Text('Enviar Alerta'),
+            label: Text('tourism_chat.send_alert'.tr()),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.warning,
               foregroundColor: Colors.white,
@@ -340,8 +341,8 @@ class TourismChatWidgetState extends State<TourismChatWidget> {
       HapticService.success();
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Error al enviar alerta'),
+        SnackBar(
+          content: Text('chat.error_sending_alert'.tr()),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
         ),
@@ -365,7 +366,7 @@ class TourismChatWidgetState extends State<TourismChatWidget> {
             children: [
               Icon(Icons.campaign, color: AppColors.primary, size: 22),
               SizedBox(width: 8),
-              Text('Nuevo Anuncio',
+              Text('tourism_chat.new_announcement'.tr(),
                   style:
                       TextStyle(color: AppColors.textPrimary, fontSize: 16)),
             ],
@@ -378,7 +379,7 @@ class TourismChatWidgetState extends State<TourismChatWidget> {
                 style: const TextStyle(color: AppColors.textPrimary),
                 maxLines: 3,
                 decoration: InputDecoration(
-                  hintText: 'Escribe el anuncio...',
+                  hintText: 'chat.write_announcement'.tr(),
                   hintStyle: const TextStyle(color: AppColors.textTertiary),
                   filled: true,
                   fillColor: AppColors.background,
@@ -397,10 +398,10 @@ class TourismChatWidgetState extends State<TourismChatWidget> {
                     onChanged: (v) => setDialogState(() => pin = v),
                   ),
                   const SizedBox(width: 8),
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'Fijar anuncio arriba del chat',
-                      style: TextStyle(
+                      'tourism_chat.pin_announcement'.tr(),
+                      style: const TextStyle(
                           color: AppColors.textSecondary, fontSize: 13),
                     ),
                   ),
@@ -411,7 +412,7 @@ class TourismChatWidgetState extends State<TourismChatWidget> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancelar'),
+              child: Text('cancel'.tr()),
             ),
             ElevatedButton.icon(
               onPressed: () async {
@@ -430,7 +431,7 @@ class TourismChatWidgetState extends State<TourismChatWidget> {
                 HapticService.success();
               },
               icon: const Icon(Icons.send, size: 16),
-              label: const Text('Enviar'),
+              label: Text('send'.tr()),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
@@ -469,13 +470,13 @@ class TourismChatWidgetState extends State<TourismChatWidget> {
                   borderRadius: BorderRadius.circular(2)),
             ),
             const SizedBox(height: 16),
-            const Text('Enviar mensaje privado a',
+            Text('tourism_chat.send_private_message_to'.tr(),
                 style: TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 16,
                     fontWeight: FontWeight.w700)),
             const SizedBox(height: 4),
-            Text('Solo esta persona vera el mensaje',
+            Text('tourism_chat.only_this_person_sees'.tr(),
                 style: TextStyle(
                     color: AppColors.textTertiary, fontSize: 12)),
             const SizedBox(height: 12),
@@ -487,7 +488,7 @@ class TourismChatWidgetState extends State<TourismChatWidget> {
                   final p = accepted[index];
                   final name = p['invitee_name'] ??
                       p['invited_name'] ??
-                      'Pasajero';
+                      'tourism_chat.passenger'.tr();
                   final odooId = p['invited_user_id'] as String?;
                   return ListTile(
                     leading: Container(
@@ -586,8 +587,8 @@ class TourismChatWidgetState extends State<TourismChatWidget> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Chat del Evento',
+                Text(
+                  'tourism_chat.event_chat'.tr(),
                   style: TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 15,
@@ -595,7 +596,7 @@ class TourismChatWidgetState extends State<TourismChatWidget> {
                   ),
                 ),
                 Text(
-                  '$_participantCount participantes',
+                  'tourism_chat.participants_count'.tr(namedArgs: {'count': _participantCount.toString()}),
                   style: const TextStyle(
                     color: AppColors.textTertiary,
                     fontSize: 11,
@@ -649,7 +650,7 @@ class TourismChatWidgetState extends State<TourismChatWidget> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('ANUNCIO FIJADO',
+                Text('tourism_chat.pinned_announcement'.tr(),
                     style: TextStyle(
                         color: AppColors.warning,
                         fontSize: 11,
@@ -664,7 +665,7 @@ class TourismChatWidgetState extends State<TourismChatWidget> {
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
-                  '${ann.senderName ?? "Organizador"} - $timeStr',
+                  '${ann.senderName ?? 'tourism_chat.organizer'.tr()} - $timeStr',
                   style: TextStyle(
                       color: AppColors.textTertiary.withOpacity(0.7),
                       fontSize: 11),
@@ -688,15 +689,15 @@ class TourismChatWidgetState extends State<TourismChatWidget> {
           Icon(Icons.chat_bubble_outline,
               size: 48, color: AppColors.textTertiary.withOpacity(0.4)),
           const SizedBox(height: 12),
-          const Text('Sin mensajes',
-              style: TextStyle(
+          Text('chat.no_messages'.tr(),
+              style: const TextStyle(
                   color: AppColors.textSecondary,
                   fontSize: 16,
                   fontWeight: FontWeight.w600)),
           const SizedBox(height: 4),
-          const Text('Inicia la conversacion con el grupo',
+          Text('tourism_chat.start_group_conversation'.tr(),
               style:
-                  TextStyle(color: AppColors.textTertiary, fontSize: 13)),
+                  const TextStyle(color: AppColors.textTertiary, fontSize: 13)),
         ],
       ),
     );
@@ -799,7 +800,7 @@ class TourismChatWidgetState extends State<TourismChatWidget> {
                           const SizedBox(width: 4),
                           Flexible(
                             child: Text(
-                              message.senderName ?? 'Usuario',
+                              message.senderName ?? 'tourism_chat.user'.tr(),
                               style: TextStyle(
                                 color: _roleColor(message.senderType),
                                 fontSize: 11,
@@ -862,7 +863,7 @@ class TourismChatWidgetState extends State<TourismChatWidget> {
                           ),
                           const SizedBox(width: 3),
                           Text(
-                            'Privado',
+                            'tourism_chat.private'.tr(),
                             style: TextStyle(
                               color: isMe
                                   ? Colors.white.withOpacity(0.6)
@@ -959,9 +960,9 @@ class TourismChatWidgetState extends State<TourismChatWidget> {
                     color: AppColors.warning, size: 22),
               ),
               const SizedBox(width: 10),
-              const Text(
-                'Regresen al autobus!',
-                style: TextStyle(
+              Text(
+                'tourism_chat.return_to_bus'.tr(),
+                style: const TextStyle(
                   color: AppColors.warning,
                   fontSize: 16,
                   fontWeight: FontWeight.w800,
@@ -971,7 +972,7 @@ class TourismChatWidgetState extends State<TourismChatWidget> {
           ),
           const SizedBox(height: 6),
           Text(
-            '${message.senderName ?? "Chofer"} - $timeStr',
+            '${message.senderName ?? 'tourism_chat.driver'.tr()} - $timeStr',
             style: const TextStyle(
                 color: AppColors.textSecondary, fontSize: 11),
           ),
@@ -1004,7 +1005,7 @@ class TourismChatWidgetState extends State<TourismChatWidget> {
                         color: AppColors.textPrimary, fontSize: 13)),
                 const SizedBox(height: 3),
                 Text(
-                  '${message.senderName ?? "Organizador"} - $timeStr',
+                  '${message.senderName ?? 'tourism_chat.organizer'.tr()} - $timeStr',
                   style: const TextStyle(
                       color: AppColors.textSecondary, fontSize: 11),
                 ),
@@ -1049,7 +1050,7 @@ class TourismChatWidgetState extends State<TourismChatWidget> {
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
-                      'Mensaje privado para $_privateTargetUserName',
+                      'tourism_chat.private_message_for'.tr(namedArgs: {'name': _privateTargetUserName ?? ''}),
                       style: const TextStyle(
                           color: AppColors.warning,
                           fontSize: 12,
@@ -1078,21 +1079,21 @@ class TourismChatWidgetState extends State<TourismChatWidget> {
                 children: [
                   _buildChip(
                     icon: Icons.lock_outline,
-                    label: 'Privado',
+                    label: 'tourism_chat.private'.tr(),
                     color: AppColors.warning,
                     onTap: _showPrivateTargetSelector,
                   ),
                   const SizedBox(width: 6),
                   _buildChip(
                     icon: Icons.campaign,
-                    label: 'Anuncio',
+                    label: 'tourism_chat.announcement'.tr(),
                     color: AppColors.primary,
                     onTap: _showAnnouncementDialog,
                   ),
                   const SizedBox(width: 6),
                   _buildChip(
                     icon: Icons.directions_bus,
-                    label: 'Al autobus',
+                    label: 'tourism_chat.to_bus'.tr(),
                     color: AppColors.warning,
                     onTap: _sendCallToBus,
                   ),
@@ -1112,8 +1113,8 @@ class TourismChatWidgetState extends State<TourismChatWidget> {
                   minLines: 1,
                   decoration: InputDecoration(
                     hintText: _isPrivateMode
-                        ? 'Mensaje privado...'
-                        : 'Mensaje...',
+                        ? 'tourism_chat.private_message_hint'.tr()
+                        : 'tourism_chat.message_hint'.tr(),
                     hintStyle:
                         const TextStyle(color: AppColors.textTertiary),
                     filled: true,
@@ -1228,11 +1229,11 @@ class TourismChatWidgetState extends State<TourismChatWidget> {
   String _roleLabel(String role) {
     switch (role) {
       case 'driver':
-        return 'Chofer';
+        return 'tourism_chat.driver'.tr();
       case 'organizer':
-        return 'Organizador';
+        return 'tourism_chat.organizer'.tr();
       default:
-        return 'Pasajero';
+        return 'tourism_chat.passenger'.tr();
     }
   }
 }

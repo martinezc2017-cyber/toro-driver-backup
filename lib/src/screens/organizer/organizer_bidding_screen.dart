@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../config/supabase_config.dart';
@@ -95,7 +96,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _error = 'Error al cargar datos: $e';
+          _error = '${'organizer.error_loading'.tr()}: $e';
         });
       }
     }
@@ -113,7 +114,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
 
   Future<void> _sendBidRequests() async {
     if (_selectedVehicles.isEmpty) {
-      _showError('Selecciona al menos un vehiculo');
+      _showError('organizer.select_vehicle'.tr());
       return;
     }
 
@@ -122,23 +123,23 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
-        title: const Text(
-          'Enviar Solicitudes de Puja',
-          style: TextStyle(color: AppColors.textPrimary),
+        title: Text(
+          'organizer.send_bid_requests'.tr(),
+          style: const TextStyle(color: AppColors.textPrimary),
         ),
         content: Text(
-          '¿Enviar solicitud de puja a ${_selectedVehicles.length} chofer(es)?',
+          'organizer.send_bid_confirm'.tr(namedArgs: {'count': '${_selectedVehicles.length}'}),
           style: const TextStyle(color: AppColors.textSecondary),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancelar'),
+            child: Text('cancel'.tr()),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: AppColors.primary),
-            child: const Text('Enviar'),
+            child: Text('send'.tr()),
           ),
         ],
       ),
@@ -157,7 +158,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
       if (mounted) {
         HapticService.success();
         _showSuccess(
-          'Solicitudes enviadas a ${_selectedVehicles.length} chofer(es)',
+          'organizer.requests_sent_count'.tr(namedArgs: {'count': '${_selectedVehicles.length}'}),
         );
         _selectedVehicles.clear();
         setState(() => _currentTab = 1); // Switch to bids tab
@@ -165,18 +166,18 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
       }
     } catch (e) {
       HapticService.error();
-      _showError('Error al enviar solicitudes: $e');
+      _showError('${'error_saving'.tr()}: $e');
     }
   }
 
   Future<void> _selectWinningBid(Map<String, dynamic> bid) async {
     final bidId = bid['id'] as String?;
-    final vehicleName = bid['vehicle_name'] ?? 'Vehiculo';
-    final driverName = bid['driver_name'] ?? 'Chofer';
+    final vehicleName = bid['vehicle_name'] ?? 'no_name'.tr();
+    final driverName = bid['driver_name'] ?? 'no_name'.tr();
     final pricePerKm = (bid['proposed_price_per_km'] as num?)?.toDouble() ?? 0;
 
     if (bidId == null) {
-      _showError('Datos de puja incompletos');
+      _showError('organizer.error_loading'.tr());
       return;
     }
 
@@ -197,21 +198,21 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
-        title: const Text(
-          'Seleccionar Puja Ganadora',
-          style: TextStyle(color: AppColors.textPrimary),
+        title: Text(
+          'organizer.select_winning_bid'.tr(),
+          style: const TextStyle(color: AppColors.textPrimary),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              '¿Confirmar selección?',
+            Text(
+              'organizer.confirm_selection'.tr(),
               style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
             ),
             const SizedBox(height: 12),
-            _detailRow('Vehículo', vehicleName),
-            _detailRow('Chofer', driverName),
+            _detailRow('organizer.select_vehicle'.tr(), vehicleName),
+            _detailRow('driver_label'.tr(), driverName),
             _detailRow('Precio/${distanceUnit()}', formatMoney(pricePerKm)),
             const SizedBox(height: 12),
             Container(
@@ -229,7 +230,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Las demás pujas serán rechazadas automáticamente',
+                      'organizer.confirm_selection'.tr(),
                       style: TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 11,
@@ -244,12 +245,12 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancelar'),
+            child: Text('cancel'.tr()),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: AppColors.success),
-            child: const Text('Confirmar'),
+            child: Text('confirm'.tr()),
           ),
         ],
       ),
@@ -264,24 +265,24 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
 
       if (mounted) {
         HapticService.success();
-        _showSuccess('Puja seleccionada. El evento ha sido actualizado');
+        _showSuccess('organizer.changes_saved'.tr());
         // Go back to event dashboard
         Navigator.pop(context, true);
       }
     } catch (e) {
       HapticService.error();
-      _showError('Error al seleccionar puja: $e');
+      _showError('${'error_saving'.tr()}: $e');
     }
   }
 
   Future<void> _showCounterOfferDialog(Map<String, dynamic> bid) async {
     final bidId = bid['id'] as String?;
-    final driverName = bid['driver_name'] ?? 'Chofer';
+    final driverName = bid['driver_name'] ?? 'no_name'.tr();
     final currentPrice =
         (bid['proposed_price_per_km'] as num?)?.toDouble() ?? 0;
 
     if (bidId == null) {
-      _showError('Datos de puja incompletos');
+      _showError('organizer.error_loading'.tr());
       return;
     }
 
@@ -291,9 +292,9 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
-        title: const Text(
-          'Contra-oferta',
-          style: TextStyle(color: AppColors.textPrimary),
+        title: Text(
+          'organizer.send_counter_offer'.tr(),
+          style: const TextStyle(color: AppColors.textPrimary),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -322,8 +323,8 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                     color: AppColors.textTertiary,
                   ),
                   const SizedBox(width: 8),
-                  const Text(
-                    'Precio actual:',
+                  Text(
+                    'organizer.current_price'.tr(),
                     style: TextStyle(
                       color: AppColors.textTertiary,
                       fontSize: 12,
@@ -343,7 +344,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              'Tu propuesta (precio/${distanceUnit(country: _countryCode)}):',
+              '${'organizer.proposed_price'.tr()} (${'price_label'.tr()}/${distanceUnit(country: _countryCode)}):',
               style: const TextStyle(
                 color: AppColors.textSecondary,
                 fontSize: 13,
@@ -399,7 +400,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancelar'),
+            child: Text('cancel'.tr()),
           ),
           TextButton(
             onPressed: () {
@@ -407,7 +408,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
               if (value == null || value <= 0) {
                 ScaffoldMessenger.of(ctx).showSnackBar(
                   const SnackBar(
-                    content: Text('Ingresa un precio valido'),
+                    content: Text('org_seats_invalid'.tr()),
                     backgroundColor: AppColors.error,
                   ),
                 );
@@ -416,9 +417,9 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
               Navigator.pop(ctx, value);
             },
             style: TextButton.styleFrom(foregroundColor: AppColors.warning),
-            child: const Text(
-              'Enviar Contra-oferta',
-              style: TextStyle(fontWeight: FontWeight.w600),
+            child: Text(
+              'organizer.send_counter_offer'.tr(),
+              style: const TextStyle(fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -451,17 +452,17 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
       }
     } catch (e) {
       HapticService.error();
-      _showError('Error al enviar contra-oferta: $e');
+      _showError('${'error_saving'.tr()}: $e');
     }
   }
 
   Future<void> _acceptDriverCounterOffer(Map<String, dynamic> bid) async {
     final bidId = bid['id'] as String?;
-    final driverName = bid['driver_name'] ?? 'Chofer';
+    final driverName = bid['driver_name'] ?? 'no_name'.tr();
     final driverPrice = (bid['driver_proposed_price'] as num?)?.toDouble() ?? 0;
 
     if (bidId == null) {
-      _showError('Datos de puja incompletos');
+      _showError('organizer.error_loading'.tr());
       return;
     }
 
@@ -469,17 +470,17 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
-        title: const Text(
-          'Aceptar Contra-oferta del Chofer',
-          style: TextStyle(color: AppColors.textPrimary),
+        title: Text(
+          'organizer.accept_driver_counter'.tr(),
+          style: const TextStyle(color: AppColors.textPrimary),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _detailRow('Chofer', driverName),
+            _detailRow('driver_label'.tr(), driverName),
             _detailRow(
-              'Precio propuesto',
+              'organizer.proposed_price'.tr(),
               '${formatMoney(driverPrice)}/${distanceUnit()}',
             ),
             const SizedBox(height: 12),
@@ -498,7 +499,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Al aceptar, esta puja sera seleccionada como ganadora',
+                      'organizer.confirm_selection'.tr(),
                       style: TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 11,
@@ -513,14 +514,14 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancelar'),
+            child: Text('cancel'.tr()),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: AppColors.success),
-            child: const Text(
-              'Aceptar',
-              style: TextStyle(fontWeight: FontWeight.w600),
+            child: Text(
+              'accept'.tr(),
+              style: const TextStyle(fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -540,12 +541,12 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
 
       if (mounted) {
         HapticService.success();
-        _showSuccess('Contra-oferta aceptada. Evento actualizado');
+        _showSuccess('organizer.changes_saved'.tr());
         Navigator.pop(context, true);
       }
     } catch (e) {
       HapticService.error();
-      _showError('Error al aceptar contra-oferta: $e');
+      _showError('${'error_saving'.tr()}: $e');
     }
   }
 
@@ -576,7 +577,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final eventName = _event?['event_name'] ?? 'Evento';
+    final eventName = _event?['event_name'] ?? 'organizer.new_event'.tr();
     final organizerId = _event?['organizer_id'] as String?;
 
     return Scaffold(
@@ -588,9 +589,9 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
           icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Sistema de Puja',
-          style: TextStyle(
+        title: Text(
+          'organizer.send_bid_requests'.tr(),
+          style: const TextStyle(
             color: AppColors.textPrimary,
             fontWeight: FontWeight.w700,
             fontSize: 18,
@@ -628,7 +629,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
               backgroundColor: AppColors.primary,
               icon: const Icon(Icons.send, size: 20),
               label: Text(
-                'Enviar (${_selectedVehicles.length})',
+                'organizer.send_count'.tr(namedArgs: {'count': '${_selectedVehicles.length}'}),
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
             )
@@ -737,7 +738,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
           Expanded(
             child: _buildTabButton(
               index: 0,
-              label: 'Buscar Vehículos',
+              label: 'organizer.search_vehicles'.tr(),
               icon: Icons.directions_bus,
             ),
           ),
@@ -745,7 +746,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
           Expanded(
             child: _buildTabButton(
               index: 1,
-              label: 'Ver Pujas (${_bids.length})',
+              label: '${'organizer.select_bid'.tr()} (${_bids.length})',
               icon: Icons.compare_arrows,
             ),
           ),
@@ -806,7 +807,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
     if (_vehicles.isEmpty) {
       return _buildEmptyState(
         icon: Icons.directions_bus_outlined,
-        message: 'No se encontraron vehículos disponibles',
+        message: 'organizer.no_vehicles_found'.tr(),
       );
     }
 
@@ -827,9 +828,9 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
     if (_bids.isEmpty) {
       return _buildEmptyState(
         icon: Icons.price_check_outlined,
-        message: 'Aún no hay pujas',
+        message: 'organizer.send_requests_hint'.tr(),
         subtitle:
-            'Envía solicitudes a choferes desde la pestaña "Buscar Vehículos"',
+            'organizer.send_requests_hint'.tr(),
       );
     }
 
@@ -902,7 +903,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
           // Selected bid (if any)
           if (selected.isNotEmpty) ...[
             _buildSectionHeader(
-              title: 'Puja Seleccionada',
+              title: 'organizer.select_winning_bid'.tr(),
               icon: Icons.emoji_events,
               color: AppColors.success,
             ),
@@ -914,7 +915,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
           // Negotiating (counter-offers in progress)
           if (negotiating.isNotEmpty) ...[
             _buildSectionHeader(
-              title: 'En Negociacion (${negotiating.length})',
+              title: '${'organizer.negotiating'.tr()} (${negotiating.length})',
               icon: Icons.swap_horiz,
               color: AppColors.warning,
             ),
@@ -926,7 +927,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
           // Received bids with prices
           if (received.isNotEmpty) ...[
             _buildSectionHeader(
-              title: 'Ofertas Recibidas (${received.length})',
+              title: '${'organizer.received_bids'.tr()} (${received.length})',
               icon: Icons.local_offer,
               color: AppColors.primary,
             ),
@@ -938,7 +939,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
           // Pending (waiting for driver response)
           if (pending.isNotEmpty) ...[
             _buildSectionHeader(
-              title: 'Esperando Respuesta (${pending.length})',
+              title: '${'organizer.pending_filter'.tr()} (${pending.length})',
               icon: Icons.hourglass_empty,
               color: AppColors.warning,
             ),
@@ -950,7 +951,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
           // Rejected
           if (rejected.isNotEmpty) ...[
             _buildSectionHeader(
-              title: 'Rechazadas (${rejected.length})',
+              title: 'organizer.rejected_count'.tr(namedArgs: {'count': '${rejected.length}'}),
               icon: Icons.cancel_outlined,
               color: AppColors.error,
             ),
@@ -1011,7 +1012,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
               ),
               const SizedBox(width: 8),
               const Text(
-                'Comparar Ofertas',
+                'organizer.select_bid'.tr(),
                 style: TextStyle(
                   color: AppColors.textPrimary,
                   fontSize: 14,
@@ -1061,7 +1062,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                 Expanded(
                   flex: 1,
                   child: Text(
-                    'Asientos',
+                    'organizer.seats'.tr(),
                     style: TextStyle(
                       color: AppColors.textTertiary,
                       fontSize: 11,
@@ -1086,7 +1087,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                 Expanded(
                   flex: 2,
                   child: Text(
-                    'Total Est.',
+                    'organizer.total_estimated'.tr(),
                     style: TextStyle(
                       color: AppColors.textTertiary,
                       fontSize: 11,
@@ -1105,7 +1106,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
             final idx = entry.key;
             final bid = entry.value;
             final isCheapest = idx == 0;
-            final driverName = bid['driver_name'] ?? 'Chofer';
+            final driverName = bid['driver_name'] ?? 'no_name'.tr();
             final vehicleName = bid['vehicle_name'] ?? '';
             final seats = bid['total_seats'] ?? 0;
             final price =
@@ -1262,7 +1263,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
               ),
               const SizedBox(width: 4),
               const Text(
-                'Mas economico',
+                'filter_best_pay'.tr(),
                 style: TextStyle(color: AppColors.textTertiary, fontSize: 11),
               ),
               const Spacer(),
@@ -1282,11 +1283,11 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
 
   Widget _buildVehicleCard(Map<String, dynamic> vehicle) {
     final vehicleId = vehicle['id'] as String;
-    final vehicleName = vehicle['vehicle_name'] ?? 'Sin nombre';
+    final vehicleName = vehicle['vehicle_name'] ?? 'no_name'.tr();
     // Always show the vehicle's actual seat capacity when browsing
     final totalSeats = vehicle['total_seats'] ?? 0;
-    final ownerName = vehicle['owner_name'] ?? 'Propietario';
-    final driverName = vehicle['driver_name'] ?? 'Chofer';
+    final ownerName = vehicle['owner_name'] ?? 'no_name'.tr();
+    final driverName = vehicle['driver_name'] ?? 'no_name'.tr();
     final isSelected = _selectedVehicles.contains(vehicleId);
 
     // Check if already sent bid request
@@ -1346,7 +1347,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                     ),
                     SizedBox(width: 4),
                     Text(
-                      'Enviado',
+                      'send'.tr(),
                       style: TextStyle(
                         color: AppColors.success,
                         fontSize: 11,
@@ -1420,7 +1421,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                       ),
                       const SizedBox(width: 3),
                       Text(
-                        '$totalSeats asientos',
+                        '$totalSeats ${'organizer.seats'.tr()}',
                         style: const TextStyle(
                           color: AppColors.textTertiary,
                           fontSize: 11,
@@ -1430,7 +1431,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'Dueño: $ownerName | Chofer: $driverName',
+                    '$ownerName | $driverName',
                     style: const TextStyle(
                       color: AppColors.textTertiary,
                       fontSize: 11,
@@ -1453,8 +1454,8 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
     bool isRejected = false,
     bool isWinner = false,
   }) {
-    final vehicleName = bid['vehicle_name'] ?? 'Vehiculo';
-    final driverName = bid['driver_name'] ?? 'Chofer';
+    final vehicleName = bid['vehicle_name'] ?? 'no_name'.tr();
+    final driverName = bid['driver_name'] ?? 'no_name'.tr();
     final bidEventMaxP = (_event?['max_passengers'] as num?)?.toInt() ?? 0;
     final totalSeats = bidEventMaxP > 0
         ? bidEventMaxP
@@ -1576,7 +1577,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                       ),
                       SizedBox(width: 4),
                       Text(
-                        'GANADOR',
+                        'organizer.select_winning_bid'.tr(),
                         style: TextStyle(
                           color: AppColors.success,
                           fontSize: 11,
@@ -1606,7 +1607,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        'Ronda $negotiationRound',
+                        '#$negotiationRound',
                         style: const TextStyle(
                           color: AppColors.warning,
                           fontSize: 11,
@@ -1646,7 +1647,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    '$totalSeats asientos',
+                    '$totalSeats ${'organizer.seats'.tr()}',
                     style: const TextStyle(
                       color: AppColors.textTertiary,
                       fontSize: 11,
@@ -1691,7 +1692,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Precio/${distanceUnit(country: _countryCode)}',
+                        '${'price_label'.tr()}/${distanceUnit(country: _countryCode)}',
                         style: const TextStyle(
                           color: AppColors.textTertiary,
                           fontSize: 11,
@@ -1719,9 +1720,9 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        const Text(
-                          'Total Estimado',
-                          style: TextStyle(
+                        Text(
+                          'organizer.total_estimated'.tr(),
+                          style: const TextStyle(
                             color: AppColors.textTertiary,
                             fontSize: 11,
                           ),
@@ -1775,9 +1776,9 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Contra-oferta enviada',
-                          style: TextStyle(
+                        Text(
+                          'organizer.send_counter_offer'.tr(),
+                          style: const TextStyle(
                             color: AppColors.warning,
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
@@ -1804,9 +1805,9 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                       color: AppColors.warning.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(6),
                     ),
-                    child: const Text(
-                      'Esperando respuesta',
-                      style: TextStyle(
+                    child: Text(
+                      'pending_status'.tr(),
+                      style: const TextStyle(
                         color: AppColors.warning,
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
@@ -1842,9 +1843,9 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Chofer propone',
-                          style: TextStyle(
+                        Text(
+                          'organizer.proposed_price'.tr(),
+                          style: const TextStyle(
                             color: AppColors.primary,
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
@@ -1911,9 +1912,9 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                     child: ElevatedButton.icon(
                       onPressed: () => _acceptDriverCounterOffer(bid),
                       icon: const Icon(Icons.check_circle, size: 18),
-                      label: const Text(
-                        'Aceptar',
-                        style: TextStyle(
+                      label: Text(
+                        'accept'.tr(),
+                        style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
                         ),
@@ -1974,8 +1975,8 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                     child: ElevatedButton.icon(
                       onPressed: () => _selectWinningBid(bid),
                       icon: const Icon(Icons.check_circle, size: 18),
-                      label: const Text(
-                        'Seleccionar Puja',
+                      label: Text(
+                        'organizer.select_bid'.tr(),
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
@@ -1997,8 +1998,8 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                   child: OutlinedButton.icon(
                     onPressed: () => _showCounterOfferDialog(bid),
                     icon: const Icon(Icons.swap_horiz, size: 18),
-                    label: const Text(
-                      'Contra-oferta',
+                    label: Text(
+                      'organizer.send_counter_offer'.tr(),
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
@@ -2038,7 +2039,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              _error ?? 'Error desconocido',
+              _error ?? 'organizer.error_loading'.tr(),
               style: const TextStyle(
                 color: AppColors.textSecondary,
                 fontSize: 14,
@@ -2055,7 +2056,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: const Text('Reintentar'),
+              child: Text('retry'.tr()),
             ),
           ],
         ),
@@ -2111,10 +2112,10 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
       final dt = DateTime.parse(isoDate);
       final now = DateTime.now();
       final diff = now.difference(dt);
-      if (diff.inMinutes < 1) return 'Justo ahora';
-      if (diff.inMinutes < 60) return 'hace ${diff.inMinutes} min';
-      if (diff.inHours < 24) return 'hace ${diff.inHours}h';
-      if (diff.inDays < 7) return 'hace ${diff.inDays}d';
+      if (diff.inMinutes < 1) return '< 1 min';
+      if (diff.inMinutes < 60) return '${diff.inMinutes} min';
+      if (diff.inHours < 24) return '${diff.inHours}h';
+      if (diff.inDays < 7) return '${diff.inDays}d';
       return '${dt.day}/${dt.month}/${dt.year}';
     } catch (_) {
       return '';
@@ -2134,27 +2135,12 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
   String _formatEventDate(String dateStr) {
     try {
       final date = DateTime.parse(dateStr);
-      final months = [
-        '',
-        'Ene',
-        'Feb',
-        'Mar',
-        'Abr',
-        'May',
-        'Jun',
-        'Jul',
-        'Ago',
-        'Sep',
-        'Oct',
-        'Nov',
-        'Dic',
-      ];
       final day = date.day;
-      final month = months[date.month];
+      final month = date.month.toString().padLeft(2, '0');
       final year = date.year;
       final hour = date.hour.toString().padLeft(2, '0');
       final minute = date.minute.toString().padLeft(2, '0');
-      return '$day $month $year, $hour:$minute';
+      return '$year-$month-$day $hour:$minute';
     } catch (_) {
       return dateStr;
     }

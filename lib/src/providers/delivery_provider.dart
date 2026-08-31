@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../services/delivery_service.dart';
 import '../models/package_delivery_model.dart';
 
@@ -37,7 +38,7 @@ class DeliveryProvider with ChangeNotifier {
       ]);
       _error = null;
     } catch (e) {
-      _error = 'Error al inicializar: $e';
+      _error = 'error.initializing'.tr(namedArgs: {'error': e.toString()});
     }
 
     _isLoading = false;
@@ -76,7 +77,7 @@ class DeliveryProvider with ChangeNotifier {
         notifyListeners();
       },
       onError: (e) {
-        _error = 'Error en stream de tickets: $e';
+        _error = 'error.ticket_stream'.tr(namedArgs: {'error': e.toString()});
         notifyListeners();
       },
     );
@@ -91,7 +92,7 @@ class DeliveryProvider with ChangeNotifier {
         notifyListeners();
       },
       onError: (e) {
-        _error = 'Error en stream de entrega: $e';
+        _error = 'error.delivery_stream'.tr(namedArgs: {'error': e.toString()});
         notifyListeners();
       },
     );
@@ -108,7 +109,7 @@ class DeliveryProvider with ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      _error = 'Error al refrescar tickets: $e';
+      _error = 'error.refreshing_tickets'.tr(namedArgs: {'error': e.toString()});
       notifyListeners();
     }
   }
@@ -138,7 +139,7 @@ class DeliveryProvider with ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _error = 'Error al aceptar ticket: $e';
+      _error = 'error.accepting_ticket'.tr(namedArgs: {'error': e.toString()});
       _isLoading = false;
       notifyListeners();
       return false;
@@ -160,7 +161,7 @@ class DeliveryProvider with ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _error = 'Error al iniciar ruta: $e';
+      _error = 'error.starting_route'.tr(namedArgs: {'error': e.toString()});
       _isLoading = false;
       notifyListeners();
       return false;
@@ -182,7 +183,7 @@ class DeliveryProvider with ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _error = 'Error al recoger paquete: $e';
+      _error = 'error.picking_up_package'.tr(namedArgs: {'error': e.toString()});
       _isLoading = false;
       notifyListeners();
       return false;
@@ -204,7 +205,7 @@ class DeliveryProvider with ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _error = 'Error al iniciar tránsito: $e';
+      _error = 'error.starting_transit'.tr(namedArgs: {'error': e.toString()});
       _isLoading = false;
       notifyListeners();
       return false;
@@ -239,7 +240,7 @@ class DeliveryProvider with ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _error = 'Error al completar entrega: $e';
+      _error = 'error.completing_delivery'.tr(namedArgs: {'error': e.toString()});
       _isLoading = false;
       notifyListeners();
       return false;
@@ -271,7 +272,7 @@ class DeliveryProvider with ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _error = 'Error al cancelar entrega: $e';
+      _error = 'error.cancelling_delivery'.tr(namedArgs: {'error': e.toString()});
       _isLoading = false;
       notifyListeners();
       return false;
@@ -283,7 +284,7 @@ class DeliveryProvider with ChangeNotifier {
     try {
       await _deliveryService.updateDriverLocation(driverId, lat, lng);
     } catch (e) {
-      _error = 'Error al actualizar ubicación: $e';
+      _error = 'error.updating_location'.tr(namedArgs: {'error': e.toString()});
       notifyListeners();
     }
   }
@@ -310,7 +311,7 @@ class DeliveryProvider with ChangeNotifier {
       _error = null;
       notifyListeners();
     } catch (e) {
-      _error = 'Error al cargar historial: $e';
+      _error = 'error.loading_history'.tr(namedArgs: {'error': e.toString()});
       _isLoading = false;
       notifyListeners();
     }
@@ -347,7 +348,7 @@ class DeliveryProvider with ChangeNotifier {
         isDriver: true,
       );
     } catch (e) {
-      _error = 'Error al enviar mensaje: $e';
+      _error = 'error.sending_message'.tr(namedArgs: {'error': e.toString()});
       notifyListeners();
     }
   }

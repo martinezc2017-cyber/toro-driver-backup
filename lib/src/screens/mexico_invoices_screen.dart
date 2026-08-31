@@ -124,7 +124,7 @@ class _MexicoInvoicesScreenState extends State<MexicoInvoicesScreen> {
               _loadData();
             },
             itemBuilder: (context) => [
-              const PopupMenuItem(value: null, child: Text('Todos')),
+              PopupMenuItem(value: null, child: Text('all'.tr())),
               for (int month = 1; month <= 12; month++)
                 PopupMenuItem(
                   value: month,
@@ -551,10 +551,10 @@ class _MexicoInvoicesScreenState extends State<MexicoInvoicesScreen> {
                     filled: true,
                     fillColor: AppColors.card,
                   ),
-                  items: const [
-                    DropdownMenuItem(value: 'G01', child: Text('G01 - Adquisición de mercancías')),
-                    DropdownMenuItem(value: 'G03', child: Text('G03 - Gastos en general')),
-                    DropdownMenuItem(value: 'P01', child: Text('P01 - Por definir')),
+                  items: [
+                    DropdownMenuItem(value: 'G01', child: Text('cfdi.g01'.tr())),
+                    DropdownMenuItem(value: 'G03', child: Text('cfdi.g03'.tr())),
+                    DropdownMenuItem(value: 'P01', child: Text('cfdi.p01'.tr())),
                   ],
                   onChanged: (value) => setSheetState(() => selectedUso = value!),
                 ),
@@ -570,12 +570,12 @@ class _MexicoInvoicesScreenState extends State<MexicoInvoicesScreen> {
                     filled: true,
                     fillColor: AppColors.card,
                   ),
-                  items: const [
-                    DropdownMenuItem(value: '601', child: Text('601 - General de Ley PM')),
-                    DropdownMenuItem(value: '603', child: Text('603 - Personas Morales sin fines de lucro')),
-                    DropdownMenuItem(value: '612', child: Text('612 - Personas Físicas con actividades empresariales')),
-                    DropdownMenuItem(value: '621', child: Text('621 - Incorporación Fiscal')),
-                    DropdownMenuItem(value: '625', child: Text('625 - Régimen de las actividades empresariales con ingresos a través de plataformas')),
+                  items: [
+                    DropdownMenuItem(value: '601', child: Text('cfdi.601'.tr())),
+                    DropdownMenuItem(value: '603', child: Text('cfdi.603'.tr())),
+                    DropdownMenuItem(value: '612', child: Text('cfdi.612'.tr())),
+                    DropdownMenuItem(value: '621', child: Text('cfdi.621'.tr())),
+                    DropdownMenuItem(value: '625', child: Text('cfdi.625'.tr())),
                   ],
                   onChanged: (value) => setSheetState(() => selectedRegimen = value!),
                 ),
@@ -670,7 +670,7 @@ class _MexicoInvoicesScreenState extends State<MexicoInvoicesScreen> {
       } else {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('No se pudo abrir el enlace'), backgroundColor: AppColors.error),
+          SnackBar(content: Text('tax.cannot_open_link'.tr()), backgroundColor: AppColors.error),
         );
       }
     } catch (e) {

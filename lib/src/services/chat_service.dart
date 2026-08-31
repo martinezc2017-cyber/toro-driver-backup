@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
 import '../models/message_model.dart';
@@ -231,9 +232,9 @@ class ChatService {
       case QuickResponseType.traffic:
         return 'Hay tráfico, llegaré en unos minutos';
       case QuickResponseType.cantFind:
-        return 'No encuentro la ubicación, ¿puedes darme más indicaciones?';
+        return 'chat.quick_no_location'.tr();
       case QuickResponseType.thanks:
-        return '¡Gracias!';
+        return 'chat.quick_thanks'.tr();
     }
   }
 

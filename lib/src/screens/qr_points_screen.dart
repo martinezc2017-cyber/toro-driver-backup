@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:provider/provider.dart';
 import '../services/driver_qr_points_service.dart';
 import '../providers/driver_provider.dart';
@@ -25,6 +26,7 @@ class _QRPointsScreenState extends State<QRPointsScreen>
   late TabController _tabController;
   late DriverQRPointsService _qrService;
   bool _initialized = false;
+  int? _previewTier;
 
   @override
   void initState() {
@@ -214,15 +216,55 @@ class _QRPointsScreenState extends State<QRPointsScreen>
     );
   }
 
-  /// Main card showing current commission rate
+  /// Donut chart showing commission breakdown
   Widget _buildCommissionCard(
     DriverQRPointsService service,
     DriverQRPointsLevel level,
   ) {
-    final tier = service.currentTier;
-    final platformPercent = service.effectivePlatformPercent;
-    final driverPercent = service.effectiveDriverPercent;
-    final reduction = service.currentCommissionReduction;
+    // If previewing a tier, use that tier's percentages; otherwise use current
+    final isPreview = _previewTier != null;
+    final tier = isPreview ? _previewTier! : service.currentTier;
+    final driverPercent = isPreview
+        ? service.driverPercentForTier(tier)
+        : service.effectiveDriverPercent;
+    final platformPercent = isPreview
+        ? service.platformPercentForTier(tier)
+        : service.effectivePlatformPercent;
+    final insurancePercent = service.insurancePercent;
+    final ivaPercent = service.ivaPercent;
+    final reduction = isPreview
+        ? service.reductionForTier(tier)
+        : service.currentCommissionReduction;
+
+    // Build pie sections
+    final sections = <PieChartSectionData>[
+      PieChartSectionData(
+        value: driverPercent,
+        color: const Color(0xFF00FF66),
+        radius: 28,
+        showTitle: false,
+      ),
+      PieChartSectionData(
+        value: platformPercent,
+        color: const Color(0xFF1E88E5),
+        radius: 28,
+        showTitle: false,
+      ),
+      if (insurancePercent > 0)
+        PieChartSectionData(
+          value: insurancePercent,
+          color: const Color(0xFFFF9800),
+          radius: 28,
+          showTitle: false,
+        ),
+      if (ivaPercent > 0)
+        PieChartSectionData(
+          value: ivaPercent,
+          color: const Color(0xFF9E9E9E),
+          radius: 28,
+          showTitle: false,
+        ),
+    ];
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -251,153 +293,65 @@ class _QRPointsScreenState extends State<QRPointsScreen>
       ),
       child: Column(
         children: [
-          // Tier Badge
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              gradient: tier > 0
-                  ? const LinearGradient(colors: [Color(0xFF1E88E5), Color(0xFF00BCD4)])
-                  : null,
-              color: tier == 0 ? AppColors.surface : null,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              tier > 0
-                  ? 'TIER $tier'
-                  : 'qr_tier_no_tier'.tr(),
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: tier > 0 ? Colors.white : AppColors.textSecondary,
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          // QR Level
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '${level.level}',
-                style: const TextStyle(
-                  fontSize: 64,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1E88E5),
-                  height: 1,
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Text(
-                  '/${service.qrMaxLevel}',
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'QRs ${'qr_this_week'.tr()}',
-            style: const TextStyle(
-              fontSize: 14,
-              color: AppColors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 20),
-          // Commission Display: Platform% → Driver%
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: AppColors.border.withValues(alpha: 0.3),
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          // Donut chart with center text
+          SizedBox(
+            height: 200,
+            child: Stack(
+              alignment: Alignment.center,
               children: [
-                // Platform Commission
+                PieChart(
+                  PieChartData(
+                    sections: sections,
+                    centerSpaceRadius: 55,
+                    sectionsSpace: 2,
+                    startDegreeOffset: -90,
+                  ),
+                  swapAnimationDuration: const Duration(milliseconds: 500),
+                  swapAnimationCurve: Curves.easeInOut,
+                ),
+                // Center text
                 Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      '${platformPercent.toStringAsFixed(0)}%',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: reduction > 0
-                            ? const Color(0xFF00BCD4)
-                            : AppColors.textPrimary,
+                    // Tier badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 3),
+                      decoration: BoxDecoration(
+                        gradient: tier > 0
+                            ? const LinearGradient(colors: [
+                                Color(0xFF1E88E5),
+                                Color(0xFF00BCD4)
+                              ])
+                            : null,
+                        color: tier == 0 ? AppColors.surface : null,
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                    ),
-                    const Text(
-                      'Comisión Toro',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    if (reduction > 0)
-                      Text(
-                        '-${reduction.toStringAsFixed(0)}%',
-                        style: const TextStyle(
-                          fontSize: 11,
+                      child: Text(
+                        tier > 0 ? 'TIER $tier' : 'BASE',
+                        style: TextStyle(
+                          fontSize: 10,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF00FF66),
+                          color:
+                              tier > 0 ? Colors.white : AppColors.textSecondary,
                         ),
                       ),
-                  ],
-                ),
-                Container(
-                  width: 1,
-                  height: 40,
-                  color: AppColors.border.withValues(alpha: 0.3),
-                ),
-                // Driver Earnings
-                Column(
-                  children: [
+                    ),
+                    const SizedBox(height: 4),
+                    // Large driver percentage
                     Text(
                       '${driverPercent.toStringAsFixed(0)}%',
                       style: const TextStyle(
-                        fontSize: 22,
+                        fontSize: 28,
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF00FF66),
+                        height: 1.1,
                       ),
                     ),
                     Text(
                       'qr_your_earnings'.tr(),
                       style: const TextStyle(
-                        fontSize: 11,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-                Container(
-                  width: 1,
-                  height: 40,
-                  color: AppColors.border.withValues(alpha: 0.3),
-                ),
-                // IVA (fixed)
-                const Column(
-                  children: [
-                    Text(
-                      '16%',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    Text(
-                      'IVA',
-                      style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 10,
                         color: AppColors.textSecondary,
                       ),
                     ),
@@ -406,6 +360,63 @@ class _QRPointsScreenState extends State<QRPointsScreen>
               ],
             ),
           ),
+          const SizedBox(height: 16),
+          // Legend row
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 16,
+            runSpacing: 8,
+            children: [
+              _buildLegendItem(
+                const Color(0xFF00FF66),
+                'Driver',
+                '${driverPercent.toStringAsFixed(0)}%',
+              ),
+              _buildLegendItem(
+                const Color(0xFF1E88E5),
+                'TORO',
+                '${platformPercent.toStringAsFixed(0)}%',
+                badge: reduction > 0
+                    ? '-${reduction.toStringAsFixed(0)}%'
+                    : null,
+              ),
+              if (insurancePercent > 0)
+                _buildLegendItem(
+                  const Color(0xFFFF9800),
+                  'qr_insurance_segment'.tr(),
+                  '${insurancePercent.toStringAsFixed(0)}%',
+                ),
+              if (ivaPercent > 0)
+                _buildLegendItem(
+                  const Color(0xFF9E9E9E),
+                  'IVA',
+                  '${ivaPercent.toStringAsFixed(0)}%',
+                ),
+            ],
+          ),
+          if (isPreview) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E88E5).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: const Color(0xFF1E88E5).withValues(alpha: 0.3),
+                ),
+              ),
+              child: Text(
+                'qr_preview_tier'.tr(namedArgs: {
+                  'tier': tier > 0 ? 'Tier $tier' : 'Base',
+                }),
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: Color(0xFF1E88E5),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           // Weekly Reset Timer
           Container(
@@ -438,12 +449,59 @@ class _QRPointsScreenState extends State<QRPointsScreen>
     ).animate(delay: 100.ms).fadeIn().scale(begin: const Offset(0.95, 0.95));
   }
 
-  /// Tier breakdown card showing all 5 tiers
+  /// Legend item for the donut chart
+  Widget _buildLegendItem(
+    Color color,
+    String label,
+    String value, {
+    String? badge,
+  }) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          '$label $value',
+          style: const TextStyle(
+            fontSize: 12,
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        if (badge != null) ...[
+          const SizedBox(width: 4),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+            decoration: BoxDecoration(
+              color: const Color(0xFF00FF66).withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              badge,
+              style: const TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF00FF66),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  /// Horizontal tier selector with tappable circles
   Widget _buildTierCard(DriverQRPointsService service) {
-    final tier = service.currentTier;
-    final currentQrs = service.currentLevel.level;
+    final currentTier = service.currentTier;
     final nextTierQrs = service.qrsForNextTier;
-    final breakpoints = service.tierBreakpoints;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -463,12 +521,12 @@ class _QRPointsScreenState extends State<QRPointsScreen>
         ),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header
           Row(
             children: [
-              Icon(Icons.workspace_premium_rounded, color: AppColors.star, size: 24),
+              Icon(Icons.workspace_premium_rounded,
+                  color: AppColors.star, size: 24),
               const SizedBox(width: 10),
               Text(
                 'qr_commission_tiers'.tr(),
@@ -480,159 +538,139 @@ class _QRPointsScreenState extends State<QRPointsScreen>
               ),
             ],
           ),
-          if (nextTierQrs > 0 && tier < 5) ...[
-            const SizedBox(height: 8),
+          const SizedBox(height: 20),
+          // Tier circles row: Base (0) + Tier 1-5
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: List.generate(6, (i) {
+              final tierNum = i; // 0 = Base, 1-5 = Tiers
+              final isCurrent = tierNum == currentTier;
+              final isReached = tierNum <= currentTier;
+              final isSelected = _previewTier == tierNum;
+
+              return GestureDetector(
+                onTap: () {
+                  HapticService.lightImpact();
+                  setState(() {
+                    if (_previewTier == tierNum) {
+                      _previewTier = null; // deselect
+                    } else {
+                      _previewTier = tierNum;
+                    }
+                  });
+                },
+                child: Column(
+                  children: [
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
+                      width: isSelected ? 48 : 42,
+                      height: isSelected ? 48 : 42,
+                      decoration: BoxDecoration(
+                        gradient: isCurrent
+                            ? const LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  Color(0xFF1E88E5),
+                                  Color(0xFF00BCD4),
+                                ],
+                              )
+                            : null,
+                        color: !isCurrent && isReached
+                            ? const Color(0xFF00FF66)
+                            : !isCurrent && !isReached
+                                ? Colors.transparent
+                                : null,
+                        shape: BoxShape.circle,
+                        border: !isReached && !isCurrent
+                            ? Border.all(
+                                color: isSelected
+                                    ? const Color(0xFF1E88E5)
+                                    : AppColors.border.withValues(alpha: 0.5),
+                                width: isSelected ? 2 : 1.5,
+                              )
+                            : isSelected
+                                ? Border.all(
+                                    color: Colors.white,
+                                    width: 2,
+                                  )
+                                : null,
+                        boxShadow: isSelected
+                            ? [
+                                BoxShadow(
+                                  color: const Color(0xFF1E88E5)
+                                      .withValues(alpha: 0.4),
+                                  blurRadius: 10,
+                                  spreadRadius: 1,
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: Center(
+                        child: Text(
+                          tierNum == 0 ? 'B' : '$tierNum',
+                          style: TextStyle(
+                            fontSize: isSelected ? 18 : 16,
+                            fontWeight: FontWeight.bold,
+                            color: isReached || isCurrent
+                                ? Colors.white
+                                : isSelected
+                                    ? const Color(0xFF1E88E5)
+                                    : AppColors.textSecondary
+                                        .withValues(alpha: 0.6),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      tierNum == 0 ? 'Base' : 'T$tierNum',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight:
+                            isCurrent ? FontWeight.bold : FontWeight.w500,
+                        color: isCurrent
+                            ? const Color(0xFF1E88E5)
+                            : isReached
+                                ? AppColors.textPrimary
+                                : AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ),
+          const SizedBox(height: 16),
+          // Next tier info text
+          if (currentTier < 5 && nextTierQrs > 0)
             Text(
               'qr_next_tier'.tr(namedArgs: {'count': '$nextTierQrs'}),
-              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-            ),
-          ] else if (tier == 5) ...[
-            const SizedBox(height: 8),
-            Text(
-              'qr_max_tier'.tr(),
-              style: TextStyle(
-                fontSize: 12,
-                color: AppColors.star,
-                fontWeight: FontWeight.w600,
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.textSecondary,
               ),
-            ),
-          ],
-          const SizedBox(height: 16),
-          // Table header
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Row(
+            )
+          else if (currentTier >= 5)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const SizedBox(width: 50, child: Text('Tier', style: TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.bold))),
-                const Expanded(child: Text('QRs', style: TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.bold))),
-                const SizedBox(width: 55, child: Text('Toro', style: TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.bold), textAlign: TextAlign.center)),
-                const SizedBox(width: 55, child: Text('Driver', style: TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.bold), textAlign: TextAlign.center)),
+                Icon(Icons.star_rounded, color: AppColors.star, size: 18),
+                const SizedBox(width: 6),
+                Text(
+                  'qr_max_tier'.tr(),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppColors.star,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ],
             ),
-          ),
-          const SizedBox(height: 8),
-          // Tier 0 (no QR) — % base VIVOS de pricing_config, no escritos a mano.
-          // Antes decia 20% / 64% (numeros de USA) aunque la tarjeta de arriba
-          // mostrara 18% / 61%: la misma pantalla se contradecia.
-          _buildTierRow(
-            tierNum: 0,
-            qrRange: '0',
-            platformPercent: service.basePlatformPercent,
-            driverPercent: service.baseDriverPercent,
-            isCurrentTier: tier == 0,
-            isReached: true,
-          ),
-          // Tier 1-5
-          ...List.generate(breakpoints.length, (i) {
-            final bp = breakpoints[i];
-            final tierNum = i + 1;
-            final prevMax = i == 0 ? 0 : breakpoints[i - 1].max;
-            final isCurrentTier = tier == tierNum;
-            final isReached = currentQrs >= (prevMax + 1);
-
-            return _buildTierRow(
-              tierNum: tierNum,
-              qrRange: '${prevMax + 1}-${bp.max}',
-              platformPercent: bp.platformPercent,
-              // Lo que baja de comision se lo queda el chofer, sobre su % base.
-              // Antes era 100 - plataforma - 16: se saltaba el 5% del seguro y
-              // le prometia 67% cuando en realidad le tocan 62%.
-              driverPercent: service.baseDriverPercent +
-                  (service.basePlatformPercent - bp.platformPercent),
-              isCurrentTier: isCurrentTier,
-              isReached: isReached,
-            );
-          }),
         ],
       ),
     ).animate(delay: 150.ms).fadeIn().slideY(begin: 0.1, end: 0);
-  }
-
-  Widget _buildTierRow({
-    required int tierNum,
-    required String qrRange,
-    required double platformPercent,
-    required double driverPercent,
-    required bool isCurrentTier,
-    required bool isReached,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 4),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: isCurrentTier
-            ? const Color(0xFF1E88E5).withValues(alpha: 0.15)
-            : Colors.transparent,
-        borderRadius: BorderRadius.circular(10),
-        border: isCurrentTier
-            ? Border.all(color: const Color(0xFF1E88E5).withValues(alpha: 0.4))
-            : null,
-      ),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 50,
-            child: Text(
-              tierNum == 0 ? 'Base' : 'Tier $tierNum',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: isCurrentTier ? FontWeight.bold : FontWeight.w500,
-                color: isCurrentTier
-                    ? const Color(0xFF1E88E5)
-                    : isReached
-                        ? AppColors.textPrimary
-                        : AppColors.textSecondary,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              '$qrRange QRs',
-              style: TextStyle(
-                fontSize: 12,
-                color: isCurrentTier
-                    ? AppColors.textPrimary
-                    : AppColors.textSecondary,
-              ),
-            ),
-          ),
-          SizedBox(
-            width: 55,
-            child: Text(
-              '${platformPercent.toStringAsFixed(0)}%',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                color: isCurrentTier
-                    ? const Color(0xFF00BCD4)
-                    : isReached
-                        ? AppColors.textPrimary
-                        : AppColors.textSecondary,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ),
-          SizedBox(
-            width: 55,
-            child: Text(
-              '${driverPercent.toStringAsFixed(0)}%',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                color: isCurrentTier
-                    ? const Color(0xFF00FF66)
-                    : isReached
-                        ? AppColors.success
-                        : AppColors.textSecondary,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ),
-          if (isCurrentTier)
-            const Icon(Icons.arrow_back_rounded, size: 14, color: Color(0xFF1E88E5)),
-        ],
-      ),
-    );
   }
 
   Widget _buildProgressBar(DriverQRPointsService service, DriverQRPointsLevel level) {
@@ -757,7 +795,7 @@ class _QRPointsScreenState extends State<QRPointsScreen>
           child: _buildStatCard(
             Icons.trending_down_rounded,
             '${service.effectivePlatformPercent.toStringAsFixed(0)}%',
-            'Comisión',
+            'qr.commission'.tr(),
             const Color(0xFF00BCD4),
           ),
         ),
@@ -766,7 +804,7 @@ class _QRPointsScreenState extends State<QRPointsScreen>
           child: _buildStatCard(
             Icons.trending_up_rounded,
             '${service.effectiveDriverPercent.toStringAsFixed(0)}%',
-            'Tu Ganancia',
+            'qr_your_earnings'.tr(),
             const Color(0xFF00FF66),
           ),
         ),
@@ -1104,7 +1142,7 @@ class _QRPointsScreenState extends State<QRPointsScreen>
                       children: [
                         Flexible(
                           child: Text(
-                            entry.isMe ? '${entry.driverName} (Tú)' : entry.driverName,
+                            entry.isMe ? '${entry.driverName} (${'qr_you'.tr()})' : entry.driverName,
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: entry.isMe ? FontWeight.bold : FontWeight.w500,

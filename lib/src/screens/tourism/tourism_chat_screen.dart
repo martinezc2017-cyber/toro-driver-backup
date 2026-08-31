@@ -180,7 +180,7 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
     if (!success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Error al enviar mensaje'),
+          content: Text('chat.error_sending'.tr()),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
         ),
@@ -200,23 +200,23 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.card,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
-          'Llamar al autobus',
-          style: TextStyle(color: AppColors.textPrimary),
+        title: Text(
+          'chat_call_to_bus_title'.tr(),
+          style: const TextStyle(color: AppColors.textPrimary),
         ),
-        content: const Text(
-          'Esto enviara una alerta a todos los pasajeros para que regresen al autobus.',
-          style: TextStyle(color: AppColors.textSecondary),
+        content: Text(
+          'chat_call_to_bus_desc'.tr(),
+          style: const TextStyle(color: AppColors.textSecondary),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
+            child: Text('cancel'.tr()),
           ),
           ElevatedButton.icon(
             onPressed: () => Navigator.pop(context, true),
             icon: const Icon(Icons.directions_bus, size: 18),
-            label: const Text('Enviar'),
+            label: Text('send'.tr()),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.warning,
               foregroundColor: Colors.white,
@@ -241,7 +241,7 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Alerta enviada'),
+            content: Text('chat_alert_sent'.tr()),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
           ),
@@ -251,7 +251,7 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Error al enviar alerta'),
+            content: Text('chat.error_sending_alert'.tr()),
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
           ),
@@ -301,7 +301,7 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
   }
 
   Widget _buildHeader() {
-    final eventTitle = _event?['event_name'] ?? _event?['title'] ?? 'Evento';
+    final eventTitle = _event?['event_name'] ?? _event?['title'] ?? 'reviews_event_fallback'.tr();
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
@@ -325,8 +325,8 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Chat del Evento',
+                Text(
+                  'chat_event_title'.tr(),
                   style: TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 16,
@@ -335,7 +335,7 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '$eventTitle - $_participantCount personas',
+                  'chat_event_subtitle'.tr(namedArgs: {'title': eventTitle, 'count': '$_participantCount'}),
                   style: const TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 12,
@@ -514,7 +514,7 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
 
   Widget _buildPinnedAnnouncement() {
     final announcement = _pinnedAnnouncement!;
-    final senderName = announcement.senderName ?? 'Chofer';
+    final senderName = announcement.senderName ?? 'driver'.tr();
     final timeStr = DateFormat('h:mm a').format(announcement.createdAt.toLocal());
 
     return Container(
@@ -545,8 +545,8 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'ANUNCIO',
+                Text(
+                  'chat_announcement_label'.tr(),
                   style: TextStyle(
                     color: AppColors.warning,
                     fontSize: 11,
@@ -589,8 +589,8 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
             color: AppColors.textTertiary.withOpacity(0.5),
           ),
           const SizedBox(height: 16),
-          const Text(
-            'Sin mensajes',
+          Text(
+            'chat_no_messages'.tr(),
             style: TextStyle(
               color: AppColors.textSecondary,
               fontSize: 18,
@@ -598,8 +598,8 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Inicia la conversacion con el grupo',
+          Text(
+            'chat_start_conversation'.tr(),
             style: TextStyle(
               color: AppColors.textTertiary,
               fontSize: 14,
@@ -696,7 +696,7 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            (message.senderName ?? 'Usuario').split(' ').first,
+                            (message.senderName ?? 'chat_user_fallback'.tr()).split(' ').first,
                             style: TextStyle(
                               color: _getColorForRole(message.senderType),
                               fontSize: 12,
@@ -829,7 +829,7 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
               ),
               const SizedBox(width: 12),
               const Text(
-                'Regresen al autobus!',
+                'chat_return_to_bus'.tr(),
                 style: TextStyle(
                   color: AppColors.warning,
                   fontSize: 18,
@@ -840,7 +840,7 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            '${message.senderName ?? "Chofer"} - $timeStr',
+            '${message.senderName ?? 'driver'.tr()} - $timeStr',
             style: const TextStyle(
               color: AppColors.textSecondary,
               fontSize: 12,
@@ -882,7 +882,7 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '${message.senderName ?? "Chofer"} - $timeStr',
+                  '${message.senderName ?? 'driver'.tr()} - $timeStr',
                   style: const TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 11,
@@ -940,7 +940,7 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            _targetType == 'all' ? 'Todos' : _targetUserName ?? 'Individual',
+                            _targetType == 'all' ? 'all'.tr() : _targetUserName ?? 'Individual',
                             style: TextStyle(
                               color: _targetType == 'all' ? AppColors.primary : AppColors.warning,
                               fontSize: 12,
@@ -961,7 +961,7 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
                   // Announcement button
                   _buildActionChip(
                     icon: Icons.campaign,
-                    label: 'Anuncio',
+                    label: 'tourism_announcement'.tr(),
                     color: AppColors.primary,
                     onTap: _showAnnouncementDialog,
                   ),
@@ -969,7 +969,7 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
                   // Call to bus button
                   _buildActionChip(
                     icon: Icons.directions_bus,
-                    label: 'Al autobus',
+                    label: 'chat_to_bus'.tr(),
                     color: AppColors.warning,
                     onTap: _sendCallToBus,
                   ),
@@ -988,7 +988,7 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
                   maxLines: 4,
                   minLines: 1,
                   decoration: InputDecoration(
-                    hintText: 'Mensaje...',
+                    hintText: 'chat.write_message'.tr(),
                     hintStyle: const TextStyle(color: AppColors.textTertiary),
                     filled: true,
                     fillColor: AppColors.card,
@@ -1099,7 +1099,7 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
               decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)),
             ),
             const SizedBox(height: 16),
-            const Text('Enviar a', style: TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w700)),
+            Text('chat_send_to'.tr(), style: const TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w700)),
             const SizedBox(height: 12),
             // "Todos" option
             ListTile(
@@ -1111,8 +1111,8 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
                 ),
                 child: const Icon(Icons.groups, color: AppColors.primary, size: 20),
               ),
-              title: const Text('Todos', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
-              subtitle: const Text('Mensaje visible para todos', style: TextStyle(color: AppColors.textTertiary, fontSize: 12)),
+              title: Text('all'.tr(), style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
+              subtitle: Text('chat_visible_to_all'.tr(), style: const TextStyle(color: AppColors.textTertiary, fontSize: 12)),
               selected: _targetType == 'all',
               selectedTileColor: AppColors.primary.withOpacity(0.08),
               onTap: () {
@@ -1132,7 +1132,7 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
                 itemCount: accepted.length,
                 itemBuilder: (context, index) {
                   final p = accepted[index];
-                  final name = p['invitee_name'] ?? p['invited_name'] ?? 'Pasajero';
+                  final name = p['invitee_name'] ?? p['invited_name'] ?? 'chat_passenger_fallback'.tr();
                   final odooId = p['invited_user_id'] as String?;
                   return ListTile(
                     leading: Container(
@@ -1182,11 +1182,11 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
         builder: (ctx, setDialogState) => AlertDialog(
           backgroundColor: AppColors.card,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Row(
+          title: Row(
             children: [
-              Icon(Icons.campaign, color: AppColors.primary, size: 22),
-              SizedBox(width: 8),
-              Text('Nuevo Anuncio', style: TextStyle(color: AppColors.textPrimary, fontSize: 16)),
+              const Icon(Icons.campaign, color: AppColors.primary, size: 22),
+              const SizedBox(width: 8),
+              Text('chat_new_announcement'.tr(), style: const TextStyle(color: AppColors.textPrimary, fontSize: 16)),
             ],
           ),
           content: Column(
@@ -1197,7 +1197,7 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
                 style: const TextStyle(color: AppColors.textPrimary),
                 maxLines: 3,
                 decoration: InputDecoration(
-                  hintText: 'Escribe el anuncio...',
+                  hintText: 'chat.write_announcement'.tr(),
                   hintStyle: const TextStyle(color: AppColors.textTertiary),
                   filled: true,
                   fillColor: AppColors.background,
@@ -1216,10 +1216,10 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
                     onChanged: (v) => setDialogState(() => pin = v),
                   ),
                   const SizedBox(width: 8),
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'Fijar anuncio arriba del chat',
-                      style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                      'chat_pin_announcement'.tr(),
+                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
                     ),
                   ),
                 ],
@@ -1229,7 +1229,7 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancelar'),
+              child: Text('cancel'.tr()),
             ),
             ElevatedButton.icon(
               onPressed: () async {
@@ -1250,7 +1250,7 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
                 } else if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: const Text('Error al enviar anuncio'),
+                      content: Text('chat_error_announcement'.tr()),
                       backgroundColor: AppColors.error,
                       behavior: SnackBarBehavior.floating,
                     ),
@@ -1258,7 +1258,7 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
                 }
               },
               icon: const Icon(Icons.send, size: 16),
-              label: const Text('Enviar'),
+              label: Text('send'.tr()),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
@@ -1284,11 +1284,11 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
   String _getRoleLabel(String role) {
     switch (role) {
       case 'driver':
-        return '[Chofer]';
+        return '[${'chat_role_driver'.tr()}]';
       case 'organizer':
-        return '[Coordinador]';
+        return '[${'chat_role_organizer'.tr()}]';
       default:
-        return '[Pasajero]';
+        return '[${'chat_role_passenger'.tr()}]';
     }
   }
 }

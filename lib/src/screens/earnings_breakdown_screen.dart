@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../providers/riverpod_providers.dart';
@@ -308,10 +309,10 @@ class _EarningsBreakdownScreenState extends ConsumerState<EarningsBreakdownScree
         labelColor: Colors.white,
         unselectedLabelColor: AppTheme.textMuted,
         labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-        tabs: const [
-          Tab(text: 'Resumen'),
-          Tab(text: 'Por Día'),
-          Tab(text: 'Viajes'),
+        tabs: [
+          Tab(text: 'tab_summary'.tr()),
+          Tab(text: 'tab_by_day'.tr()),
+          Tab(text: 'tab_trips'.tr()),
         ],
       ),
     );
@@ -333,14 +334,14 @@ class _EarningsBreakdownScreenState extends ConsumerState<EarningsBreakdownScree
           _buildSection(
             '💰 DESGLOSE DE GANANCIAS',
             [
-              _buildRow('Tarifas Base', _summary['base_fares']),
+              _buildRow('earnings.base_fares'.tr(), _summary['base_fares']),
               _buildRow('Por Distancia', _summary['distance_earnings']),
               _buildRow('Por Tiempo', _summary['time_earnings']),
               _buildRow('Surge', _summary['surge_earnings'], color: AppTheme.warning),
               _buildDivider(),
-              _buildRow('Tarifa Bruta', _summary['gross_fares'], bold: true),
+              _buildRow('earnings.gross_fare'.tr(), _summary['gross_fares'], bold: true),
               _buildRow(
-                'Comisión Toro (${_platformFeePercent.toStringAsFixed(0)}%)',
+                'earnings.toro_commission_pct'.tr(namedArgs: {'pct': _platformFeePercent.toStringAsFixed(0)}),
                 _summary['platform_fee'],
                 negative: true,
               ),
@@ -355,7 +356,7 @@ class _EarningsBreakdownScreenState extends ConsumerState<EarningsBreakdownScree
                 ),
               _buildRow('IVA (16%)', _summary['tax_fee'], negative: true),
               _buildDivider(),
-              _buildRow('Tarifa Neta', _summary['net_fares'], bold: true, color: AppTheme.success),
+              _buildRow('earnings.net_fare'.tr(), _summary['net_fares'], bold: true, color: AppTheme.success),
             ],
           ),
           const SizedBox(height: 16),
@@ -364,7 +365,7 @@ class _EarningsBreakdownScreenState extends ConsumerState<EarningsBreakdownScree
           _buildSection(
             '🎁 EXTRAS',
             [
-              _buildRow('Propinas', _summary['tips'], icon: Icons.volunteer_activism),
+              _buildRow('earnings.tips_label'.tr(), _summary['tips'], icon: Icons.volunteer_activism),
               _buildRow('Quest Bonos', _summary['quest_bonuses'], icon: Icons.emoji_events),
               _buildRow('Streak Bonos', _summary['streak_bonuses'], icon: Icons.local_fire_department),
               _buildRow('Referidos', _summary['referral_bonuses'], icon: Icons.people),
@@ -425,7 +426,7 @@ class _EarningsBreakdownScreenState extends ConsumerState<EarningsBreakdownScree
                 Icons.speed,
               ),
               _buildStatRow(
-                'Propina Promedio',
+                'earnings.avg_tip'.tr(),
                 '${(_summary['avg_tip_percent'] ?? 0).toStringAsFixed(0)}%',
                 Icons.favorite,
               ),
@@ -443,10 +444,10 @@ class _EarningsBreakdownScreenState extends ConsumerState<EarningsBreakdownScree
 
   Widget _buildDailyTab() {
     if (_dailyBreakdown.isEmpty) {
-      return const Center(
+      return Center(
         child: Text(
-          'No hay datos para esta semana',
-          style: TextStyle(color: AppTheme.textMuted),
+          'earnings.no_data_this_week'.tr(),
+          style: const TextStyle(color: AppTheme.textMuted),
         ),
       );
     }
@@ -567,10 +568,10 @@ class _EarningsBreakdownScreenState extends ConsumerState<EarningsBreakdownScree
 
   Widget _buildTransactionsTab() {
     if (_transactions.isEmpty) {
-      return const Center(
+      return Center(
         child: Text(
-          'No hay transacciones esta semana',
-          style: TextStyle(color: AppTheme.textMuted),
+          'earnings.no_transactions_this_week'.tr(),
+          style: const TextStyle(color: AppTheme.textMuted),
         ),
       );
     }
@@ -614,7 +615,7 @@ class _EarningsBreakdownScreenState extends ConsumerState<EarningsBreakdownScree
       case 'tip':
         icon = Icons.volunteer_activism;
         color = AppTheme.success;
-        label = 'Propina';
+        label = 'tip_label'.tr();
         break;
       case 'bonus':
       case 'quest':
@@ -990,7 +991,7 @@ class _EarningsBreakdownScreenState extends ConsumerState<EarningsBreakdownScree
         statusIcon = Icons.hourglass_empty;
         break;
       default:
-        statusText = 'Pendiente';
+        statusText = 'pending_status'.tr();
         statusIcon = Icons.schedule;
     }
 

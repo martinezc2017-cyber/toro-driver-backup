@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
 import '../core/logging/app_logger.dart';
@@ -907,16 +908,16 @@ class CompleteDocumentStatus {
     // Driver docs
     if (!driverDocs.hasLicense) issues.add('Licencia de conducir requerida');
     if (driverDocs.isLicenseExpired) issues.add('Licencia expirada');
-    if (!driverDocs.hasProfilePhoto) issues.add('Foto de perfil requerida');
+    if (!driverDocs.hasProfilePhoto) issues.add('doc_service.profile_photo_required'.tr());
     if (!driverDocs.agreementSigned) issues.add('Contrato no firmado');
 
     // Vehicle docs
     if (!hasVehicle) {
-      issues.add('Registrar vehículo');
+      issues.add('doc_service.register_vehicle'.tr());
     } else if (vehicleDocs != null) {
-      if (!vehicleDocs!.hasInsurance) issues.add('Seguro requerido');
-      if (vehicleDocs!.isInsuranceExpired) issues.add('Seguro expirado');
-      if (!vehicleDocs!.insuranceVerified) issues.add('Seguro pendiente de verificación');
+      if (!vehicleDocs!.hasInsurance) issues.add('doc_service.insurance_required'.tr());
+      if (vehicleDocs!.isInsuranceExpired) issues.add('doc_service.insurance_expired'.tr());
+      if (!vehicleDocs!.insuranceVerified) issues.add('doc_service.insurance_pending'.tr());
       if (!vehicleDocs!.hasAllPhotos) issues.add('Faltan fotos del vehículo (${vehicleDocs!.vehiclePhotosCount}/4)');
       if (vehicleDocs!.inspectionDue) issues.add('Inspección vencida');
     }

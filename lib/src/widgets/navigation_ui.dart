@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/navigation_service.dart';
@@ -390,7 +391,7 @@ class NavigationUI extends StatelessWidget {
               child: Row(
                 children: [
                   Text(
-                    'Después',
+                    'nav.then'.tr(),
                     style: TextStyle(
                       color: Colors.white.withAlpha(180),
                       fontSize: 11,
@@ -974,7 +975,7 @@ class NavigationUI extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Text(
-            'Esperando: ${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}',
+            '${'nav.waiting'.tr()}: ${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}',
             style: TextStyle(
               color: isFreeTime ? Colors.blue : Colors.red,
               fontSize: 14,
@@ -983,7 +984,7 @@ class NavigationUI extends StatelessWidget {
           ),
           const Spacer(),
           Text(
-            isFreeTime ? 'Gratis' : 'Cobro activo',
+            isFreeTime ? 'nav.free'.tr() : 'nav.charge_active'.tr(),
             style: TextStyle(
               color: isFreeTime ? Colors.blue.withAlpha(180) : Colors.red,
               fontSize: 12,
@@ -1307,18 +1308,18 @@ class _SOSCountdownDialogState extends State<_SOSCountdownDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       backgroundColor: Colors.grey.shade900,
-      title: const Row(
+      title: Row(
         children: [
-          Icon(Icons.emergency, color: Colors.red, size: 28),
-          SizedBox(width: 8),
-          Text('Emergencia', style: TextStyle(color: Colors.white)),
+          const Icon(Icons.emergency, color: Colors.red, size: 28),
+          const SizedBox(width: 8),
+          Text('nav.emergency'.tr(), style: const TextStyle(color: Colors.white)),
         ],
       ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            'Llamando al 911 en $_countdown segundos...',
+            'nav.calling_911'.tr(namedArgs: {'seconds': _countdown.toString()}),
             style: const TextStyle(color: Colors.white70, fontSize: 16),
           ),
           const SizedBox(height: 16),
@@ -1340,7 +1341,7 @@ class _SOSCountdownDialogState extends State<_SOSCountdownDialog> {
             _timer.cancel();
             Navigator.of(context).pop();
           },
-          child: const Text('Cancelar', style: TextStyle(color: Colors.white54)),
+          child: Text('cancel'.tr(), style: const TextStyle(color: Colors.white54)),
         ),
         ElevatedButton(
           style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
@@ -1348,7 +1349,7 @@ class _SOSCountdownDialogState extends State<_SOSCountdownDialog> {
             _timer.cancel();
             _triggerSOS();
           },
-          child: const Text('Llamar ahora'),
+          child: Text('nav.call_now'.tr()),
         ),
       ],
     );

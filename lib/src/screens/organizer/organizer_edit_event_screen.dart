@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../services/tourism_event_service.dart';
@@ -77,7 +78,7 @@ class _OrganizerEditEventScreenState extends State<OrganizerEditEventScreen> {
         if (mounted) {
           setState(() {
             _isLoading = false;
-            _error = 'Evento no encontrado';
+            _error = 'organizer.error_loading'.tr();
           });
         }
         return;
@@ -89,7 +90,7 @@ class _OrganizerEditEventScreenState extends State<OrganizerEditEventScreen> {
         if (mounted) {
           setState(() {
             _isLoading = false;
-            _error = 'Este evento no puede ser editado. Status: $status';
+            _error = '${'organizer.error_loading'.tr()}: $status';
           });
         }
         return;
@@ -133,7 +134,7 @@ class _OrganizerEditEventScreenState extends State<OrganizerEditEventScreen> {
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _error = 'Error al cargar evento: $e';
+          _error = '${'organizer.error_loading'.tr()}: $e';
         });
       }
     }
@@ -193,7 +194,7 @@ class _OrganizerEditEventScreenState extends State<OrganizerEditEventScreen> {
           HapticService.error();
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Error al guardar cambios'),
+              content: Text('organizer.error_loading'.tr()),
               backgroundColor: AppColors.error,
             ),
           );
@@ -201,7 +202,7 @@ class _OrganizerEditEventScreenState extends State<OrganizerEditEventScreen> {
           HapticService.success();
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Cambios guardados exitosamente'),
+              content: Text('organizer.changes_saved'.tr()),
               backgroundColor: AppColors.success,
             ),
           );
@@ -214,7 +215,7 @@ class _OrganizerEditEventScreenState extends State<OrganizerEditEventScreen> {
         HapticService.error();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error al guardar: $e'),
+            content: Text('${'error_saving'.tr()}: $e'),
             backgroundColor: AppColors.error,
           ),
         );
@@ -273,8 +274,8 @@ class _OrganizerEditEventScreenState extends State<OrganizerEditEventScreen> {
           icon: const Icon(Icons.close, color: AppColors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Editar Evento',
+        title: Text(
+          'organizer.edit_event'.tr(),
           style: TextStyle(
             color: AppColors.textPrimary,
             fontWeight: FontWeight.w700,
@@ -304,7 +305,7 @@ class _OrganizerEditEventScreenState extends State<OrganizerEditEventScreen> {
             CircularProgressIndicator(color: AppColors.primary),
             SizedBox(height: 16),
             Text(
-              'Cargando evento...',
+              'loading_ellipsis'.tr(),
               style: TextStyle(
                 color: AppColors.textSecondary,
                 fontSize: 14,
@@ -359,7 +360,7 @@ class _OrganizerEditEventScreenState extends State<OrganizerEditEventScreen> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                    child: const Text('Volver'),
+                    child: Text('go_back'.tr()),
                   ),
                   const SizedBox(width: 12),
                   ElevatedButton(
@@ -373,7 +374,7 @@ class _OrganizerEditEventScreenState extends State<OrganizerEditEventScreen> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                    child: const Text('Reintentar'),
+                    child: Text('retry'.tr()),
                   ),
                 ],
               ),
@@ -397,18 +398,18 @@ class _OrganizerEditEventScreenState extends State<OrganizerEditEventScreen> {
           const SizedBox(height: 24),
 
           // Event Name
-          _buildSectionTitle('Nombre del Evento'),
+          _buildSectionTitle('organizer.event_name'.tr()),
           const SizedBox(height: 8),
           _buildTextField(
             controller: _nameController,
-            hint: 'Ej: Tour a las Piramides',
+            hint: 'organizer.address_hint'.tr(),
             icon: Icons.event,
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
-                return 'El nombre del evento es requerido';
+                return 'org_event_name_required'.tr();
               }
               if (value.trim().length < 3) {
-                return 'El nombre debe tener al menos 3 caracteres';
+                return 'org_event_name_required'.tr();
               }
               return null;
             },
@@ -416,30 +417,30 @@ class _OrganizerEditEventScreenState extends State<OrganizerEditEventScreen> {
           const SizedBox(height: 20),
 
           // Description
-          _buildSectionTitle('Descripcion'),
+          _buildSectionTitle('org_description'.tr()),
           const SizedBox(height: 8),
           _buildTextField(
             controller: _descriptionController,
-            hint: 'Describe el evento...',
+            hint: 'org_description_hint'.tr(),
             icon: Icons.description,
             maxLines: 4,
           ),
           const SizedBox(height: 20),
 
           // Event Date
-          _buildSectionTitle('Fecha del Evento'),
+          _buildSectionTitle('org_event_date'.tr()),
           const SizedBox(height: 8),
           _buildDatePicker(),
           const SizedBox(height: 20),
 
           // Time pickers
-          _buildSectionTitle('Horario'),
+          _buildSectionTitle('org_start_time'.tr()),
           const SizedBox(height: 8),
           Row(
             children: [
-              Expanded(child: _buildTimePicker('Hora de Inicio', _startTime, _selectStartTime)),
+              Expanded(child: _buildTimePicker('org_start_time'.tr(), _startTime, _selectStartTime)),
               const SizedBox(width: 12),
-              Expanded(child: _buildTimePicker('Hora de Fin', _endTime, _selectEndTime)),
+              Expanded(child: _buildTimePicker('org_end_time'.tr(), _endTime, _selectEndTime)),
             ],
           ),
           const SizedBox(height: 12),
@@ -447,18 +448,18 @@ class _OrganizerEditEventScreenState extends State<OrganizerEditEventScreen> {
           const SizedBox(height: 20),
 
           // Max Passengers
-          _buildSectionTitle('Pasajeros Maximos (Opcional)'),
+          _buildSectionTitle('org_seats_needed'.tr()),
           const SizedBox(height: 8),
           _buildTextField(
             controller: _maxPassengersController,
-            hint: 'Ej: 40',
+            hint: 'org_seats_hint'.tr(),
             icon: Icons.people,
             keyboardType: TextInputType.number,
             validator: (value) {
               if (value != null && value.trim().isNotEmpty) {
                 final number = int.tryParse(value.trim());
                 if (number == null || number <= 0) {
-                  return 'Ingresa un numero valido';
+                  return 'org_seats_invalid'.tr();
                 }
               }
               return null;
@@ -486,12 +487,12 @@ class _OrganizerEditEventScreenState extends State<OrganizerEditEventScreen> {
       case 'draft':
         statusIcon = Icons.edit_outlined;
         statusColor = AppColors.warning;
-        statusLabel = 'Esperando Puja';
+        statusLabel = 'organizer.pending_filter'.tr();
         break;
       case 'vehicle_accepted':
         statusIcon = Icons.check_circle_outline;
         statusColor = AppColors.success;
-        statusLabel = 'Vehiculo Confirmado';
+        statusLabel = 'approved_status'.tr();
         break;
       default:
         statusIcon = Icons.info_outline;
@@ -522,7 +523,7 @@ class _OrganizerEditEventScreenState extends State<OrganizerEditEventScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Estado: $statusLabel',
+                  '${'documents_status_label'.tr()}: $statusLabel',
                   style: TextStyle(
                     color: statusColor,
                     fontSize: 15,
@@ -643,9 +644,9 @@ class _OrganizerEditEventScreenState extends State<OrganizerEditEventScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Fecha del Evento',
-                    style: TextStyle(
+                  Text(
+                    'org_event_date'.tr(),
+                    style: const TextStyle(
                       color: AppColors.textTertiary,
                       fontSize: 12,
                     ),
@@ -748,8 +749,8 @@ class _OrganizerEditEventScreenState extends State<OrganizerEditEventScreen> {
           const SizedBox(width: 10),
           Text(
             isValid
-                ? 'Duracion estimada: ${hours}h ${minutes > 0 ? '${minutes}m' : ''}'
-                : 'Hora de fin debe ser despues de inicio',
+                ? '${'duration_label'.tr()}: ${hours}h ${minutes > 0 ? '${minutes}m' : ''}'
+                : 'org_end_time'.tr(),
             style: TextStyle(
               color: isValid ? AppColors.primary : AppColors.error,
               fontSize: 13,
@@ -788,14 +789,14 @@ class _OrganizerEditEventScreenState extends State<OrganizerEditEventScreen> {
                       strokeWidth: 2.5,
                     ),
                   )
-                : const Row(
+                : Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.save, size: 20),
-                      SizedBox(width: 10),
+                      const Icon(Icons.save, size: 20),
+                      const SizedBox(width: 10),
                       Text(
-                        'Guardar Cambios',
-                        style: TextStyle(
+                        'organizer.save_changes'.tr(),
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
                         ),
@@ -818,9 +819,9 @@ class _OrganizerEditEventScreenState extends State<OrganizerEditEventScreen> {
                 borderRadius: BorderRadius.circular(14),
               ),
             ),
-            child: const Text(
-              'Cancelar',
-              style: TextStyle(
+            child: Text(
+              'cancel'.tr(),
+              style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
               ),
@@ -836,14 +837,8 @@ class _OrganizerEditEventScreenState extends State<OrganizerEditEventScreen> {
   // ===========================================================================
 
   String _formatDate(DateTime date) {
-    const months = [
-      'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
-      'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic',
-    ];
-    const weekdays = [
-      'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab', 'Dom',
-    ];
-    return '${weekdays[date.weekday - 1]}, ${date.day} ${months[date.month - 1]} ${date.year}';
+    // Use intl DateFormat if available, otherwise numeric fallback
+    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
   String _formatTime(TimeOfDay time) {

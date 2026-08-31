@@ -135,8 +135,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
         return TripHistory(
           id: t['id'] ?? '',
-          pickupAddress: t['pickup_address'] ?? 'Origen',
-          dropoffAddress: t['destination_address'] ?? 'Destino',
+          pickupAddress: t['pickup_address'] ?? 'history.origin'.tr(),
+          dropoffAddress: t['destination_address'] ?? 'history.destination'.tr(),
           fare: fare,
           distance: distance,
           duration: duration,

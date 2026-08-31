@@ -1,3 +1,5 @@
+import 'package:easy_localization/easy_localization.dart';
+
 // Package delivery enums matching SQL schema
 enum ServiceType { normal, express, carpoolPackage }
 
@@ -401,32 +403,32 @@ class PackageDeliveryModel {
   String get statusDisplay {
     switch (status) {
       case DeliveryStatus.draft:
-        return 'Borrador';
+        return 'delivery_status.draft'.tr();
       case DeliveryStatus.pending:
-        return 'Pendiente';
+        return 'delivery_status.pending'.tr();
       case DeliveryStatus.accepted:
-        return 'Aceptado';
+        return 'delivery_status.accepted'.tr();
       case DeliveryStatus.driverEnRoute:
-        return 'En camino';
+        return 'delivery_status.en_route'.tr();
       case DeliveryStatus.pickedUp:
-        return 'Recogido';
+        return 'delivery_status.picked_up'.tr();
       case DeliveryStatus.inTransit:
-        return 'En tránsito';
+        return 'delivery_status.in_transit'.tr();
       case DeliveryStatus.delivered:
-        return 'Entregado';
+        return 'delivery_status.delivered'.tr();
       case DeliveryStatus.cancelled:
-        return 'Cancelado';
+        return 'delivery_status.cancelled'.tr();
     }
   }
 
   String get sizeDisplay {
     switch (size) {
       case PackageSize.small:
-        return 'Pequeño';
+        return 'package_size.small'.tr();
       case PackageSize.medium:
-        return 'Mediano';
+        return 'package_size.medium'.tr();
       case PackageSize.large:
-        return 'Grande';
+        return 'package_size.large'.tr();
     }
   }
 

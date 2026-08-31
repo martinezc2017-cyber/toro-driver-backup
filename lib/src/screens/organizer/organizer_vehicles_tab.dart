@@ -1,3 +1,4 @@
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -157,7 +158,9 @@ class _OrganizerVehiclesTabState extends State<OrganizerVehiclesTab> {
   void _shareDriverAppLink() {
     HapticService.mediumImpact();
 
-    const driverAppLink = 'https://play.google.com/store/apps/details?id=com.toro.driver';
+    final driverAppLink = Platform.isIOS
+        ? 'https://apps.apple.com/app/toro-driver/id6760872144'
+        : 'https://play.google.com/store/apps/details?id=com.toro.driver';
     final message = 'organizer.invite_message'.tr(namedArgs: {'link': driverAppLink});
 
     Share.share(message, subject: 'organizer.invite_driver'.tr());

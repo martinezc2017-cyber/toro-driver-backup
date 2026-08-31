@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -117,12 +118,12 @@ class _OrganizerProfileScreenState extends State<OrganizerProfileScreen> {
           children: [
             ListTile(
               leading: const Icon(Icons.photo_library, color: AppColors.primary),
-              title: const Text('Galería', style: TextStyle(color: AppColors.textPrimary)),
+              title: Text('gallery'.tr(), style: const TextStyle(color: AppColors.textPrimary)),
               onTap: () => Navigator.pop(context, ImageSource.gallery),
             ),
             ListTile(
               leading: const Icon(Icons.camera_alt, color: AppColors.success),
-              title: const Text('Cámara', style: TextStyle(color: AppColors.textPrimary)),
+              title: Text('camera'.tr(), style: const TextStyle(color: AppColors.textPrimary)),
               onTap: () => Navigator.pop(context, ImageSource.camera),
             ),
           ],
@@ -159,8 +160,8 @@ class _OrganizerProfileScreenState extends State<OrganizerProfileScreen> {
 
       if (newUrl != null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Logo actualizado'),
+          SnackBar(
+            content: Text('organizer.logo_updated'.tr()),
             backgroundColor: AppColors.success,
           ),
         );
@@ -176,18 +177,18 @@ class _OrganizerProfileScreenState extends State<OrganizerProfileScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Tarjeta de Presentación', style: TextStyle(color: AppColors.textPrimary)),
+        title: Text('organizer.business_card'.tr(), style: const TextStyle(color: AppColors.textPrimary)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
               leading: const Icon(Icons.photo_library, color: AppColors.primary),
-              title: const Text('Galería', style: TextStyle(color: AppColors.textPrimary)),
+              title: Text('gallery'.tr(), style: const TextStyle(color: AppColors.textPrimary)),
               onTap: () => Navigator.pop(context, ImageSource.gallery),
             ),
             ListTile(
               leading: const Icon(Icons.camera_alt, color: AppColors.success),
-              title: const Text('Cámara', style: TextStyle(color: AppColors.textPrimary)),
+              title: Text('camera'.tr(), style: const TextStyle(color: AppColors.textPrimary)),
               onTap: () => Navigator.pop(context, ImageSource.camera),
             ),
           ],
@@ -223,8 +224,8 @@ class _OrganizerProfileScreenState extends State<OrganizerProfileScreen> {
 
         if (newUrl != null) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Tarjeta de presentación actualizada'),
+            SnackBar(
+              content: Text('organizer.card_updated'.tr()),
               backgroundColor: AppColors.success,
             ),
           );
@@ -342,8 +343,8 @@ class _OrganizerProfileScreenState extends State<OrganizerProfileScreen> {
                         color: AppColors.primary,
                       ),
                     )
-                  : const Text(
-                      'Guardar',
+                  : Text(
+                      'org_profile.save'.tr(),
                       style: TextStyle(
                         color: AppColors.primary,
                         fontWeight: FontWeight.w600,
@@ -361,8 +362,8 @@ class _OrganizerProfileScreenState extends State<OrganizerProfileScreen> {
                     children: [
                       Icon(Icons.business, size: 64, color: AppColors.textTertiary),
                       const SizedBox(height: 16),
-                      const Text(
-                        'No tienes perfil registrado',
+                      Text(
+                        'org_profile.no_profile'.tr(),
                         style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
                       ),
                     ],
@@ -442,7 +443,7 @@ class _OrganizerProfileScreenState extends State<OrganizerProfileScreen> {
                           children: [
                             _buildTextField(
                               controller: _companyNameController,
-                              label: 'Nombre de la Empresa',
+                              label: 'org_profile.company_name'.tr(),
                               icon: Icons.business,
                               validator: (v) => v == null || v.isEmpty
                                   ? 'Requerido'
@@ -451,14 +452,14 @@ class _OrganizerProfileScreenState extends State<OrganizerProfileScreen> {
                             const SizedBox(height: 16),
                             _buildTextField(
                               controller: _phoneController,
-                              label: 'Telefono',
+                              label: 'org_profile.phone'.tr(),
                               icon: Icons.phone,
                               keyboardType: TextInputType.phone,
                             ),
                             const SizedBox(height: 16),
                             _buildTextField(
                               controller: _emailController,
-                              label: 'Email de Contacto',
+                              label: 'org_profile.contact_email'.tr(),
                               icon: Icons.email,
                               keyboardType: TextInputType.emailAddress,
                             ),

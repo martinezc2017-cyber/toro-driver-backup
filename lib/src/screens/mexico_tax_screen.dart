@@ -566,7 +566,7 @@ class _MexicoTaxScreenState extends State<MexicoTaxScreen> {
       } else {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('No se pudo abrir el enlace'), backgroundColor: AppColors.error),
+          SnackBar(content: Text('tax.cannot_open_link'.tr()), backgroundColor: AppColors.error),
         );
       }
     } catch (e) {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/haptic_service.dart';
@@ -80,7 +81,7 @@ class _RentalDetailScreenState extends State<RentalDetailScreen> {
     final minDays = l['min_rental_days'] ?? 1;
     final maxDays = l['max_rental_days'] ?? 90;
     final instant = l['instant_booking'] == true;
-    final ownerName = l['owner_name'] ?? _ownerInfo?['name'] ?? 'Propietario';
+    final ownerName = l['owner_name'] ?? _ownerInfo?['name'] ?? 'rental.owner'.tr();
     final ownerPhone = l['owner_phone'] ?? _ownerInfo?['phone'] ?? '';
 
     return Scaffold(
@@ -100,11 +101,11 @@ class _RentalDetailScreenState extends State<RentalDetailScreen> {
               _circleButton(Icons.share_rounded, () {
                 HapticService.lightImpact();
                 Clipboard.setData(
-                  ClipboardData(text: 'Mira este $title en TORO Rentals'),
+                  ClipboardData(text: 'rental.check_out_vehicle'.tr(namedArgs: {'title': title})),
                 );
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: const Text('Link copiado'),
+                    content: Text('rental.link_copied'.tr()),
                     backgroundColor: _accent,
                     behavior: SnackBarBehavior.floating,
                   ),
@@ -250,7 +251,7 @@ class _RentalDetailScreenState extends State<RentalDetailScreen> {
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                'Inmediato',
+                                'rental.instant'.tr(),
                                 style: TextStyle(
                                   color: AppColors.success,
                                   fontSize: 11,
@@ -283,7 +284,7 @@ class _RentalDetailScreenState extends State<RentalDetailScreen> {
                   // Description
                   if (description.isNotEmpty) ...[
                     const SizedBox(height: 20),
-                    _sectionTitle('Descripcion'),
+                    _sectionTitle('rental.description'.tr()),
                     const SizedBox(height: 8),
                     Text(
                       description,
@@ -297,7 +298,7 @@ class _RentalDetailScreenState extends State<RentalDetailScreen> {
 
                   // ═══ PRICING ═══
                   const SizedBox(height: 24),
-                  _sectionTitle('Precios'),
+                  _sectionTitle('rental.prices'.tr()),
                   const SizedBox(height: 12),
                   Container(
                     padding: const EdgeInsets.all(16),
@@ -317,22 +318,22 @@ class _RentalDetailScreenState extends State<RentalDetailScreen> {
                       children: [
                         if (dailyPrice > 0)
                           _priceRow(
-                            'Por Dia',
+                            'rental.per_day'.tr(),
                             '\$${dailyPrice.toStringAsFixed(0)} $currency',
                           ),
                         if (weeklyPrice > 0)
                           _priceRow(
-                            'Por Semana',
+                            'rental.per_week'.tr(),
                             '\$${weeklyPrice.toStringAsFixed(0)} $currency',
                           ),
                         if (monthlyPrice > 0)
                           _priceRow(
-                            'Por Mes',
+                            'rental.per_month'.tr(),
                             '\$${monthlyPrice.toStringAsFixed(0)} $currency',
                           ),
                         if (perKm > 0)
                           _priceRow(
-                            'Por ${distanceUnit(country: currency == 'MXN' ? 'MX' : 'US')} Extra',
+                            'rental.per_extra_unit'.tr(namedArgs: {'unit': distanceUnit(country: currency == 'MXN' ? 'MX' : 'US')}),
                             '${formatMoney(pricePerKilometerToDisplay(perKm, country: currency == 'MXN' ? 'MX' : 'US'), country: currency == 'MXN' ? 'MX' : 'US')} $currency',
                           ),
                         if (deposit > 0) ...[
@@ -341,7 +342,7 @@ class _RentalDetailScreenState extends State<RentalDetailScreen> {
                             height: 20,
                           ),
                           _priceRow(
-                            'Deposito',
+                            'rental.deposit'.tr(),
                             '\$${deposit.toStringAsFixed(0)} $currency',
                             isDeposit: true,
                           ),
@@ -353,7 +354,7 @@ class _RentalDetailScreenState extends State<RentalDetailScreen> {
                   // ═══ FEATURES ═══
                   if (features.isNotEmpty) ...[
                     const SizedBox(height: 24),
-                    _sectionTitle('Caracteristicas'),
+                    _sectionTitle('rental.features'.tr()),
                     const SizedBox(height: 12),
                     Wrap(
                       spacing: 8,
@@ -396,14 +397,14 @@ class _RentalDetailScreenState extends State<RentalDetailScreen> {
 
                   // ═══ VEHICLE SPECS ═══
                   const SizedBox(height: 24),
-                  _sectionTitle('Especificaciones'),
+                  _sectionTitle('rental.specifications'.tr()),
                   const SizedBox(height: 12),
                   _specCard([
                     if (vin.isNotEmpty) _specRow('VIN', vin),
-                    _specRow('Combustible', _fuelPolicyLabel(fuelPolicy)),
+                    _specRow('rental.fuel'.tr(), _fuelPolicyLabel(fuelPolicy)),
                     if (mileageLimit > 0)
                       _specRow(
-                        'Limite ${distanceUnit(country: currency == 'MXN' ? 'MX' : 'US')}',
+                        'rental.limit_unit'.tr(namedArgs: {'unit': distanceUnit(country: currency == 'MXN' ? 'MX' : 'US')}),
                         formatDistance(
                           mileageLimit,
                           country: currency == 'MXN' ? 'MX' : 'US',
@@ -411,29 +412,29 @@ class _RentalDetailScreenState extends State<RentalDetailScreen> {
                         ),
                       ),
                     _specRow(
-                      'Minimo Renta',
-                      '$minDays dia${minDays > 1 ? 's' : ''}',
+                      'rental.min_rental'.tr(),
+                      '$minDays ${'rental.days'.tr()}',
                     ),
-                    _specRow('Maximo Renta', '$maxDays dias'),
+                    _specRow('rental.max_rental'.tr(), '$maxDays ${'rental.days'.tr()}'),
                   ]),
 
                   // ═══ INSURANCE ═══
                   if (insCompany.isNotEmpty) ...[
                     const SizedBox(height: 24),
-                    _sectionTitle('Seguro'),
+                    _sectionTitle('rental.insurance'.tr()),
                     const SizedBox(height: 12),
                     _specCard([
-                      _specRow('Compania', insCompany),
-                      if (insPolicy.isNotEmpty) _specRow('Poliza', insPolicy),
+                      _specRow('rental.company'.tr(), insCompany),
+                      if (insPolicy.isNotEmpty) _specRow('rental.policy'.tr(), insPolicy),
                       if (insExpiry.isNotEmpty)
-                        _specRow('Vencimiento', insExpiry),
+                        _specRow('rental.expiry'.tr(), insExpiry),
                     ]),
                   ],
 
                   // ═══ LOCATION ═══
                   if (address.isNotEmpty) ...[
                     const SizedBox(height: 24),
-                    _sectionTitle('Ubicacion de Entrega'),
+                    _sectionTitle('rental.pickup_location'.tr()),
                     const SizedBox(height: 12),
                     Container(
                       padding: const EdgeInsets.all(14),
@@ -473,7 +474,7 @@ class _RentalDetailScreenState extends State<RentalDetailScreen> {
 
                   // ═══ OWNER ═══
                   const SizedBox(height: 24),
-                  _sectionTitle('Propietario'),
+                  _sectionTitle('rental.owner'.tr()),
                   const SizedBox(height: 12),
                   Container(
                     padding: const EdgeInsets.all(16),
@@ -664,7 +665,7 @@ class _RentalDetailScreenState extends State<RentalDetailScreen> {
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: const Text('Telefono no disponible'),
+                        content: Text('rental.phone_unavailable'.tr()),
                         backgroundColor: AppColors.warning,
                         behavior: SnackBarBehavior.floating,
                       ),
@@ -695,9 +696,9 @@ class _RentalDetailScreenState extends State<RentalDetailScreen> {
                         size: 20,
                       ),
                       const SizedBox(width: 8),
-                      const Text(
-                        'Contactar Dueno',
-                        style: TextStyle(
+                      Text(
+                        'rental.contact_owner'.tr(),
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
@@ -722,7 +723,7 @@ class _RentalDetailScreenState extends State<RentalDetailScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('No se pudo llamar a $phone'),
+            content: Text('rental.call_failed'.tr(namedArgs: {'phone': phone})),
             backgroundColor: AppColors.error,
           ),
         );
@@ -845,11 +846,11 @@ class _RentalDetailScreenState extends State<RentalDetailScreen> {
   String _fuelPolicyLabel(String policy) {
     switch (policy) {
       case 'full_to_full':
-        return 'Lleno a Lleno';
+        return 'rental.fuel_full_to_full'.tr();
       case 'same_level':
-        return 'Mismo Nivel';
+        return 'rental.fuel_same_level'.tr();
       case 'prepaid':
-        return 'Prepagado';
+        return 'rental.fuel_prepaid'.tr();
       default:
         return policy;
     }

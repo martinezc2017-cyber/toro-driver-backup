@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
@@ -95,7 +96,7 @@ class _TourismPassengerListScreenState extends State<TourismPassengerListScreen>
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _error = 'Error al cargar pasajeros: $e';
+          _error = 'passengers_error_loading'.tr(namedArgs: {'error': '$e'});
         });
       }
     }
@@ -261,7 +262,7 @@ class _TourismPassengerListScreenState extends State<TourismPassengerListScreen>
       // Get current driver location
       final position = await _locationService.getCurrentPosition();
       if (position == null) {
-        _showError('No se pudo obtener la ubicacion GPS');
+        _showError('passengers_no_gps'.tr());
         return;
       }
 
@@ -270,7 +271,7 @@ class _TourismPassengerListScreenState extends State<TourismPassengerListScreen>
           Provider.of<DriverProvider>(context, listen: false);
       final driverId = driverProvider.driver?.id;
       if (driverId == null) {
-        _showError('Error: No se encontro el conductor');
+        _showError('passengers_driver_not_found'.tr());
         return;
       }
 
@@ -287,11 +288,11 @@ class _TourismPassengerListScreenState extends State<TourismPassengerListScreen>
       );
 
       HapticService.success();
-      _showSuccess('Check-in registrado');
+      _showSuccess('passengers_checkin_registered'.tr());
       await _loadPassengers();
     } catch (e) {
       HapticService.error();
-      _showError('Error al hacer check-in: $e');
+      _showError('passengers_checkin_error'.tr(namedArgs: {'error': '$e'}));
     }
   }
 
@@ -356,8 +357,8 @@ class _TourismPassengerListScreenState extends State<TourismPassengerListScreen>
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Pasajeros',
+          Text(
+            'passengers_title'.tr(),
             style: TextStyle(
               color: AppColors.textPrimary,
               fontWeight: FontWeight.w700,
@@ -365,7 +366,7 @@ class _TourismPassengerListScreenState extends State<TourismPassengerListScreen>
             ),
           ),
           Text(
-            '$_boardedCount/$_totalAccepted a bordo',
+            'passengers_boarded_count'.tr(namedArgs: {'boarded': '$_boardedCount', 'total': '$_totalAccepted'}),
             style: const TextStyle(
               color: AppColors.success,
               fontSize: 12,
@@ -400,7 +401,7 @@ class _TourismPassengerListScreenState extends State<TourismPassengerListScreen>
             ),
             const SizedBox(height: 16),
             Text(
-              _error ?? 'Error desconocido',
+              _error ?? 'tourism_error_unknown'.tr(),
               style: const TextStyle(
                 color: AppColors.textSecondary,
                 fontSize: 14,
@@ -417,7 +418,7 @@ class _TourismPassengerListScreenState extends State<TourismPassengerListScreen>
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: const Text('Reintentar'),
+              child: Text('tourism_retry'.tr()),
             ),
           ],
         ),
@@ -457,11 +458,11 @@ class _TourismPassengerListScreenState extends State<TourismPassengerListScreen>
                   color: AppColors.textSecondary,
                   size: 20,
                 ),
-                items: const [
-                  DropdownMenuItem(value: 'all', child: Text('Todos')),
-                  DropdownMenuItem(value: 'boarded', child: Text('A bordo')),
-                  DropdownMenuItem(value: 'pending', child: Text('Pendientes')),
-                  DropdownMenuItem(value: 'off_boarded', child: Text('Bajaron')),
+                items: [
+                  DropdownMenuItem(value: 'all', child: Text('all'.tr())),
+                  DropdownMenuItem(value: 'boarded', child: Text('on_board'.tr())),
+                  DropdownMenuItem(value: 'pending', child: Text('pending_label'.tr())),
+                  DropdownMenuItem(value: 'off_boarded', child: Text('got_off'.tr())),
                 ],
                 onChanged: _onFilterChanged,
               ),
@@ -485,7 +486,7 @@ class _TourismPassengerListScreenState extends State<TourismPassengerListScreen>
                   fontSize: 14,
                 ),
                 decoration: InputDecoration(
-                  hintText: 'Buscar...',
+                  hintText: 'search_ellipsis'.tr(),
                   hintStyle: const TextStyle(color: AppColors.textTertiary),
                   prefixIcon: const Icon(
                     Icons.search,
@@ -531,8 +532,8 @@ class _TourismPassengerListScreenState extends State<TourismPassengerListScreen>
             const SizedBox(height: 12),
             Text(
               _searchQuery.isNotEmpty
-                  ? 'No se encontraron pasajeros'
-                  : 'Sin pasajeros',
+                  ? 'passengers_not_found'.tr()
+                  : 'passengers_none'.tr(),
               style: const TextStyle(
                 color: AppColors.textTertiary,
                 fontSize: 14,
@@ -555,7 +556,7 @@ class _TourismPassengerListScreenState extends State<TourismPassengerListScreen>
   }
 
   Widget _buildPassengerCard(Map<String, dynamic> passenger) {
-    final name = passenger['invitee_name'] ?? 'Pasajero';
+    final name = passenger['invitee_name'] ?? 'chat_passenger_fallback'.tr();
     final email = passenger['invitee_email'] as String?;
     final phone = passenger['invitee_phone'] as String?;
     final seat = passenger['seat_number'] as String?;
@@ -645,19 +646,19 @@ class _TourismPassengerListScreenState extends State<TourismPassengerListScreen>
             _buildInfoRow(Icons.email_outlined, email),
           // Seat number
           if (seat != null && seat.isNotEmpty)
-            _buildInfoRow(Icons.event_seat, 'Asiento: $seat'),
+            _buildInfoRow(Icons.event_seat, '${'passengers_seat'.tr()}: $seat'),
           // Boarding/dropoff stops
           if (boardingStop != null && boardingStop.isNotEmpty)
-            _buildInfoRow(Icons.arrow_upward, 'Sube: $boardingStop'),
+            _buildInfoRow(Icons.arrow_upward, '${'passengers_boards'.tr()}: $boardingStop'),
           if (dropoffStop != null && dropoffStop.isNotEmpty)
-            _buildInfoRow(Icons.arrow_downward, 'Baja: $dropoffStop'),
+            _buildInfoRow(Icons.arrow_downward, '${'passengers_drops_off'.tr()}: $dropoffStop'),
           // GPS info
           if (gpsInfo != null)
             _buildInfoRow(Icons.gps_fixed, 'GPS: $gpsInfo')
           else if (gpsEnabled)
-            _buildInfoRow(Icons.gps_fixed, 'GPS: Activado (sin señal)')
+            _buildInfoRow(Icons.gps_fixed, 'GPS: ${'passengers_gps_no_signal'.tr()}')
           else
-            _buildInfoRow(Icons.gps_off, 'GPS: Apagado'),
+            _buildInfoRow(Icons.gps_off, 'GPS: ${'passengers_gps_off'.tr()}'),
           // Notes
           if (notes != null && notes.isNotEmpty)
             Padding(
@@ -701,7 +702,7 @@ class _TourismPassengerListScreenState extends State<TourismPassengerListScreen>
               Expanded(
                 child: _buildActionButton(
                   icon: Icons.check_circle_outline,
-                  label: 'Check-in',
+                  label: 'check_in'.tr(),
                   color: AppColors.success,
                   onTap: () => _showCheckInModal(passenger),
                 ),
@@ -815,18 +816,18 @@ class _TourismPassengerListScreenState extends State<TourismPassengerListScreen>
       case 'boarded':
         return _StatusConfig(
           color: AppColors.success,
-          label: 'A bordo',
+          label: 'on_board'.tr(),
         );
       case 'off_boarded':
         return _StatusConfig(
           color: AppColors.info,
-          label: 'Bajo',
+          label: 'got_off'.tr(),
         );
       case 'accepted':
       default:
         return _StatusConfig(
           color: AppColors.warning,
-          label: 'Pendiente',
+          label: 'pending_label'.tr(),
         );
     }
   }
@@ -843,13 +844,13 @@ class _TourismPassengerListScreenState extends State<TourismPassengerListScreen>
     final diff = DateTime.now().difference(updateTime);
 
     if (diff.inMinutes < 1) {
-      return 'ahora';
+      return 'time_now'.tr();
     } else if (diff.inMinutes < 60) {
-      return 'hace ${diff.inMinutes} min';
+      return 'time_minutes_ago'.tr(namedArgs: {'min': '${diff.inMinutes}'});
     } else if (diff.inHours < 24) {
-      return 'hace ${diff.inHours}h';
+      return 'time_hours_ago'.tr(namedArgs: {'hours': '${diff.inHours}'});
     } else {
-      return 'hace ${diff.inDays}d';
+      return 'time_days_ago'.tr(namedArgs: {'days': '${diff.inDays}'});
     }
   }
 }
@@ -910,7 +911,7 @@ class _CheckInModalState extends State<_CheckInModal> {
 
   @override
   Widget build(BuildContext context) {
-    final name = widget.passenger['invitee_name'] ?? 'Pasajero';
+    final name = widget.passenger['invitee_name'] ?? 'chat_passenger_fallback'.tr();
 
     return Container(
       padding: EdgeInsets.only(
@@ -951,8 +952,8 @@ class _CheckInModalState extends State<_CheckInModal> {
             ),
             const SizedBox(height: 20),
             // Check-in type options
-            const Text(
-              'Tipo de check-in',
+            Text(
+              'passengers_checkin_type'.tr(),
               style: TextStyle(
                 color: AppColors.textSecondary,
                 fontSize: 13,
@@ -964,17 +965,17 @@ class _CheckInModalState extends State<_CheckInModal> {
               spacing: 8,
               runSpacing: 8,
               children: [
-                _buildTypeChip('boarding', 'Abordaje'),
-                _buildTypeChip('stop_arrival', 'Llegada parada'),
-                _buildTypeChip('stop_departure', 'Salida parada'),
-                _buildTypeChip('return_boarding', 'Re-abordaje'),
-                _buildTypeChip('final_arrival', 'Llegada final'),
+                _buildTypeChip('boarding', 'passengers_boarding'.tr()),
+                _buildTypeChip('stop_arrival', 'passengers_stop_arrival'.tr()),
+                _buildTypeChip('stop_departure', 'passengers_stop_departure'.tr()),
+                _buildTypeChip('return_boarding', 'passengers_reboarding'.tr()),
+                _buildTypeChip('final_arrival', 'passengers_final_arrival'.tr()),
               ],
             ),
             const SizedBox(height: 20),
             // Notes field
-            const Text(
-              'Notas (opcional)',
+            Text(
+              'passengers_notes_optional'.tr(),
               style: TextStyle(
                 color: AppColors.textSecondary,
                 fontSize: 13,
@@ -996,7 +997,7 @@ class _CheckInModalState extends State<_CheckInModal> {
                   fontSize: 14,
                 ),
                 decoration: const InputDecoration(
-                  hintText: 'Agregar notas...',
+                  hintText: 'passengers_add_notes'.tr(),
                   hintStyle: TextStyle(color: AppColors.textTertiary),
                   border: InputBorder.none,
                   contentPadding: EdgeInsets.all(12),
@@ -1027,8 +1028,8 @@ class _CheckInModalState extends State<_CheckInModal> {
                           color: Colors.white,
                         ),
                       )
-                    : const Text(
-                        'Confirmar Check-in',
+                    : Text(
+                        'passengers_confirm_checkin'.tr(),
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,

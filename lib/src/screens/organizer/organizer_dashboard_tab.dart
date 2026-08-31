@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../utils/app_colors.dart';
@@ -212,7 +213,7 @@ class _OrganizerDashboardTabState extends State<OrganizerDashboardTab> {
                 child: _buildKpiCard(
                   icon: Icons.event,
                   value: '$_activeEventsCount',
-                  label: 'Activos',
+                  label: 'tab_active'.tr(),
                   color: AppColors.primary,
                 ),
               ),
@@ -239,7 +240,7 @@ class _OrganizerDashboardTabState extends State<OrganizerDashboardTab> {
                 child: _buildKpiCard(
                   icon: Icons.pending,
                   value: '$_pendingInvitations',
-                  label: 'Pendientes',
+                  label: 'tab_pending'.tr(),
                   color: AppColors.warning,
                 ),
               ),
@@ -599,13 +600,13 @@ class _OrganizerDashboardTabState extends State<OrganizerDashboardTab> {
   String _statusLabel(String status) {
     switch (status) {
       case 'active':
-        return 'Activo';
+        return 'active_status'.tr();
       case 'vehicle_accepted':
         return 'Vehículo OK';
       case 'in_progress':
-        return 'En curso';
+        return 'in_progress_status'.tr();
       case 'completed':
-        return 'Completado';
+        return 'completed_status'.tr();
       case 'cancelled':
         return 'Cancelado';
       case 'draft':

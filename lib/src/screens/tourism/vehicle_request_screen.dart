@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -199,9 +200,9 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text(
-              'Cancelar',
-              style: TextStyle(color: AppColors.textSecondary),
+            child: Text(
+              'cancel'.tr(),
+              style: const TextStyle(color: AppColors.textSecondary),
             ),
           ),
           ElevatedButton(
@@ -517,10 +518,10 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                         ),
                       ),
                       const SizedBox(width: 12),
-                      const Expanded(
+                      Expanded(
                         child: Text(
-                          'Enviar Puja',
-                          style: TextStyle(
+                          'send_bid'.tr(),
+                          style: const TextStyle(
                             color: AppColors.textPrimary,
                             fontSize: 20,
                             fontWeight: FontWeight.w700,
@@ -693,7 +694,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                               borderRadius: BorderRadius.circular(14),
                             ),
                           ),
-                          child: const Text('Cancelar'),
+                          child: Text('cancel'.tr()),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -702,7 +703,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                         child: ElevatedButton.icon(
                           onPressed: () => Navigator.pop(context, true),
                           icon: const Icon(Icons.gavel_rounded, size: 18),
-                          label: const Text('Enviar Puja'),
+                          label: Text('send_bid'.tr()),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.gold,
                             foregroundColor: Colors.black,
@@ -1110,7 +1111,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                               borderRadius: BorderRadius.circular(14),
                             ),
                           ),
-                          child: const Text('Cancelar'),
+                          child: Text('cancel'.tr()),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -1119,7 +1120,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                         child: ElevatedButton.icon(
                           onPressed: () => Navigator.pop(context, true),
                           icon: const Icon(Icons.swap_horiz_rounded, size: 18),
-                          label: const Text('Enviar Contra-oferta'),
+                          label: Text('send_counter_offer'.tr()),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.warning,
                             foregroundColor: Colors.black,
@@ -1320,7 +1321,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                       controller: customController,
                       style: const TextStyle(color: AppColors.textPrimary),
                       decoration: InputDecoration(
-                        hintText: 'Escribe la razon...',
+                        hintText: 'organizer.write_reason'.tr(),
                         hintStyle: const TextStyle(
                           color: AppColors.textTertiary,
                         ),
@@ -1359,7 +1360,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          child: const Text('Cancelar'),
+                          child: Text('cancel'.tr()),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -1379,7 +1380,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          child: const Text('Rechazar'),
+                          child: Text('reject'.tr()),
                         ),
                       ),
                     ],
@@ -1749,7 +1750,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                 fontSize: 12,
               ),
               decoration: InputDecoration(
-                hintText: 'Buscar destino, chofer...',
+                hintText: 'tourism.search_destination_driver'.tr(),
                 hintStyle: const TextStyle(
                   color: AppColors.textTertiary,
                   fontSize: 12,
@@ -2051,10 +2052,10 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                         ),
                       ),
                       const SizedBox(width: 12),
-                      const Expanded(
+                      Expanded(
                         child: Text(
-                          'Enviar Puja',
-                          style: TextStyle(
+                          'send_bid'.tr(),
+                          style: const TextStyle(
                             color: AppColors.textPrimary,
                             fontSize: 20,
                             fontWeight: FontWeight.w700,
@@ -2223,7 +2224,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                               borderRadius: BorderRadius.circular(14),
                             ),
                           ),
-                          child: const Text('Cancelar'),
+                          child: Text('cancel'.tr()),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -2232,7 +2233,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                         child: ElevatedButton.icon(
                           onPressed: () => Navigator.pop(context, true),
                           icon: const Icon(Icons.gavel_rounded, size: 18),
-                          label: const Text('Enviar Puja'),
+                          label: Text('send_bid'.tr()),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.gold,
                             foregroundColor: Colors.black,
@@ -2845,7 +2846,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                 _acceptCounterOffer(request);
               },
               icon: const Icon(Icons.check_circle_outline, size: 18),
-              label: const Text('Aceptar Precio'),
+              label: Text('accept_price'.tr()),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.success,
                 foregroundColor: Colors.white,
@@ -2868,7 +2869,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                     _rejectRequest(request);
                   },
                   icon: const Icon(Icons.close, size: 16),
-                  label: const Text('Rechazar'),
+                  label: Text('reject'.tr()),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.error,
                     side: BorderSide(
@@ -2919,7 +2920,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
           child: OutlinedButton.icon(
             onPressed: () => _rejectRequest(request),
             icon: const Icon(Icons.close, size: 16),
-            label: const Text('Rechazar'),
+            label: Text('reject'.tr()),
             style: OutlinedButton.styleFrom(
               foregroundColor: AppColors.error,
               side: BorderSide(color: AppColors.error.withValues(alpha: 0.5)),
@@ -2939,7 +2940,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
               overCapacity ? Icons.lock : Icons.gavel_rounded,
               size: 16,
             ),
-            label: Text(overCapacity ? 'Sin capacidad' : 'Enviar Puja'),
+            label: Text(overCapacity ? 'no_capacity'.tr() : 'send_bid'.tr()),
             style: ElevatedButton.styleFrom(
               backgroundColor: overCapacity
                   ? AppColors.textTertiary
@@ -3805,7 +3806,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
             child: ElevatedButton.icon(
               onPressed: () => _showTripOfferDialog(trip),
               icon: const Icon(Icons.local_offer, size: 16),
-              label: const Text('Enviar Oferta'),
+              label: Text('send_offer'.tr()),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.gold,
                 foregroundColor: Colors.black,
@@ -3889,10 +3890,10 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                           ),
                         ),
                         const SizedBox(width: 12),
-                        const Expanded(
+                        Expanded(
                           child: Text(
-                            'Enviar Oferta',
-                            style: TextStyle(
+                            'send_offer'.tr(),
+                            style: const TextStyle(
                               color: AppColors.textPrimary,
                               fontSize: 20,
                               fontWeight: FontWeight.w700,
@@ -4086,7 +4087,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                                 borderRadius: BorderRadius.circular(14),
                               ),
                             ),
-                            child: const Text('Cancelar'),
+                            child: Text('cancel'.tr()),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -4098,7 +4099,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                                 ? () => Navigator.pop(sheetCtx, true)
                                 : null,
                             icon: const Icon(Icons.send, size: 18),
-                            label: const Text('Enviar Oferta'),
+                            label: Text('send_offer'.tr()),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.gold,
                               foregroundColor: Colors.black,
@@ -4337,7 +4338,7 @@ class _EventDetailsSheet extends StatelessWidget {
                   _buildInfoCard([
                     _buildInfoRow(
                       Icons.calendar_today,
-                      'Fecha',
+                      'date_label'.tr(),
                       _formatDate(startDate),
                     ),
                     if (endDate != null && endDate != startDate)
@@ -4393,7 +4394,7 @@ class _EventDetailsSheet extends StatelessWidget {
                   _buildInfoCard([
                     _buildInfoRow(Icons.business, 'Empresa', organizerName),
                     if (organizerPhone != null && organizerPhone.isNotEmpty)
-                      _buildInfoRow(Icons.phone, 'Telefono', organizerPhone),
+                      _buildInfoRow(Icons.phone, 'phone'.tr(), organizerPhone),
                   ]),
 
                   // Organizer notes
@@ -4528,7 +4529,7 @@ class _EventDetailsSheet extends StatelessWidget {
                     child: OutlinedButton.icon(
                       onPressed: onReject,
                       icon: const Icon(Icons.close, size: 18),
-                      label: const Text('Rechazar'),
+                      label: Text('reject'.tr()),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.error,
                         side: BorderSide(
@@ -4551,7 +4552,7 @@ class _EventDetailsSheet extends StatelessWidget {
                         size: 18,
                       ),
                       label: Text(
-                        onBid == null ? 'Sin capacidad' : 'Enviar Puja',
+                        onBid == null ? 'no_capacity'.tr() : 'send_bid'.tr(),
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: onBid == null

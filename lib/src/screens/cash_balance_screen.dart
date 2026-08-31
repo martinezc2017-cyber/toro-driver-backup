@@ -103,10 +103,10 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
           indicatorColor: const Color(0xFFF59E0B),
           labelColor: const Color(0xFFF59E0B),
           unselectedLabelColor: Colors.white54,
-          tabs: const [
-            Tab(text: 'Resumen'),
-            Tab(text: 'Historial'),
-            Tab(text: 'Depositar'),
+          tabs: [
+            Tab(text: 'screens.cash_balance.summary_tab'.tr()),
+            Tab(text: 'cash.history'.tr()),
+            Tab(text: 'screens.cash_balance.deposit_tab'.tr()),
           ],
         ),
       ),
@@ -260,9 +260,9 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              'Disponible',
-                              style: TextStyle(
+                            Text(
+                              'cash.available'.tr(),
+                              style: const TextStyle(
                                 color: Color(0xFF94A3B8),
                                 fontSize: 11,
                               ),
@@ -292,9 +292,9 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              'Pendiente',
-                              style: TextStyle(
+                            Text(
+                              'pending_status'.tr(),
+                              style: const TextStyle(
                                 color: Color(0xFF94A3B8),
                                 fontSize: 11,
                               ),
@@ -570,7 +570,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
-              paymentStatus == 'paid' ? 'Pagado' : 'Pendiente',
+              paymentStatus == 'paid' ? 'cash.paid'.tr() : 'pending_status'.tr(),
               style: TextStyle(
                 color: paymentStatus == 'paid'
                     ? const Color(0xFF10B981)
@@ -613,8 +613,8 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
             Icon(Icons.receipt_long, color: Colors.white24, size: 64),
             SizedBox(height: 16),
             Text(
-              'Sin movimientos de efectivo',
-              style: TextStyle(color: Colors.white54, fontSize: 16),
+              'cash.no_movements'.tr(),
+              style: const TextStyle(color: Colors.white54, fontSize: 16),
             ),
           ],
         ),
@@ -763,7 +763,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
                   _buildMiniRow('Insurance', insuranceFee),
                   _buildMiniRow('Tax', taxFee),
                   const Divider(color: Colors.white12, height: 12),
-                  _buildMiniRow('Comisión por pagar', amount, bold: true),
+                  _buildMiniRow('cash.commission_payable'.tr(), amount, bold: true),
                 ],
               ),
             ),
@@ -1098,9 +1098,9 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
                         color: Colors.black,
                       ),
                     )
-                  : const Text(
-                      'Enviar Comprobante',
-                      style: TextStyle(
+                  : Text(
+                      'cash.send_receipt'.tr(),
+                      style: const TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 16,
                       ),
@@ -1174,15 +1174,15 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
     switch (status) {
       case 'approved':
         statusColor = const Color(0xFF10B981);
-        statusLabel = 'Aprobado';
+        statusLabel = 'approved_status'.tr();
         break;
       case 'rejected':
         statusColor = const Color(0xFFDC2626);
-        statusLabel = 'Rechazado';
+        statusLabel = 'rejected_status'.tr();
         break;
       default:
         statusColor = const Color(0xFFF59E0B);
-        statusLabel = 'Pendiente';
+        statusLabel = 'pending_status'.tr();
     }
 
     return Container(
@@ -1372,9 +1372,9 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text(
-              'Cancelar',
-              style: TextStyle(color: Colors.white54),
+            child: Text(
+              'cancel'.tr(),
+              style: const TextStyle(color: Colors.white54),
             ),
           ),
           ElevatedButton(

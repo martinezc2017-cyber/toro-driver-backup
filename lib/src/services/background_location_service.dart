@@ -12,6 +12,7 @@
 
 import 'dart:async';
 import 'dart:ui';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -192,7 +193,7 @@ void onStart(ServiceInstance service) async {
         await flnp.show(
           notificationId,
           idle ? 'TORO Driver — En Línea' : 'TORO Driver - Viaje activo',
-          idle ? 'Disponible para viajes' : notificationContent,
+          idle ? 'bg_service.available_for_rides'.tr() : notificationContent,
           const NotificationDetails(android: androidDetails),
         );
       }

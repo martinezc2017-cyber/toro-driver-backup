@@ -1,3 +1,5 @@
+import 'package:easy_localization/easy_localization.dart';
+
 enum RideStatus {
   pending,
   accepted,
@@ -98,11 +100,11 @@ PaymentMethod parsePaymentMethod(String? method) {
 String paymentMethodDisplayText(PaymentMethod method, {bool spanish = false}) {
   switch (method) {
     case PaymentMethod.cash:
-      return spanish ? 'Efectivo' : 'Cash';
+      return 'payment_cash'.tr();
     case PaymentMethod.wallet:
-      return spanish ? 'Wallet' : 'Wallet';
+      return 'payment_wallet'.tr();
     case PaymentMethod.card:
-      return spanish ? 'Tarjeta' : 'Card';
+      return 'payment_card'.tr();
   }
 }
 

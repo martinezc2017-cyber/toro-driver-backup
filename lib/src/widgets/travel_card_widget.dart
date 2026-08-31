@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../utils/app_colors.dart';
 import '../utils/money_format.dart';
@@ -314,19 +315,19 @@ class TravelCardWidget extends StatelessWidget {
     switch (eventStatus) {
       case 'full':
         color = AppColors.warning;
-        label = 'Lleno';
+        label = 'event_status.full'.tr();
         break;
       case 'cancelled':
         color = AppColors.error;
-        label = 'Cancelado';
+        label = 'event_status.cancelled'.tr();
         break;
       case 'completed':
         color = AppColors.textTertiary;
-        label = 'Finalizado';
+        label = 'event_status.completed'.tr();
         break;
       default:
         color = AppColors.success;
-        label = 'Activo';
+        label = 'event_status.active'.tr();
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
@@ -469,7 +470,7 @@ class TravelCardWidget extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (stopsCount > 0) ...[
-          _statRow(Icons.place, 'Paradas', '$stopsCount'),
+          _statRow(Icons.place, 'travel_card.stops'.tr(), '$stopsCount'),
           const SizedBox(height: 18),
         ],
         if (totalSeats > 0) ...[
@@ -483,7 +484,7 @@ class TravelCardWidget extends StatelessWidget {
         if (showPrice && ticketPrice > 0)
           _statRow(
             Icons.confirmation_number_outlined,
-            'Boleto',
+            'travel_card.ticket'.tr(),
             '${formatMoney(ticketPrice, country: countryCode)} ${currencyCode(country: countryCode)}',
           ),
       ],

@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'dart:ui' show Color;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -54,9 +55,9 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   }
 
   final channelName = channelId == 'ride_notifications_v2'
-      ? 'Solicitudes de viaje'
+      ? 'notif.ride_requests_channel'.tr()
       : channelId == 'chat_notifications_v2'
-          ? 'Mensajes'
+          ? 'notif.messages_channel'.tr()
           : channelId == 'earnings_notifications_v2'
               ? 'Ganancias'
               : 'General';
@@ -192,9 +193,9 @@ class NotificationService {
 
     if (androidPlugin != null) {
       await androidPlugin.createNotificationChannel(
-        const AndroidNotificationChannel(
+        AndroidNotificationChannel(
           rideChannel,
-          'Solicitudes de viaje',
+          'notif.ride_requests_channel'.tr(),
           description: 'Notificaciones de nuevas solicitudes de viaje',
           importance: Importance.high,
           playSound: true,
@@ -203,9 +204,9 @@ class NotificationService {
       );
 
       await androidPlugin.createNotificationChannel(
-        const AndroidNotificationChannel(
+        AndroidNotificationChannel(
           chatChannel,
-          'Mensajes',
+          'notif.messages_channel'.tr(),
           description: 'Notificaciones de mensajes de pasajeros',
           importance: Importance.high,
           playSound: true,
@@ -259,9 +260,9 @@ class NotificationService {
     final androidDetails = AndroidNotificationDetails(
       channelId,
       channelId == rideChannel
-          ? 'Solicitudes de viaje'
+          ? 'notif.ride_requests_channel'.tr()
           : channelId == chatChannel
-          ? 'Mensajes'
+          ? 'notif.messages_channel'.tr()
           : channelId == earningsChannel
           ? 'Ganancias'
           : 'General',
@@ -339,9 +340,9 @@ class NotificationService {
     String? country,
   }) async {
     await _showLocalNotification(
-      title: '¡Nueva solicitud de viaje!',
+      title: 'notif.new_ride_request'.tr(),
       body:
-          'Recoger en: $pickupAddress\nTarifa: ${formatMoney(fare, country: country)}',
+          'notif.pickup_at_fare'.tr(namedArgs: {'address': pickupAddress, 'fare': formatMoney(fare, country: country)}),
       payload: jsonEncode({'type': 'ride_request', 'id': rideId}),
       channelId: rideChannel,
     );
@@ -368,7 +369,7 @@ class NotificationService {
     String? country,
   }) async {
     await _showLocalNotification(
-      title: '¡Ganancia recibida!',
+      title: 'notif.earnings_received'.tr(),
       body: '+${formatMoney(amount, country: country)} - $description',
       payload: jsonEncode({'type': 'earning'}),
       channelId: earningsChannel,
@@ -507,7 +508,7 @@ class NotificationService {
     required double totalKm,
   }) async {
     await _showLocalNotification(
-      title: '¡Nueva Solicitud de Puja!',
+      title: 'notif.new_bid_request'.tr(),
       body:
           '$organizerName te invita a participar en: $eventName\n'
           '${formatDistance(totalKm, decimals: 0)}',
@@ -525,14 +526,14 @@ class NotificationService {
   }) async {
     if (accepted) {
       await _showLocalNotification(
-        title: 'Nueva Oferta Recibida',
+        title: 'notif.new_offer_received'.tr(),
         body: '$driverName ofrece ${formatMoney(pricePerKm)}/${distanceUnit()}',
         payload: jsonEncode({'type': 'bid_response', 'id': bidId}),
         channelId: earningsChannel,
       );
     } else {
       await _showLocalNotification(
-        title: 'Puja Rechazada',
+        title: 'notif.bid_rejected'.tr(),
         body: '$driverName rechazó la solicitud',
         payload: jsonEncode({'type': 'bid_rejected', 'id': bidId}),
         channelId: generalChannel,
@@ -549,7 +550,7 @@ class NotificationService {
   }) async {
     if (isWinner) {
       await _showLocalNotification(
-        title: '¡Tu Puja Fue Seleccionada!',
+        title: 'notif.bid_selected'.tr(),
         body:
             'Ganaste: $eventName a ${formatMoney(pricePerKm)}/${distanceUnit()}',
         payload: jsonEncode({'type': 'bid_won', 'id': bidId}),
@@ -587,7 +588,7 @@ class NotificationService {
     required String eventName,
   }) async {
     await _showLocalNotification(
-      title: 'Nueva Solicitud de Pasajero',
+      title: 'notif.new_passenger_request'.tr(),
       body: '$passengerName quiere unirse a: $eventName',
       payload: jsonEncode({'type': 'join_request_new', 'event_id': eventId}),
       channelId: generalChannel,
@@ -601,7 +602,7 @@ class NotificationService {
     required double rating,
   }) async {
     await _showLocalNotification(
-      title: 'Nueva Resena',
+      title: 'notif.new_review'.tr(),
       body:
           'Calificacion: ${rating.toStringAsFixed(1)} estrellas para: $eventName',
       payload: jsonEncode({'type': 'review_submitted', 'event_id': eventId}),
@@ -616,7 +617,7 @@ class NotificationService {
     String? message,
   }) async {
     await _showLocalNotification(
-      title: 'Actualizacion de Reporte',
+      title: 'notif.report_update'.tr(),
       body: message ?? 'Tu reporte ha sido actualizado. Estado: $status',
       payload: jsonEncode({'type': 'abuse_report_update', 'id': reportId}),
       channelId: generalChannel,
@@ -647,7 +648,7 @@ class NotificationService {
     String? country,
   }) async {
     await _showLocalNotification(
-      title: isOverdue ? '⚠️ Pago Vencido' : 'Recordatorio de Pago',
+      title: isOverdue ? 'notif.payment_overdue'.tr() : 'notif.payment_reminder'.tr(),
       body: isOverdue
           ? 'Pago vencido de ${formatMoney(amountDue, country: country)}\nTu cuenta puede ser suspendida'
           : 'Tienes un pago pendiente de ${formatMoney(amountDue, country: country)}',
@@ -663,7 +664,7 @@ class NotificationService {
     String? country,
   }) async {
     await _showLocalNotification(
-      title: '✅ Pago Aprobado',
+      title: 'notif.payment_approved'.tr(),
       body:
           'Tu pago de ${formatMoney(amount, country: country)} ha sido aprobado',
       payload: jsonEncode({'type': 'payment_approved', 'id': paymentId}),
@@ -678,7 +679,7 @@ class NotificationService {
   }) async {
     if (isBlocked) {
       await _showLocalNotification(
-        title: '🚫 Cuenta Suspendida',
+        title: 'notif.account_suspended'.tr(),
         body: reason ?? 'Tu cuenta ha sido suspendida por pagos vencidos',
         payload: jsonEncode({'type': 'account_blocked'}),
         channelId: rideChannel,

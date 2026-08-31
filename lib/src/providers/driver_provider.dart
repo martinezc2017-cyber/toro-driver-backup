@@ -599,7 +599,7 @@ class DriverProvider with ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     } catch (e) {
-      _error = 'Error al cargar ranking: $e';
+      _error = 'error.loading_ranking'.tr(namedArgs: {'error': e.toString()});
       _isLoading = false;
       notifyListeners();
     }

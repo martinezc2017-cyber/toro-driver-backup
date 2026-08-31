@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
@@ -107,7 +108,7 @@ class TourismInvitationService {
         try {
           await _client.from('notifications').insert({
             'user_id': linkedUserId,
-            'title': 'Nueva invitacion de turismo',
+            'title': 'tourism_service.new_tourism_invitation'.tr(),
             'body': 'Te han invitado al evento "${normalizedInvitee['invited_name'] ?? 'turismo'}". Revisa tu seccion Explorar.',
             'type': 'tourism_invitation',
             'data': {
@@ -175,7 +176,7 @@ class TourismInvitationService {
         // Priority: invitation data > profile data
         invitation['invitee_name'] = invitation['invited_name'] ??
             profile?['full_name'] ??
-            'Sin nombre';
+            'no_name'.tr();
         invitation['invitee_email'] =
             invitation['invited_email'] ?? profile?['email'];
         invitation['invitee_phone'] =
@@ -213,7 +214,7 @@ class TourismInvitationService {
         for (final row in fallbackResponse as List) {
           final invitation = Map<String, dynamic>.from(row as Map);
           invitation['invitee_name'] =
-              invitation['invited_name'] ?? 'Sin nombre';
+              invitation['invited_name'] ?? 'no_name'.tr();
           invitation['invitee_email'] = invitation['invited_email'];
           invitation['invitee_phone'] = invitation['invited_phone'];
           invitation['has_profile'] = false;
@@ -434,7 +435,7 @@ class TourismInvitationService {
   /// Returns a deep link URL for the invitation.
   String generateInvitationUrl(String code) {
     // Using a universal link format that can be handled by the app
-    return 'https://toro.app/invite/$code';
+    return 'https://toro-ride.com/event/$code';
   }
 
   // ---------------------------------------------------------------------------
@@ -520,7 +521,7 @@ class TourismInvitationService {
       if (driverId != null) {
         await _client.from('notifications').insert({
           'user_id': driverId,
-          'title': 'Nuevo Pasajero',
+          'title': 'tourism_service.new_passenger'.tr(),
           'body': '$passengerName se unió a "$eventName"',
           'type': 'tourism_invitation_accepted',
           'data': {

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../services/location_service.dart';
 
 enum LocationStatus {
@@ -47,7 +48,7 @@ class LocationProvider with ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _error = 'Error al inicializar ubicación: $e';
+      _error = 'error.initializing_location'.tr(namedArgs: {'error': e.toString()});
       _status = LocationStatus.error;
       notifyListeners();
       return false;
@@ -75,7 +76,7 @@ class LocationProvider with ChangeNotifier {
           notifyListeners();
         },
         onError: (e) {
-          _error = 'Error de ubicación: $e';
+          _error = 'error.getting_location'.tr(namedArgs: {'error': e.toString()});
           notifyListeners();
         },
       );
@@ -85,7 +86,7 @@ class LocationProvider with ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _error = 'Error al iniciar tracking: $e';
+      _error = 'error.starting_tracking'.tr(namedArgs: {'error': e.toString()});
       _status = LocationStatus.error;
       notifyListeners();
       return false;
@@ -109,7 +110,7 @@ class LocationProvider with ChangeNotifier {
       notifyListeners();
       return _currentPosition;
     } catch (e) {
-      _error = 'Error al obtener ubicación: $e';
+      _error = 'error.getting_location'.tr(namedArgs: {'error': e.toString()});
       notifyListeners();
       return null;
     }

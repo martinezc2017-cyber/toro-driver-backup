@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../services/bus_tracking_service.dart';
 
 /// Panel with quick action buttons for bus events
@@ -53,7 +54,7 @@ class _BusEventPanelState extends State<BusEventPanel> {
       vehicleId: widget.vehicleId,
     );
     await _trackingService.departed();
-    _showSnackBar('Ruta iniciada - GPS activo');
+    _showSnackBar('bus.route_started_gps_active'.tr());
   }
 
   Future<void> _endRoute() async {
@@ -61,20 +62,20 @@ class _BusEventPanelState extends State<BusEventPanel> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1A1A1A),
-        title: const Text('Finalizar Ruta', style: TextStyle(color: Colors.white)),
-        content: const Text(
-          '¿Estás seguro de que quieres finalizar esta ruta?',
-          style: TextStyle(color: Colors.white70),
+        title: Text('bus.finalize_route'.tr(), style: const TextStyle(color: Colors.white)),
+        content: Text(
+          'bus.confirm_finalize_route'.tr(),
+          style: const TextStyle(color: Colors.white70),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancelar'),
+            child: Text('cancel'.tr()),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-            child: const Text('Finalizar'),
+            child: Text('bus.finalize'.tr()),
           ),
         ],
       ),
@@ -82,46 +83,46 @@ class _BusEventPanelState extends State<BusEventPanel> {
 
     if (confirm == true) {
       await _trackingService.completed();
-      _showSnackBar('Ruta completada');
+      _showSnackBar('bus.route_completed'.tr());
       widget.onRouteCompleted?.call();
     }
   }
 
   Future<void> _logStop() async {
-    final stopName = await _showInputDialog('Nombre de la parada', 'Ej: Estación Central');
+    final stopName = await _showInputDialog('bus.stop_name'.tr(), 'bus.stop_name_hint'.tr());
     if (stopName != null && stopName.isNotEmpty) {
       await _trackingService.arrivedAtStop(stopName);
-      _showSnackBar('Parada registrada: $stopName');
+      _showSnackBar('bus.stop_registered'.tr(namedArgs: {'name': stopName}));
     }
   }
 
   Future<void> _passengerBoarded() async {
-    final countStr = await _showInputDialog('Pasajeros que suben', '1', isNumber: true);
+    final countStr = await _showInputDialog('bus.passengers_boarding'.tr(), '1', isNumber: true);
     final count = int.tryParse(countStr ?? '1') ?? 1;
     await _trackingService.passengerBoarded(count: count);
-    _showSnackBar('+$count pasajero(s) abordaron');
+    _showSnackBar('bus.passengers_boarded'.tr(namedArgs: {'count': count.toString()}));
   }
 
   Future<void> _passengerDropped() async {
-    final countStr = await _showInputDialog('Pasajeros que bajan', '1', isNumber: true);
+    final countStr = await _showInputDialog('bus.passengers_alighting'.tr(), '1', isNumber: true);
     final count = int.tryParse(countStr ?? '1') ?? 1;
     await _trackingService.passengerDropped(count: count);
-    _showSnackBar('-$count pasajero(s) bajaron');
+    _showSnackBar('bus.passengers_dropped'.tr(namedArgs: {'count': count.toString()}));
   }
 
   Future<void> _reportEmergency() async {
-    final notes = await _showInputDialog('Descripción de la emergencia', 'Describe lo que pasó...');
+    final notes = await _showInputDialog('bus.emergency_description'.tr(), 'bus.emergency_hint'.tr());
     if (notes != null && notes.isNotEmpty) {
       await _trackingService.emergency(notes);
-      _showSnackBar('EMERGENCIA REPORTADA', isError: true);
+      _showSnackBar('bus.emergency_reported'.tr(), isError: true);
     }
   }
 
   Future<void> _reportDelay() async {
-    final notes = await _showInputDialog('Motivo del retraso', 'Ej: Tráfico en la autopista');
+    final notes = await _showInputDialog('bus.delay_reason'.tr(), 'bus.delay_hint'.tr());
     if (notes != null && notes.isNotEmpty) {
       await _trackingService.reportDelay(notes);
-      _showSnackBar('Retraso reportado');
+      _showSnackBar('bus.delay_reported'.tr());
     }
   }
 
@@ -150,11 +151,11 @@ class _BusEventPanelState extends State<BusEventPanel> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancelar'),
+            child: Text('cancel'.tr()),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, controller.text),
-            child: const Text('Confirmar'),
+            child: Text('confirm'.tr()),
           ),
         ],
       ),
@@ -207,7 +208,7 @@ class _BusEventPanelState extends State<BusEventPanel> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _isTracking ? 'GPS Activo' : 'GPS Inactivo',
+                      _isTracking ? 'bus.gps_active'.tr() : 'bus.gps_inactive'.tr(),
                       style: TextStyle(
                         color: _isTracking ? Colors.green : Colors.grey,
                         fontSize: 14,
@@ -216,7 +217,7 @@ class _BusEventPanelState extends State<BusEventPanel> {
                     ),
                     if (_isTracking)
                       Text(
-                        'Enviando ubicación cada 10s',
+                        'bus.sending_location'.tr(),
                         style: TextStyle(
                           color: Colors.white.withOpacity(0.5),
                           fontSize: 11,
@@ -260,7 +261,7 @@ class _BusEventPanelState extends State<BusEventPanel> {
               child: ElevatedButton.icon(
                 onPressed: _startRoute,
                 icon: const Icon(Icons.play_arrow),
-                label: const Text('INICIAR RUTA'),
+                label: Text('bus.start_route'.tr()),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green,
                   foregroundColor: Colors.white,
@@ -279,31 +280,31 @@ class _BusEventPanelState extends State<BusEventPanel> {
               children: [
                 _buildEventButton(
                   icon: Icons.location_on,
-                  label: 'Parada',
+                  label: 'bus.stop'.tr(),
                   color: Colors.blue,
                   onTap: _logStop,
                 ),
                 _buildEventButton(
                   icon: Icons.person_add,
-                  label: 'Subieron',
+                  label: 'bus.boarded'.tr(),
                   color: Colors.green,
                   onTap: _passengerBoarded,
                 ),
                 _buildEventButton(
                   icon: Icons.person_remove,
-                  label: 'Bajaron',
+                  label: 'bus.alighted'.tr(),
                   color: Colors.purple,
                   onTap: _passengerDropped,
                 ),
                 _buildEventButton(
                   icon: Icons.schedule,
-                  label: 'Retraso',
+                  label: 'bus.delay'.tr(),
                   color: Colors.orange,
                   onTap: _reportDelay,
                 ),
                 _buildEventButton(
                   icon: Icons.emergency,
-                  label: 'Emergencia',
+                  label: 'bus.emergency'.tr(),
                   color: Colors.red,
                   onTap: _reportEmergency,
                 ),
@@ -316,7 +317,7 @@ class _BusEventPanelState extends State<BusEventPanel> {
               child: OutlinedButton.icon(
                 onPressed: _endRoute,
                 icon: const Icon(Icons.check_circle),
-                label: const Text('FINALIZAR RUTA'),
+                label: Text('bus.end_route'.tr()),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: Colors.green,
                   side: const BorderSide(color: Colors.green),

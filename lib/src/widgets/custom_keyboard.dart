@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 /// Custom Email Keyboard for email input fields
 class CustomEmailKeyboard extends StatefulWidget {
@@ -166,7 +167,7 @@ class _CustomEmailKeyboardState extends State<CustomEmailKeyboard> {
                       children: [
                         Icon(Icons.check_rounded, size: 14),
                         SizedBox(width: 4),
-                        Text('Listo', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                        Text('done'.tr(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                       ],
                     ),
                   ),
@@ -408,7 +409,7 @@ class _CustomTextKeyboardState extends State<CustomTextKeyboard> {
                       children: [
                         Icon(Icons.check_rounded, size: 13),
                         SizedBox(width: 4),
-                        Text('Listo', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+                        Text('done'.tr(), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
                       ],
                     ),
                   ),
@@ -566,7 +567,7 @@ class _CustomNumericKeyboardState extends State<CustomNumericKeyboard> {
                       children: [
                         Icon(Icons.check_rounded, size: 18),
                         SizedBox(width: 8),
-                        Text('Listo', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                        Text('done'.tr(), style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                       ],
                     ),
                   ),
@@ -734,7 +735,7 @@ class _CustomPhoneKeyboardState extends State<CustomPhoneKeyboard> {
                       children: [
                         Icon(Icons.check_rounded, size: 16),
                         SizedBox(width: 6),
-                        Text('Listo', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                        Text('done'.tr(), style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                       ],
                     ),
                   ),

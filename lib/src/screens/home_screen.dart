@@ -2778,20 +2778,19 @@ class _HomeScreenState extends State<HomeScreen>
   // ═══════════════════════════════════════════════════════════════════════════
   // QR TIER PANEL - Blue transparent panel with tier info + QR code
   // New model: QR scans per week → reduced Toro commission (not bonus %)
-  // Cada tier baja 1% la comision sobre la BASE del pais (pricing_config).
+  // Cada tier baja 3% la comision sobre la BASE del pais (pricing_config).
+  // Tier 5 max: platform baja hasta 5%.
   // ═══════════════════════════════════════════════════════════════════════════
 
   // Commission tiers: index 0 = no QR, 1-5 = tier 1-5
   static const List<int> _tierMaxQRs = [0, 6, 12, 18, 24, 30];
 
   /// Comision de TORO para un tier, VIVA desde pricing_config.
-  ///
-  /// Antes era una tabla fija [20, 19, 18, 17, 16, 15] escrita a mano, o sea
-  /// la base de USA. A un chofer de Mexico (base 18%) le decia "6 QRs para
-  /// 19%" cuando su siguiente tier en realidad es 17%.
+  /// Usa reductionForTier() del servicio que devuelve 3/6/9/12/15 por tier.
   double _tierCommissionOf(int tier) {
     final base = _qrPointsService.basePlatformPercent;
-    return (base - tier.clamp(0, 5)).clamp(0, 100).toDouble();
+    final reduction = _qrPointsService.reductionForTier(tier.clamp(0, 5));
+    return (base - reduction).clamp(0, 100).toDouble();
   }
 
   int _getDriverTier(int qrLevel) {
@@ -2813,7 +2812,7 @@ class _HomeScreenState extends State<HomeScreen>
         driver.qrCode ?? 'TORO-DRV-${driver.id.substring(0, 5).toUpperCase()}';
     // Beta cerrada: el QR manda al rider a la landing/waitlist de toro-ride.com
     // (registro de riders aún cerrado) con el ref del driver, no a la app.
-    final qrLink = 'https://toro-ride.com/?ref=$qrCode';
+    final qrLink = 'https://toro-ride.com/d/$qrCode';
 
     // Live data from DriverQRPointsService
     final qrLevel = _qrPointsService.currentLevel.level;
@@ -3142,7 +3141,7 @@ class _HomeScreenState extends State<HomeScreen>
                             Expanded(
                               child: _buildQRActionButton(
                                 icon: Icons.share,
-                                label: 'Compartir',
+                                label: 'share'.tr(),
                                 onTap: () => _shareDriverQR(qrCode, qrLink),
                               ),
                             ),
@@ -10231,7 +10230,7 @@ class _GpsTrackingSheetState extends State<_GpsTrackingSheet> {
                               ),
                               const SizedBox(width: 5),
                               Text(
-                                'GPS Activo',
+                                'gps_active'.tr(),
                                 style: TextStyle(
                                   color: AppColors.success,
                                   fontSize: 11,
@@ -10852,7 +10851,7 @@ class _MyVehiclesSheetState extends State<_MyVehiclesSheet> {
                       ),
                     ).then((_) => _loadVehicles());
                   },
-                  tooltip: 'Editar',
+                  tooltip: 'edit_label'.tr(),
                 ),
                 IconButton(
                   icon: const Icon(Icons.delete_outline_rounded, size: 20),
@@ -10862,7 +10861,7 @@ class _MyVehiclesSheetState extends State<_MyVehiclesSheet> {
                     vehicleName,
                     source: source,
                   ),
-                  tooltip: 'Eliminar',
+                  tooltip: 'delete'.tr(),
                 ),
               ],
             ),

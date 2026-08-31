@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -216,7 +217,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
           children: [
             Icon(Icons.system_update, color: Colors.blue[700]),
             const SizedBox(width: 12),
-            const Text('Nueva Version'),
+            Text('update.new_version'.tr()),
           ],
         ),
         content: Column(
@@ -224,17 +225,17 @@ class _UpdateDialogState extends State<_UpdateDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Version ${widget.info.newVersion} disponible',
+              'update.version_available'.tr(namedArgs: {'version': widget.info.newVersion}),
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const SizedBox(height: 8),
             Text(
-              'Tu version actual: ${widget.info.currentVersion}',
+              'update.current_version'.tr(namedArgs: {'version': widget.info.currentVersion}),
               style: TextStyle(color: Colors.grey[600], fontSize: 14),
             ),
             if (widget.info.releaseNotes != null) ...[
               const SizedBox(height: 16),
-              const Text('Novedades:', style: TextStyle(fontWeight: FontWeight.w600)),
+              Text('update.whats_new'.tr(), style: const TextStyle(fontWeight: FontWeight.w600)),
               const SizedBox(height: 4),
               Text(widget.info.releaseNotes!, style: const TextStyle(fontSize: 14)),
             ],
@@ -243,7 +244,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
               LinearProgressIndicator(value: _progress),
               const SizedBox(height: 8),
               Text(
-                'Descargando... ${(_progress * 100).toInt()}%',
+                'update.downloading_pct'.tr(namedArgs: {'pct': (_progress * 100).toInt().toString()}),
                 style: const TextStyle(fontSize: 12),
               ),
             ],
@@ -263,10 +264,10 @@ class _UpdateDialogState extends State<_UpdateDialog> {
                   children: [
                     Icon(Icons.warning_amber, color: Colors.orange[700], size: 20),
                     const SizedBox(width: 8),
-                    const Expanded(
+                    Expanded(
                       child: Text(
-                        'Esta actualizacion es obligatoria',
-                        style: TextStyle(fontSize: 12),
+                        'update.mandatory'.tr(),
+                        style: const TextStyle(fontSize: 12),
                       ),
                     ),
                   ],
@@ -279,7 +280,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
           if (!widget.info.isMandatory && !_downloading)
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Mas tarde'),
+              child: Text('update.later'.tr()),
             ),
           ElevatedButton.icon(
             onPressed: _downloading || !widget.info.hasApk ? null : _downloadUpdate,
@@ -290,7 +291,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.download),
-            label: Text(_downloading ? 'Descargando...' : 'Actualizar'),
+            label: Text(_downloading ? 'update.updating'.tr() : 'update.update_btn'.tr()),
           ),
         ],
       ),
@@ -315,7 +316,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
     if (!success && mounted) {
       setState(() {
         _downloading = false;
-        _error = 'Error al descargar. Intenta de nuevo.';
+        _error = 'update.download_error'.tr();
       });
     }
   }

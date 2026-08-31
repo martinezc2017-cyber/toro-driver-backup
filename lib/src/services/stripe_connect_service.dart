@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show FunctionException;
 import 'package:url_launcher/url_launcher.dart';
 import '../config/supabase_config.dart';
@@ -554,9 +555,9 @@ extension StripeAccountStatusExtension on StripeAccountStatus {
       case StripeAccountStatus.incomplete:
         return 'Incompleto';
       case StripeAccountStatus.pendingVerification:
-        return 'Pendiente verificacion';
+        return 'stripe.pending_verification'.tr();
       case StripeAccountStatus.active:
-        return 'Activo';
+        return 'stripe.active_status'.tr();
       case StripeAccountStatus.error:
         return 'Error';
     }
@@ -656,7 +657,7 @@ class PayoutRecord {
       case 'paid':
         return 'Pagado';
       case 'pending':
-        return 'Pendiente';
+        return 'stripe.pending_status'.tr();
       case 'in_transit':
         return 'En tránsito';
       case 'canceled':

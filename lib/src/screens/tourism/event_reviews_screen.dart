@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
@@ -110,19 +111,19 @@ class _EventReviewsScreenState extends State<EventReviewsScreen> {
 
     final buffer = StringBuffer();
     buffer.writeln(
-        'Reporte de Resenas - ${widget.eventTitle ?? "Evento"}');
+        'reviews_report_title'.tr(namedArgs: {'event': widget.eventTitle ?? 'reviews_event_fallback'.tr()}));
     buffer.writeln('=' * 40);
     buffer.writeln(
-        'Calificacion general: ${_avgOverall.toStringAsFixed(1)}/5');
-    buffer.writeln('Conductor: ${_avgDriver.toStringAsFixed(1)}/5');
-    buffer.writeln('Servicio: ${_avgOrganizer.toStringAsFixed(1)}/5');
-    buffer.writeln('Vehiculo: ${_avgVehicle.toStringAsFixed(1)}/5');
-    buffer.writeln('Total de resenas: $_totalReviews');
-    buffer.writeln('Recomendarian: $_recommendPct%');
+        '${'reviews_overall_rating'.tr()}: ${_avgOverall.toStringAsFixed(1)}/5');
+    buffer.writeln('${'reviews_driver_category'.tr()}: ${_avgDriver.toStringAsFixed(1)}/5');
+    buffer.writeln('${'reviews_service_category'.tr()}: ${_avgOrganizer.toStringAsFixed(1)}/5');
+    buffer.writeln('${'reviews_vehicle_category'.tr()}: ${_avgVehicle.toStringAsFixed(1)}/5');
+    buffer.writeln('${'reviews_total_reviews'.tr()}: $_totalReviews');
+    buffer.writeln('${'reviews_would_recommend'.tr()}: $_recommendPct%');
     buffer.writeln();
 
     if (_sortedTags.isNotEmpty) {
-      buffer.writeln('Sugerencias de mejora:');
+      buffer.writeln('${'reviews_improvement_suggestions'.tr()}:');
       for (final tag in _sortedTags.take(5)) {
         buffer.writeln('  - ${tag.key} (${tag.value})');
       }
@@ -132,7 +133,7 @@ class _EventReviewsScreenState extends State<EventReviewsScreen> {
     if (_reviews.any((r) =>
         r['comment'] != null &&
         r['comment'].toString().trim().isNotEmpty)) {
-      buffer.writeln('Comentarios anonimos:');
+      buffer.writeln('${'reviews_anonymous_comments'.tr()}:');
       for (final r in _reviews) {
         final comment = r['comment']?.toString().trim();
         if (comment != null && comment.isNotEmpty) {
@@ -151,20 +152,20 @@ class _EventReviewsScreenState extends State<EventReviewsScreen> {
     if (dateStr == null) return '';
     try {
       final date = DateTime.parse(dateStr);
-      const months = [
+      final months = [
         '',
-        'Ene',
-        'Feb',
-        'Mar',
-        'Abr',
-        'May',
-        'Jun',
-        'Jul',
-        'Ago',
-        'Sep',
-        'Oct',
-        'Nov',
-        'Dic',
+        'reviews_month_jan'.tr(),
+        'reviews_month_feb'.tr(),
+        'reviews_month_mar'.tr(),
+        'reviews_month_apr'.tr(),
+        'reviews_month_may'.tr(),
+        'reviews_month_jun'.tr(),
+        'reviews_month_jul'.tr(),
+        'reviews_month_aug'.tr(),
+        'reviews_month_sep'.tr(),
+        'reviews_month_oct'.tr(),
+        'reviews_month_nov'.tr(),
+        'reviews_month_dec'.tr(),
       ];
       return '${date.day} ${months[date.month]} ${date.year}';
     } catch (_) {
@@ -252,8 +253,8 @@ class _EventReviewsScreenState extends State<EventReviewsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Resenas del Evento',
+                Text(
+                  'reviews_event_title'.tr(),
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w600,
@@ -317,8 +318,8 @@ class _EventReviewsScreenState extends State<EventReviewsScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            const Text(
-              'Aun no hay resenas para este evento',
+            Text(
+              'reviews_empty_title'.tr(),
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
@@ -327,8 +328,8 @@ class _EventReviewsScreenState extends State<EventReviewsScreen> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Cuando los pasajeros dejen resenas, apareceran aqui de forma anonima.',
+            Text(
+              'reviews_empty_desc'.tr(),
               style: TextStyle(
                 fontSize: 14,
                 color: AppColors.textSecondary,
@@ -352,8 +353,8 @@ class _EventReviewsScreenState extends State<EventReviewsScreen> {
             color: AppColors.error,
           ),
           const SizedBox(height: 16),
-          const Text(
-            'Error al cargar resenas',
+          Text(
+            'reviews_error_loading'.tr(),
             style: TextStyle(
               fontSize: 16,
               color: AppColors.textPrimary,
@@ -363,7 +364,7 @@ class _EventReviewsScreenState extends State<EventReviewsScreen> {
           TextButton.icon(
             onPressed: _loadReviews,
             icon: const Icon(Icons.refresh),
-            label: const Text('Reintentar'),
+            label: Text('tourism_retry'.tr()),
           ),
         ],
       ),
@@ -389,7 +390,7 @@ class _EventReviewsScreenState extends State<EventReviewsScreen> {
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: Text(
-              'Resenas ($_totalReviews)',
+              'reviews_section_title'.tr(namedArgs: {'count': '$_totalReviews'}),
               style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
@@ -435,7 +436,7 @@ class _EventReviewsScreenState extends State<EventReviewsScreen> {
                   _buildStarRow(_avgOverall, size: 24),
                   const SizedBox(height: 4),
                   Text(
-                    '$_totalReviews resenas',
+                    'tourism_reviews_count'.tr(namedArgs: {'count': '$_totalReviews'}),
                     style: const TextStyle(
                       fontSize: 14,
                       color: AppColors.textSecondary,
@@ -464,7 +465,7 @@ class _EventReviewsScreenState extends State<EventReviewsScreen> {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  '$_recommendPct% recomendaria',
+                  'reviews_recommend_pct'.tr(namedArgs: {'pct': '$_recommendPct'}),
                   style: const TextStyle(
                     color: AppColors.success,
                     fontSize: 14,
@@ -479,13 +480,13 @@ class _EventReviewsScreenState extends State<EventReviewsScreen> {
           const SizedBox(height: 16),
           // Category ratings
           _buildCategoryRow(
-              Icons.person, 'Conductor', _avgDriver),
+              Icons.person, 'reviews_driver_category'.tr(), _avgDriver),
           const SizedBox(height: 10),
           _buildCategoryRow(
-              Icons.business, 'Servicio', _avgOrganizer),
+              Icons.business, 'reviews_service_category'.tr(), _avgOrganizer),
           const SizedBox(height: 10),
           _buildCategoryRow(
-              Icons.directions_bus, 'Vehiculo', _avgVehicle),
+              Icons.directions_bus, 'reviews_vehicle_category'.tr(), _avgVehicle),
         ],
       ),
     );
@@ -557,13 +558,13 @@ class _EventReviewsScreenState extends State<EventReviewsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.lightbulb_outline,
+              const Icon(Icons.lightbulb_outline,
                   color: AppColors.warning, size: 18),
-              SizedBox(width: 8),
+              const SizedBox(width: 8),
               Text(
-                'Sugerencias de mejora',
+                'reviews_improvement_suggestions'.tr(),
                 style: TextStyle(
                   color: AppColors.textPrimary,
                   fontSize: 15,
@@ -618,14 +619,14 @@ class _EventReviewsScreenState extends State<EventReviewsScreen> {
             color: AppColors.primary.withValues(alpha: 0.3),
           ),
         ),
-        child: const Row(
+        child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.download_rounded,
+            const Icon(Icons.download_rounded,
                 color: AppColors.primary, size: 20),
-            SizedBox(width: 8),
+            const SizedBox(width: 8),
             Text(
-              'Descargar Reporte',
+              'reviews_download_report'.tr(),
               style: TextStyle(
                 color: AppColors.primary,
                 fontSize: 15,
@@ -684,14 +685,14 @@ class _EventReviewsScreenState extends State<EventReviewsScreen> {
                         AppColors.success.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.thumb_up,
+                      const Icon(Icons.thumb_up,
                           color: AppColors.success, size: 12),
-                      SizedBox(width: 4),
+                      const SizedBox(width: 4),
                       Text(
-                        'Recomienda',
+                        'reviews_recommends'.tr(),
                         style: TextStyle(
                           color: AppColors.success,
                           fontSize: 11,

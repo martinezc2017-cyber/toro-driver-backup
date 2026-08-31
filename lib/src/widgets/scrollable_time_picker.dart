@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 /// Scrollable wheel-style time picker with AM/PM.
 /// Uses ListWheelScrollView for smooth scrolling.
@@ -68,8 +69,8 @@ Future<TimeOfDay?> showScrollableTimePicker(
                     children: [
                       Icon(Icons.access_time_rounded, color: primaryColor, size: 22),
                       const SizedBox(width: 8),
-                      const Text(
-                        'Seleccionar Hora',
+                      Text(
+                        'time_picker.select_time'.tr(),
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 18,
@@ -267,9 +268,9 @@ Future<TimeOfDay?> showScrollableTimePicker(
                               side: const BorderSide(color: Colors.white24),
                             ),
                           ),
-                          child: const Text(
-                            'Cancelar',
-                            style: TextStyle(color: Colors.white70, fontSize: 16, fontWeight: FontWeight.w500),
+                          child: Text(
+                            'cancel'.tr(),
+                            style: const TextStyle(color: Colors.white70, fontSize: 16, fontWeight: FontWeight.w500),
                           ),
                         ),
                       ),

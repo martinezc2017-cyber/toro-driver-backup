@@ -21,7 +21,11 @@ class ReferScreen extends StatefulWidget {
 class _ReferScreenState extends State<ReferScreen> {
   String _referralCode = '';
   bool _isLoading = true;
-  final String _appLink = 'https://toro.app/download';
+
+  /// URL base del dominio real — el QR y el share message usan /d/{code}
+  /// que el DeepLinkService de ambas apps ya sabe parsear.
+  static const _dominio = 'https://toro-ride.com';
+  String get _referralLink => '$_dominio/d/$_referralCode';
 
   @override
   void initState() {
@@ -85,7 +89,7 @@ class _ReferScreenState extends State<ReferScreen> {
     });
   }
 
-  String get _shareMessage => 'Únete a TORO con mi código: $_referralCode\n$_appLink';
+  String get _shareMessage => 'referral_share_message'.tr(namedArgs: {'code': _referralCode, 'link': _referralLink});
 
   Future<void> _shareViaWhatsApp() async {
     HapticService.lightImpact();
@@ -95,13 +99,13 @@ class _ReferScreenState extends State<ReferScreen> {
 
   Future<void> _shareViaFacebook() async {
     HapticService.lightImpact();
-    final url = Uri.parse('https://www.facebook.com/sharer/sharer.php?u=${Uri.encodeComponent(_appLink)}');
+    final url = Uri.parse('https://www.facebook.com/sharer/sharer.php?u=${Uri.encodeComponent(_referralLink)}');
     if (await canLaunchUrl(url)) await launchUrl(url, mode: LaunchMode.externalApplication);
   }
 
   Future<void> _shareViaTelegram() async {
     HapticService.lightImpact();
-    final url = Uri.parse('https://t.me/share/url?url=${Uri.encodeComponent(_appLink)}&text=${Uri.encodeComponent(_shareMessage)}');
+    final url = Uri.parse('https://t.me/share/url?url=${Uri.encodeComponent(_referralLink)}&text=${Uri.encodeComponent(_shareMessage)}');
     if (await canLaunchUrl(url)) await launchUrl(url, mode: LaunchMode.externalApplication);
   }
 
@@ -165,7 +169,7 @@ class _ReferScreenState extends State<ReferScreen> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: QrImageView(
-                      data: '$_appLink?ref=$_referralCode',
+                      data: _referralLink,
                       version: QrVersions.auto,
                       size: 120,
                       backgroundColor: Colors.white,

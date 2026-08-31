@@ -119,7 +119,7 @@ class _AccountScreenState extends State<AccountScreen> {
               // Email field (read only)
               _buildReadOnlyField(
                 icon: Icons.email,
-                label: 'Email',
+                label: 'email'.tr(),
                 value: _emailCtrl.text,
                 subtitle: 'contact_support_to_change'.tr(),
               ),

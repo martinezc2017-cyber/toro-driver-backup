@@ -14,6 +14,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:provider/provider.dart';
 import '../services/pricing_config_service.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../providers/ride_provider.dart';
@@ -714,7 +715,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
       targetType = 'dropoff';
       targetLat = ride.dropoffLocation.latitude;
       targetLng = ride.dropoffLocation.longitude;
-      targetName = ride.dropoffLocation.address ?? 'Destino';
+      targetName = ride.dropoffLocation.address ?? 'destination_label'.tr();
     } else {
       if (_currentRideId != null) {
         _clearRoute();
@@ -980,8 +981,8 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
         final orderId = await _fetchMarketplaceOrderIdByDeliveryId(ride.id);
         if (orderId == null) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('No se encontro el pedido marketplace'),
+            SnackBar(
+              content: Text('nav.marketplace_not_found'.tr()),
               backgroundColor: Colors.red,
             ),
           );
@@ -1039,9 +1040,9 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
           final change = paid - total;
           return AlertDialog(
             backgroundColor: const Color(0xFF0D0E13),
-            title: const Text(
-              'Cobro en efectivo',
-              style: TextStyle(color: Colors.white),
+            title: Text(
+              'nav.cash_collection'.tr(),
+              style: const TextStyle(color: Colors.white),
             ),
             content: Column(
               mainAxisSize: MainAxisSize.min,
@@ -1055,9 +1056,9 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                const Text(
-                  '¿Con cuánto paga el cliente?',
-                  style: TextStyle(color: Colors.white70, fontSize: 13),
+                Text(
+                  'nav.how_much_paying'.tr(),
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
                 ),
                 const SizedBox(height: 6),
                 TextField(
@@ -1095,7 +1096,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Cancelar'),
+                child: Text('cancel'.tr()),
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
@@ -1104,7 +1105,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                 onPressed: paid >= total
                     ? () => Navigator.pop(ctx, true)
                     : null,
-                child: const Text('Confirmar recibido'),
+                child: Text('nav.confirm_received'.tr()),
               ),
             ],
           );
@@ -1223,7 +1224,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancelar'),
+            child: Text('cancel'.tr()),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -1249,9 +1250,9 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
       final ok = res == true;
       if (!ok && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Código incorrecto. Pídeselo de nuevo al pasajero.'),
-            backgroundColor: Color(0xFFEF4444),
+          SnackBar(
+            content: Text('nav.wrong_code'.tr()),
+            backgroundColor: const Color(0xFFEF4444),
           ),
         );
       }
@@ -1307,8 +1308,8 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
       final orderId = await _fetchMarketplaceOrderIdByDeliveryId(ride.id);
       if (orderId == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('No se encontro el pedido marketplace'),
+          SnackBar(
+            content: Text('nav.marketplace_not_found'.tr()),
             backgroundColor: Colors.red,
           ),
         );
@@ -1385,7 +1386,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(rideProvider.error ?? 'Error al completar viaje'),
+              content: Text(rideProvider.error ?? 'nav.error_completing_trip'.tr()),
               backgroundColor: Colors.red,
             ),
           );
@@ -1398,7 +1399,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(rideProvider.error ?? 'Error al completar viaje'),
+              content: Text(rideProvider.error ?? 'nav.error_completing_trip'.tr()),
               backgroundColor: Colors.red,
             ),
           );
@@ -1496,13 +1497,13 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                             // resto (tarifa − parte chofer − comisión) para que la
                             // resta visible sume EXACTO a Tu parte.
                             _earningsRow(
-                              'Tarifa del viaje',
+                              'nav.trip_fare'.tr(),
                               formatMoney(ride.fare, country: cc),
                               Icons.directions_car,
                             ),
                             const Divider(color: Colors.white24, height: 16),
                             _earningsRow(
-                              'Comisión Toro',
+                              'nav.toro_commission'.tr(),
                               '-${formatMoney(ride.platformFee, country: cc)}',
                               Icons.business,
                               color: Colors.white38,
@@ -1518,7 +1519,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                               ),
                             if (hasTip)
                               _earningsRow(
-                                'Propina',
+                                'tip_label'.tr(),
                                 '+${formatMoney(ride.tip, country: cc)}',
                                 Icons.star,
                                 color: Colors.amber,
@@ -1571,9 +1572,9 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: const Text(
-                    'Siguiente viaje',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  child: Text(
+                    'nav.next_trip'.tr(),
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
@@ -1623,9 +1624,9 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1E1E1E),
-        title: const Text(
-          '¿Cancelar viaje?',
-          style: TextStyle(color: Colors.white),
+        title: Text(
+          'nav.cancel_trip_question'.tr(),
+          style: const TextStyle(color: Colors.white),
         ),
         content: const Text(
           'El viaje será liberado para que otro conductor lo tome.',
@@ -1664,7 +1665,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('No se pudo cancelar: $e'),
+              content: Text('nav.could_not_cancel'.tr(namedArgs: {'error': e.toString()})),
               backgroundColor: Colors.red,
             ),
           );
@@ -1716,9 +1717,9 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1E1E1E),
-        title: const Text(
-          '¿El pasajero no llegó?',
-          style: TextStyle(color: Colors.white),
+        title: Text(
+          'nav.passenger_no_show_question'.tr(),
+          style: const TextStyle(color: Colors.white),
         ),
         content: const Text(
           'Se cerrará el viaje y se cobrará al pasajero la tarifa de no-show '
@@ -1765,7 +1766,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
       final err = res?['error']?.toString() ?? 'desconocido';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('No se pudo registrar el no-show: $err'),
+          content: Text('nav.could_not_register_no_show'.tr(namedArgs: {'error': err.toString()})),
           backgroundColor: const Color(0xFFEF4444),
         ),
       );
@@ -1809,7 +1810,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No se pudo abrir navegación externa')),
+          SnackBar(content: Text('nav.cannot_open_external'.tr())),
         );
       }
     }
@@ -2311,7 +2312,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
               : (_mktBuyerName ?? 'Cliente'))
         : (isPickup
               ? (ride.pickupLocation.address ?? 'Recogida')
-              : (ride.dropoffLocation.address ?? 'Destino'));
+              : (ride.dropoffLocation.address ?? 'destination_label'.tr()));
 
     // Pin de IMAGEN nítido (no emoji): teardrop con ícono. Ámbar=recogida, rojo=destino.
     // El glyph depende del SERVICIO (antes: siempre 'storefront' en la recogida,
@@ -3196,7 +3197,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
               ),
               Expanded(
                 child: Text(
-                  ride.dropoffLocation.address ?? 'Destino',
+                  ride.dropoffLocation.address ?? 'destination_label'.tr(),
                   style: const TextStyle(color: Colors.white70, fontSize: 11),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -3636,7 +3637,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                         // recogida abarca arrivedAtPickup -> dirección del vendedor.
                         (isGoingToPickup || (isMarket && isWaiting))
                             ? (ride.pickupLocation.address ?? 'Recogida')
-                            : (ride.dropoffLocation.address ?? 'Destino'),
+                            : (ride.dropoffLocation.address ?? 'destination_label'.tr()),
                         style: TextStyle(
                           color: Colors.white.withOpacity(0.88),
                           fontSize: 13.5,
@@ -3885,7 +3886,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                 // Cancel
                 _buildBottomAction(
                   icon: Icons.close,
-                  label: 'Cancelar',
+                  label: 'cancel'.tr(),
                   color: const Color(0xFFEF4444), // admin red
                   onTap: _handleCancelRide,
                 ),
@@ -4115,7 +4116,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
           ),
           const Spacer(),
           Text(
-            isFreeTime ? 'Gratis' : 'Cobro activo',
+            isFreeTime ? 'nav.free_label'.tr() : 'nav.charge_active'.tr(),
             style: TextStyle(
               color: isFreeTime ? Colors.blue.withAlpha(180) : Colors.red,
               fontSize: 12,

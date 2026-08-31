@@ -194,7 +194,7 @@ class _DocumentsScreenState extends State<DocumentsScreen>
         DocumentUploadType t,
       ) => DocumentItem(
         label,
-        (url != null && url.isNotEmpty) ? 'Subida ✓' : 'No proporcionada',
+        (url != null && url.isNotEmpty) ? 'docs.uploaded_check'.tr() : 'docs.not_provided_f'.tr(),
         hint,
         Icons.photo_camera,
         (url != null && url.isNotEmpty)
@@ -205,44 +205,44 @@ class _DocumentsScreenState extends State<DocumentsScreen>
       if (_isMexico) {
         _vehicleDocs = [
           DocumentItem(
-            'Seguro (póliza)',
-            driverDocs.hasInsurance ? 'Subido ✓' : 'No proporcionado',
-            driverDocs.insuranceProvider ?? 'Foto de la póliza vigente',
+            'docs.insurance_policy'.tr(),
+            driverDocs.hasInsurance ? 'docs.uploaded_check_m'.tr() : 'docs.not_provided_m'.tr(),
+            driverDocs.insuranceProvider ?? 'docs.photo_current_policy'.tr(),
             Icons.shield,
             mapDoc(driverDocs.insuranceStatus),
             onTap: () => _showUploadDialog(DocumentUploadType.insurancePolicy),
           ),
           DocumentItem(
-            'Tarjeta de circulación',
-            driverDocs.hasCirculationCard ? 'Subida ✓' : 'No proporcionada',
+            'docs.circulation_card'.tr(),
+            driverDocs.hasCirculationCard ? 'docs.uploaded_check'.tr() : 'docs.not_provided_f'.tr(),
             driverDocs.circulationCardPlate != null
-                ? 'Placa: ${driverDocs.circulationCardPlate}'
-                : 'Foto de la tarjeta de circulación',
+                ? '${'docs.plate'.tr()}: ${driverDocs.circulationCardPlate}'
+                : 'docs.photo_circulation_card'.tr(),
             Icons.directions_car,
             mapDoc(driverDocs.circulationCardStatus),
             onTap: () => _showUploadDialog(DocumentUploadType.circulationCard),
           ),
           vehPhoto(
-            'Foto del vehículo — Frente',
-            'Frente del auto',
+            'docs.vehicle_photo_front'.tr(),
+            'docs.front_of_car'.tr(),
             driverDocs.vehiclePhotoFrontUrl,
             DocumentUploadType.vehFront,
           ),
           vehPhoto(
-            'Foto del vehículo — Atrás',
-            'Parte trasera',
+            'docs.vehicle_photo_back'.tr(),
+            'docs.rear_side'.tr(),
             driverDocs.vehiclePhotoBackUrl,
             DocumentUploadType.vehBack,
           ),
           vehPhoto(
-            'Foto del vehículo — Izquierda',
-            'Costado izquierdo',
+            'docs.vehicle_photo_left'.tr(),
+            'docs.left_side'.tr(),
             driverDocs.vehiclePhotoLeftUrl,
             DocumentUploadType.vehLeft,
           ),
           vehPhoto(
-            'Foto del vehículo — Derecha',
-            'Costado derecho',
+            'docs.vehicle_photo_right'.tr(),
+            'docs.right_side'.tr(),
             driverDocs.vehiclePhotoRightUrl,
             DocumentUploadType.vehRight,
           ),
@@ -449,62 +449,62 @@ class _DocumentsScreenState extends State<DocumentsScreen>
     switch (type) {
       case DocumentUploadType.license:
         title = 'doc_drivers_license'.tr();
-        description = 'Toma foto clara de tu licencia';
+        description = 'docs.take_clear_license_photo'.tr();
         icon = Icons.credit_card;
         break;
       case DocumentUploadType.profilePhoto:
         title = 'doc_profile_photo'.tr();
-        description = 'Foto de tu rostro, fondo claro';
+        description = 'docs.face_photo_clear_bg'.tr();
         icon = Icons.person;
         break;
       case DocumentUploadType.insurance:
         title = 'doc_vehicle_insurance'.tr();
-        description = 'Foto de tu tarjeta de seguro';
+        description = 'docs.insurance_card_photo'.tr();
         icon = Icons.shield;
         break;
       case DocumentUploadType.endorsement:
         title = 'doc_rideshare_endorsement'.tr();
-        description = 'Documento de endoso TNC';
+        description = 'docs.tnc_endorsement_doc'.tr();
         icon = Icons.verified;
         break;
       case DocumentUploadType.registration:
         title = 'doc_vehicle_registration'.tr();
-        description = 'Tarjeta de circulación';
+        description = 'docs.circulation_card'.tr();
         icon = Icons.directions_car;
         break;
       case DocumentUploadType.vehiclePhotos:
         title = 'doc_vehicle_photos'.tr();
-        description = '4 fotos del vehículo';
+        description = 'docs.four_vehicle_photos'.tr();
         icon = Icons.photo_camera;
         break;
       case DocumentUploadType.insurancePolicy:
-        title = 'Seguro (póliza)';
-        description = 'Foto de la póliza de seguro vigente';
+        title = 'docs.insurance_policy'.tr();
+        description = 'docs.photo_current_insurance_policy'.tr();
         icon = Icons.shield;
         break;
       case DocumentUploadType.circulationCard:
-        title = 'Tarjeta de circulación';
-        description = 'Foto clara de la tarjeta de circulación';
+        title = 'docs.circulation_card'.tr();
+        description = 'docs.clear_photo_circulation_card'.tr();
         icon = Icons.directions_car;
         break;
       case DocumentUploadType.vehFront:
-        title = 'Foto del vehículo — Frente';
-        description = 'Toma la foto del frente del auto';
+        title = 'docs.vehicle_photo_front'.tr();
+        description = 'docs.take_front_photo'.tr();
         icon = Icons.photo_camera;
         break;
       case DocumentUploadType.vehBack:
-        title = 'Foto del vehículo — Atrás';
-        description = 'Toma la foto de la parte trasera';
+        title = 'docs.vehicle_photo_back'.tr();
+        description = 'docs.take_rear_photo'.tr();
         icon = Icons.photo_camera;
         break;
       case DocumentUploadType.vehLeft:
-        title = 'Foto del vehículo — Izquierda';
-        description = 'Toma la foto del costado izquierdo';
+        title = 'docs.vehicle_photo_left'.tr();
+        description = 'docs.take_left_photo'.tr();
         icon = Icons.photo_camera;
         break;
       case DocumentUploadType.vehRight:
-        title = 'Foto del vehículo — Derecha';
-        description = 'Toma la foto del costado derecho';
+        title = 'docs.vehicle_photo_right'.tr();
+        description = 'docs.take_right_photo'.tr();
         icon = Icons.photo_camera;
         break;
     }
@@ -732,7 +732,7 @@ class _DocumentsScreenState extends State<DocumentsScreen>
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(success ? 'Documento subido' : 'Error al subir'),
+            content: Text(success ? 'docs.document_uploaded'.tr() : 'docs.upload_error'.tr()),
             backgroundColor: success ? AppColors.success : AppColors.error,
           ),
         );
@@ -1482,7 +1482,7 @@ class _DocumentsScreenState extends State<DocumentsScreen>
               tabs: [
                 Tab(text: 'documents_personal'.tr()),
                 Tab(text: 'documents_vehicle'.tr()),
-                if (_isMexico) const Tab(text: 'Fiscal MX'),
+                if (_isMexico) Tab(text: 'docs.fiscal_mx'.tr()),
               ],
             ),
           ),
@@ -1800,7 +1800,7 @@ class _DocumentsScreenState extends State<DocumentsScreen>
             ),
             const SizedBox(height: 16),
             Text(
-              'Subir documento',
+              'docs.upload_document'.tr(),
               style: const TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.bold,
@@ -1808,24 +1808,24 @@ class _DocumentsScreenState extends State<DocumentsScreen>
               ),
             ),
             const SizedBox(height: 12),
-            _buildUploadOption(Icons.credit_card, 'Licencia', () {
+            _buildUploadOption(Icons.credit_card, 'docs.license'.tr(), () {
               Navigator.pop(context);
               _showUploadDialog(DocumentUploadType.license);
             }),
-            _buildUploadOption(Icons.person, 'Foto de perfil', () {
+            _buildUploadOption(Icons.person, 'docs.profile_photo'.tr(), () {
               Navigator.pop(context);
               _showUploadDialog(DocumentUploadType.profilePhoto);
             }),
             if (_vehicleId != null) ...[
-              _buildUploadOption(Icons.shield, 'Seguro', () {
+              _buildUploadOption(Icons.shield, 'docs.insurance'.tr(), () {
                 Navigator.pop(context);
                 _showUploadDialog(DocumentUploadType.insurance);
               }),
-              _buildUploadOption(Icons.verified, 'Endoso', () {
+              _buildUploadOption(Icons.verified, 'docs.endorsement'.tr(), () {
                 Navigator.pop(context);
                 _showUploadDialog(DocumentUploadType.endorsement);
               }),
-              _buildUploadOption(Icons.photo_camera, 'Fotos vehículo', () {
+              _buildUploadOption(Icons.photo_camera, 'docs.vehicle_photos'.tr(), () {
                 Navigator.pop(context);
                 _showUploadDialog(DocumentUploadType.vehiclePhotos);
               }),

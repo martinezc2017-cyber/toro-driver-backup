@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
@@ -82,7 +83,7 @@ class RideChatService {
           message.length > 120 ? '${message.substring(0, 120)}…' : message;
       await _client.functions.invoke('send-notification', body: {
         'userId': recipientId,
-        'title': fromRider ? 'Mensaje de tu pasajero' : 'Mensaje de tu conductor',
+        'title': fromRider ? 'chat.passenger_message'.tr() : 'chat.driver_message'.tr(),
         'body': preview,
         'type': 'ride_chat',
         'app': fromRider ? 'driver' : 'rider',

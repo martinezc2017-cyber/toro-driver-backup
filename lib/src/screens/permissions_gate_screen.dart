@@ -226,7 +226,7 @@ class _PermissionsGateScreenState extends State<PermissionsGateScreen>
               const SizedBox(height: 8),
 
               Text(
-                'Para recibir viajes y navegar, necesitamos acceso a tu ubicacion y notificaciones.',
+                'permissions.need_access'.tr(),
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.6),
@@ -239,14 +239,14 @@ class _PermissionsGateScreenState extends State<PermissionsGateScreen>
               // GPS Permission Card
               _PermissionCard(
                 icon: Icons.location_on,
-                title: 'Ubicacion (GPS)',
+                title: 'permissions.location_gps'.tr(),
                 description: !_gpsEnabled
-                    ? 'Tu GPS esta apagado. Activalo para recibir viajes cercanos y navegar.'
+                    ? 'permissions.gps_off'.tr()
                     : _locationGranted
-                        ? 'Permiso de ubicacion activado.'
+                        ? 'permissions.location_granted'.tr()
                         : _locationDeniedForever
-                            ? 'Permiso bloqueado. Abre Ajustes y activa la ubicacion para TORO Driver.'
-                            : 'TORO necesita tu ubicacion para mostrarte viajes cercanos y permitir navegacion.',
+                            ? 'permissions.location_blocked'.tr()
+                            : 'permissions.location_needed'.tr(),
                 granted: _locationGranted && _gpsEnabled,
                 blocked: _locationDeniedForever || !_gpsEnabled,
                 onTap: _requestLocation,
@@ -257,10 +257,10 @@ class _PermissionsGateScreenState extends State<PermissionsGateScreen>
               // Notification Permission Card
               _PermissionCard(
                 icon: Icons.notifications_active,
-                title: 'Notificaciones',
+                title: 'permissions.notifications'.tr(),
                 description: _notificationGranted
-                    ? 'Notificaciones activadas. Recibiras alertas de nuevos viajes.'
-                    : 'Recibe alertas instantaneas de nuevos viajes, mensajes de pasajeros y actualizaciones importantes.',
+                    ? 'permissions.notifications_granted'.tr()
+                    : 'permissions.notifications_needed'.tr(),
                 granted: _notificationGranted,
                 blocked: false,
                 onTap: _requestNotifications,
@@ -288,7 +288,7 @@ class _PermissionsGateScreenState extends State<PermissionsGateScreen>
                     elevation: allOk ? 4 : 0,
                   ),
                   child: Text(
-                    allOk ? 'Continuar' : 'Activa todos los permisos',
+                    allOk ? 'permissions.continue_btn'.tr() : 'permissions.activate_all'.tr(),
                     style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                 ),
@@ -310,7 +310,7 @@ class _PermissionsGateScreenState extends State<PermissionsGateScreen>
                             : Geolocator.openAppSettings(),
                         icon: const Icon(Icons.settings, size: 18),
                         label: Text(
-                          !_gpsEnabled ? 'Activar GPS' : 'Abrir Ajustes',
+                          !_gpsEnabled ? 'permissions.activate_gps'.tr() : 'permissions.open_settings'.tr(),
                           style: const TextStyle(
                               fontSize: 13, fontWeight: FontWeight.w600),
                         ),
@@ -348,8 +348,7 @@ class _PermissionsGateScreenState extends State<PermissionsGateScreen>
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  '¿No te aparece la pregunta? Entra a Ajustes > Permisos > '
-                  'Ubicacion y elige "Permitir".',
+                  'permissions.manual_instructions'.tr(),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.45),
@@ -361,7 +360,7 @@ class _PermissionsGateScreenState extends State<PermissionsGateScreen>
               const SizedBox(height: 16),
 
               Text(
-                'Tus datos se usan solo para el servicio de transporte. No compartimos tu ubicacion con terceros.',
+                'permissions.privacy_note'.tr(),
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.3),
@@ -470,7 +469,7 @@ class _PermissionCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  blocked ? 'Ajustes' : 'Activar',
+                  blocked ? 'permissions.settings'.tr() : 'permissions.activate'.tr(),
                   style: TextStyle(
                     color: accentColor,
                     fontSize: 12,

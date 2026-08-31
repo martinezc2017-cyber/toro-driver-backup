@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -41,58 +42,55 @@ class _ReportAbuseScreenState extends State<ReportAbuseScreen> {
   String? _selectedSeverity;
   bool _isSubmitting = false;
 
-  // Report type options
-  static const List<Map<String, dynamic>> _reportTypes = [
+  // Report type options (keys resolved at build time via .tr())
+  static const List<Map<String, dynamic>> _reportTypesRaw = [
     {
       'value': 'passenger_abuse',
-      'label': 'Abuso de pasajero',
+      'labelKey': 'report_abuse_passenger',
       'icon': Icons.person_off_rounded,
-      'description':
-          'Comportamiento agresivo, acoso o falta de respeto',
+      'descKey': 'report_abuse_passenger_desc',
     },
     {
       'value': 'safety_issue',
-      'label': 'Problema de seguridad',
+      'labelKey': 'report_abuse_safety',
       'icon': Icons.health_and_safety_rounded,
-      'description':
-          'Situacion que pone en riesgo la seguridad',
+      'descKey': 'report_abuse_safety_desc',
     },
     {
       'value': 'pricing_fraud',
-      'label': 'Fraude de precios',
+      'labelKey': 'report_abuse_pricing',
       'icon': Icons.money_off_rounded,
-      'description':
-          'Cobros no autorizados o manipulacion de tarifas',
+      'descKey': 'report_abuse_pricing_desc',
     },
     {
       'value': 'other',
-      'label': 'Otro',
+      'labelKey': 'report_abuse_other',
       'icon': Icons.report_problem_rounded,
-      'description': 'Cualquier otro tipo de incidente',
+      'descKey': 'report_abuse_other_desc',
     },
   ];
 
-  // Severity options
-  static const List<Map<String, dynamic>> _severityOptions = [
+  // Severity options (keys resolved at build time via .tr())
+  static const List<Map<String, dynamic>> _severityOptionsRaw = [
     {
       'value': 'low',
-      'label': 'Baja',
-      'description': 'Inconveniente menor',
+      'labelKey': 'report_severity_low',
+      'descKey': 'report_severity_low_desc',
     },
     {
       'value': 'medium',
-      'label': 'Media',
-      'description': 'Requiere atencion',
+      'labelKey': 'report_severity_medium',
+      'descKey': 'report_severity_medium_desc',
     },
     {
       'value': 'high',
-      'label': 'Alta',
-      'description': 'Incidente serio',
+      'labelKey': 'report_severity_high',
+      'descKey': 'report_severity_high_desc',
     },
     {
       'value': 'critical',
-      'label': 'Critica',
-      'description': 'Peligro inmediato',
+      'labelKey': 'report_severity_critical',
+      'descKey': 'report_severity_critical_desc',
     },
   ];
 
@@ -144,7 +142,7 @@ class _ReportAbuseScreenState extends State<ReportAbuseScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-                'Reporte enviado correctamente. Nuestro equipo lo revisara.'),
+                'report_abuse_sent_success'.tr()),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
             duration: Duration(seconds: 4),
@@ -160,7 +158,7 @@ class _ReportAbuseScreenState extends State<ReportAbuseScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content:
-                Text('Error al enviar el reporte: $e'),
+                Text('report_abuse_error'.tr(namedArgs: {'error': '$e'})),
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
           ),
@@ -258,8 +256,8 @@ class _ReportAbuseScreenState extends State<ReportAbuseScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Reportar Incidente',
+                Text(
+                  'report_abuse_title'.tr(),
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w600,
@@ -296,20 +294,18 @@ class _ReportAbuseScreenState extends State<ReportAbuseScreen> {
           color: AppColors.info.withValues(alpha: 0.2),
         ),
       ),
-      child: const Row(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
+          const Icon(
             Icons.info_outline_rounded,
             color: AppColors.info,
             size: 20,
           ),
-          SizedBox(width: 12),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
-              'Tu reporte sera revisado por nuestro equipo de seguridad. '
-              'Toda la informacion es confidencial. Los reportes falsos '
-              'pueden resultar en sanciones.',
+              'report_abuse_info_banner'.tr(),
               style: TextStyle(
                 color: AppColors.textSecondary,
                 fontSize: 13,
@@ -326,16 +322,16 @@ class _ReportAbuseScreenState extends State<ReportAbuseScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Tipo de reporte',
-          style: TextStyle(
+        Text(
+          'report_abuse_type'.tr(),
+          style: const TextStyle(
             color: AppColors.textPrimary,
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
         ),
         const SizedBox(height: 12),
-        ..._reportTypes.map((type) {
+        ..._reportTypesRaw.map((type) {
           final isSelected =
               _selectedType == type['value'];
           return GestureDetector(
@@ -377,7 +373,7 @@ class _ReportAbuseScreenState extends State<ReportAbuseScreen> {
                           CrossAxisAlignment.start,
                       children: [
                         Text(
-                          type['label'] as String,
+                          (type['labelKey'] as String).tr(),
                           style: TextStyle(
                             color: isSelected
                                 ? AppColors.textPrimary
@@ -388,7 +384,7 @@ class _ReportAbuseScreenState extends State<ReportAbuseScreen> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          type['description'] as String,
+                          (type['descKey'] as String).tr(),
                           style: const TextStyle(
                             color: AppColors.textTertiary,
                             fontSize: 12,
@@ -419,9 +415,9 @@ class _ReportAbuseScreenState extends State<ReportAbuseScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Severidad',
-          style: TextStyle(
+        Text(
+          'report_abuse_severity'.tr(),
+          style: const TextStyle(
             color: AppColors.textPrimary,
             fontSize: 16,
             fontWeight: FontWeight.w600,
@@ -430,14 +426,14 @@ class _ReportAbuseScreenState extends State<ReportAbuseScreen> {
         const SizedBox(height: 12),
         Row(
           children:
-              _severityOptions.asMap().entries.map((entry) {
+              _severityOptionsRaw.asMap().entries.map((entry) {
             final option = entry.value;
             final isSelected =
                 _selectedSeverity == option['value'];
             final color =
                 _severityColor(option['value'] as String);
             final isLast =
-                entry.key == _severityOptions.length - 1;
+                entry.key == _severityOptionsRaw.length - 1;
 
             return Expanded(
               child: GestureDetector(
@@ -477,7 +473,7 @@ class _ReportAbuseScreenState extends State<ReportAbuseScreen> {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        option['label'] as String,
+                        (option['labelKey'] as String).tr(),
                         style: TextStyle(
                           color: isSelected
                               ? color
@@ -501,18 +497,18 @@ class _ReportAbuseScreenState extends State<ReportAbuseScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Descripcion del incidente',
-          style: TextStyle(
+        Text(
+          'report_abuse_description'.tr(),
+          style: const TextStyle(
             color: AppColors.textPrimary,
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
         ),
         const SizedBox(height: 4),
-        const Text(
-          'Describe lo sucedido con el mayor detalle posible (minimo 10 caracteres)',
-          style: TextStyle(
+        Text(
+          'report_abuse_description_hint'.tr(),
+          style: const TextStyle(
             color: AppColors.textTertiary,
             fontSize: 12,
           ),
@@ -526,7 +522,7 @@ class _ReportAbuseScreenState extends State<ReportAbuseScreen> {
             fontSize: 15,
           ),
           decoration: InputDecoration(
-            hintText: 'Describe el incidente aqui...',
+            hintText: 'report_abuse_placeholder'.tr(),
             hintStyle: const TextStyle(
                 color: AppColors.textTertiary),
             filled: true,
@@ -596,18 +592,18 @@ class _ReportAbuseScreenState extends State<ReportAbuseScreen> {
                     color: Colors.white,
                   ),
                 )
-              : const Row(
+              : Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
+                    const Icon(
                       Icons.report_rounded,
                       color: Colors.white,
                       size: 20,
                     ),
-                    SizedBox(width: 10),
+                    const SizedBox(width: 10),
                     Text(
-                      'Enviar Reporte',
-                      style: TextStyle(
+                      'report_abuse_submit'.tr(),
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 16,
                         fontWeight: FontWeight.w700,

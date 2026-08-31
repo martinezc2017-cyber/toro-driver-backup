@@ -75,7 +75,7 @@ class LegalScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Version 1.0.0',
+                  'legal.version'.tr(namedArgs: {'version': '1.0.0'}),
                   style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
                 ),
                 const SizedBox(height: 4),

@@ -317,11 +317,11 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
         unselectedLabelStyle: const TextStyle(fontSize: 13),
         isScrollable: false,
         labelPadding: EdgeInsets.zero,
-        tabs: const [
-          Tab(text: 'Todos'),
-          Tab(text: 'Activos'),
-          Tab(text: 'Próximos'),
-          Tab(text: 'Completos'),
+        tabs: [
+          Tab(text: 'tab_all'.tr()),
+          Tab(text: 'tab_active'.tr()),
+          Tab(text: 'tab_upcoming'.tr()),
+          Tab(text: 'tab_completed'.tr()),
         ],
       ),
     );
@@ -1174,11 +1174,11 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
   String _statusLabel(String status) {
     switch (status) {
       case 'active':
-        return 'Activo';
+        return 'active_status'.tr();
       case 'in_progress':
-        return 'En Curso';
+        return 'in_progress_status'.tr();
       case 'completed':
-        return 'Completado';
+        return 'completed_status'.tr();
       case 'cancelled':
         return 'Cancelado';
       case 'vehicle_accepted':
@@ -1424,13 +1424,13 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancelar'),
+            child: Text('cancel'.tr()),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: AppColors.success),
-            child: const Text(
-              'Confirmar',
+            child: Text(
+              'confirm'.tr(),
               style: TextStyle(fontWeight: FontWeight.w600),
             ),
           ),

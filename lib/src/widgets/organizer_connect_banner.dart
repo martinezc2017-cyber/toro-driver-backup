@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
 import '../services/organizer_stripe_service.dart';
@@ -66,7 +67,7 @@ class _OrganizerConnectBannerState extends State<OrganizerConnectBanner> {
       if (url == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('No se pudo abrir el onboarding de Stripe')),
+            SnackBar(content: Text('stripe.cannot_open_onboarding'.tr())),
           );
         }
         return;
@@ -89,11 +90,11 @@ class _OrganizerConnectBannerState extends State<OrganizerConnectBanner> {
     final fg = isPending ? const Color(0xFF7A4F00) : const Color(0xFFB71C1C);
     final icon = isPending ? Icons.hourglass_top : Icons.warning_amber_rounded;
     final title = isPending
-        ? 'Stripe está revisando tu identidad'
-        : 'No puedes recibir dinero todavía';
+        ? 'stripe.reviewing_identity'.tr()
+        : 'stripe.cannot_receive_money'.tr();
     final subtitle = isPending
-        ? 'En cuanto Stripe verifique tus documentos podrás cobrar reservas y recibir payouts.'
-        : 'Conecta tu cuenta de Stripe para recibir pagos de pasajeros. Sin esto, el dinero queda detenido.';
+        ? 'stripe.reviewing_subtitle'.tr()
+        : 'stripe.connect_subtitle'.tr();
 
     return Container(
       margin: widget.margin,
@@ -123,7 +124,7 @@ class _OrganizerConnectBannerState extends State<OrganizerConnectBanner> {
                     child: ElevatedButton.icon(
                       onPressed: _busy ? null : _activate,
                       icon: const Icon(Icons.link, size: 16),
-                      label: Text(_busy ? 'Abriendo…' : 'Activar pagos'),
+                      label: Text(_busy ? 'stripe.opening'.tr() : 'stripe.activate_payments'.tr()),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: fg,
                         foregroundColor: Colors.white,
@@ -156,20 +157,18 @@ class OrganizerConnectGuard {
     final proceed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('No puedes $actionLabel todavía'),
-        content: const Text(
-          'Para que TORO pueda enviarte el dinero de los pasajeros, '
-          'primero tienes que completar tu cuenta de Stripe.\n\n'
-          'Tu cuenta queda lista en 3 minutos.',
+        title: Text('stripe.cannot_action_yet'.tr(namedArgs: {'action': actionLabel})),
+        content: Text(
+          'stripe.connect_prompt'.tr(),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Más tarde'),
+            child: Text('stripe.later'.tr()),
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Activar pagos'),
+            child: Text('stripe.activate_payments'.tr()),
           ),
         ],
       ),

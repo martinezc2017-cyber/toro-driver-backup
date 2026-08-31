@@ -513,16 +513,16 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text(
-              'Cancelar',
+            child: Text(
+              'cancel'.tr(),
               style: TextStyle(color: AppColors.textTertiary),
             ),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-            child: const Text(
-              'Eliminar',
+            child: Text(
+              'delete'.tr(),
               style: TextStyle(color: Colors.white),
             ),
           ),
@@ -720,8 +720,8 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
                                     color: AppColors.textPrimary,
                                   ),
                                   decoration: InputDecoration(
-                                    labelText: 'Dirección',
-                                    hintText: 'Escribe o selecciona en mapa',
+                                    labelText: 'address'.tr(),
+                                    hintText: 'organizer.address_hint'.tr(),
                                     prefixIcon: const Icon(
                                       Icons.place,
                                       color: AppColors.textSecondary,
@@ -913,8 +913,8 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
                                             TextButton(
                                               onPressed: () =>
                                                   Navigator.pop(context),
-                                              child: const Text(
-                                                'Cancelar',
+                                              child: Text(
+                                                'cancel'.tr(),
                                                 style: TextStyle(
                                                   color:
                                                       AppColors.textSecondary,
@@ -973,7 +973,7 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
                         },
                         child: InputDecorator(
                           decoration: InputDecoration(
-                            labelText: 'Fecha y hora estimada (opcional)',
+                            labelText: 'org_itinerary.datetime_optional'.tr(),
                             prefixIcon: const Icon(
                               Icons.event,
                               color: AppColors.textSecondary,
@@ -1002,8 +1002,8 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
                         keyboardType: TextInputType.number,
                         style: const TextStyle(color: AppColors.textPrimary),
                         decoration: InputDecoration(
-                          labelText: 'Duración de parada (minutos)',
-                          hintText: 'Ej: 15',
+                          labelText: 'organizer.stop_duration_short'.tr(),
+                          hintText: 'organizer.eg_15'.tr(),
                           prefixIcon: const Icon(
                             Icons.timer,
                             color: AppColors.textSecondary,
@@ -1022,7 +1022,7 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
                         style: const TextStyle(color: AppColors.textPrimary),
                         decoration: InputDecoration(
                           labelText: 'Notas (opcional)',
-                          hintText: 'Información adicional',
+                          hintText: 'organizer.additional_info_short'.tr(),
                           prefixIcon: const Icon(
                             Icons.notes,
                             color: AppColors.textSecondary,
@@ -1375,7 +1375,7 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
             ElevatedButton.icon(
               onPressed: _addStop,
               icon: const Icon(Icons.add_location_alt),
-              label: const Text('Agregar Primera Parada'),
+              label: Text('org_itinerary.add_first_stop'.tr()),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
@@ -1596,7 +1596,7 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
       statusLabel = 'Siguiente';
     } else {
       statusColor = AppColors.textTertiary;
-      statusLabel = 'Pendiente';
+      statusLabel = 'pending_status'.tr();
     }
 
     return Row(
@@ -2162,7 +2162,7 @@ class _NotifyPassengersDialogState extends State<_NotifyPassengersDialog> {
               maxLines: 3,
               style: const TextStyle(color: AppColors.textPrimary),
               decoration: InputDecoration(
-                hintText: 'Escribe un mensaje...',
+                hintText: 'chat.write_message'.tr(),
                 hintStyle: const TextStyle(color: AppColors.textTertiary),
                 filled: true,
                 fillColor: AppColors.card,
@@ -2189,8 +2189,8 @@ class _NotifyPassengersDialogState extends State<_NotifyPassengersDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text(
-            'Cancelar',
+          child: Text(
+            'cancel'.tr(),
             style: TextStyle(color: AppColors.textTertiary),
           ),
         ),
@@ -2200,7 +2200,7 @@ class _NotifyPassengersDialogState extends State<_NotifyPassengersDialog> {
             Navigator.pop(context, _controller.text);
           },
           icon: const Icon(Icons.send, size: 16),
-          label: const Text('Enviar'),
+          label: Text('send'.tr()),
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.primary,
             foregroundColor: Colors.white,
@@ -2476,8 +2476,8 @@ class _ItineraryMapPickerState extends State<_ItineraryMapPicker> {
                     child: TextField(
                       controller: _searchController,
                       style: const TextStyle(fontSize: 14, color: Colors.white),
-                      decoration: const InputDecoration(
-                        hintText: 'Buscar dirección...',
+                      decoration: InputDecoration(
+                        hintText: 'organizer.search_address'.tr(),
                         hintStyle: TextStyle(color: Color(0xFF888888)),
                         prefixIcon: Icon(
                           Icons.search,

@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -45,16 +46,16 @@ class _MarketplaceConfirmScreenState extends State<MarketplaceConfirmScreen> {
   bool _noShowBusy = false;
 
   bool get _isPickup => widget.mode == 'pickup';
-  String get _title => _isPickup ? 'Confirmar recogida' : 'Confirmar entrega';
+  String get _title => _isPickup ? 'marketplace.confirm_pickup'.tr() : 'marketplace.confirm_delivery'.tr();
   String get _subtitle => _isPickup
-      ? 'En la tienda del vendedor'
-      : 'En la direccion del comprador';
+      ? 'marketplace.at_vendor_store'.tr()
+      : 'marketplace.at_buyer_address'.tr();
   String get _otpLabel => _isPickup
-      ? 'Codigo de recogida (te lo da el vendedor)'
-      : 'Codigo de entrega (te lo da el comprador)';
+      ? 'marketplace.pickup_code'.tr()
+      : 'marketplace.delivery_code'.tr();
   String get _photoLabel => _isPickup
-      ? 'Foto del producto que recoges'
-      : 'Foto del producto entregado';
+      ? 'marketplace.photo_pickup'.tr()
+      : 'marketplace.photo_delivery'.tr();
   Color get _accent => _isPickup ? Colors.orange : Colors.green;
 
   @override
@@ -88,30 +89,30 @@ class _MarketplaceConfirmScreenState extends State<MarketplaceConfirmScreen> {
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else if (mounted) {
-        _err('No se pudo abrir');
+        _err('marketplace.could_not_open'.tr());
       }
     } catch (_) {
-      if (mounted) _err('No se pudo abrir');
+      if (mounted) _err('marketplace.could_not_open'.tr());
     }
   }
 
   Future<void> _reportNoShow() async {
-    final who = _isPickup ? 'el vendedor' : 'el comprador';
+    final who = _isPickup ? 'marketplace.the_vendor'.tr() : 'marketplace.the_buyer'.tr();
     final ok = await showDialog<bool>(
       context: context,
       builder: (c) => AlertDialog(
         backgroundColor: const Color(0xFF161616),
-        title: const Text('Reportar que no se presento',
-            style: TextStyle(color: Colors.white)),
+        title: Text('marketplace.report_no_show'.tr(),
+            style: const TextStyle(color: Colors.white)),
         content: Text(
-            'Confirmas que $who NO se presento? Se cancela la entrega. El comprador NO se cobra (el cargo es al entregar).',
+            'marketplace.confirm_no_show'.tr(namedArgs: {'who': who}),
             style: const TextStyle(color: Colors.white70)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Volver')),
+          TextButton(onPressed: () => Navigator.pop(c, false), child: Text('go_back'.tr())),
           ElevatedButton(
             onPressed: () => Navigator.pop(c, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
-            child: const Text('Si, no se presento'),
+            child: Text('marketplace.yes_no_show'.tr()),
           ),
         ],
       ),
@@ -127,7 +128,7 @@ class _MarketplaceConfirmScreenState extends State<MarketplaceConfirmScreen> {
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Reportado: $who no se presento. Entrega cancelada.'),
+        content: Text('marketplace.reported_no_show'.tr(namedArgs: {'who': who})),
         backgroundColor: Colors.orange,
       ));
       Navigator.pop(context, true);
@@ -171,15 +172,15 @@ class _MarketplaceConfirmScreenState extends State<MarketplaceConfirmScreen> {
   Future<void> _submit() async {
     final otp = _otpCtrl.text.trim();
     if (otp.length != 4) {
-      _err('El codigo debe tener 4 digitos');
+      _err('marketplace.code_4_digits'.tr());
       return;
     }
     if (_photo == null) {
-      _err('Toma la foto antes de confirmar');
+      _err('marketplace.take_photo_first'.tr());
       return;
     }
     if (_position == null) {
-      _err('Esperando GPS — toca el icono para reintentar');
+      _err('marketplace.waiting_gps'.tr());
       return;
     }
 
@@ -193,7 +194,7 @@ class _MarketplaceConfirmScreenState extends State<MarketplaceConfirmScreen> {
         lat: _position!.latitude,
         lng: _position!.longitude,
       );
-      if (url == null) throw 'No se pudo subir la foto';
+      if (url == null) throw 'marketplace.upload_failed'.tr();
 
       final ok = _isPickup
           ? await _service.confirmMarketplacePickup(
@@ -224,14 +225,14 @@ class _MarketplaceConfirmScreenState extends State<MarketplaceConfirmScreen> {
           try { LocationService().stopRideTracking(); } catch (_) {}
         }
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(_isPickup ? 'Recogida confirmada' : 'Entrega confirmada'),
+          content: Text(_isPickup ? 'marketplace.pickup_confirmed'.tr() : 'marketplace.delivery_confirmed'.tr()),
           backgroundColor: Colors.green,
         ));
         Navigator.pop(context, true);
       } else {
         // ok=false means geofence failed but action was logged
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Confirmado pero fuera de zona — flagged para revision'),
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('marketplace.confirmed_out_of_zone'.tr()),
           backgroundColor: Colors.orange,
         ));
         Navigator.pop(context, true);
@@ -317,7 +318,7 @@ class _MarketplaceConfirmScreenState extends State<MarketplaceConfirmScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(_contactName ?? (_isPickup ? 'Vendedor' : 'Comprador'),
+                            Text(_contactName ?? (_isPickup ? 'marketplace.vendor'.tr() : 'marketplace.buyer'.tr()),
                                 style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
                             Text(_contactPhone!,
                                 style: const TextStyle(color: Colors.white54, fontSize: 12)),
@@ -326,7 +327,7 @@ class _MarketplaceConfirmScreenState extends State<MarketplaceConfirmScreen> {
                       ),
                       IconButton(
                         icon: const Icon(Icons.call, color: Colors.green),
-                        tooltip: 'Llamar',
+                        tooltip: 'marketplace.call'.tr(),
                         onPressed: () => _launch('tel:${_contactPhone!}'),
                       ),
                       IconButton(
@@ -387,9 +388,9 @@ class _MarketplaceConfirmScreenState extends State<MarketplaceConfirmScreen> {
                           children: [
                             Icon(Icons.add_a_photo, color: _accent, size: 48),
                             const SizedBox(height: 8),
-                            const Text('Toca para tomar foto',
-                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                            Text('Foto clara del producto',
+                            Text('marketplace.tap_to_take_photo'.tr(),
+                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                            Text('marketplace.clear_product_photo'.tr(),
                                 style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12)),
                           ],
                         )
@@ -425,8 +426,8 @@ class _MarketplaceConfirmScreenState extends State<MarketplaceConfirmScreen> {
                     Expanded(
                       child: Text(
                         _position != null
-                            ? 'Ubicacion capturada (${_position!.latitude.toStringAsFixed(4)}, ${_position!.longitude.toStringAsFixed(4)})'
-                            : (_capturingGps ? 'Capturando GPS...' : 'Sin GPS'),
+                            ? 'marketplace.location_captured'.tr(namedArgs: {'lat': _position!.latitude.toStringAsFixed(4), 'lng': _position!.longitude.toStringAsFixed(4)})
+                            : (_capturingGps ? 'marketplace.capturing_gps'.tr() : 'marketplace.no_gps'.tr()),
                         style: TextStyle(
                           color: _position != null ? Colors.green : Colors.orange,
                           fontSize: 12,
@@ -455,12 +456,12 @@ class _MarketplaceConfirmScreenState extends State<MarketplaceConfirmScreen> {
                 ),
                 child: _submitting
                     ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-                    : Text(_isPickup ? 'Confirmar recogida' : 'Confirmar entrega',
+                    : Text(_isPickup ? 'marketplace.confirm_pickup'.tr() : 'marketplace.confirm_delivery'.tr(),
                         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               ),
               const SizedBox(height: 12),
               Text(
-                'Sin codigo, foto o GPS no se completa la accion. Es para tu proteccion y la del comprador.',
+                'marketplace.missing_requirements'.tr(),
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 11),
               ),
@@ -472,8 +473,8 @@ class _MarketplaceConfirmScreenState extends State<MarketplaceConfirmScreen> {
                   icon: _noShowBusy
                       ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.orange))
                       : const Icon(Icons.person_off, color: Colors.orange),
-                  label: const Text('El comprador no se presento',
-                      style: TextStyle(color: Colors.orange)),
+                  label: Text('marketplace.buyer_no_show'.tr(),
+                      style: const TextStyle(color: Colors.orange)),
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size.fromHeight(50),
                     side: const BorderSide(color: Colors.orange),

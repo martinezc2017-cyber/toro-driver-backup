@@ -1402,7 +1402,7 @@ class _TourismDriverHomeScreenState extends State<TourismDriverHomeScreen>
                     ),
                     const SizedBox(height: 16),
                     // Address search
-                    const Text('Dirección', style: TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
+                    Text('address'.tr(), style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 6),
                     Row(
                       children: [
@@ -1411,7 +1411,7 @@ class _TourismDriverHomeScreenState extends State<TourismDriverHomeScreen>
                             controller: addressController,
                             style: const TextStyle(color: AppColors.textPrimary, fontSize: 15),
                             decoration: InputDecoration(
-                              hintText: 'Buscar dirección o negocio...',
+                              hintText: 'tourism.search_address_business'.tr(),
                               hintStyle: TextStyle(color: AppColors.textTertiary),
                               filled: true, fillColor: AppColors.surface,
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.border)),
@@ -1834,13 +1834,13 @@ class _TourismDriverHomeScreenState extends State<TourismDriverHomeScreen>
                       ],
                     ),
                     const SizedBox(height: 20),
-                    const Text('Nombre', style: TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
+                    Text('name_label'.tr(), style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 6),
                     TextField(
                       controller: nameController,
                       style: const TextStyle(color: AppColors.textPrimary, fontSize: 15),
                       decoration: InputDecoration(
-                        hintText: 'Ej: Compostela Centro',
+                        hintText: 'tourism.eg_name'.tr(),
                         hintStyle: TextStyle(color: AppColors.textTertiary),
                         filled: true, fillColor: AppColors.surface,
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.border)),
@@ -1851,7 +1851,7 @@ class _TourismDriverHomeScreenState extends State<TourismDriverHomeScreen>
                       ),
                     ),
                     const SizedBox(height: 16),
-                    const Text('Dirección', style: TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
+                    Text('address'.tr(), style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 6),
                     Row(
                       children: [
@@ -1860,7 +1860,7 @@ class _TourismDriverHomeScreenState extends State<TourismDriverHomeScreen>
                             controller: addressController,
                             style: const TextStyle(color: AppColors.textPrimary, fontSize: 15),
                             decoration: InputDecoration(
-                              hintText: 'Buscar dirección...',
+                              hintText: 'organizer.search_address'.tr(),
                               hintStyle: TextStyle(color: AppColors.textTertiary),
                               filled: true, fillColor: AppColors.surface,
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.border)),
@@ -2046,7 +2046,7 @@ class _TourismDriverHomeScreenState extends State<TourismDriverHomeScreen>
                         icon: isSaving
                             ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                             : const Icon(Icons.add, size: 18),
-                        label: Text(isSaving ? 'Guardando...' : 'Agregar parada'),
+                        label: Text(isSaving ? 'Guardando...' : 'add_stop'.tr()),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.success,
                           foregroundColor: Colors.white,
@@ -2077,7 +2077,7 @@ class _TourismDriverHomeScreenState extends State<TourismDriverHomeScreen>
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.card,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Eliminar parada', style: TextStyle(color: AppColors.textPrimary)),
+        title: Text('delete_stop'.tr(), style: const TextStyle(color: AppColors.textPrimary)),
         content: Text(
           '¿Eliminar "$stopName"? Esta acción se compartirá con todos los dispositivos conectados.',
           style: const TextStyle(color: AppColors.textSecondary),
@@ -2085,7 +2085,7 @@ class _TourismDriverHomeScreenState extends State<TourismDriverHomeScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar', style: TextStyle(color: AppColors.textTertiary)),
+            child: Text('cancel'.tr(), style: const TextStyle(color: AppColors.textTertiary)),
           ),
           TextButton(
             onPressed: () async {
@@ -2134,7 +2134,7 @@ class _TourismDriverHomeScreenState extends State<TourismDriverHomeScreen>
                 }
               }
             },
-            child: const Text('Eliminar', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w700)),
+            child: Text('delete'.tr(), style: const TextStyle(color: AppColors.error, fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -2470,12 +2470,12 @@ class _TourismDriverHomeScreenState extends State<TourismDriverHomeScreen>
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(color: AppColors.success.withOpacity(0.3)),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.add_location_alt, color: AppColors.success, size: 14),
-                        SizedBox(width: 4),
-                        Text('Agregar parada', style: TextStyle(color: AppColors.success, fontSize: 11, fontWeight: FontWeight.w600)),
+                        const Icon(Icons.add_location_alt, color: AppColors.success, size: 14),
+                        const SizedBox(width: 4),
+                        Text('add_stop'.tr(), style: const TextStyle(color: AppColors.success, fontSize: 11, fontWeight: FontWeight.w600)),
                       ],
                     ),
                   ),
@@ -2911,7 +2911,7 @@ class _HomeMapPickerState extends State<_HomeMapPicker> {
           backgroundColor: const Color(0xFF2A2A2A),
           elevation: 0,
           leading: IconButton(icon: const Icon(Icons.close, color: Colors.white), onPressed: () => Navigator.pop(context)),
-          title: const Text('Seleccionar Ubicación', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+          title: Text('tourism.select_location'.tr(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
           centerTitle: true,
         ),
         body: Stack(
@@ -2944,7 +2944,7 @@ class _HomeMapPickerState extends State<_HomeMapPicker> {
                     child: TextField(
                       controller: _searchController,
                       style: const TextStyle(fontSize: 14, color: Colors.white),
-                      decoration: const InputDecoration(hintText: 'Buscar dirección o negocio...', hintStyle: TextStyle(color: Color(0xFF888888)), prefixIcon: Icon(Icons.search, color: Color(0xFFAAAAAA), size: 20), border: InputBorder.none, contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14)),
+                      decoration: InputDecoration(hintText: 'tourism.search_address_business'.tr(), hintStyle: const TextStyle(color: Color(0xFF888888)), prefixIcon: const Icon(Icons.search, color: Color(0xFFAAAAAA), size: 20), border: InputBorder.none, contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14)),
                       onChanged: _fetchSuggestions,
                     ),
                   ),
@@ -3031,7 +3031,7 @@ class _HomeMapPickerState extends State<_HomeMapPicker> {
                         const SizedBox(width: 14),
                         Expanded(
                           child: _isLoadingAddress
-                              ? const Row(children: [SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.orange)), SizedBox(width: 10), Text('Obteniendo dirección...', style: TextStyle(color: Color(0xFF999999), fontSize: 14))])
+                              ? Row(children: [const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.orange)), const SizedBox(width: 10), Text('tourism.getting_address'.tr(), style: const TextStyle(color: Color(0xFF999999), fontSize: 14))])
                               : Text(_addressText, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.white), maxLines: 2, overflow: TextOverflow.ellipsis),
                         ),
                       ]),
@@ -3047,7 +3047,7 @@ class _HomeMapPickerState extends State<_HomeMapPicker> {
                       child: Container(
                         width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 16),
                         decoration: BoxDecoration(gradient: const LinearGradient(colors: [Colors.orange, Color(0xFFFF8C00)]), borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.orange.withOpacity(0.4), blurRadius: 12, offset: const Offset(0, 4))]),
-                        child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.check_circle, color: Colors.white, size: 22), SizedBox(width: 10), Text('Confirmar Ubicación', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16))]),
+                        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [const Icon(Icons.check_circle, color: Colors.white, size: 22), const SizedBox(width: 10), Text('tourism.confirm_location'.tr(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16))]),
                       ),
                     ),
                   ]),

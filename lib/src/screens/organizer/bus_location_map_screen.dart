@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -267,8 +268,8 @@ class _BusLocationMapScreenState extends State<BusLocationMapScreen> {
       _mapController.move(LatLng(lat, lng), 15);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Este pasajero no tiene ubicación GPS disponible'),
+        SnackBar(
+          content: Text('organizer.passenger_no_gps'.tr()),
           backgroundColor: AppColors.warning,
         ),
       );
@@ -678,7 +679,7 @@ class _BusLocationMapScreenState extends State<BusLocationMapScreen> {
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
-                            isCheckedIn ? 'Check-in ✓' : 'Pendiente',
+                            isCheckedIn ? '${'check_in'.tr()} ✓' : 'pending_status'.tr(),
                             style: TextStyle(
                               color: isCheckedIn
                                   ? AppColors.purple
@@ -1068,7 +1069,7 @@ class _BusLocationMapScreenState extends State<BusLocationMapScreen> {
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
-                    isCheckedIn ? 'Check-in ✓' : 'Pendiente',
+                    isCheckedIn ? '${'check_in'.tr()} ✓' : 'pending_status'.tr(),
                     style: TextStyle(
                       color: isCheckedIn
                           ? AppColors.purple
@@ -1139,13 +1140,13 @@ class _BusLocationMapScreenState extends State<BusLocationMapScreen> {
   String _getStatusLabel(String status) {
     switch (status) {
       case 'in_progress':
-        return 'En curso';
+        return 'in_progress_status'.tr();
       case 'active':
-        return 'Activo';
+        return 'active_status'.tr();
       case 'vehicle_accepted':
         return 'Vehículo OK';
       case 'completed':
-        return 'Completado';
+        return 'completed_status'.tr();
       default:
         return status;
     }

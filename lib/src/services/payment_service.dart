@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
@@ -613,7 +614,7 @@ class PaymentService {
       case TransactionType.rideEarning:
         return 'Ganancia por viaje';
       case TransactionType.tip:
-        return 'Propina recibida';
+        return 'payment.tip_received'.tr();
       case TransactionType.bonus:
         return 'Bono de incentivo';
       case TransactionType.referralBonus:
@@ -621,7 +622,7 @@ class PaymentService {
       case TransactionType.withdrawal:
         return 'Retiro a cuenta bancaria';
       case TransactionType.platformFee:
-        return 'Comisión de plataforma';
+        return 'payment.platform_commission'.tr();
       case TransactionType.adjustment:
         return 'Ajuste de balance';
     }

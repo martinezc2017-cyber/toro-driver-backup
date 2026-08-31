@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart' show kIsWeb, ChangeNotifier;
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../services/auth_service.dart';
 import '../models/driver_model.dart';
 import '../core/logging/app_logger.dart';
@@ -358,11 +359,11 @@ class AuthProvider with ChangeNotifier {
         return false;
       }
       if (msg.contains('ApiException: 10') || msg.contains('sign_in_failed') || msg.contains('DEVELOPER_ERROR')) {
-        _error = 'Esta version necesita actualizarse. Descarga la ultima version en toro-ride.com o escribenos a support@toro-ride.com';
+        _error = 'auth.version_update_needed'.tr();
       } else if (msg.contains('network') || msg.contains('timeout') || msg.contains('SocketException')) {
-        _error = 'Sin conexion a internet. Verifica tu conexion e intenta de nuevo.';
+        _error = 'auth.no_internet'.tr();
       } else {
-        _error = 'No se pudo iniciar sesion con Google. Intenta de nuevo o usa correo y contrasena. Si el problema continua, escribenos a support@toro-ride.com';
+        _error = 'auth.google_login_failed'.tr();
       }
       _status = AuthStatus.unauthenticated;
       notifyListeners();
@@ -395,7 +396,7 @@ class AuthProvider with ChangeNotifier {
         notifyListeners();
         return false;
       }
-      _error = 'No se pudo iniciar sesión con Apple. Intenta de nuevo o usa correo y contraseña.';
+      _error = 'auth.apple_login_failed'.tr();
       _status = AuthStatus.unauthenticated;
       notifyListeners();
       return false;

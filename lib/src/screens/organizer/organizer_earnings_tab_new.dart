@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -414,11 +415,11 @@ class _OrganizerEarningsTabNewState extends State<OrganizerEarningsTabNew> {
     final status = _creditAccount?['status'] as String? ?? 'unknown';
 
     Color statusColor = AppColors.success;
-    String statusText = 'Activo';
+    String statusText = 'active_status'.tr();
 
     if (status == 'suspended') {
       statusColor = AppColors.warning;
-      statusText = 'Suspendido';
+      statusText = 'suspended_status'.tr();
     } else if (status == 'blocked') {
       statusColor = AppColors.error;
       statusText = 'Bloqueado';
@@ -472,8 +473,8 @@ class _OrganizerEarningsTabNewState extends State<OrganizerEarningsTabNew> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Crédito Disponible',
+                    Text(
+                      'org_earnings.credit_available'.tr(),
                       style: TextStyle(
                         color: AppColors.textTertiary,
                         fontSize: 11,
@@ -674,8 +675,8 @@ class _OrganizerEarningsTabNewState extends State<OrganizerEarningsTabNew> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Deuda Pendiente',
+                      Text(
+                        'org_earnings.pending_debt'.tr(),
                         style: TextStyle(
                           color: AppColors.textTertiary,
                           fontSize: 11,
@@ -734,8 +735,8 @@ class _OrganizerEarningsTabNewState extends State<OrganizerEarningsTabNew> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text(
-              'Cancelar',
+            child: Text(
+              'cancel'.tr(),
               style: TextStyle(color: AppColors.textTertiary),
             ),
           ),
@@ -751,7 +752,7 @@ class _OrganizerEarningsTabNewState extends State<OrganizerEarningsTabNew> {
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
-            child: const Text('Enviar Solicitud'),
+            child: Text('send_request'.tr()),
           ),
         ],
       ),
@@ -1520,7 +1521,7 @@ class _OrganizerEarningsTabNewState extends State<OrganizerEarningsTabNew> {
               if (completedAt != null)
                 _buildDetailSection(
                   icon: Icons.check_circle_outline,
-                  title: 'Completado',
+                  title: 'completed_status'.tr(),
                   child: Text(
                     _formatDate(completedAt),
                     style: const TextStyle(
@@ -1660,7 +1661,7 @@ class _OrganizerEarningsTabNewState extends State<OrganizerEarningsTabNew> {
     final paidAt = statement['paid_at'] as String?;
 
     Color statusColor = AppColors.warning;
-    String statusText = 'Pendiente';
+    String statusText = 'pending_status'.tr();
 
     if (paymentStatus == 'paid') {
       statusColor = AppColors.success;

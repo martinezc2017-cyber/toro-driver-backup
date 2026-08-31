@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../services/payment_service.dart';
 import '../models/earning_model.dart';
 
@@ -47,7 +48,7 @@ class EarningsProvider with ChangeNotifier {
       ]);
       _error = null;
     } catch (e) {
-      _error = 'Error al cargar datos: $e';
+      _error = 'error.loading_data'.tr(namedArgs: {'error': e.toString()});
     }
 
     _isLoading = false;
@@ -170,7 +171,7 @@ class EarningsProvider with ChangeNotifier {
 
       _error = null;
     } catch (e) {
-      _error = 'Error al cargar transacciones: $e';
+      _error = 'error.loading_transactions'.tr(namedArgs: {'error': e.toString()});
     }
 
     _isLoading = false;
@@ -183,7 +184,7 @@ class EarningsProvider with ChangeNotifier {
       _bankAccounts = await _paymentService.getBankAccounts(driverId);
       notifyListeners();
     } catch (e) {
-      _error = 'Error al cargar cuentas: $e';
+      _error = 'error.loading_accounts'.tr(namedArgs: {'error': e.toString()});
       notifyListeners();
     }
   }
@@ -211,7 +212,7 @@ class EarningsProvider with ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _error = 'Error al solicitar retiro: $e';
+      _error = 'error.requesting_withdrawal'.tr(namedArgs: {'error': e.toString()});
       _isLoading = false;
       notifyListeners();
       return false;
@@ -242,7 +243,7 @@ class EarningsProvider with ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _error = 'Error al agregar cuenta: $e';
+      _error = 'error.adding_account'.tr(namedArgs: {'error': e.toString()});
       _isLoading = false;
       notifyListeners();
       return false;
@@ -256,7 +257,7 @@ class EarningsProvider with ChangeNotifier {
       await loadBankAccounts(driverId);
       return true;
     } catch (e) {
-      _error = 'Error al eliminar cuenta: $e';
+      _error = 'error.deleting_account'.tr(namedArgs: {'error': e.toString()});
       notifyListeners();
       return false;
     }
@@ -269,7 +270,7 @@ class EarningsProvider with ChangeNotifier {
       await loadBankAccounts(driverId);
       return true;
     } catch (e) {
-      _error = 'Error al establecer cuenta predeterminada: $e';
+      _error = 'error.setting_default'.tr(namedArgs: {'error': e.toString()});
       notifyListeners();
       return false;
     }
@@ -280,7 +281,7 @@ class EarningsProvider with ChangeNotifier {
     try {
       return await _paymentService.getStripeOnboardingLink(driverId);
     } catch (e) {
-      _error = 'Error al obtener link de Stripe: $e';
+      _error = 'error.getting_stripe_link'.tr(namedArgs: {'error': e.toString()});
       notifyListeners();
       return null;
     }
@@ -299,7 +300,7 @@ class EarningsProvider with ChangeNotifier {
         endDate: endDate,
       );
     } catch (e) {
-      _error = 'Error al calcular ganancias: $e';
+      _error = 'error.calculating_earnings'.tr(namedArgs: {'error': e.toString()});
       notifyListeners();
       return 0;
     }

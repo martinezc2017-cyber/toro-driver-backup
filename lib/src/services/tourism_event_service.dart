@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart';
 import '../utils/money_format.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -367,7 +368,7 @@ class TourismEventService {
       // Send notification to driver
       await _sendNotification(
         driverId,
-        'Nueva solicitud de evento',
+        'tourism_service.new_event_request'.tr(),
         'Un organizador te ha solicitado para un evento de turismo.',
         'tourism_event_request',
         {'event_id': eventId},
@@ -430,7 +431,7 @@ class TourismEventService {
       if (orgUserId != null) {
         await _sendNotification(
           orgUserId,
-          accept ? 'Nueva Puja Recibida' : 'Puja Rechazada',
+          accept ? 'tourism_service.new_bid_received'.tr() : 'tourism_service.bid_rejected'.tr(),
           accept
               ? 'Un conductor ha enviado su puja${pricePerKm != null ? " de ${formatPricePerDistance(pricePerKm, country: country)}" : ""}.'
               : 'Un conductor ha rechazado la invitacion${reason != null ? ": $reason" : "."}',
@@ -720,7 +721,7 @@ class TourismEventService {
       if (orgUserId != null) {
         await _sendDbNotification(
           userId: orgUserId,
-          title: 'Nueva Puja Recibida',
+          title: 'tourism_service.new_bid_received'.tr(),
           body:
               '$driverName ofrece '
               '${formatPricePerDistance(pricePerKm, country: country)} '
@@ -1680,7 +1681,7 @@ class TourismEventService {
 
         // Enrich with profile data
         request['passenger_name'] =
-            profile?['full_name'] ?? request['passenger_name'] ?? 'Sin nombre';
+            profile?['full_name'] ?? request['passenger_name'] ?? 'no_name'.tr();
         request['passenger_phone'] =
             profile?['phone'] ?? request['passenger_phone'];
         request['passenger_email'] = profile?['email'];
@@ -1704,7 +1705,7 @@ class TourismEventService {
         return List<Map<String, dynamic>>.from(
           (fallback as List).map((r) {
             final m = Map<String, dynamic>.from(r as Map);
-            m['passenger_name'] = m['passenger_name'] ?? 'Sin nombre';
+            m['passenger_name'] = m['passenger_name'] ?? 'no_name'.tr();
             m['has_profile'] = false;
             return m;
           }),
@@ -1802,7 +1803,7 @@ class TourismEventService {
       if (userId != null) {
         await _sendNotification(
           userId,
-          'Solicitud aceptada',
+          'tourism_service.request_accepted'.tr(),
           'Tu solicitud para unirte al evento ha sido aceptada.',
           'tourism_join_accepted',
           {'event_id': eventId, 'invitation_id': invitationId},
@@ -1854,7 +1855,7 @@ class TourismEventService {
       if (userId != null) {
         await _sendNotification(
           userId,
-          'Solicitud rechazada',
+          'tourism_service.request_rejected'.tr(),
           reason != null && reason.isNotEmpty
               ? 'Tu solicitud fue rechazada: $reason'
               : 'Tu solicitud para unirte al evento no fue aceptada.',

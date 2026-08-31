@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
@@ -464,15 +465,15 @@ class _OrganizerPhotosScreenState extends State<OrganizerPhotosScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text(
-              'Cancelar',
+            child: Text(
+              'cancel'.tr(),
               style: TextStyle(color: AppColors.textTertiary),
             ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text(
-              'Eliminar',
+            child: Text(
+              'delete'.tr(),
               style: TextStyle(color: AppColors.error),
             ),
           ),
@@ -717,7 +718,7 @@ class _OrganizerPhotosScreenState extends State<OrganizerPhotosScreen> {
             ElevatedButton.icon(
               onPressed: _pickAndUploadPhoto,
               icon: const Icon(Icons.add_a_photo),
-              label: const Text('Subir Primera Foto'),
+              label: Text('organizer.upload_first_photo'.tr()),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
@@ -970,7 +971,7 @@ class _OrganizerPhotosScreenState extends State<OrganizerPhotosScreen> {
             ),
             _buildOptionTile(
               icon: Icons.share,
-              label: 'Compartir',
+              label: 'share'.tr(),
               onTap: () {
                 Navigator.pop(ctx);
                 _sharePhoto(photo);
@@ -978,7 +979,7 @@ class _OrganizerPhotosScreenState extends State<OrganizerPhotosScreen> {
             ),
             _buildOptionTile(
               icon: Icons.download,
-              label: 'Descargar',
+              label: 'org_photos.download'.tr(),
               onTap: () {
                 Navigator.pop(ctx);
                 _downloadPhoto(photo);
@@ -987,7 +988,7 @@ class _OrganizerPhotosScreenState extends State<OrganizerPhotosScreen> {
             if (photo.senderId == widget.userId)
               _buildOptionTile(
                 icon: Icons.delete,
-                label: 'Eliminar',
+                label: 'delete'.tr(),
                 color: AppColors.error,
                 onTap: () {
                   Navigator.pop(ctx);
@@ -1269,18 +1270,18 @@ class _FullScreenPhotoViewerState extends State<_FullScreenPhotoViewer> {
                             children: [
                               _buildActionButton(
                                 icon: Icons.share,
-                                label: 'Compartir',
+                                label: 'share'.tr(),
                                 onTap: () => widget.onShare(currentPhoto),
                               ),
                               _buildActionButton(
                                 icon: Icons.download,
-                                label: 'Descargar',
+                                label: 'org_photos.download'.tr(),
                                 onTap: () => widget.onDownload(currentPhoto),
                               ),
                               if (isOwnPhoto)
                                 _buildActionButton(
                                   icon: Icons.delete,
-                                  label: 'Eliminar',
+                                  label: 'delete'.tr(),
                                   color: AppColors.error,
                                   onTap: () async {
                                     await widget.onDelete(currentPhoto);

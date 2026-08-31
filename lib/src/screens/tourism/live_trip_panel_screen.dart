@@ -518,15 +518,15 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text(
-              'Cancelar',
-              style: TextStyle(color: AppColors.textSecondary),
+            child: Text(
+              'cancel'.tr(),
+              style: const TextStyle(color: AppColors.textSecondary),
             ),
           ),
           ElevatedButton.icon(
             onPressed: () => Navigator.pop(ctx, true),
             icon: const Icon(Icons.check, size: 18),
-            label: const Text('Confirmar bajada'),
+            label: Text('confirm_drop_off'.tr()),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.success,
               foregroundColor: Colors.white,
@@ -680,15 +680,15 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text(
-              'Cancelar',
-              style: TextStyle(color: AppColors.textSecondary),
+            child: Text(
+              'cancel'.tr(),
+              style: const TextStyle(color: AppColors.textSecondary),
             ),
           ),
           ElevatedButton.icon(
             onPressed: () => Navigator.pop(ctx, true),
             icon: const Icon(Icons.warning, size: 18),
-            label: const Text('Enviar Alerta'),
+            label: Text('send_alert'.tr()),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.error,
               foregroundColor: Colors.white,
@@ -910,7 +910,7 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
             ],
             if (phone != null && phone.isNotEmpty) ...[
               const SizedBox(height: 10),
-              _buildDetailRow(Icons.phone, 'Telefono', phone),
+              _buildDetailRow(Icons.phone, 'phone'.tr(), phone),
             ],
             const SizedBox(height: 24),
             // Quick actions

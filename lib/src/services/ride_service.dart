@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
@@ -615,7 +616,7 @@ class RideService {
     }
     if (stateCode == null || stateCode.isEmpty) {
       throw Exception(
-        'No se pudo determinar el estado desde las coordenadas — verifica tu conexión a internet',
+        'error.could_not_determine_state'.tr(),
       );
     }
 
@@ -1131,7 +1132,7 @@ class RideService {
       }
       if (stateCode == null) {
         throw Exception(
-          'No se pudo determinar el estado para calcular el precio — verifica tu conexión',
+          'error.could_not_determine_price'.tr(),
         );
       }
 

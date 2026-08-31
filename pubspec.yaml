@@ -1,7 +1,7 @@
 name: toro_driver
 description: "Toro Driver - Rideshare Driver App"
 publish_to: 'none'
-version: 1.2.89+4131
+version: 1.2.92+4134
 
 environment:
   sdk: ^3.10.4
@@ -102,6 +102,9 @@ dependencies:
   flutter_slidable: ^3.0.1
   pull_to_refresh: ^2.0.0
   lottie: ^3.1.0
+
+  # Charts
+  fl_chart: ^0.69.2
 
   # Futuristic UI Effects
   vibration: ^3.1.5

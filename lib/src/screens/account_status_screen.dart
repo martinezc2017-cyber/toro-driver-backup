@@ -260,7 +260,7 @@ class _AccountStatusScreenState extends State<AccountStatusScreen> {
                     children: [
                       _buildContactOption(
                         icon: Icons.email_outlined,
-                        title: 'Email',
+                        title: 'email'.tr(),
                         subtitle: 'support@toro-ride.com',
                         color: const Color(0xFF3B82F6),
                       ),

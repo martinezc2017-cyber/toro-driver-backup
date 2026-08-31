@@ -169,7 +169,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                 ),
                 const SizedBox(height: 20),
                 Text(
-                  'Seleccionar Foto',
+                  'vehicle.select_photo'.tr(),
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -182,7 +182,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                     Expanded(
                       child: _buildSourceOption(
                         icon: Icons.camera_alt_rounded,
-                        label: 'Cámara',
+                        label: 'vehicle.camera'.tr(),
                         onTap: () => Navigator.pop(context, ImageSource.camera),
                       ),
                     ),
@@ -190,7 +190,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                     Expanded(
                       child: _buildSourceOption(
                         icon: Icons.photo_library_rounded,
-                        label: 'Galería',
+                        label: 'vehicle.gallery'.tr(),
                         onTap: () =>
                             Navigator.pop(context, ImageSource.gallery),
                       ),
@@ -327,7 +327,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Datos extraidos automaticamente de tu tarjeta de seguro',
+                      'vehicle.data_extracted_from_card'.tr(),
                       style: const TextStyle(fontSize: 13),
                     ),
                   ),
@@ -443,7 +443,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
 
     try {
       final user = Supabase.instance.client.auth.currentUser;
-      if (user == null) throw Exception('No autenticado');
+      if (user == null) throw Exception('vehicle.not_authenticated'.tr());
 
       // Upload insurance card photos
       String? frontUrl;
@@ -697,7 +697,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              'Registrar Vehiculo',
+              'vehicle.register_vehicle'.tr(),
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
@@ -726,7 +726,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
               Icon(Icons.category_rounded, color: AppColors.primary, size: 22),
               const SizedBox(width: 10),
               Text(
-                'Tipo de Vehiculo',
+                'vehicle.vehicle_type'.tr(),
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -833,7 +833,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Tu vehiculo califica para el tier premium',
+                  'vehicle.qualifies_premium'.tr(),
                   style: TextStyle(color: AppColors.blackRose.withValues(alpha: 0.7), fontSize: 12),
                 ),
               ],
@@ -860,7 +860,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
               Icon(Icons.edit_document, color: AppColors.primary, size: 22),
               const SizedBox(width: 10),
               Text(
-                'Informacion del Vehiculo',
+                'vehicle.vehicle_info'.tr(),
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -874,10 +874,10 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
           // Make field with autocomplete
           _buildTextField(
             controller: _makeController,
-            label: 'Marca',
+            label: 'vehicle.make'.tr(),
             hint: 'Toyota, Honda, Ford...',
             icon: Icons.business,
-            validator: (v) => v?.isEmpty ?? true ? 'Requerido' : null,
+            validator: (v) => v?.isEmpty ?? true ? 'vehicle.required'.tr() : null,
             fieldName: 'make',
           ),
           const SizedBox(height: 16),
@@ -885,10 +885,10 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
           // Model field
           _buildTextField(
             controller: _modelController,
-            label: 'Modelo',
+            label: 'vehicle.model'.tr(),
             hint: 'Camry, Civic, F-150...',
             icon: Icons.directions_car,
-            validator: (v) => v?.isEmpty ?? true ? 'Requerido' : null,
+            validator: (v) => v?.isEmpty ?? true ? 'vehicle.required'.tr() : null,
             fieldName: 'model',
           ),
           const SizedBox(height: 16),
@@ -899,16 +899,16 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
               Expanded(
                 child: _buildTextField(
                   controller: _yearController,
-                  label: 'Ano',
+                  label: 'vehicle.year'.tr(),
                   hint: '2020',
                   icon: Icons.calendar_today,
                   keyboardType: TextInputType.number,
                   validator: (v) {
-                    if (v?.isEmpty ?? true) return 'Requerido';
+                    if (v?.isEmpty ?? true) return 'vehicle.required'.tr();
                     final year = int.tryParse(v!);
-                    if (year == null) return 'Invalido';
+                    if (year == null) return 'vehicle.invalid'.tr();
                     if (year < 2000 || year > DateTime.now().year + 1) {
-                      return 'Invalido';
+                      return 'vehicle.invalid'.tr();
                     }
                     return null;
                   },
@@ -919,10 +919,10 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
               Expanded(
                 child: _buildTextField(
                   controller: _colorController,
-                  label: 'Color',
-                  hint: 'Blanco, Negro...',
+                  label: 'vehicle.color'.tr(),
+                  hint: 'vehicle.color_hint'.tr(),
                   icon: Icons.palette,
-                  validator: (v) => v?.isEmpty ?? true ? 'Requerido' : null,
+                  validator: (v) => v?.isEmpty ?? true ? 'vehicle.required'.tr() : null,
                   fieldName: 'color',
                 ),
               ),
@@ -933,11 +933,11 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
           // Plate field
           _buildTextField(
             controller: _plateController,
-            label: 'Numero de Placa',
+            label: 'vehicle.plate_number'.tr(),
             hint: 'ABC-1234',
             icon: Icons.confirmation_number,
             textCapitalization: TextCapitalization.characters,
-            validator: (v) => v?.isEmpty ?? true ? 'Requerido' : null,
+            validator: (v) => v?.isEmpty ?? true ? 'vehicle.required'.tr() : null,
             fieldName: 'plate',
           ),
           const SizedBox(height: 16),
@@ -1001,7 +1001,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Seguro del Vehiculo',
+                      'vehicle.vehicle_insurance'.tr(),
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -1009,7 +1009,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                       ),
                     ),
                     Text(
-                      'Requerido para conductores TNC en Arizona',
+                      'vehicle.required_tnc_arizona'.tr(),
                       style: TextStyle(
                         fontSize: 12,
                         color: AppColors.textSecondary,
@@ -1042,7 +1042,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'Arizona requiere cobertura minima de \$1,000,000 con endorsement de rideshare',
+                    'vehicle.arizona_min_coverage'.tr(),
                     style: TextStyle(
                       fontSize: 12,
                       color: AppColors.textPrimary,
@@ -1057,10 +1057,10 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
           // Insurance Company
           _buildTextField(
             controller: _insuranceCompanyController,
-            label: 'Compania de Seguros',
+            label: 'vehicle.insurance_company'.tr(),
             hint: 'State Farm, Geico, Progressive...',
             icon: Icons.business_rounded,
-            validator: (v) => v?.isEmpty ?? true ? 'Requerido' : null,
+            validator: (v) => v?.isEmpty ?? true ? 'vehicle.required'.tr() : null,
             fieldName: 'insuranceCompany',
           ),
           const SizedBox(height: 16),
@@ -1068,11 +1068,11 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
           // Policy Number
           _buildTextField(
             controller: _insurancePolicyController,
-            label: 'Numero de Poliza',
+            label: 'vehicle.policy_number'.tr(),
             hint: 'Ej: POL-123456789',
             icon: Icons.confirmation_number_rounded,
             textCapitalization: TextCapitalization.characters,
-            validator: (v) => v?.isEmpty ?? true ? 'Requerido' : null,
+            validator: (v) => v?.isEmpty ?? true ? 'vehicle.required'.tr() : null,
             fieldName: 'insurancePolicy',
           ),
           const SizedBox(height: 16),
@@ -1082,7 +1082,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Fecha de Vencimiento',
+                'vehicle.expiry_date'.tr(),
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
@@ -1142,7 +1142,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                       Text(
                         _insuranceExpiry != null
                             ? '${_insuranceExpiry!.day}/${_insuranceExpiry!.month}/${_insuranceExpiry!.year}'
-                            : 'Seleccionar fecha',
+                            : 'vehicle.select_date'.tr(),
                         style: TextStyle(
                           color: _insuranceExpiry != null
                               ? AppColors.textPrimary
@@ -1165,7 +1165,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
 
           // Insurance Card Photos Section
           Text(
-            'Fotos de Tarjeta de Seguro',
+            'vehicle.insurance_card_photos'.tr(),
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
@@ -1174,7 +1174,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            'El VIN de tu vehículo se extraerá de la tarjeta',
+            'vehicle.vin_extracted_from_card'.tr(),
             style: TextStyle(
               fontSize: 11,
               color: AppColors.textSecondary.withValues(alpha: 0.7),
@@ -1185,7 +1185,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
             children: [
               Expanded(
                 child: _buildPhotoUploadCard(
-                  label: 'Frente',
+                  label: 'vehicle.front'.tr(),
                   icon: Icons.credit_card,
                   image: _insuranceCardFront,
                   onTap: () => _pickImage('front'),
@@ -1196,7 +1196,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: _buildPhotoUploadCard(
-                  label: 'Reverso',
+                  label: 'vehicle.back'.tr(),
                   icon: Icons.credit_card,
                   image: _insuranceCardBack,
                   onTap: () => _pickImage('back'),
@@ -1231,7 +1231,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Datos detectados automaticamente',
+                          'vehicle.data_detected'.tr(),
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
@@ -1303,7 +1303,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Tengo Endorsement de Rideshare',
+                          'vehicle.have_rideshare_endorsement'.tr(),
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
@@ -1312,7 +1312,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'Mi poliza incluye cobertura comercial/TNC',
+                          'vehicle.policy_includes_tnc'.tr(),
                           style: TextStyle(
                             fontSize: 12,
                             color: AppColors.textSecondary,
@@ -1344,7 +1344,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Sin endorsement no podras recibir viajes. Contacta a tu aseguradora para agregarlo.',
+                      'vehicle.no_endorsement_warning'.tr(),
                       style: TextStyle(fontSize: 12, color: AppColors.error),
                     ),
                   ),
@@ -1357,7 +1357,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
           if (_hasRideshareEndorsement) ...[
             const SizedBox(height: 20),
             Text(
-              'Documento de Endorsement',
+              'vehicle.endorsement_document'.tr(),
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
@@ -1366,7 +1366,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
             ),
             const SizedBox(height: 4),
             Text(
-              'Sube el documento que confirma tu cobertura TNC/comercial',
+              'vehicle.upload_tnc_doc'.tr(),
               style: TextStyle(
                 fontSize: 11,
                 color: AppColors.textSecondary.withValues(alpha: 0.7),
@@ -1422,7 +1422,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Seguro del Vehículo',
+                      'vehicle.vehicle_insurance'.tr(),
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -1430,7 +1430,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                       ),
                     ),
                     Text(
-                      'Opcional — puedes agregarlo después',
+                      'vehicle.optional_add_later'.tr(),
                       style: TextStyle(
                         fontSize: 12,
                         color: AppColors.textSecondary,
@@ -1446,7 +1446,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
           // Insurance Company (optional for MX)
           _buildTextField(
             controller: _insuranceCompanyController,
-            label: 'Aseguradora',
+            label: 'vehicle.insurer'.tr(),
             hint: 'GNP, Qualitas, AXA, HDI...',
             icon: Icons.business_rounded,
             fieldName: 'insuranceCompany',
@@ -1456,7 +1456,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
           // Policy Number (optional for MX)
           _buildTextField(
             controller: _insurancePolicyController,
-            label: 'Número de Póliza',
+            label: 'vehicle.policy_number'.tr(),
             hint: 'Ej: POL-123456789',
             icon: Icons.confirmation_number_rounded,
             textCapitalization: TextCapitalization.characters,
@@ -1478,7 +1478,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'Puedes agregar los datos del seguro después desde tu perfil.',
+                    'vehicle.add_insurance_later'.tr(),
                     style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                   ),
                 ),
@@ -1499,18 +1499,18 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
       parts.add(_extractedData!.insuranceCompany!);
     }
     if (_extractedData!.policyNumber != null) {
-      parts.add('Poliza: ${_extractedData!.policyNumber}');
+      parts.add('${'vehicle.policy'.tr()}: ${_extractedData!.policyNumber}');
     }
     if (_extractedData!.vin != null) {
-      parts.add('VIN detectado');
+      parts.add('vehicle.vin_detected'.tr());
     }
     if (_extractedData!.expiryDate != null) {
       parts.add(
-        'Vence: ${_extractedData!.expiryDate!.day}/${_extractedData!.expiryDate!.month}/${_extractedData!.expiryDate!.year}',
+        '${'vehicle.expires'.tr()}: ${_extractedData!.expiryDate!.day}/${_extractedData!.expiryDate!.month}/${_extractedData!.expiryDate!.year}',
       );
     }
 
-    return parts.isEmpty ? 'Procesando...' : parts.join(' • ');
+    return parts.isEmpty ? 'vehicle.processing'.tr() : parts.join(' • ');
   }
 
   Widget _buildPhotoUploadCard({
@@ -1620,9 +1620,9 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                               onTap: () {
                                 HapticService.lightImpact();
                                 setState(() {
-                                  if (label == 'Frente') {
+                                  if (label == 'vehicle.front'.tr()) {
                                     _insuranceCardFront = null;
-                                  } else if (label == 'Reverso') {
+                                  } else if (label == 'vehicle.back'.tr()) {
                                     _insuranceCardBack = null;
                                   } else {
                                     _endorsementDoc = null;
@@ -1670,7 +1670,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
         ),
         const SizedBox(height: 12),
         Text(
-          'Extrayendo datos...',
+          'vehicle.extracting_data'.tr(),
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
@@ -1679,7 +1679,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
         ),
         const SizedBox(height: 4),
         Text(
-          'VIN, Poliza, Compañia',
+          'vehicle.vin_policy_company'.tr(),
           style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
         ),
       ],
@@ -1718,7 +1718,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
             ),
             const SizedBox(width: 4),
             Text(
-              isRequired ? 'Requerido' : 'Opcional',
+              isRequired ? 'vehicle.required'.tr() : 'vehicle.optional'.tr(),
               style: TextStyle(
                 fontSize: 11,
                 color: isRequired

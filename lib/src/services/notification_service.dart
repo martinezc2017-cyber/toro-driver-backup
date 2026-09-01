@@ -42,23 +42,23 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
       '';
 
   // Determine channel — v2 IDs to reset cached Android channel settings
-  String channelId = 'general_notifications_v2';
+  String channelId = 'general_notifications_v3';
   if (type.contains('ride') || type.contains('trip') ||
       type.contains('bid_request') || type.contains('bid_counter_offer')) {
-    channelId = 'ride_notifications_v2';
+    channelId = 'ride_notifications_v3';
   } else if (type.contains('message') || type.contains('chat')) {
-    channelId = 'chat_notifications_v2';
+    channelId = 'chat_notifications_v3';
   } else if (type.contains('earning') || type.contains('payment') ||
       type.contains('payout') || type.contains('bid_won') ||
       type.contains('bid_response') || type.contains('weekly_statement')) {
-    channelId = 'earnings_notifications_v2';
+    channelId = 'earnings_notifications_v3';
   }
 
-  final channelName = channelId == 'ride_notifications_v2'
+  final channelName = channelId == 'ride_notifications_v3'
       ? 'notif.ride_requests_channel'.tr()
-      : channelId == 'chat_notifications_v2'
+      : channelId == 'chat_notifications_v3'
           ? 'notif.messages_channel'.tr()
-          : channelId == 'earnings_notifications_v2'
+          : channelId == 'earnings_notifications_v3'
               ? 'Ganancias'
               : 'General';
 
@@ -136,12 +136,14 @@ class NotificationService {
   StreamSubscription<RemoteMessage>? _foregroundSub;
   StreamSubscription<RemoteMessage>? _openedAppSub;
 
-  // Notification channels — v2: bumped IDs to reset cached Android channel
+  // Notification channels — v3: bumped IDs to reset cached Android channel
   // settings (Android keeps original importance/sound even after code changes).
-  static const String rideChannel = 'ride_notifications_v2';
-  static const String chatChannel = 'chat_notifications_v2';
-  static const String earningsChannel = 'earnings_notifications_v2';
-  static const String generalChannel = 'general_notifications_v2';
+  // v2→v3: FCM server was sending 'ride_notifications' (no _v2) so Android
+  // cached the channel without sound. Bump to _v3 forces a fresh channel.
+  static const String rideChannel = 'ride_notifications_v3';
+  static const String chatChannel = 'chat_notifications_v3';
+  static const String earningsChannel = 'earnings_notifications_v3';
+  static const String generalChannel = 'general_notifications_v3';
 
   // Initialize notification service (no permission dialog)
   Future<void> initialize() async {

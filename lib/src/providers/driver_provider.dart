@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show ChangeNotifier, debugPrint;
 import 'package:geolocator/geolocator.dart';
@@ -194,6 +195,7 @@ class DriverProvider with ChangeNotifier {
               if (driver.isOnline) {
                 if (_heartbeatTimer == null) _startHeartbeat();
               } else {
+                _intendedOnline = false; // DB says offline → respect it
                 _stopHeartbeat();
               }
 
@@ -387,6 +389,12 @@ class DriverProvider with ChangeNotifier {
   /// Prevents the death spiral: DB marks offline (stale timestamp) → heartbeat
   /// reads isOnline=false → kills itself → driver stays offline forever.
   bool _intendedOnline = false;
+  /// iOS background location stream — survives screen lock. Timer.periodic
+  /// PAUSES when iOS suspends the Dart event loop, but CLLocationManager
+  /// keeps running via UIBackgroundModes=location. This stream receives
+  /// native position events and stamps the DB to keep the driver "online".
+  StreamSubscription<Position>? _iosLocationStream;
+  DateTime? _lastStreamHeartbeat;
 
   // Graba la sesion: started_at al ponerse online, ended_at al offline.
   // Asi el admin puede saber QUIEN se conecto al ultimo, hace cuanto, y cuanto
@@ -469,12 +477,18 @@ class DriverProvider with ChangeNotifier {
         supabaseUrl: SupabaseConfig.supabaseUrl,
         supabaseKey: SupabaseConfig.supabaseAnonKey,
       );
+      // iOS: Timer.periodic PAUSES when iOS suspends Dart. Use native
+      // CLLocationManager stream that survives background (blue bar).
+      if (Platform.isIOS) _startIosBackgroundStream();
     }
   }
 
   void _stopHeartbeat() {
     _heartbeatTimer?.cancel();
     _heartbeatTimer = null;
+    _iosLocationStream?.cancel();
+    _iosLocationStream = null;
+    _lastStreamHeartbeat = null;
     _recordSessionEnd(); // cierra la sesion (ended_at)
     // Para el foreground service (quita la notificacion "En Linea").
     BackgroundLocationController().stopTracking();
@@ -491,6 +505,10 @@ class DriverProvider with ChangeNotifier {
     // Restart timer if it was killed/paused
     if (_heartbeatTimer == null || !_heartbeatTimer!.isActive) {
       _startHeartbeat();
+    }
+    // Restart iOS background stream if it died during suspension
+    if (Platform.isIOS && _iosLocationStream == null) {
+      _startIosBackgroundStream();
     }
   }
 
@@ -531,6 +549,66 @@ class DriverProvider with ChangeNotifier {
               'location_updated_at': nowIso,
             })
             .eq('id', d.id);
+      } catch (_) {}
+    }
+  }
+
+  // =========================================================================
+  // iOS BACKGROUND LOCATION STREAM — keeps driver "online" when screen is off.
+  // On Android, the foreground service (BackgroundLocationController) handles
+  // this. On iOS there is no foreground service; Timer.periodic pauses when
+  // the OS suspends the Dart event loop. Native CLLocationManager continues
+  // delivering position events via UIBackgroundModes=location (Info.plist).
+  // =========================================================================
+  void _startIosBackgroundStream() {
+    _iosLocationStream?.cancel();
+    _lastStreamHeartbeat = null;
+    _iosLocationStream = Geolocator.getPositionStream(
+      locationSettings: AppleSettings(
+        accuracy: LocationAccuracy.high,
+        activityType: ActivityType.automotiveNavigation,
+        distanceFilter: 10,
+        pauseLocationUpdatesAutomatically: false,
+        showBackgroundLocationIndicator: true,
+        allowBackgroundLocationUpdates: true,
+      ),
+    ).listen(
+      (pos) => _onIosBackgroundPosition(pos),
+      onError: (e) => debugPrint('iOS bg location stream error: $e'),
+    );
+  }
+
+  Future<void> _onIosBackgroundPosition(Position pos) async {
+    if (!_intendedOnline || _driver == null) return;
+    final now = DateTime.now();
+    // Throttle DB writes to every 25s. The Timer.periodic handles foreground
+    // (30s); this covers background where the Timer is paused by iOS.
+    if (_lastStreamHeartbeat != null &&
+        now.difference(_lastStreamHeartbeat!) < const Duration(seconds: 25)) {
+      return;
+    }
+    _lastStreamHeartbeat = now;
+    final nowIso = now.toUtc().toIso8601String();
+    try {
+      await Supabase.instance.client
+          .from('drivers')
+          .update({
+            'is_online': true,
+            'current_lat': pos.latitude,
+            'current_lng': pos.longitude,
+            'location_updated_at': nowIso,
+          })
+          .eq('id', _driver!.id);
+    } catch (e) {
+      debugPrint('iOS bg heartbeat DB error: $e');
+      try {
+        await Supabase.instance.client
+            .from('drivers')
+            .update({
+              'is_online': true,
+              'location_updated_at': nowIso,
+            })
+            .eq('id', _driver!.id);
       } catch (_) {}
     }
   }
@@ -734,6 +812,8 @@ class DriverProvider with ChangeNotifier {
     _driverSubscription?.cancel();
     _heartbeatTimer?.cancel();
     _heartbeatTimer = null;
+    _iosLocationStream?.cancel();
+    _iosLocationStream = null;
     super.dispose();
   }
 }

@@ -195,17 +195,27 @@ class _HomeScreenState extends State<HomeScreen>
           setState(() {});
           // Force refresh available rides when app comes back to foreground
           _refreshRidesOnResume();
+          // CRITICAL: restart heartbeat immediately. On iOS the Dart Timer
+          // pauses in background → location_updated_at goes stale (> 5 min)
+          // → DB marks driver offline → rider sees "no drivers". This fires
+          // an immediate GPS update and restarts the periodic timer.
+          Provider.of<DriverProvider>(context, listen: false)
+              .resumeHeartbeat();
         }
         break;
       case AppLifecycleState.detached:
         // App closed/crashed — mark driver offline immediately (fire and forget)
-        final uid = Supabase.instance.client.auth.currentUser?.id;
-        if (uid != null) {
-          DriverService().updateOnlineStatus(uid, false).catchError((_) {});
+        try {
+          Provider.of<DriverProvider>(context, listen: false)
+              .setOnlineStatus(false);
+        } catch (_) {
+          // Provider might be disposed; fallback to direct DB call
+          final uid = Supabase.instance.client.auth.currentUser?.id;
+          if (uid != null) {
+            DriverService().updateOnlineStatus(uid, false).catchError((_) {});
+          }
+          BackgroundLocationController().stopTracking().catchError((_) {});
         }
-        // RAÍZ: antes se dejaba VIVO el foreground service, que seguía estampando
-        // location_updated_at tras cerrar la app → chofer "fresco" fantasma. Cortarlo.
-        BackgroundLocationController().stopTracking().catchError((_) {});
         break;
     }
   }

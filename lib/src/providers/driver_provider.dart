@@ -258,6 +258,7 @@ class DriverProvider with ChangeNotifier {
 
     // Si va a OFFLINE, permitir siempre
     if (!online) {
+      _intendedOnline = false;
       _stopHeartbeat();
       try {
         await _driverService.updateOnlineStatus(_driver!.id, false);
@@ -294,6 +295,7 @@ class DriverProvider with ChangeNotifier {
       try {
         await _driverService.updateOnlineStatus(_driver!.id, true);
         _driver = _driver!.copyWith(isOnline: true);
+        _intendedOnline = true;
         _error = null;
         _startHeartbeat(); // presencia EN VIVO mientras esté online
         notifyListeners();
@@ -362,6 +364,7 @@ class DriverProvider with ChangeNotifier {
     try {
       await _driverService.updateOnlineStatus(_driver!.id, true);
       _driver = _driver!.copyWith(isOnline: true);
+      _intendedOnline = true;
       _error = null;
       _startHeartbeat(); // presencia EN VIVO mientras esté online
       notifyListeners();
@@ -380,6 +383,10 @@ class DriverProvider with ChangeNotifier {
   // ===========================================================================
   Timer? _heartbeatTimer;
   bool _sessionActive = false; // guarda 1 sola sesion por periodo online
+  /// INTENDED online state — tracks what the driver WANTS, not what the DB says.
+  /// Prevents the death spiral: DB marks offline (stale timestamp) → heartbeat
+  /// reads isOnline=false → kills itself → driver stays offline forever.
+  bool _intendedOnline = false;
 
   // Graba la sesion: started_at al ponerse online, ended_at al offline.
   // Asi el admin puede saber QUIEN se conecto al ultimo, hace cuanto, y cuanto
@@ -473,9 +480,28 @@ class DriverProvider with ChangeNotifier {
     BackgroundLocationController().stopTracking();
   }
 
+  /// Called from HomeScreen.didChangeAppLifecycleState(resumed).
+  /// On iOS the Dart Timer PAUSES in background → location_updated_at goes
+  /// stale → DB marks the driver offline → rider sees "no drivers available".
+  /// This method fires an IMMEDIATE heartbeat and restarts the timer if it died.
+  Future<void> resumeHeartbeat() async {
+    if (!_intendedOnline || _driver == null) return;
+    // Immediate heartbeat to refresh location_updated_at NOW
+    await _sendHeartbeat();
+    // Restart timer if it was killed/paused
+    if (_heartbeatTimer == null || !_heartbeatTimer!.isActive) {
+      _startHeartbeat();
+    }
+  }
+
   Future<void> _sendHeartbeat() async {
     final d = _driver;
-    if (d == null || !d.isOnline) {
+    if (d == null) return;
+    // USE _intendedOnline — NOT d.isOnline. The DB may show isOnline=false
+    // because location_updated_at expired (> 5 min stale). If we read that
+    // and stop the heartbeat, the driver NEVER recovers → death spiral.
+    // _intendedOnline tracks what the DRIVER WANTS, not what the DB says.
+    if (!_intendedOnline) {
       _stopHeartbeat();
       return;
     }
@@ -488,6 +514,7 @@ class DriverProvider with ChangeNotifier {
       await Supabase.instance.client
           .from('drivers')
           .update({
+            'is_online': true,
             'current_lat': pos.latitude,
             'current_lng': pos.longitude,
             'location_updated_at': nowIso,
@@ -499,7 +526,10 @@ class DriverProvider with ChangeNotifier {
       try {
         await Supabase.instance.client
             .from('drivers')
-            .update({'location_updated_at': nowIso})
+            .update({
+              'is_online': true,
+              'location_updated_at': nowIso,
+            })
             .eq('id', d.id);
       } catch (_) {}
     }
@@ -702,6 +732,8 @@ class DriverProvider with ChangeNotifier {
   @override
   void dispose() {
     _driverSubscription?.cancel();
+    _heartbeatTimer?.cancel();
+    _heartbeatTimer = null;
     super.dispose();
   }
 }

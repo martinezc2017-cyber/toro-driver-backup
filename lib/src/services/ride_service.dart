@@ -65,6 +65,8 @@ class RideService {
         .select('*')
         .eq('status', statusToDatabase(RideStatus.pending))
         .isFilter('driver_id', null)
+        // Hide card rides whose payment hasn't been authorized yet
+        .or('payment_status.is.null,payment_status.eq.authorized')
         .order('created_at', ascending: false)
         .limit(20);
     debugPrint(
@@ -1096,6 +1098,8 @@ class RideService {
                 .select('*')
                 .eq('status', statusToDatabase(RideStatus.pending))
                 .isFilter('driver_id', null)
+                // Hide card rides whose payment hasn't been authorized yet
+                .or('payment_status.is.null,payment_status.eq.authorized')
                 .order('created_at', ascending: false)
                 .limit(20);
             return (rows as List)

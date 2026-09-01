@@ -828,9 +828,9 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
                 ),
               ),
               const SizedBox(width: 12),
-              const Text(
+              Text(
                 'chat_return_to_bus'.tr(),
-                style: TextStyle(
+                style: const TextStyle(
                   color: AppColors.warning,
                   fontSize: 18,
                   fontWeight: FontWeight.w800,

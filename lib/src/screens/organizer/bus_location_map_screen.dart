@@ -398,8 +398,7 @@ class _BusLocationMapScreenState extends State<BusLocationMapScreen> {
       children: [
         TileLayer(
           urlTemplate:
-              'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-          subdomains: const ['a', 'b', 'c', 'd'],
+              'https://api.mapbox.com/styles/v1/mapbox/dark-v11/tiles/256/{z}/{x}/{y}?access_token=pk.eyJ1IjoibWFydGluZXpjMjAxNyIsImEiOiJjbWtocWtoZHIwbW1iM2dvdXZ3bmp0ZjBiIn0.MjYgv6DuvLTkrBVbrhtFbg',
           userAgentPackageName: 'com.toro.driver',
         ),
         MarkerLayer(

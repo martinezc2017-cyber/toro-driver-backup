@@ -606,12 +606,12 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
 
   Widget _buildHistorialTab() {
     if (_ledger.isEmpty) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.receipt_long, color: Colors.white24, size: 64),
-            SizedBox(height: 16),
+            const Icon(Icons.receipt_long, color: Colors.white24, size: 64),
+            const SizedBox(height: 16),
             Text(
               'cash.no_movements'.tr(),
               style: const TextStyle(color: Colors.white54, fontSize: 16),

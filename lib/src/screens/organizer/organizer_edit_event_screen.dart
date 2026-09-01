@@ -193,7 +193,7 @@ class _OrganizerEditEventScreenState extends State<OrganizerEditEventScreen> {
         if (result.isEmpty) {
           HapticService.error();
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('organizer.error_loading'.tr()),
               backgroundColor: AppColors.error,
             ),
@@ -201,7 +201,7 @@ class _OrganizerEditEventScreenState extends State<OrganizerEditEventScreen> {
         } else {
           HapticService.success();
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('organizer.changes_saved'.tr()),
               backgroundColor: AppColors.success,
             ),
@@ -298,15 +298,15 @@ class _OrganizerEditEventScreenState extends State<OrganizerEditEventScreen> {
 
   Widget _buildBody() {
     if (_isLoading) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            CircularProgressIndicator(color: AppColors.primary),
-            SizedBox(height: 16),
+            const CircularProgressIndicator(color: AppColors.primary),
+            const SizedBox(height: 16),
             Text(
               'loading_ellipsis'.tr(),
-              style: TextStyle(
+              style: const TextStyle(
                 color: AppColors.textSecondary,
                 fontSize: 14,
               ),

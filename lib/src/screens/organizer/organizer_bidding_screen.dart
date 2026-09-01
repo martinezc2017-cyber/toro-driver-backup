@@ -224,14 +224,14 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                   color: AppColors.warning.withValues(alpha: 0.3),
                 ),
               ),
-              child: const Row(
+              child: Row(
                 children: [
-                  Icon(Icons.info_outline, size: 16, color: AppColors.warning),
-                  SizedBox(width: 8),
+                  const Icon(Icons.info_outline, size: 16, color: AppColors.warning),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'organizer.confirm_selection'.tr(),
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 11,
                       ),
@@ -407,7 +407,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
               final value = double.tryParse(controller.text.trim());
               if (value == null || value <= 0) {
                 ScaffoldMessenger.of(ctx).showSnackBar(
-                  const SnackBar(
+                  SnackBar(
                     content: Text('org_seats_invalid'.tr()),
                     backgroundColor: AppColors.error,
                   ),
@@ -493,14 +493,14 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                   color: AppColors.success.withValues(alpha: 0.3),
                 ),
               ),
-              child: const Row(
+              child: Row(
                 children: [
-                  Icon(Icons.info_outline, size: 16, color: AppColors.success),
-                  SizedBox(width: 8),
+                  const Icon(Icons.info_outline, size: 16, color: AppColors.success),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'organizer.confirm_selection'.tr(),
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 11,
                       ),
@@ -1011,9 +1011,9 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                 color: AppColors.primary,
               ),
               const SizedBox(width: 8),
-              const Text(
+              Text(
                 'organizer.select_bid'.tr(),
-                style: TextStyle(
+                style: const TextStyle(
                   color: AppColors.textPrimary,
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
@@ -1262,9 +1262,9 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                 color: AppColors.primary,
               ),
               const SizedBox(width: 4),
-              const Text(
+              Text(
                 'filter_best_pay'.tr(),
-                style: TextStyle(color: AppColors.textTertiary, fontSize: 11),
+                style: const TextStyle(color: AppColors.textTertiary, fontSize: 11),
               ),
               const Spacer(),
               Text(
@@ -1338,17 +1338,17 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                   color: AppColors.success.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: const Row(
+                child: Row(
                   children: [
-                    Icon(
+                    const Icon(
                       Icons.check_circle,
                       size: 12,
                       color: AppColors.success,
                     ),
-                    SizedBox(width: 4),
+                    const SizedBox(width: 4),
                     Text(
                       'send'.tr(),
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: AppColors.success,
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
@@ -1568,17 +1568,17 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                     color: AppColors.success.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  child: const Row(
+                  child: Row(
                     children: [
-                      Icon(
+                      const Icon(
                         Icons.check_circle,
                         size: 12,
                         color: AppColors.success,
                       ),
-                      SizedBox(width: 4),
+                      const SizedBox(width: 4),
                       Text(
                         'organizer.select_winning_bid'.tr(),
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: AppColors.success,
                           fontSize: 11,
                           fontWeight: FontWeight.w700,

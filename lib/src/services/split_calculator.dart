@@ -8,7 +8,7 @@
 /// QR MODEL (v3):
 ///   QR tiers DIRECTLY REDUCE platform commission in the split.
 ///   Base percentages come from pricing_config per state.
-///   Each tier reduces platform by 3%, driver gains the difference.
+///   Each tier reduces platform by 4%, driver gains the difference.
 ///   Tier 5 max: platform drops to ~5%.
 ///   Insurance + Tax stay fixed.
 ///
@@ -31,17 +31,17 @@ class SplitConfig {
   final int currencyDecimals;
 
   // QR Commission Reduction Tiers — applied directly to the split.
-  // Each tier reduces platform commission by 3% (15% total at Tier 5).
+  // Each tier reduces platform commission by 4% (20% total at Tier 5).
   final int qrMaxLevel; // max QR scans per week
   final int qrTier1Max;
-  final double qrTier1CommissionReduction; // 3% = platform goes from 20→17
+  final double qrTier1CommissionReduction; // 4% = platform goes from 20→16
   final int qrTier2Max;
-  final double qrTier2CommissionReduction; // 6%
+  final double qrTier2CommissionReduction; // 8%
   final int qrTier3Max;
-  final double qrTier3CommissionReduction; // 9%
+  final double qrTier3CommissionReduction; // 12%
   final int qrTier4Max;
-  final double qrTier4CommissionReduction; // 12%
-  final double qrTier5CommissionReduction; // 15% (max, platform = 5%)
+  final double qrTier4CommissionReduction; // 16%
+  final double qrTier5CommissionReduction; // 20% (max, platform = 5%)
 
   const SplitConfig({
     required this.platformFeePercent,
@@ -50,19 +50,19 @@ class SplitConfig {
     required this.taxPercent,
     this.currencyDecimals = 0,
     this.qrMaxLevel = 30,
-    this.qrTier1Max = 6,
-    this.qrTier1CommissionReduction = 3.0,
-    this.qrTier2Max = 12,
-    this.qrTier2CommissionReduction = 6.0,
-    this.qrTier3Max = 18,
-    this.qrTier3CommissionReduction = 9.0,
-    this.qrTier4Max = 24,
-    this.qrTier4CommissionReduction = 12.0,
-    this.qrTier5CommissionReduction = 15.0,
+    this.qrTier1Max = 4,
+    this.qrTier1CommissionReduction = 4.0,
+    this.qrTier2Max = 9,
+    this.qrTier2CommissionReduction = 8.0,
+    this.qrTier3Max = 19,
+    this.qrTier3CommissionReduction = 12.0,
+    this.qrTier4Max = 34,
+    this.qrTier4CommissionReduction = 16.0,
+    this.qrTier5CommissionReduction = 20.0,
   });
 
   /// Get effective platform % after QR tier commission reduction
-  /// Tier 0: base from pricing_config | Tier 5: base - 15% (minimum 5%)
+  /// Tier 0: base from pricing_config | Tier 5: base - 20% (minimum 5%)
   double getEffectivePlatformPercent({int driverQRLevel = 0}) {
     final reduction = getQRCommissionReduction(driverQRLevel);
     // Minimum 5% platform fee — Tier 5 max brings platform to ~5%
@@ -117,20 +117,20 @@ class SplitConfig {
       taxPercent: (json['tax_percent'] as num?)?.toDouble() ?? 0,
       currencyDecimals: decimalsFromJson ?? (countryCode == 'MX' ? 0 : 2),
       qrMaxLevel: (json['qr_max_level'] as num?)?.toInt() ?? 30,
-      qrTier1Max: (json['qr_tier_1_max'] as num?)?.toInt() ?? 6,
+      qrTier1Max: (json['qr_tier_1_max'] as num?)?.toInt() ?? 4,
       qrTier1CommissionReduction:
-          (json['qr_tier_1_bonus'] as num?)?.toDouble() ?? 1.0,
-      qrTier2Max: (json['qr_tier_2_max'] as num?)?.toInt() ?? 12,
+          (json['qr_tier_1_bonus'] as num?)?.toDouble() ?? 4.0,
+      qrTier2Max: (json['qr_tier_2_max'] as num?)?.toInt() ?? 9,
       qrTier2CommissionReduction:
-          (json['qr_tier_2_bonus'] as num?)?.toDouble() ?? 2.0,
-      qrTier3Max: (json['qr_tier_3_max'] as num?)?.toInt() ?? 18,
+          (json['qr_tier_2_bonus'] as num?)?.toDouble() ?? 8.0,
+      qrTier3Max: (json['qr_tier_3_max'] as num?)?.toInt() ?? 19,
       qrTier3CommissionReduction:
-          (json['qr_tier_3_bonus'] as num?)?.toDouble() ?? 3.0,
-      qrTier4Max: (json['qr_tier_4_max'] as num?)?.toInt() ?? 24,
+          (json['qr_tier_3_bonus'] as num?)?.toDouble() ?? 12.0,
+      qrTier4Max: (json['qr_tier_4_max'] as num?)?.toInt() ?? 34,
       qrTier4CommissionReduction:
-          (json['qr_tier_4_bonus'] as num?)?.toDouble() ?? 4.0,
+          (json['qr_tier_4_bonus'] as num?)?.toDouble() ?? 16.0,
       qrTier5CommissionReduction:
-          (json['qr_tier_5_bonus'] as num?)?.toDouble() ?? 5.0,
+          (json['qr_tier_5_bonus'] as num?)?.toDouble() ?? 20.0,
     );
   }
 

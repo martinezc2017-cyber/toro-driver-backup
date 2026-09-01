@@ -1018,9 +1018,9 @@ class _OrganizerEventDashboardScreenState
                   );
                 },
                 icon: const Icon(Icons.copy, size: 20),
-                label: const Text(
+                label: Text(
                   'organizer.share_event'.tr(),
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
@@ -1319,9 +1319,9 @@ Enviado desde TORO
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text(
+        title: Text(
           'organizer.event_name'.tr(),
-          style: TextStyle(
+          style: const TextStyle(
             color: AppColors.textPrimary,
             fontSize: 18,
             fontWeight: FontWeight.w700,
@@ -9540,8 +9540,7 @@ class _EventLiveMapScreenState extends State<_EventLiveMapScreen> {
             children: [
               TileLayer(
                 urlTemplate:
-                    'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-                subdomains: const ['a', 'b', 'c', 'd'],
+                    'https://api.mapbox.com/styles/v1/mapbox/dark-v11/tiles/256/{z}/{x}/{y}?access_token=pk.eyJ1IjoibWFydGluZXpjMjAxNyIsImEiOiJjbWtocWtoZHIwbW1iM2dvdXZ3bmp0ZjBiIn0.MjYgv6DuvLTkrBVbrhtFbg',
                 userAgentPackageName: 'com.toro.driver',
               ),
               MarkerLayer(markers: _buildMarkers()),

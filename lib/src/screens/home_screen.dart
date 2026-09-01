@@ -2783,7 +2783,8 @@ class _HomeScreenState extends State<HomeScreen>
   // ═══════════════════════════════════════════════════════════════════════════
 
   // Commission tiers: index 0 = no QR, 1-5 = tier 1-5
-  static const List<int> _tierMaxQRs = [0, 6, 12, 18, 24, 30];
+  // Tier thresholds (match apply-referral-bonus): T1: 1-4, T2: 5-9, T3: 10-19, T4: 20-34, T5: 35+
+  static const List<int> _tierMaxQRs = [0, 4, 9, 19, 34, 35];
 
   /// Comision de TORO para un tier, VIVA desde pricing_config.
   /// Usa reductionForTier() del servicio que devuelve 3/6/9/12/15 por tier.
@@ -2793,14 +2794,8 @@ class _HomeScreenState extends State<HomeScreen>
     return (base - reduction).clamp(0, 100).toDouble();
   }
 
-  int _getDriverTier(int qrLevel) {
-    if (qrLevel <= 0) return 0;
-    if (qrLevel <= 6) return 1;
-    if (qrLevel <= 12) return 2;
-    if (qrLevel <= 18) return 3;
-    if (qrLevel <= 24) return 4;
-    return 5;
-  }
+  // current_level IS the tier (set by apply-referral-bonus), use directly.
+  int _getDriverTier(int currentLevel) => currentLevel.clamp(0, 5);
 
   double _getCommissionForTier(int tier) => _tierCommissionOf(tier);
 
@@ -6154,8 +6149,7 @@ class _RoutePreviewSheetState extends State<_RoutePreviewSheet>
                           children: [
                             TileLayer(
                               urlTemplate:
-                                  'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-                              subdomains: const ['a', 'b', 'c', 'd'],
+                                  'https://api.mapbox.com/styles/v1/mapbox/dark-v11/tiles/256/{z}/{x}/{y}?access_token=pk.eyJ1IjoibWFydGluZXpjMjAxNyIsImEiOiJjbWtocWtoZHIwbW1iM2dvdXZ3bmp0ZjBiIn0.MjYgv6DuvLTkrBVbrhtFbg',
                             ),
                             // Route line with glow effect
                             if (_routePoints.isNotEmpty)

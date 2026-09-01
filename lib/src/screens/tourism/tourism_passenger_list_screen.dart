@@ -996,11 +996,11 @@ class _CheckInModalState extends State<_CheckInModal> {
                   color: AppColors.textPrimary,
                   fontSize: 14,
                 ),
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   hintText: 'passengers_add_notes'.tr(),
-                  hintStyle: TextStyle(color: AppColors.textTertiary),
+                  hintStyle: const TextStyle(color: AppColors.textTertiary),
                   border: InputBorder.none,
-                  contentPadding: EdgeInsets.all(12),
+                  contentPadding: const EdgeInsets.all(12),
                 ),
               ),
             ),

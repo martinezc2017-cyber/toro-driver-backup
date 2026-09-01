@@ -2421,7 +2421,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
     // Disco blanco interior para el ícono
     canvas.drawCircle(Offset(cx, cy), r * 0.6, white);
     // Ícono al centro
-    final tp = TextPainter(textDirection: TextDirection.ltr);
+    final tp = TextPainter(textDirection: ui.TextDirection.ltr);
     tp.text = TextSpan(
       text: String.fromCharCode(glyph.codePoint),
       style: TextStyle(

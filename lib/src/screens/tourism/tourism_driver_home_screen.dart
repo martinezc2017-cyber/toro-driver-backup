@@ -1132,11 +1132,10 @@ class _TourismDriverHomeScreenState extends State<TourismDriverHomeScreen>
               initialZoom: zoom,
             ),
             children: [
-              // CartoDB dark tiles
+              // Mapbox dark tiles
               TileLayer(
                 urlTemplate:
-                    'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-                subdomains: const ['a', 'b', 'c', 'd'],
+                    'https://api.mapbox.com/styles/v1/mapbox/dark-v11/tiles/256/{z}/{x}/{y}?access_token=pk.eyJ1IjoibWFydGluZXpjMjAxNyIsImEiOiJjbWtocWtoZHIwbW1iM2dvdXZ3bmp0ZjBiIn0.MjYgv6DuvLTkrBVbrhtFbg',
                 userAgentPackageName: 'com.toro.driver',
               ),
               // Route polyline
@@ -2930,7 +2929,7 @@ class _HomeMapPickerState extends State<_HomeMapPicker> {
                 },
               ),
               children: [
-                TileLayer(urlTemplate: 'https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png', userAgentPackageName: 'com.toro.driver'),
+                TileLayer(urlTemplate: 'https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/256/{z}/{x}/{y}?access_token=pk.eyJ1IjoibWFydGluZXpjMjAxNyIsImEiOiJjbWtocWtoZHIwbW1iM2dvdXZ3bmp0ZjBiIn0.MjYgv6DuvLTkrBVbrhtFbg', userAgentPackageName: 'com.toro.driver'),
               ],
             ),
             // Search bar

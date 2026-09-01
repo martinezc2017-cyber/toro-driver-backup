@@ -362,13 +362,13 @@ class TourismChatWidgetState extends State<TourismChatWidget> {
           backgroundColor: AppColors.card,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Row(
+          title: Row(
             children: [
-              Icon(Icons.campaign, color: AppColors.primary, size: 22),
-              SizedBox(width: 8),
+              const Icon(Icons.campaign, color: AppColors.primary, size: 22),
+              const SizedBox(width: 8),
               Text('tourism_chat.new_announcement'.tr(),
                   style:
-                      TextStyle(color: AppColors.textPrimary, fontSize: 16)),
+                      const TextStyle(color: AppColors.textPrimary, fontSize: 16)),
             ],
           ),
           content: Column(

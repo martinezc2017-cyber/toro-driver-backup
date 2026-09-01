@@ -2447,7 +2447,7 @@ class _ItineraryMapPickerState extends State<_ItineraryMapPicker> {
               children: [
                 TileLayer(
                   urlTemplate:
-                      'https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
+                      'https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/256/{z}/{x}/{y}?access_token=pk.eyJ1IjoibWFydGluZXpjMjAxNyIsImEiOiJjbWtocWtoZHIwbW1iM2dvdXZ3bmp0ZjBiIn0.MjYgv6DuvLTkrBVbrhtFbg',
                   userAgentPackageName: 'com.toro.driver',
                 ),
               ],

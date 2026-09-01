@@ -144,7 +144,7 @@ class StateRankEntry {
 
 /// Driver QR Points Service - Commission Reduction Model
 /// QR scans reduce Toro's platform commission from 20% → 5% (Tier 5 max)
-/// Each tier reduces platform by 3%, driver gains that 3%.
+/// Each tier reduces platform by 4%, driver gains that 4%.
 class DriverQRPointsService extends ChangeNotifier {
   final SupabaseClient _client = SupabaseConfig.client;
 
@@ -190,19 +190,12 @@ class DriverQRPointsService extends ChangeNotifier {
   double get insurancePercent => _insurancePercent;
   double get ivaPercent => _ivaPercent;
 
-  /// Get current tier number (0-5) based on QR level
-  int get currentTier {
-    final level = _currentLevel.level;
-    if (level <= 0) return 0;
-    if (level <= _qrTier1Max) return 1;
-    if (level <= _qrTier2Max) return 2;
-    if (level <= _qrTier3Max) return 3;
-    if (level <= _qrTier4Max) return 4;
-    return 5;
-  }
+  /// Get current tier number (0-5).
+  /// current_level in driver_qr_points IS the tier (set by apply-referral-bonus).
+  int get currentTier => _currentLevel.level.clamp(0, 5);
 
   /// Get the commission reduction % for current tier
-  /// Tier 0: 0% | Tier 1: 3% | Tier 2: 6% | ... | Tier 5: 15%
+  /// Tier 0: 0% | Tier 1: 4% | Tier 2: 8% | ... | Tier 5: 20%
   double get currentCommissionReduction {
     switch (currentTier) {
       case 1: return _qrTier1Reduction;
@@ -251,14 +244,16 @@ class DriverQRPointsService extends ChangeNotifier {
   double driverPercentForTier(int tier) =>
       _baseDriverPercent + reductionForTier(tier);
 
-  /// Get QRs needed for next tier (0 if already max)
+  /// Get QRs needed for next tier (0 if already max).
+  /// Uses qrsAccepted (actual count) with apply-referral-bonus breakpoints:
+  /// T1: 1-4, T2: 5-9, T3: 10-19, T4: 20-34, T5: 35+
   int get qrsForNextTier {
-    final level = _currentLevel.level;
-    if (level < _qrTier1Max) return _qrTier1Max;
-    if (level < _qrTier2Max) return _qrTier2Max;
-    if (level < _qrTier3Max) return _qrTier3Max;
-    if (level < _qrTier4Max) return _qrTier4Max;
-    if (level < _qrMaxLevel) return _qrMaxLevel;
+    final qrs = _currentLevel.qrsAccepted;
+    if (qrs < _qrTier1Max) return _qrTier1Max;
+    if (qrs < _qrTier2Max) return _qrTier2Max;
+    if (qrs < _qrTier3Max) return _qrTier3Max;
+    if (qrs < _qrTier4Max) return _qrTier4Max;
+    if (qrs < _qrMaxLevel) return _qrMaxLevel;
     return 0; // Already at max
   }
 
@@ -344,17 +339,17 @@ class DriverQRPointsService extends ChangeNotifier {
         _qrMaxLevel = (row['qr_max_level'] as num?)?.toInt() ?? 30;
       }
 
-      // Tier breakpoints: 6/12/18/24 QRs.
-      // Tier reductions: 3% per tier → Tier 5 = 15% (platform goes from ~20% to 5%).
-      _qrTier1Max = 6;
-      _qrTier1Reduction = 3.0;
-      _qrTier2Max = 12;
-      _qrTier2Reduction = 6.0;
-      _qrTier3Max = 18;
-      _qrTier3Reduction = 9.0;
-      _qrTier4Max = 24;
-      _qrTier4Reduction = 12.0;
-      _qrTier5Reduction = 15.0;
+      // Tier breakpoints (match apply-referral-bonus): 4/9/19/34/35+ QRs.
+      // Tier reductions: 4% per tier → Tier 5 = 20% (TORO keeps 5% floor).
+      _qrTier1Max = 4;
+      _qrTier1Reduction = 4.0;
+      _qrTier2Max = 9;
+      _qrTier2Reduction = 8.0;
+      _qrTier3Max = 19;
+      _qrTier3Reduction = 12.0;
+      _qrTier4Max = 34;
+      _qrTier4Reduction = 16.0;
+      _qrTier5Reduction = 20.0;
 
       // OJO: aqui habia un override que forzaba _qrMaxLevel = 30 para MX. Eso
       // pisaba el valor del admin (hoy qr_max_level = 10) y la pantalla decia

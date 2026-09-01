@@ -260,17 +260,17 @@ class _EarningsScreenState extends State<EarningsScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Row(
+                              Row(
                                 children: [
-                                  Icon(
+                                  const Icon(
                                     Icons.account_balance,
                                     size: 14,
                                     color: AppColors.success,
                                   ),
-                                  SizedBox(width: 6),
+                                  const SizedBox(width: 6),
                                   Text(
                                     'earnings.available_stripe'.tr(),
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                       fontSize: 11,
                                       color: AppColors.textSecondary,
                                     ),
@@ -302,17 +302,17 @@ class _EarningsScreenState extends State<EarningsScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Row(
+                              Row(
                                 children: [
-                                  Icon(
+                                  const Icon(
                                     Icons.schedule,
                                     size: 14,
                                     color: AppColors.warning,
                                   ),
-                                  SizedBox(width: 6),
+                                  const SizedBox(width: 6),
                                   Text(
                                     'pending_status'.tr(),
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                       fontSize: 11,
                                       color: AppColors.textSecondary,
                                     ),

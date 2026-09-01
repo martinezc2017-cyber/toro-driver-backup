@@ -732,14 +732,14 @@ class _OrganizerCreateEventSimpleScreenState
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
-              title: const Row(
+              title: Row(
                 children: [
-                  Icon(Icons.check_circle, color: AppColors.success, size: 24),
-                  SizedBox(width: 10),
+                  const Icon(Icons.check_circle, color: AppColors.success, size: 24),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       'organizer.changes_saved'.tr(),
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: AppColors.textPrimary,
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
@@ -2091,7 +2091,7 @@ class _OrganizerCreateEventSimpleScreenState
         }
         setState(() {});
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('organizer.photo_updated'.tr()),
             backgroundColor: Colors.green,
           ),
@@ -2120,10 +2120,10 @@ class _OrganizerCreateEventSimpleScreenState
         _contactInfoExpanded = false; // Collapse after saving
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('organizer.profile_saved'.tr()),
           backgroundColor: Colors.green,
-          duration: Duration(seconds: 2),
+          duration: const Duration(seconds: 2),
         ),
       );
     }
@@ -4572,7 +4572,7 @@ class _OrganizerCreateEventSimpleScreenState
                           onPressed: () {
                             if (nameController.text.trim().isEmpty) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
+                                SnackBar(
                                   content: Text(
                                     'organizer.enter_address'.tr(),
                                   ),
@@ -5246,7 +5246,7 @@ class _SimpleMapPickerState extends State<_SimpleMapPicker> {
               children: [
                 TileLayer(
                   urlTemplate:
-                      'https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
+                      'https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/256/{z}/{x}/{y}?access_token=pk.eyJ1IjoibWFydGluZXpjMjAxNyIsImEiOiJjbWtocWtoZHIwbW1iM2dvdXZ3bmp0ZjBiIn0.MjYgv6DuvLTkrBVbrhtFbg',
                   userAgentPackageName: 'com.toro.driver',
                 ),
               ],
@@ -5608,9 +5608,9 @@ class _SimpleMapPickerState extends State<_SimpleMapPicker> {
                             const SizedBox(width: 14),
                             Expanded(
                               child: _isLoadingAddress
-                                  ? const Row(
+                                  ? Row(
                                       children: [
-                                        SizedBox(
+                                        const SizedBox(
                                           width: 16,
                                           height: 16,
                                           child: CircularProgressIndicator(
@@ -5618,10 +5618,10 @@ class _SimpleMapPickerState extends State<_SimpleMapPicker> {
                                             color: Colors.orange,
                                           ),
                                         ),
-                                        SizedBox(width: 10),
+                                        const SizedBox(width: 10),
                                         Text(
                                           'tourism.getting_address'.tr(),
-                                          style: TextStyle(
+                                          style: const TextStyle(
                                             color: Color(0xFF999999),
                                             fontSize: 14,
                                           ),
@@ -5672,18 +5672,18 @@ class _SimpleMapPickerState extends State<_SimpleMapPicker> {
                               ),
                             ],
                           ),
-                          child: const Row(
+                          child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(
+                              const Icon(
                                 Icons.check_circle,
                                 color: Colors.white,
                                 size: 22,
                               ),
-                              SizedBox(width: 10),
+                              const SizedBox(width: 10),
                               Text(
                                 'organizer.confirm_location'.tr(),
-                                style: TextStyle(
+                                style: const TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,

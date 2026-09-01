@@ -236,34 +236,21 @@ class _QRPointsScreenState extends State<QRPointsScreen>
         ? service.reductionForTier(tier)
         : service.currentCommissionReduction;
 
-    // Build pie sections
+    // Build pie sections — ONLY Driver vs TORO so the green slice dominates.
+    // Insurance/IVA are fixed costs shown separately below.
     final sections = <PieChartSectionData>[
       PieChartSectionData(
         value: driverPercent,
         color: const Color(0xFF00FF66),
-        radius: 28,
+        radius: 32,
         showTitle: false,
       ),
       PieChartSectionData(
-        value: platformPercent,
+        value: platformPercent.clamp(0.5, 100), // min visible sliver
         color: const Color(0xFF1E88E5),
-        radius: 28,
+        radius: 24,
         showTitle: false,
       ),
-      if (insurancePercent > 0)
-        PieChartSectionData(
-          value: insurancePercent,
-          color: const Color(0xFFFF9800),
-          radius: 28,
-          showTitle: false,
-        ),
-      if (ivaPercent > 0)
-        PieChartSectionData(
-          value: ivaPercent,
-          color: const Color(0xFF9E9E9E),
-          radius: 28,
-          showTitle: false,
-        ),
     ];
 
     return Container(
@@ -361,7 +348,7 @@ class _QRPointsScreenState extends State<QRPointsScreen>
             ),
           ),
           const SizedBox(height: 16),
-          // Legend row
+          // Legend row — Driver vs TORO only
           Wrap(
             alignment: WrapAlignment.center,
             spacing: 16,
@@ -380,20 +367,41 @@ class _QRPointsScreenState extends State<QRPointsScreen>
                     ? '-${reduction.toStringAsFixed(0)}%'
                     : null,
               ),
-              if (insurancePercent > 0)
-                _buildLegendItem(
-                  const Color(0xFFFF9800),
-                  'qr_insurance_segment'.tr(),
-                  '${insurancePercent.toStringAsFixed(0)}%',
-                ),
-              if (ivaPercent > 0)
-                _buildLegendItem(
-                  const Color(0xFF9E9E9E),
-                  'IVA',
-                  '${ivaPercent.toStringAsFixed(0)}%',
-                ),
             ],
           ),
+          // Fixed costs row (Insurance + IVA) — shown as subtle info
+          if (insurancePercent > 0 || ivaPercent > 0) ...[
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (insurancePercent > 0)
+                  Text(
+                    '${'qr_insurance_segment'.tr()} ${insurancePercent.toStringAsFixed(0)}%',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary.withValues(alpha: 0.7),
+                    ),
+                  ),
+                if (insurancePercent > 0 && ivaPercent > 0)
+                  Text(
+                    '  •  ',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary.withValues(alpha: 0.4),
+                    ),
+                  ),
+                if (ivaPercent > 0)
+                  Text(
+                    'IVA ${ivaPercent.toStringAsFixed(0)}%',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary.withValues(alpha: 0.7),
+                    ),
+                  ),
+              ],
+            ),
+          ],
           if (isPreview) ...[
             const SizedBox(height: 12),
             Container(

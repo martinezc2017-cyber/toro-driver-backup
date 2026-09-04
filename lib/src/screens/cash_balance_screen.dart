@@ -588,13 +588,13 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
   String _sourceTypeLabel(String type) {
     switch (type) {
       case 'ride':
-        return 'Viajes';
+        return 'rides_label'.tr();
       case 'carpool':
-        return 'Carpool';
+        return 'carpool_label'.tr();
       case 'package':
-        return 'Paquetes';
+        return 'packages_label'.tr();
       case 'tourism':
-        return 'Turismo';
+        return 'tourism_label'.tr();
       default:
         return type;
     }
@@ -1130,9 +1130,9 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
           OutlinedButton.icon(
             onPressed: _requestReset,
             icon: const Icon(Icons.restart_alt, color: Colors.white54),
-            label: const Text(
-              'Solicitar Reset de Semana',
-              style: TextStyle(color: Colors.white54),
+            label: Text(
+              'request_week_reset'.tr(),
+              style: const TextStyle(color: Colors.white54),
             ),
             style: OutlinedButton.styleFrom(
               side: const BorderSide(color: Colors.white24),
@@ -1361,12 +1361,12 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
-        title: const Text(
-          'Solicitar Reset',
-          style: TextStyle(color: Colors.white),
+        title: Text(
+          'request_reset_title'.tr(),
+          style: const TextStyle(color: Colors.white),
         ),
         content: Text(
-          'Solicitar al admin que resetee tu balance de ${formatMoney(cashOwed, country: driver.countryCode)}?\n\nSolo se aprueba si ya depositaste.',
+          'request_reset_body'.tr().replaceAll('{amount}', formatMoney(cashOwed, country: driver.countryCode)),
           style: const TextStyle(color: Colors.white70),
         ),
         actions: [
@@ -1382,9 +1382,9 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFF59E0B),
             ),
-            child: const Text(
-              'Solicitar',
-              style: TextStyle(color: Colors.black),
+            child: Text(
+              'request_reset_btn'.tr(),
+              style: const TextStyle(color: Colors.black),
             ),
           ),
         ],

@@ -48,6 +48,7 @@
   "code_copied": "Code copied",
   "complete_info_payments": "Complete your info to receive payments",
   "complete_setup": "Complete setup",
+  "carpool_label": "Carpool",
   "completed_trips": "Completed trips",
   "completed_trips_appear": "Completed trips will appear here",
   "configuration": "Configuration",
@@ -145,6 +146,7 @@
   "january": "January",
   "july": "July",
   "june": "June",
+  "km_driven": "Km Driven",
   "language": "Language",
   "legal": "Legal",
   "location_required": "Location required",
@@ -2644,5 +2646,15 @@
   "tourism.eg_name": "E.g.: Compostela Centro",
   "tourism.select_location": "Select Location",
   "tourism.getting_address": "Getting address...",
-  "tourism.confirm_location": "Confirm Location"
+  "tourism.confirm_location": "Confirm Location",
+
+  "packages_label": "Packages",
+  "tourism_label": "Tourism",
+  "your_activity": "YOUR ACTIVITY",
+  "averages_section": "AVERAGES",
+  "miles_driven": "Miles Driven",
+  "request_week_reset": "Request Week Reset",
+  "request_reset_title": "Request Reset",
+  "request_reset_body": "Request admin to reset your balance of {amount}?\n\nOnly approved if you already deposited.",
+  "request_reset_btn": "Request"
 }

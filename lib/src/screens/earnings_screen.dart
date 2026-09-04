@@ -1011,13 +1011,13 @@ class _EarningsScreenState extends State<EarningsScreen> {
   String _sourceTypeLabel(String type) {
     switch (type) {
       case 'ride':
-        return 'Viajes';
+        return 'rides_label'.tr();
       case 'carpool':
-        return 'Carpool';
+        return 'carpool_label'.tr();
       case 'package':
-        return 'Paquetes';
+        return 'packages_label'.tr();
       case 'tourism':
-        return 'Turismo';
+        return 'tourism_label'.tr();
       default:
         return type;
     }

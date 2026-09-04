@@ -2678,5 +2678,17 @@
   "tourism.eg_name": "Ej: Compostela Centro",
   "tourism.select_location": "Seleccionar Ubicación",
   "tourism.getting_address": "Obteniendo dirección...",
-  "tourism.confirm_location": "Confirmar Ubicación"
+  "tourism.confirm_location": "Confirmar Ubicación",
+
+  "carpool_label": "Carpool",
+  "packages_label": "Paquetes",
+  "tourism_label": "Turismo",
+  "your_activity": "TU ACTIVIDAD",
+  "averages_section": "PROMEDIOS",
+  "km_driven": "Km Recorridos",
+  "miles_driven": "Millas Recorridas",
+  "request_week_reset": "Solicitar Reset de Semana",
+  "request_reset_title": "Solicitar Reset",
+  "request_reset_body": "Solicitar al admin que resetee tu balance de {amount}?\n\nSolo se aprueba si ya depositaste.",
+  "request_reset_btn": "Solicitar"
 }

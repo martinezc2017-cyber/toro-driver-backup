@@ -395,33 +395,33 @@ class _EarningsBreakdownScreenState extends ConsumerState<EarningsBreakdownScree
 
           // Activity
           _buildSection(
-            '📊 TU ACTIVIDAD',
+            '📊 ${'your_activity'.tr()}',
             [
-              _buildStatRow('Viajes Completados', '${_summary['total_trips'] ?? 0}', Icons.directions_car),
+              _buildStatRow('completed_trips'.tr(), '${_summary['total_trips'] ?? 0}', Icons.directions_car),
               if (_countryCode != 'MX')
-                _buildStatRow('Horas Online', '${(_summary['total_hours'] ?? 0).toStringAsFixed(1)} hrs', Icons.access_time),
-              _buildStatRow(_countryCode == 'MX' ? 'Km Recorridos' : 'Millas Recorridas', formatDistanceFromMiles((_summary['total_miles'] as num?)?.toDouble() ?? 0, country: _countryCode), Icons.straighten),
+                _buildStatRow('online_hours'.tr(), '${(_summary['total_hours'] ?? 0).toStringAsFixed(1)} hrs', Icons.access_time),
+              _buildStatRow(_countryCode == 'MX' ? 'km_driven'.tr() : 'miles_driven'.tr(), formatDistanceFromMiles((_summary['total_miles'] as num?)?.toDouble() ?? 0, country: _countryCode), Icons.straighten),
             ],
           ),
           const SizedBox(height: 16),
 
           // Averages
           _buildSection(
-            '📈 PROMEDIOS',
+            '📈 ${'averages_section'.tr()}',
             [
               _buildStatRow(
-                'Por Hora',
+                'per_hour'.tr(),
                 formatMoney((_summary['avg_per_hour'] as num?)?.toDouble() ?? 0, country: _countryCode),
                 Icons.schedule,
                 highlight: true,
               ),
               _buildStatRow(
-                'Por Viaje',
+                'per_trip'.tr(),
                 formatMoney((_summary['avg_per_trip'] as num?)?.toDouble() ?? 0, country: _countryCode),
                 Icons.local_taxi,
               ),
               _buildStatRow(
-                'Por Milla',
+                'per_mile'.tr(),
                 formatMoney((_summary['avg_per_mile'] as num?)?.toDouble() ?? 0, country: _countryCode),
                 Icons.speed,
               ),
@@ -956,10 +956,10 @@ class _EarningsBreakdownScreenState extends ConsumerState<EarningsBreakdownScree
 
   String _sourceTypeLabel(String type) {
     switch (type) {
-      case 'ride': return 'Viajes';
-      case 'carpool': return 'Carpool';
-      case 'package': return 'Paquetes';
-      case 'tourism': return 'Turismo';
+      case 'ride': return 'rides_label'.tr();
+      case 'carpool': return 'carpool_label'.tr();
+      case 'package': return 'packages_label'.tr();
+      case 'tourism': return 'tourism_label'.tr();
       default: return type;
     }
   }

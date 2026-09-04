@@ -29,26 +29,38 @@ class _VehicleScreenState extends State<VehicleScreen> {
         return;
       }
 
+      // Query by driver_id (matches RLS policy + add_vehicle_screen insert)
       final response = await Supabase.instance.client
           .from('vehicles')
           .select()
-          .eq('user_id', user.id)
+          .eq('driver_id', user.id)
+          .order('updated_at', ascending: false)
+          .limit(1)
           .maybeSingle();
 
-      if (response != null) {
+      if (response != null && mounted) {
         setState(() {
           _vehicle = VehicleModel.fromJson(response);
           _isLoading = false;
         });
-      } else {
+      } else if (mounted) {
+        // Fallback: try user_id in case driver_id != user.id
+        final fallback = await Supabase.instance.client
+            .from('vehicles')
+            .select()
+            .eq('user_id', user.id)
+            .order('updated_at', ascending: false)
+            .limit(1)
+            .maybeSingle();
+
         setState(() {
+          _vehicle = fallback != null ? VehicleModel.fromJson(fallback) : null;
           _isLoading = false;
-          _vehicle = null;
         });
       }
     } catch (e) {
-      //VehicleScreen: Error loading vehicle: $e');
-      setState(() => _isLoading = false);
+      debugPrint('VehicleScreen: Error loading vehicle: $e');
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 

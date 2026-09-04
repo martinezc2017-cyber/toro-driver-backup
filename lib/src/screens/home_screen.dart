@@ -111,6 +111,7 @@ class _HomeScreenState extends State<HomeScreen>
   // === QR POINTS ===
   final DriverQRPointsService _qrPointsService = DriverQRPointsService();
   bool _qrServiceInitialized = false;
+  int _previousQRTier = -1; // -1 = not initialized yet (don't fire on first load)
 
   // === CASH CONTROL ===
   final CashAccountService _cashService = CashAccountService();
@@ -360,7 +361,82 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   void _onQRServiceUpdate() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    final newTier = _qrPointsService.currentTier;
+
+    // Detect tier-up: only fire when we already have a previous value (!= -1)
+    // and the new tier is strictly higher.
+    debugPrint('QR_TIER_UP -> previous=$_previousQRTier, new=$newTier');
+    if (_previousQRTier >= 0 && newTier > _previousQRTier) {
+      debugPrint('QR_TIER_UP -> FIRING notification for tier $newTier');
+      // Use Future.delayed to ensure setState completes first
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted) _showTierUpNotification(newTier);
+      });
+    }
+    _previousQRTier = newTier;
+
+    setState(() {});
+  }
+
+  void _showTierUpNotification(int newTier) {
+    final earnings = _driverEarningsOf(newTier);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A2E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF00FF66), Color(0xFF00CC99)],
+                ),
+                borderRadius: BorderRadius.circular(50),
+              ),
+              child: const Icon(Icons.arrow_upward_rounded, color: Colors.white, size: 40),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'home.tier_up_title'.tr(namedArgs: {'tier': '$newTier'}),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'home.tier_up_body'.tr(namedArgs: {'percent': earnings.toStringAsFixed(0)}),
+              style: const TextStyle(color: Colors.white70, fontSize: 15),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF00FF66),
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: Text(
+                  'home.tier_up_dismiss'.tr(),
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _subscribeToVehicleRequests() {
@@ -1304,7 +1380,15 @@ class _HomeScreenState extends State<HomeScreen>
             _buildCheckItem(
               'home_profile_add_vehicle'.tr(),
               hasVehicle,
-              () => Navigator.pushNamed(context, '/add-vehicle'),
+              () => Navigator.pushNamed(context, '/add-vehicle').then((_) {
+                // Refresh driver data so home detects new vehicle immediately
+                final user = Supabase.instance.client.auth.currentUser;
+                if (user != null) {
+                  try {
+                    Provider.of<DriverProvider>(context, listen: false).initialize(user.id);
+                  } catch (_) {}
+                }
+              }),
             ),
             const SizedBox(height: 6),
             _buildCheckItem(
@@ -2796,18 +2880,37 @@ class _HomeScreenState extends State<HomeScreen>
   // Tier thresholds (match apply-referral-bonus): T1: 1-4, T2: 5-9, T3: 10-19, T4: 20-34, T5: 35+
   static const List<int> _tierMaxQRs = [0, 4, 9, 19, 34, 35];
 
+  // ╔═══════════════════════════════════════════════════════════════════════╗
+  // ║  CANDADO: TORO SIEMPRE se queda con MÍNIMO 5% de comisión.          ║
+  // ║  NUNCA tocar este valor. Si se pone 0, TORO no gana nada.           ║
+  // ║  La reducción máxima del tier JAMÁS puede bajar de este piso.        ║
+  // ╚═══════════════════════════════════════════════════════════════════════╝
+  static const double _minPlatformCommission = 5.0;
+
   /// Comision de TORO para un tier, VIVA desde pricing_config.
-  /// Usa reductionForTier() del servicio que devuelve 3/6/9/12/15 por tier.
+  /// Clamped a _minPlatformCommission (5%) — NUNCA baja de ahí.
   double _tierCommissionOf(int tier) {
     final base = _qrPointsService.basePlatformPercent;
     final reduction = _qrPointsService.reductionForTier(tier.clamp(0, 5));
-    return (base - reduction).clamp(0, 100).toDouble();
+    return (base - reduction).clamp(_minPlatformCommission, 100).toDouble();
+  }
+
+  /// Lo que el chofer VE como su porcentaje: sube linealmente de
+  /// (100−basePlatform)% en T0 hasta 95% en T5. Cada tier muestra
+  /// un valor DIFERENTE y creciente. Es DISPLAY, no el split real.
+  double _driverEarningsOf(int tier) {
+    final tierNum = tier.clamp(0, 5);
+    final base = _qrPointsService.basePlatformPercent;
+    if (base <= 0) return 0; // Not loaded yet
+    final earningsAtTier0 = 100.0 - base;
+    const maxEarnings = 100.0 - _minPlatformCommission; // 95%
+    final step = (maxEarnings - earningsAtTier0) / 5.0;
+    return earningsAtTier0 + (step * tierNum);
   }
 
   // current_level IS the tier (set by apply-referral-bonus), use directly.
   int _getDriverTier(int currentLevel) => currentLevel.clamp(0, 5);
 
-  double _getCommissionForTier(int tier) => _tierCommissionOf(tier);
 
   Widget _buildQRTierPanel() {
     final driver = context.read<DriverProvider>().driver;
@@ -2822,14 +2925,14 @@ class _HomeScreenState extends State<HomeScreen>
     // Live data from DriverQRPointsService
     final qrLevel = _qrPointsService.currentLevel.level;
     final currentTier = _qrPointsService.currentTier;
-    final currentCommission = _qrPointsService.effectivePlatformPercent;
+    final currentDriverEarnings = _driverEarningsOf(currentTier);
     final myRank = _qrPointsService.myStateRank;
     final nextTierQRs = currentTier < 5
         ? _tierMaxQRs[currentTier + 1] - qrLevel
         : 0;
-    final nextCommission = currentTier < 5
-        ? _tierCommissionOf(currentTier + 1)
-        : _tierCommissionOf(5);
+    final nextDriverEarnings = currentTier < 5
+        ? _driverEarningsOf(currentTier + 1)
+        : _driverEarningsOf(5);
     final progress = currentTier < 5 && _tierMaxQRs[currentTier + 1] > 0
         ? qrLevel / _tierMaxQRs[currentTier + 1]
         : 1.0;
@@ -2925,9 +3028,9 @@ class _HomeScreenState extends State<HomeScreen>
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'home.toro_commission'.tr(namedArgs: {'percent': currentCommission.toStringAsFixed(0)})
+                          'home.you_keep'.tr(namedArgs: {'percent': currentDriverEarnings.toStringAsFixed(0)})
                           + (myRank > 0 ? 'home.ranking'.tr(namedArgs: {'rank': '$myRank'}) : '')
-                          + (currentTier < 5 ? 'home.qrs_for_next'.tr(namedArgs: {'count': '$nextTierQRs', 'percent': nextCommission.toStringAsFixed(0)}) : 'home.qrs_max'.tr()),
+                          + (currentTier < 5 ? 'home.qrs_for_next'.tr(namedArgs: {'count': '$nextTierQRs', 'percent': nextDriverEarnings.toStringAsFixed(0)}) : 'home.qrs_max'.tr()),
                           style: const TextStyle(
                             color: Colors.white70,
                             fontSize: 12,
@@ -2996,7 +3099,7 @@ class _HomeScreenState extends State<HomeScreen>
                     final tierNum = i + 1;
                     final prevMax = i == 0 ? 0 : _tierMaxQRs[i];
                     final maxQR = _tierMaxQRs[tierNum];
-                    final commission = _tierCommissionOf(tierNum);
+                    final driverEarnings = _driverEarningsOf(tierNum);
                     final isCurrent = currentTier == tierNum;
                     final isReached = qrLevel >= (prevMax + 1);
 
@@ -3004,18 +3107,17 @@ class _HomeScreenState extends State<HomeScreen>
                       margin: EdgeInsets.only(bottom: i < 4 ? 4 : 0),
                       padding: const EdgeInsets.symmetric(
                         horizontal: 10,
-                        vertical: 6,
+                        vertical: 8,
                       ),
                       decoration: BoxDecoration(
                         color: isCurrent
-                            ? const Color(0xFF00FF66).withValues(alpha: 0.12)
+                            ? const Color(0xFF00FF66).withValues(alpha: 0.15)
                             : Colors.transparent,
                         borderRadius: BorderRadius.circular(8),
                         border: isCurrent
                             ? Border.all(
-                                color: const Color(
-                                  0xFF00FF66,
-                                ).withValues(alpha: 0.3),
+                                color: const Color(0xFF00FF66).withValues(alpha: 0.5),
+                                width: 1.5,
                               )
                             : null,
                       ),
@@ -3026,15 +3128,15 @@ class _HomeScreenState extends State<HomeScreen>
                             child: Text(
                               'Tier $tierNum',
                               style: TextStyle(
-                                fontSize: 12,
+                                fontSize: isCurrent ? 13 : 12,
                                 fontWeight: isCurrent
                                     ? FontWeight.bold
-                                    : FontWeight.w500,
+                                    : FontWeight.w400,
                                 color: isCurrent
                                     ? const Color(0xFF00FF66)
                                     : isReached
-                                    ? Colors.white
-                                    : Colors.white54,
+                                    ? Colors.white38
+                                    : Colors.white24,
                               ),
                             ),
                           ),
@@ -3042,23 +3144,23 @@ class _HomeScreenState extends State<HomeScreen>
                             child: Text(
                               '${prevMax + 1}-$maxQR QRs',
                               style: TextStyle(
-                                fontSize: 12,
+                                fontSize: isCurrent ? 12 : 11,
                                 color: isCurrent
                                     ? Colors.white
-                                    : Colors.white60,
+                                    : Colors.white30,
                               ),
                             ),
                           ),
                           Text(
-                            '${commission.toStringAsFixed(0)}%',
+                            '${driverEarnings.toStringAsFixed(0)}%',
                             style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
+                              fontSize: isCurrent ? 15 : 12,
+                              fontWeight: isCurrent ? FontWeight.bold : FontWeight.w400,
                               color: isCurrent
                                   ? const Color(0xFF00FF66)
                                   : isReached
-                                  ? Colors.greenAccent
-                                  : Colors.white54,
+                                  ? Colors.white38
+                                  : Colors.white24,
                             ),
                           ),
                           if (isCurrent) ...[

@@ -229,8 +229,8 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
           }
         });
 
-        // Run OCR on insurance card front to extract data
-        if (type == 'front') {
+        // Run OCR on insurance card front or back to extract data
+        if (type == 'front' || type == 'back') {
           _extractInsuranceData(image);
         }
       }
@@ -287,7 +287,24 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
 
       if (data != null && mounted) {
         setState(() {
-          _extractedData = data;
+          // Merge with existing extracted data (front + back)
+          if (_extractedData != null) {
+            _extractedData = InsuranceCardData(
+              vin: _extractedData!.vin ?? data.vin,
+              policyNumber: _extractedData!.policyNumber ?? data.policyNumber,
+              expiryDate: _extractedData!.expiryDate ?? data.expiryDate,
+              insuranceCompany: _extractedData!.insuranceCompany ?? data.insuranceCompany,
+              driverName: _extractedData!.driverName ?? data.driverName,
+              vehicleMake: _extractedData!.vehicleMake ?? data.vehicleMake,
+              vehicleModel: _extractedData!.vehicleModel ?? data.vehicleModel,
+              vehicleYear: _extractedData!.vehicleYear ?? data.vehicleYear,
+              vehiclePlate: _extractedData!.vehiclePlate ?? data.vehiclePlate,
+              vehicleColor: _extractedData!.vehicleColor ?? data.vehicleColor,
+              rawText: '${_extractedData!.rawText}\n---\n${data.rawText}',
+            );
+          } else {
+            _extractedData = data;
+          }
 
           // Auto-fill fields with extracted data
           if (data.insuranceCompany != null &&
@@ -314,10 +331,16 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
           if (data.vehicleYear != null && _yearController.text.isEmpty) {
             _yearController.text = data.vehicleYear.toString();
           }
+          if (data.vehiclePlate != null && _plateController.text.isEmpty) {
+            _plateController.text = data.vehiclePlate!;
+          }
+          if (data.vehicleColor != null && _colorController.text.isEmpty) {
+            _colorController.text = data.vehicleColor!;
+          }
         });
 
         // Show success feedback
-        if (data.hasAnyData) {
+        if (data.hasAnyData || data.hasRawTextOnly) {
           HapticService.success();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -327,7 +350,9 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'vehicle.data_extracted_from_card'.tr(),
+                      data.hasAnyData
+                          ? 'vehicle.data_extracted_from_card'.tr()
+                          : 'vehicle.text_detected'.tr(),
                       style: const TextStyle(fontSize: 13),
                     ),
                   ),
@@ -414,30 +439,9 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
       }
     }
 
-    if (_countryCode == 'US' && _insuranceCardBack == null) {
-      HapticService.error();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'screens.vehicle.upload_insurance_back'.tr(),
-          ),
-          backgroundColor: AppColors.error,
-        ),
-      );
-      return;
-    }
+    // Insurance back photo is optional — only front is required
 
-    // Validate endorsement if they claim to have one (US only)
-    if (_countryCode == 'US' && _hasRideshareEndorsement && _endorsementDoc == null) {
-      HapticService.error();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('screens.vehicle.upload_endorsement_doc'.tr()),
-          backgroundColor: AppColors.error,
-        ),
-      );
-      return;
-    }
+    // Endorsement document is always optional — never block registration
 
     setState(() => _isLoading = true);
 
@@ -505,16 +509,17 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
           'insurance_expiry': _insuranceExpiry?.toIso8601String().split('T')[0],
         });
       } else {
-        // Upsert into vehicles for personal rides (handles duplicate plate)
-        await Supabase.instance.client.from('vehicles').upsert({
+        // Check if plate already exists for this driver → update; otherwise insert
+        final plate = _plateController.text.trim().toUpperCase();
+        final vehicleData = {
           'driver_id': user.id,
           'user_id': user.id,
           'make': _makeController.text.trim(),
           'model': _modelController.text.trim(),
           'year': int.parse(_yearController.text.trim()),
           'color': _colorController.text.trim(),
-          'plate': _plateController.text.trim().toUpperCase(),
-          'plate_number': _plateController.text.trim().toUpperCase(),
+          'plate': plate,
+          'plate_number': plate,
           'vin': _vinController.text.trim().isEmpty
               ? null
               : _vinController.text.trim().toUpperCase(),
@@ -540,9 +545,60 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
           'insurance_card_front_url': frontUrl,
           'insurance_card_back_url': backUrl,
           'endorsement_document_url': endorsementUrl,
-          'created_at': now,
           'updated_at': now,
-        });
+        };
+
+        // Check if this driver already has this plate registered
+        final ownExisting = await Supabase.instance.client
+            .from('vehicles')
+            .select('id')
+            .eq('plate', plate)
+            .eq('driver_id', user.id)
+            .maybeSingle();
+
+        // Check if plate is used by OTHER drivers (shared/rental vehicle)
+        final othersWithPlate = await Supabase.instance.client
+            .from('vehicles')
+            .select('id, driver_id')
+            .eq('plate', plate)
+            .neq('driver_id', user.id);
+
+        if (othersWithPlate.isNotEmpty && mounted) {
+          // Show info alert — vehicle is shared with other accounts
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.info_outline, color: Colors.white, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'vehicle.plate_shared_alert'.tr(namedArgs: {
+                        'count': '${othersWithPlate.length}',
+                      }),
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: const Color(0xFFFF9500),
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+
+        if (ownExisting != null) {
+          // Update existing vehicle for this driver
+          await Supabase.instance.client
+              .from('vehicles')
+              .update(vehicleData)
+              .eq('id', ownExisting['id']);
+        } else {
+          // Insert new vehicle for this driver
+          vehicleData['created_at'] = now;
+          await Supabase.instance.client
+              .from('vehicles')
+              .insert(vehicleData);
+        }
       }
 
       // Sync vehicle info to drivers table so home screen detects it
@@ -611,6 +667,8 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      _buildCardUploadSection(),
+                      const SizedBox(height: 24),
                       _buildVehicleTypeSelector(),
                       const SizedBox(height: 24),
                       _buildBlackRoseBadge(),
@@ -708,6 +766,126 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
         ],
       ),
     ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.1, end: 0);
+  }
+
+  /// Card upload section — shown at the TOP so drivers upload first and auto-fill everything
+  Widget _buildCardUploadSection() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: const Color(0xFF3B82F6).withValues(alpha: 0.4),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF3B82F6).withValues(alpha: 0.15),
+            blurRadius: 12,
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.document_scanner_rounded,
+                  color: Colors.white,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'vehicle.upload_card_title'.tr(),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    Text(
+                      'vehicle.upload_card_subtitle'.tr(),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _buildPhotoUploadCard(
+            label: 'vehicle.front'.tr(),
+            icon: Icons.credit_card,
+            image: _insuranceCardFront,
+            onTap: () => _pickImage('front'),
+            isRequired: _countryCode == 'US',
+            isProcessing: _isExtractingData,
+            isWide: true,
+          ),
+
+          // Extracted data indicator
+          if (_extractedData != null && (_extractedData!.hasAnyData || _extractedData!.hasRawTextOnly)) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF22C55E).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: const Color(0xFF22C55E).withValues(alpha: 0.3),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.auto_awesome, color: Color(0xFF22C55E), size: 18),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'vehicle.data_detected'.tr(),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF22C55E),
+                          ),
+                        ),
+                        Text(
+                          _buildExtractedSummary(),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.1, end: 0);
   }
 
   Widget _buildVehicleTypeSelector() {
@@ -945,13 +1123,13 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
           // VIN field (optional)
           _buildTextField(
             controller: _vinController,
-            label: 'VIN (Opcional)',
-            hint: '17 caracteres',
+            label: 'vehicle.vin_optional'.tr(),
+            hint: 'vehicle.vin_hint'.tr(),
             icon: Icons.qr_code,
             textCapitalization: TextCapitalization.characters,
             validator: (v) {
               if (v?.isEmpty ?? true) return null; // Optional
-              if (v!.length != 17) return 'VIN debe tener 17 caracteres';
+              if (v!.length != 17) return 'vehicle.vin_length_error'.tr();
               return null;
             },
             fieldName: 'vin',
@@ -1161,97 +1339,6 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 24),
-
-          // Insurance Card Photos Section
-          Text(
-            'vehicle.insurance_card_photos'.tr(),
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'vehicle.vin_extracted_from_card'.tr(),
-            style: TextStyle(
-              fontSize: 11,
-              color: AppColors.textSecondary.withValues(alpha: 0.7),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _buildPhotoUploadCard(
-                  label: 'vehicle.front'.tr(),
-                  icon: Icons.credit_card,
-                  image: _insuranceCardFront,
-                  onTap: () => _pickImage('front'),
-                  isRequired: true,
-                  isProcessing: _isExtractingData,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildPhotoUploadCard(
-                  label: 'vehicle.back'.tr(),
-                  icon: Icons.credit_card,
-                  image: _insuranceCardBack,
-                  onTap: () => _pickImage('back'),
-                  isRequired: true,
-                ),
-              ),
-            ],
-          ),
-
-          // Show extracted data indicator
-          if (_extractedData != null && _extractedData!.hasAnyData) ...[
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFF22C55E).withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: const Color(0xFF22C55E).withValues(alpha: 0.3),
-                ),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.auto_awesome,
-                    color: Color(0xFF22C55E),
-                    size: 18,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'vehicle.data_detected'.tr(),
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF22C55E),
-                          ),
-                        ),
-                        Text(
-                          _buildExtractedSummary(),
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
           const SizedBox(height: 20),
 
           // Rideshare Endorsement Checkbox
@@ -1331,21 +1418,21 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppColors.error.withValues(alpha: 0.1),
+                color: AppColors.textSecondary.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Row(
                 children: [
                   Icon(
-                    Icons.warning_amber_rounded,
-                    color: AppColors.error,
+                    Icons.info_outline,
+                    color: AppColors.textSecondary,
                     size: 18,
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'vehicle.no_endorsement_warning'.tr(),
-                      style: TextStyle(fontSize: 12, color: AppColors.error),
+                      'vehicle.no_endorsement_info'.tr(),
+                      style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                     ),
                   ),
                 ],
@@ -1508,6 +1595,34 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
       parts.add(
         '${'vehicle.expires'.tr()}: ${_extractedData!.expiryDate!.day}/${_extractedData!.expiryDate!.month}/${_extractedData!.expiryDate!.year}',
       );
+    }
+    if (_extractedData!.vehicleMake != null) {
+      parts.add(_extractedData!.vehicleMake!);
+    }
+    if (_extractedData!.vehicleModel != null) {
+      parts.add(_extractedData!.vehicleModel!);
+    }
+    if (_extractedData!.vehicleYear != null) {
+      parts.add('${_extractedData!.vehicleYear}');
+    }
+    if (_extractedData!.vehiclePlate != null) {
+      parts.add('Plate: ${_extractedData!.vehiclePlate}');
+    }
+    if (_extractedData!.vehicleColor != null) {
+      parts.add(_extractedData!.vehicleColor!);
+    }
+
+    if (parts.isEmpty && _extractedData!.hasRawTextOnly) {
+      // Show first meaningful line from raw text so user knows OCR worked
+      final firstLine = _extractedData!.rawText
+          .split('\n')
+          .map((l) => l.trim())
+          .where((l) => l.length > 3)
+          .take(2)
+          .join(' · ');
+      return firstLine.length > 60
+          ? '${firstLine.substring(0, 60)}...'
+          : firstLine;
     }
 
     return parts.isEmpty ? 'vehicle.processing'.tr() : parts.join(' • ');
@@ -1830,14 +1945,14 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                     color: AppColors.textSecondary,
                   ),
                 )
-              : const Row(
+              : Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.check_circle, color: Colors.white, size: 22),
-                    SizedBox(width: 10),
+                    const Icon(Icons.check_circle, color: Colors.white, size: 22),
+                    const SizedBox(width: 10),
                     Text(
-                      'REGISTRAR VEHICULO',
-                      style: TextStyle(
+                      'vehicle.register_button'.tr(),
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 16,
                         fontWeight: FontWeight.bold,

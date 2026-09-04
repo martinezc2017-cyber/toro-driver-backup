@@ -127,7 +127,7 @@ void main() async {
   // Run app IMMEDIATELY so splash shows while services init in background
   runApp(
     EasyLocalization(
-      supportedLocales: const [Locale('en'), Locale('es'), Locale('es', 'MX')],
+      supportedLocales: const [Locale('en'), Locale('es')],
       path: 'assets/lang',
       fallbackLocale: const Locale('en'),
       saveLocale: true,

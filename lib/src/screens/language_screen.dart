@@ -20,13 +20,7 @@ class _LanguageScreenState extends State<LanguageScreen> {
       'flag': '🇺🇸',
       'region': 'United States',
     },
-    {'code': 'es', 'name': 'Español', 'flag': '🌎', 'region': 'International'},
-    {
-      'code': 'es-MX',
-      'name': 'Español (México)',
-      'flag': '🇲🇽',
-      'region': 'México',
-    },
+    {'code': 'es', 'name': 'Español', 'flag': '🇪🇸', 'region': ''},
   ];
 
   @override

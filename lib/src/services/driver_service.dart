@@ -87,11 +87,14 @@ class DriverService {
 
     if (existing != null) {
       // Driver exists, just update
+      // Stamp location_updated_at so admin map's zombie guard (< 5 min) sees
+      // the driver immediately — not only after the first heartbeat succeeds.
       await _client
           .from(SupabaseConfig.driversTable)
           .update({
             'is_online': isOnline,
             'updated_at': now,
+            'location_updated_at': now,
           })
           .eq('id', driverId);
     } else {

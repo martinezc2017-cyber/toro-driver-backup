@@ -193,6 +193,7 @@ class DriverProvider with ChangeNotifier {
               // switch). Antes solo arrancaba en el toggle → al reabrir el app
               // quedaba online sin latido y el admin lo veía stale.
               if (driver.isOnline) {
+                _intendedOnline = true; // driver IS online → keep heartbeat alive
                 if (_heartbeatTimer == null) _startHeartbeat();
               } else {
                 _intendedOnline = false; // DB says offline → respect it

@@ -560,6 +560,8 @@ class _TourismPassengerListScreenState extends State<TourismPassengerListScreen>
     final email = passenger['invitee_email'] as String?;
     final phone = passenger['invitee_phone'] as String?;
     final seat = passenger['seat_number'] as String?;
+    // Número de boleto: es lo que el pasajero enseña al subir.
+    final ticketCode = passenger['invitation_code'] as String?;
     final boardingStop = passenger['boarding_stop'] as String?;
     final dropoffStop = passenger['dropoff_stop'] as String?;
     final status = passenger['status'] as String? ?? 'accepted';
@@ -647,6 +649,9 @@ class _TourismPassengerListScreenState extends State<TourismPassengerListScreen>
           // Seat number
           if (seat != null && seat.isNotEmpty)
             _buildInfoRow(Icons.event_seat, '${'passengers_seat'.tr()}: $seat'),
+          if (ticketCode != null && ticketCode.isNotEmpty)
+            _buildInfoRow(Icons.confirmation_number_outlined,
+                '${'passengers_ticket'.tr()}: $ticketCode'),
           // Boarding/dropoff stops
           if (boardingStop != null && boardingStop.isNotEmpty)
             _buildInfoRow(Icons.arrow_upward, '${'passengers_boards'.tr()}: $boardingStop'),

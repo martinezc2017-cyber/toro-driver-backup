@@ -272,12 +272,12 @@ class _OrganizerDashboardTabState extends State<OrganizerDashboardTab> {
         // Recent activity header
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: const Row(
+          child: Row(
             children: [
-              Icon(Icons.history, size: 18, color: AppColors.textSecondary),
+              const Icon(Icons.history, size: 18, color: AppColors.textSecondary),
               SizedBox(width: 8),
               Text(
-                'Mis Eventos',
+                'org_my_events'.tr(),
                 style: TextStyle(
                   color: AppColors.textPrimary,
                   fontSize: 16,

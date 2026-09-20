@@ -35,6 +35,8 @@ import 'organizer_photos_screen.dart';
 import 'organizer_profile_screen.dart';
 import 'organizer_vehicle_selection_screen.dart';
 import 'organizer_bidding_screen.dart';
+import '../../utils/colectivo_commission.dart';
+import '../tourism/colectivo_share_screen.dart';
 
 String _fmtPrice(double v) =>
     intl.NumberFormat('#,##0', intl.Intl.getCurrentLocale()).format(v.round());
@@ -353,7 +355,7 @@ class _OrganizerEventDashboardScreenState
           table: 'bus_driver_location',
           filter: PostgresChangeFilter(
             type: PostgresChangeFilterType.eq,
-            column: 'route_id',
+            column: 'event_id',
             value: widget.eventId,
           ),
           callback: (payload) {
@@ -377,7 +379,7 @@ class _OrganizerEventDashboardScreenState
           table: 'bus_events',
           filter: PostgresChangeFilter(
             type: PostgresChangeFilterType.eq,
-            column: 'route_id',
+            column: 'event_id',
             value: widget.eventId,
           ),
           callback: (payload) {
@@ -515,6 +517,18 @@ class _OrganizerEventDashboardScreenState
                 onTap: () {
                   Navigator.pop(ctx);
                   _shareEvent();
+                },
+              ),
+              // Boleto como IMAGEN para redes (con QR y código).
+              _buildMenuItem(
+                icon: Icons.qr_code_2_rounded,
+                label: 'colectivo_share_title'.tr(),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  if (_event == null) return;
+                  Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => ColectivoShareScreen(event: _event!),
+                  ));
                 },
               ),
               // Toggle chat for driver
@@ -938,7 +952,12 @@ class _OrganizerEventDashboardScreenState
 
   void _showEventQR() {
     final eventName = _event?['event_name'] ?? 'Evento';
-    final inviteUrl = 'https://toro-ride.com/event/${widget.eventId}';
+    // La liga pública usa el CÓDIGO del viaje (EVT-…), no el id interno:
+    // toro-ride.com/event/<id> no abre nada.
+    final code = (_event?['invitation_code'] ?? '').toString();
+    final inviteUrl = code.isNotEmpty
+        ? 'https://toro-ride.com/event/$code'
+        : 'https://toro-ride.com';
 
     HapticService.mediumImpact();
     showModalBottomSheet(
@@ -1049,7 +1068,11 @@ class _OrganizerEventDashboardScreenState
     final eventName = _event?['event_name'] ?? 'Evento';
     final eventDate = _event?['event_date'] ?? '';
     final startTime = _event?['start_time'] ?? '';
-    final inviteUrl = 'https://toro-ride.com/event/${widget.eventId}';
+    // Liga pública por CÓDIGO del viaje (el id interno no abre nada).
+    final shareCode = (_event?['invitation_code'] ?? '').toString();
+    final inviteUrl = shareCode.isNotEmpty
+        ? 'https://toro-ride.com/event/$shareCode'
+        : 'https://toro-ride.com';
 
     HapticService.lightImpact();
 
@@ -4235,7 +4258,7 @@ Enviado desde TORO
 
     // Calculations: each passenger pays km × price_per_km
     final ticketPrice = pricePerKm * distanceKm;
-    final toroFee = ticketPrice * 0.18;
+    final toroFee = ticketPrice * ColectivoCommission.rateFor(_event);
     final receives = ticketPrice - toroFee;
     final accepted =
         (_stats['confirmed'] as num?)?.toInt() ??
@@ -4358,7 +4381,7 @@ Enviado desde TORO
                     ),
                     const SizedBox(height: 6),
                     _buildPricingRow(
-                      'Servicio TORO (18%)',
+                      'colectivo_toro_fee_label'.tr(namedArgs: {'pct': (ColectivoCommission.rateFor(_event) * 100).toStringAsFixed(0)}),
                       '-${formatMoney(toroFee)}',
                       color: AppColors.textSecondary,
                       icon: Icons.percent,
@@ -4706,7 +4729,7 @@ Enviado desde TORO
     final maxPassengers = (_event?['max_passengers'] as num?)?.toInt() ?? 40;
     final pricePerKm = double.tryParse(_pricePerKmController.text) ?? 1.0;
     final ticketPrice = pricePerKm * distanceKm;
-    final toroFee = ticketPrice * 0.18;
+    final toroFee = ticketPrice * ColectivoCommission.rateFor(_event);
     final receives = ticketPrice - toroFee;
     final accepted =
         (_stats['confirmed'] as num?)?.toInt() ??
@@ -4875,7 +4898,7 @@ Enviado desde TORO
                           ),
                           const SizedBox(height: 6),
                           _buildPricingRow(
-                            'Servicio TORO (18%)',
+                            'colectivo_toro_fee_label'.tr(namedArgs: {'pct': (ColectivoCommission.rateFor(_event) * 100).toStringAsFixed(0)}),
                             '-${formatMoney(toroFee)}',
                             color: AppColors.textSecondary,
                             icon: Icons.percent,
@@ -5007,7 +5030,7 @@ Enviado desde TORO
           builder: (ctx, setDialogState) {
             final newPrice = double.tryParse(controller.text) ?? 0;
             final newTicket = newPrice * displayDistance;
-            final newFee = newTicket * 0.18;
+            final newFee = newTicket * ColectivoCommission.rateFor(_event);
             final newReceives = newTicket - newFee;
 
             return AlertDialog(
@@ -5080,7 +5103,7 @@ Enviado desde TORO
                           ),
                           const SizedBox(height: 6),
                           _dialogRow(
-                            'Servicio TORO (18%)',
+                            'colectivo_toro_fee_label'.tr(namedArgs: {'pct': (ColectivoCommission.rateFor(_event) * 100).toStringAsFixed(0)}),
                             '-${formatMoney(newFee)}',
                           ),
                           const SizedBox(height: 6),
@@ -8962,7 +8985,7 @@ Enviado desde TORO
                         child: Column(
                           children: [
                             _buildFinancialRow(
-                              'Comision TORO (18%)',
+                              'colectivo_toro_fee_label'.tr(namedArgs: {'pct': (ColectivoCommission.rateFor(_event) * 100).toStringAsFixed(0)}),
                               '-${formatMoney(toroFee)}',
                               color: AppColors.error,
                             ),

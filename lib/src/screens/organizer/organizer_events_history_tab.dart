@@ -14,6 +14,7 @@ import '../../utils/app_colors.dart';
 import '../../utils/haptic_service.dart';
 import '../../utils/money_format.dart';
 import '../../widgets/organizer_connect_banner.dart';
+import '../../utils/colectivo_commission.dart';
 
 /// PANTALLA DE HISTORIAL DE EVENTOS - ORGANIZER
 /// Muestra todos los eventos completados con tracking completo
@@ -111,7 +112,7 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
     final pricePerKm = (event['price_per_km'] as num?)?.toDouble() ?? 0;
     final distance = (event['total_distance_km'] as num?)?.toDouble() ?? 0;
     final commissionRate =
-        (event['toro_commission_rate'] as num?)?.toDouble() ?? 0.18;
+        ColectivoCommission.rateFor(event);
     final isMX = (event['country_code'] as String?) == 'MX';
 
     final driverPayment = pricePerKm * distance;
@@ -265,8 +266,7 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
       ),
       body: Column(
         children: [
-          if (_organizerId != null)
-            OrganizerConnectBanner(organizerId: _organizerId!),
+          // Aviso de Stripe: ya lo pinta OrganizerHomeScreen (salía doble).
           Expanded(
             child: _isLoading
                 ? Center(

@@ -278,7 +278,7 @@ class _TourismDriverHomeScreenState extends State<TourismDriverHomeScreen>
       // Update bus_driver_location table (for tourism tracking)
       await Supabase.instance.client.from('bus_driver_location').upsert({
         'driver_id': driverId,
-        'route_id': widget.eventId, // Event ID as route ID for tourism
+        'event_id': widget.eventId, // viaje de colectivo (route_id es FK a bus_routes)
         'vehicle_id': vehicleId,
         'lat': _currentPosition!.latitude,
         'lng': _currentPosition!.longitude,
@@ -522,7 +522,7 @@ class _TourismDriverHomeScreenState extends State<TourismDriverHomeScreen>
       final stopName = currentStop['name'] ?? 'tourism_stop_label'.tr(namedArgs: {'number': '${_currentStopIndex + 1}'});
 
       // Create bus event for departure
-      await _createBusEvent('stop_departure', stopName);
+      await _createBusEvent('departed', stopName);
 
       // Update event current stop index if this is not the last stop
       if (_currentStopIndex < _itinerary.length - 1) {
@@ -563,7 +563,7 @@ class _TourismDriverHomeScreenState extends State<TourismDriverHomeScreen>
 
     try {
       await Supabase.instance.client.from('bus_events').insert({
-        'route_id': widget.eventId,
+        'event_id': widget.eventId, // route_id es FK a bus_routes: tronaba
         'driver_id': driverId,
         'event_type': eventType,
         'stop_name': stopName,
@@ -840,7 +840,7 @@ class _TourismDriverHomeScreenState extends State<TourismDriverHomeScreen>
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          _isGpsActive ? 'GPS En Vivo' : 'GPS Apagado',
+                          _isGpsActive ? 'gps_live'.tr() : 'gps_off'.tr(),
                           style: TextStyle(
                             color: _isGpsActive ? AppColors.error : AppColors.textTertiary,
                             fontSize: 11,
@@ -885,7 +885,7 @@ class _TourismDriverHomeScreenState extends State<TourismDriverHomeScreen>
   }
 
   Widget _buildEventInfo() {
-    final title = _event?['title'] ?? 'tourism_event'.tr();
+    final title = _event?['event_name'] ?? _event?['title'] ?? 'tourism_event'.tr();
     final organizer = _event?['organizers'] as Map<String, dynamic>?;
     final organizerName = organizer?['contact_name'] ??
         organizer?['business_name'] ??
@@ -2490,12 +2490,12 @@ class _TourismDriverHomeScreenState extends State<TourismDriverHomeScreen>
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(color: AppColors.error.withOpacity(0.3)),
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.remove_circle_outline, color: AppColors.error, size: 14),
+                          const Icon(Icons.remove_circle_outline, color: AppColors.error, size: 14),
                           SizedBox(width: 4),
-                          Text('Quitar parada', style: TextStyle(color: AppColors.error, fontSize: 11, fontWeight: FontWeight.w600)),
+                          Text('remove_stop'.tr(), style: TextStyle(color: AppColors.error, fontSize: 11, fontWeight: FontWeight.w600)),
                         ],
                       ),
                     ),

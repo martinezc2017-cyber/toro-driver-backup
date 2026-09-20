@@ -736,8 +736,8 @@ class _BusLocationMapScreenState extends State<BusLocationMapScreen> {
               children: [
                 const Icon(Icons.event, color: AppColors.primary, size: 18),
                 const SizedBox(width: 8),
-                const Text(
-                  'Mis Eventos',
+                Text(
+                  'org_my_events'.tr(),
                   style: TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 15,

@@ -115,14 +115,30 @@ class TripFareService {
   }) async {
     try {
       final now = DateTime.now().toUtc().toIso8601String();
+      final isCash = paymentMethod == 'efectivo' || paymentMethod == 'cash';
+      // CHECKs reales de tourism_invitations: status NO acepta 'off_boarded'
+      // y payment_status NO acepta 'cash' (pending|paid|failed|refunded).
+      // Con esos valores el update tronaba y la bajada nunca se registraba.
       await _client.from('tourism_invitations').update({
-        'status': 'off_boarded',
         'current_check_in_status': 'off_boarded',
-        'total_price': fare,
-        'payment_status': paymentMethod == 'efectivo' ? 'cash' : 'pending',
         'exited_at': now,
         'updated_at': now,
       }).eq('id', invitationId);
+      // Segundo update (ya sin transición de exited_at): el trigger de km
+      // recalcula total_price al bajar y lo dejaba en null si faltaba el km.
+      // Aquí se fija el precio real del boleto y su pago.
+      await _client.from('tourism_invitations').update({
+        'total_price': fare,
+        'payment_status': isCash ? 'paid' : 'pending',
+        'updated_at': now,
+      }).eq('id', invitationId);
+
+      // MODO DEPÓSITO del COLECTIVO: al quedar 'paid', el trigger
+      // tourism_invitations_auto_update_commission recalcula
+      // tourism_events.toro_commission_total (solo colectivo). NO se registra
+      // en transactions ni en el depósito de viajes (driver_credit_accounts):
+      // colectivo y rides NO se mezclan. El adeudo con impuestos al depósito
+      // del organizador (organizer_credit_accounts) queda pendiente de SQL.
 
       debugPrint(
           'FARE_SVC -> Recorded exit for $invitationId: '
@@ -143,7 +159,7 @@ class TripFareService {
     try {
       final now = DateTime.now().toUtc().toIso8601String();
       await _client.from('tourism_invitations').update({
-        'status': 'boarded',
+        'status': 'checked_in', // 'boarded' no pasa el CHECK de status
         'current_check_in_status': 'boarded',
         'boarded_at': now,
         'updated_at': now,

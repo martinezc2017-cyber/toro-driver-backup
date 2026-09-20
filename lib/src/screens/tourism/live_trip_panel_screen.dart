@@ -229,7 +229,7 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
     try {
       await Supabase.instance.client.from('bus_driver_location').upsert({
         'driver_id': driverId,
-        'route_id': widget.eventId,
+        'event_id': widget.eventId, // route_id es FK a bus_routes: tronaba
         'lat': _currentPosition!.latitude,
         'lng': _currentPosition!.longitude,
         'speed': _currentPosition!.speed,
@@ -320,9 +320,9 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
       if (driverId != null && _currentPosition != null) {
         try {
           await Supabase.instance.client.from('bus_events').insert({
-            'route_id': widget.eventId,
+            'event_id': widget.eventId, // route_id es FK a bus_routes: tronaba
             'driver_id': driverId,
-            'event_type': 'stop_arrival',
+            'event_type': 'arrived_stop', // CHECK de bus_events (antes 'stop_arrival': tronaba)
             'stop_name': stopName,
             'lat': _currentPosition!.latitude,
             'lng': _currentPosition!.longitude,
@@ -1886,7 +1886,7 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
       if (driverId != null) {
         try {
           await Supabase.instance.client.from('bus_events').insert({
-            'route_id': widget.eventId,
+            'event_id': widget.eventId, // route_id es FK a bus_routes: tronaba
             'driver_id': driverId,
             'event_type': 'completed',
             'stop_name': 'Final',

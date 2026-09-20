@@ -3,6 +3,8 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:geolocator/geolocator.dart';
 
 import '../../services/tourism_event_service.dart';
 import '../../utils/app_colors.dart';
@@ -42,11 +44,26 @@ class _JoinRequestsScreenState extends State<JoinRequestsScreen> {
   // Track which request cards are currently processing
   final Set<String> _processingIds = {};
 
+  /// Posición del chofer, para decirle a cuánto está cada pasajero de él.
+  Position? _myPos;
+
   @override
   void initState() {
     super.initState();
+    _loadMyPosition();
     _loadRequests();
     _subscribeToRequests();
+  }
+
+  Future<void> _loadMyPosition() async {
+    try {
+      final p = await Geolocator.getLastKnownPosition() ??
+          await Geolocator.getCurrentPosition()
+              .timeout(const Duration(seconds: 6));
+      if (mounted) setState(() => _myPos = p);
+    } catch (_) {
+      // Sin GPS: solo no se muestra la distancia al pasajero.
+    }
   }
 
   @override
@@ -688,16 +705,24 @@ class _JoinRequestsScreenState extends State<JoinRequestsScreen> {
 
     final pickupAddress = request['pickup_address'] as String?;
     final dropoffAddress = request['dropoff_address'] as String?;
-    final estimatedKm = (request['estimated_distance_km'] as num?)?.toDouble();
-    final createdAt = request['created_at'] as String?;
-    final passengers = request['num_passengers'] as int? ?? 1;
+    // Columnas REALES de tourism_join_requests (antes leía
+    // estimated_distance_km / num_passengers, que no existen: el chofer no
+    // veía ni km ni pasajeros, y el precio salía de un 10/km inventado).
+    final estimatedKm = (request['estimated_km_to_travel'] as num?)?.toDouble();
+    final kmFromStart = (request['km_from_event_start'] as num?)?.toDouble();
+    final pickupLat = (request['pickup_lat'] as num?)?.toDouble();
+    final pickupLng = (request['pickup_lng'] as num?)?.toDouble();
+    final createdAt = (request['requested_at'] ?? request['created_at']) as String?;
+    final passengers = (request['passenger_count'] as num?)?.toInt() ?? 1;
     final notes = request['notes'] as String?;
 
-    // Calculate estimated price
-    final pricePerKm = widget.pricePerKm ?? 10.0;
-    final estimatedPrice = estimatedKm != null
-        ? estimatedKm * pricePerKm
-        : null;
+    // Precio: el que el rider VIO y aceptó (proporcional al precio organizado).
+    // Solo si no viene, se estima con la tarifa por km del viaje.
+    final pricePerKm = (request['price_per_km'] as num?)?.toDouble() ?? widget.pricePerKm;
+    final estimatedPrice = (request['estimated_total_price'] as num?)?.toDouble() ??
+        (estimatedKm != null && pricePerKm != null
+            ? estimatedKm * pricePerKm * passengers
+            : null);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -851,6 +876,44 @@ class _JoinRequestsScreenState extends State<JoinRequestsScreen> {
               AppColors.success,
               'join_pickup'.tr(),
               pickupAddress,
+            ),
+            const SizedBox(height: 6),
+          ],
+
+          // Dónde está el pasajero: km de la ruta + abrir en el mapa.
+          if (kmFromStart != null || (pickupLat != null && pickupLng != null)) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (_myPos != null && pickupLat != null && pickupLng != null)
+                        Text(
+                          'join_distance_from_you'.tr(namedArgs: {
+                            'distance': formatDistance(Geolocator.distanceBetween(
+                                  _myPos!.latitude, _myPos!.longitude, pickupLat, pickupLng) / 1000),
+                          }),
+                          style: const TextStyle(color: AppColors.success, fontSize: 13, fontWeight: FontWeight.w700),
+                        ),
+                      if (kmFromStart != null)
+                        Text(
+                          'join_km_from_start'.tr(namedArgs: {'km': formatDistance(kmFromStart, decimals: 0)}),
+                          style: const TextStyle(color: AppColors.textSecondary, fontSize: 12.5),
+                        ),
+                    ],
+                  ),
+                ),
+                if (pickupLat != null && pickupLng != null)
+                  TextButton.icon(
+                    onPressed: () => launchUrl(
+                      Uri.parse('https://www.google.com/maps/search/?api=1&query=$pickupLat,$pickupLng'),
+                      mode: LaunchMode.externalApplication,
+                    ),
+                    icon: const Icon(Icons.map_outlined, size: 18),
+                    label: Text('join_view_on_map'.tr()),
+                  ),
+              ],
             ),
             const SizedBox(height: 6),
           ],

@@ -6,6 +6,7 @@ import '../config/supabase_config.dart';
 import '../core/logging/app_logger.dart';
 import 'audit_service.dart';
 import 'live_pricing.dart';
+import '../utils/colectivo_commission.dart';
 
 /// Service for tourism event operations.
 ///
@@ -1743,38 +1744,51 @@ class TourismEventService {
           .single();
 
       final userId = joinRequest['user_id'] as String?;
+      // tourism_join_requests NO trae nombre/teléfono: salen del perfil.
+      Map<String, dynamic>? profile;
+      if (userId != null) {
+        profile = await _client
+            .from('profiles')
+            .select('full_name, phone')
+            .eq('id', userId)
+            .maybeSingle();
+      }
       final passengerName =
-          joinRequest['passenger_name'] as String? ?? 'Pasajero';
-      final passengerPhone = joinRequest['passenger_phone'] as String?;
-      final pickupAddress = joinRequest['pickup_address'] as String?;
-      final pickupLat = joinRequest['pickup_lat'];
-      final pickupLng = joinRequest['pickup_lng'];
-      final dropoffAddress = joinRequest['dropoff_address'] as String?;
-      final dropoffLat = joinRequest['dropoff_lat'];
-      final dropoffLng = joinRequest['dropoff_lng'];
+          (profile?['full_name'] as String?) ?? 'join_no_name'.tr();
+      final passengerPhone = profile?['phone'] as String?;
+      final passengerCount =
+          ((joinRequest['passenger_count'] as num?)?.toInt() ?? 1).clamp(1, 20);
+      // Precio del BOLETO (por persona) = lo que el rider vio y aceptó.
+      final totalRequested =
+          (joinRequest['estimated_total_price'] as num?)?.toDouble();
+      final ticketPrice = totalRequested != null
+          ? double.parse((totalRequested / passengerCount).toStringAsFixed(2))
+          : null;
 
-      // 2. Create a tourism_invitation for this passenger
+      // 2. Create a tourism_invitation for this passenger.
+      // OJO columnas REALES de tourism_invitations: el punto de subida va en
+      // boarding_lat/boarding_lng/boarding_km_from_start (NO pickup_*), y
+      // invitation_method tiene CHECK (qr|email|sms|link|direct|whatsapp|
+      // manual). Con 'join_request' + pickup_* el insert tronaba SIEMPRE y
+      // ningún chofer podía aceptar una solicitud.
       final invitationData = <String, dynamic>{
         'event_id': eventId,
         'user_id': userId,
         'invited_name': passengerName,
         'invited_phone': passengerPhone,
-        'invitation_method': 'join_request',
+        'invitation_method': 'direct',
         'status': 'accepted',
+        'join_request_status': 'accepted',
         'accepted_at': now,
         'created_at': now,
         'updated_at': now,
+        'boarding_lat': joinRequest['pickup_lat'],
+        'boarding_lng': joinRequest['pickup_lng'],
+        'boarding_km_from_start': joinRequest['km_from_event_start'],
+        'price_per_km': joinRequest['price_per_km'],
+        'total_price': ticketPrice,
+        'payment_status': 'pending',
       };
-
-      // Include pickup/dropoff if provided
-      if (pickupAddress != null)
-        invitationData['pickup_address'] = pickupAddress;
-      if (pickupLat != null) invitationData['pickup_lat'] = pickupLat;
-      if (pickupLng != null) invitationData['pickup_lng'] = pickupLng;
-      if (dropoffAddress != null)
-        invitationData['dropoff_address'] = dropoffAddress;
-      if (dropoffLat != null) invitationData['dropoff_lat'] = dropoffLat;
-      if (dropoffLng != null) invitationData['dropoff_lng'] = dropoffLng;
 
       // Generate a simple invitation code
       final code = 'JR-${requestId.substring(0, 8).toUpperCase()}';
@@ -1787,6 +1801,29 @@ class TourismEventService {
           .single();
 
       final invitationId = invitation['id'] as String;
+
+      // Acompañantes: el cupo del viaje cuenta invitaciones aceptadas, y hay
+      // UNIQUE(event_id, user_id), así que cada acompañante va sin user_id.
+      if (passengerCount > 1) {
+        await _client.from('tourism_invitations').insert([
+          for (var i = 1; i < passengerCount; i++)
+            {
+              'event_id': eventId,
+              'invited_name':
+                  'join_companion_of'.tr(namedArgs: {'name': passengerName}),
+              'invitation_method': 'direct',
+              'status': 'accepted',
+              'join_request_status': 'accepted',
+              'accepted_at': now,
+              'boarding_lat': joinRequest['pickup_lat'],
+              'boarding_lng': joinRequest['pickup_lng'],
+              'boarding_km_from_start': joinRequest['km_from_event_start'],
+              'price_per_km': joinRequest['price_per_km'],
+              'total_price': ticketPrice,
+              'payment_status': 'pending',
+            },
+        ]);
+      }
 
       // 3. Update join request: accepted + link to invitation
       await _client
@@ -1804,7 +1841,7 @@ class TourismEventService {
         await _sendNotification(
           userId,
           'tourism_service.request_accepted'.tr(),
-          'Tu solicitud para unirte al evento ha sido aceptada.',
+          'join_request_accepted_body'.tr(),
           'tourism_join_accepted',
           {'event_id': eventId, 'invitation_id': invitationId},
         );
@@ -1857,8 +1894,8 @@ class TourismEventService {
           userId,
           'tourism_service.request_rejected'.tr(),
           reason != null && reason.isNotEmpty
-              ? 'Tu solicitud fue rechazada: $reason'
-              : 'Tu solicitud para unirte al evento no fue aceptada.',
+              ? 'join_rejected_body_reason'.tr(namedArgs: {'reason': reason})
+              : 'join_rejected_body'.tr(),
           'tourism_join_rejected',
           {'event_id': eventId, 'request_id': requestId},
         );
@@ -2043,6 +2080,24 @@ class TourismEventService {
     String type,
     Map<String, dynamic> data,
   ) async {
+    // Respuesta a una solicitud de abordaje: PUSH real al rider (antes solo
+    // se insertaba la fila y el rider se enteraba únicamente con la app
+    // abierta). send-notification también guarda la fila en notifications.
+    if (type.startsWith('tourism_join')) {
+      try {
+        await _client.functions.invoke('send-notification', body: {
+          'userId': userId,
+          'title': title,
+          'body': body,
+          'type': type,
+          'data': data,
+          'app': 'rider',
+        });
+        return;
+      } catch (_) {
+        // Si la función falla, al menos queda la fila (realtime en el rider).
+      }
+    }
     try {
       await _client.from(SupabaseConfig.notificationsTable).insert({
         'user_id': userId,
@@ -2316,8 +2371,11 @@ class TourismEventService {
 
       final isDriverOwned = event['is_driver_owned'] == true;
       final pricePerKm = (event['price_per_km'] as num?)?.toDouble() ?? 0;
-      final toroFee = totalRevenue * 0.18;
-      final organizerCommission = isDriverOwned ? 0.0 : totalRevenue * 0.03;
+      await ColectivoCommission.warmUp(event);
+      final toroFee = totalRevenue * ColectivoCommission.rateFor(event);
+      final organizerCommission = isDriverOwned
+          ? 0.0
+          : (event['organizer_commission'] as num?)?.toDouble() ?? 0.0;
       final driverEarnings = totalRevenue - toroFee - organizerCommission;
 
       return {

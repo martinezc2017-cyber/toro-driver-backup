@@ -165,6 +165,9 @@ class _OrganizerCreateEventSimpleScreenState
   bool _isBidPublic = true;
   // Search radius configurable by creator (1-5km, only for public events)
   double _searchRadiusKm = 3.0;
+  /// Casetas: OPCIONAL del conductor/organizador. null = no lo especifica
+  /// (el boleto del rider no muestra nada).
+  bool? _tollsIncluded;
 
   String get _countryCode =>
       (context.read<AuthProvider>().driver?.countryCode ?? userCountry())
@@ -678,8 +681,22 @@ class _OrganizerCreateEventSimpleScreenState
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final currentDriverId = authProvider.driver?.id;
 
+      // Comisión TORO del viaje = la del organizador (organizers.commission_rate,
+      // en %). Sin esto el viaje quedaba con el default 0.18 de la tabla.
+      double? toroRate;
+      try {
+        final org = await SupabaseConfig.client
+            .from('organizers')
+            .select('commission_rate')
+            .eq('id', _organizerId!)
+            .maybeSingle();
+        final pct = (org?['commission_rate'] as num?)?.toDouble();
+        if (pct != null) toroRate = pct / 100;
+      } catch (_) {}
+
       final eventData = {
         'organizer_id': _organizerId,
+        if (toroRate != null) 'toro_commission_rate': toroRate,
         'event_name': _nameController.text.trim(),
         'event_type': _eventType,
         'event_description': _descriptionController.text.trim(),
@@ -695,6 +712,7 @@ class _OrganizerCreateEventSimpleScreenState
             : 0,
         'total_distance_km': _realDistanceKm,
         'search_radius_km': _searchRadiusKm,
+        if (_tollsIncluded != null) 'tolls_included': _tollsIncluded,
         'itinerary': itineraryJson,
         'passenger_visibility': passengerVisibility,
         'bid_visibility': _isBidPublic ? 'public' : 'private',
@@ -1671,6 +1689,34 @@ class _OrganizerCreateEventSimpleScreenState
                 ],
               );
             },
+          ),
+          const SizedBox(height: 16),
+
+          // Casetas (opcional): lo decide el conductor/organizador.
+          Text(
+            'org_tolls_title'.tr(),
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            children: [
+              for (final opt in <MapEntry<bool?, String>>[
+                const MapEntry(null, 'org_tolls_unspecified'),
+                const MapEntry(true, 'org_tolls_included'),
+                const MapEntry(false, 'org_tolls_not_included'),
+              ])
+                ChoiceChip(
+                  label: Text(opt.value.tr()),
+                  selected: _tollsIncluded == opt.key,
+                  onSelected: (_) => setState(() => _tollsIncluded = opt.key),
+                  selectedColor: AppColors.primary.withValues(alpha: 0.25),
+                ),
+            ],
           ),
           const SizedBox(height: 16),
 

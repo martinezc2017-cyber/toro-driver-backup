@@ -195,9 +195,8 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
       body: SafeArea(
         child: Column(
           children: [
-            // Stripe Connect banner (auto-hidden when active)
-            if (_organizerId != null)
-              OrganizerConnectBanner(organizerId: _organizerId!),
+            // (El aviso de Stripe ya lo muestra OrganizerHomeScreen arriba de las pestañas;
+            // repetirlo aquí lo pintaba DOS veces.)
             // Header compacto
             _buildHeader(),
             // Tab bar only when there are events
@@ -236,9 +235,9 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
       padding: const EdgeInsets.fromLTRB(16, 2, 8, 0),
       child: Row(
         children: [
-          const Expanded(
+          Expanded(
             child: Text(
-              'Mis Eventos',
+              'org_my_events'.tr(),
               style: TextStyle(
                 color: AppColors.textPrimary,
                 fontSize: 16,
@@ -470,7 +469,8 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
     final model = vehicle?['model'] as String?;
     final year = vehicle?['year'];
     final totalSeats = vehicle?['total_seats'] as int?;
-    final ownerName = vehicle?['owner_name'] as String? ?? 'Sin chofer';
+    final ownerName = vehicle?['owner_name'] as String? ??
+        (event['driver_id'] != null ? 'org_driver_assigned'.tr() : 'org_no_driver'.tr());
     final imageUrls = vehicle?['image_urls'] as List<dynamic>?;
     final vehiclePhoto = (imageUrls != null && imageUrls.isNotEmpty)
         ? imageUrls[0].toString()
@@ -511,11 +511,11 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
             date.month == now.month &&
             date.day == now.day + 1;
         if (isToday) {
-          formattedDate = 'Hoy';
+          formattedDate = 'today'.tr();
         } else if (isTomorrow) {
-          formattedDate = 'Mañana';
+          formattedDate = 'tomorrow_label'.tr();
         } else {
-          formattedDate = DateFormat('d MMM').format(date);
+          formattedDate = DateFormat('d MMM', context.locale.toString()).format(date);
         }
       } catch (_) {
         formattedDate = eventDate;
@@ -803,7 +803,7 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
                         const SizedBox(width: 3),
                         Expanded(
                           child: Text(
-                            'Puja ganada — ${event['organizers']?['company_name'] ?? 'Chofer'}',
+                            'org_bid_won'.tr(namedArgs: {'name': '${event['organizers']?['company_name'] ?? ''}'}),
                             style: TextStyle(
                               fontSize: 11,
                               color: AppColors.success,
@@ -1217,8 +1217,8 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
       backgroundColor: AppColors.primary,
       elevation: 4,
       icon: const Icon(Icons.add, color: Colors.white),
-      label: const Text(
-        'Nuevo',
+      label: Text(
+        'org_new'.tr(),
         style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
       ),
     );

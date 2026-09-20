@@ -18,6 +18,15 @@ import '../../utils/money_format.dart';
 /// el QR con la liga toro-ride.com/event/EVT-XXXXXXXX: quien la escanea ve la
 /// ficha del viaje en la web y, si no tiene el app, lo descarga y entra con ese
 /// mismo código.
+/// La liga que lleva el QR del cartel: SIEMPRE una URL (un número suelto,
+/// escaneado con la cámara, solo abre una búsqueda en el buscador).
+String colectivoEventLink(Map<String, dynamic> event) {
+  final code = (event['invitation_code'] ?? '').toString();
+  return code.isEmpty
+      ? 'https://toro-ride.com'
+      : 'https://toro-ride.com/event/$code';
+}
+
 class ColectivoShareScreen extends StatefulWidget {
   final Map<String, dynamic> event;
   const ColectivoShareScreen({super.key, required this.event});
@@ -33,7 +42,7 @@ class _ColectivoShareScreenState extends State<ColectivoShareScreen> {
   Map<String, dynamic> get e => widget.event;
 
   String get _code => (e['invitation_code'] ?? '').toString();
-  String get _link => 'https://toro-ride.com/event/$_code';
+  String get _link => colectivoEventLink(e);
 
   List<Map<String, dynamic>> get _stops {
     final it = e['itinerary'];

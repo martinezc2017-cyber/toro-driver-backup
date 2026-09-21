@@ -2784,5 +2784,9 @@
   "nav.slide_finish": "SLIDE → FINISH",
   "nav.nearby_parking": "Nearby parking",
   "nav.near_destination": "Near the destination",
-  "nav.unknown_error": "unknown"
+  "nav.unknown_error": "unknown",
+  "home.tier_n": "Tier {n}",
+  "home.qrs_count": "{count} QRs",
+  "home.qrs_range": "{from}-{to} QRs",
+  "home.view_qr": "View QR"
 }

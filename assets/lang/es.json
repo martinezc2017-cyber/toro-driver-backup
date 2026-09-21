@@ -2818,5 +2818,9 @@
   "nav.slide_finish": "DESLIZA → FINALIZAR",
   "nav.nearby_parking": "Estacionamientos cercanos",
   "nav.near_destination": "Cerca del destino",
-  "nav.unknown_error": "desconocido"
+  "nav.unknown_error": "desconocido",
+  "home.tier_n": "Tier {n}",
+  "home.qrs_count": "{count} QRs",
+  "home.qrs_range": "{from}-{to} QRs",
+  "home.view_qr": "Ver QR"
 }

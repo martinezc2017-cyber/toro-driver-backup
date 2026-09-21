@@ -3043,8 +3043,10 @@ class _HomeScreenState extends State<HomeScreen>
                               ),
                               child: Text(
                                 currentTier > 0
-                                    ? 'Tier $currentTier'
-                                    : '$qrLevel QRs',
+                                    ? 'home.tier_n'.tr(
+                                        namedArgs: {'n': '$currentTier'})
+                                    : 'home.qrs_count'.tr(
+                                        namedArgs: {'count': '$qrLevel'}),
                                 style: const TextStyle(
                                   color: Color(0xFF00FF66),
                                   fontSize: 13,
@@ -3170,7 +3172,10 @@ class _HomeScreenState extends State<HomeScreen>
                           ),
                           Expanded(
                             child: Text(
-                              '${prevMax + 1}-$maxQR QRs',
+                              'home.qrs_range'.tr(namedArgs: {
+                                'from': '${prevMax + 1}',
+                                'to': '$maxQR',
+                              }),
                               style: TextStyle(
                                 fontSize: isCurrent ? 12 : 11,
                                 color: isCurrent
@@ -3261,7 +3266,7 @@ class _HomeScreenState extends State<HomeScreen>
                             Expanded(
                               child: _buildQRActionButton(
                                 icon: Icons.fullscreen,
-                                label: 'Ver QR',
+                                label: 'home.view_qr'.tr(),
                                 onTap: () => _showFullQRCode(qrLink, qrCode),
                               ),
                             ),

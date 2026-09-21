@@ -32,10 +32,24 @@ void main() {
     final pubspec = readProjectFile('pubspec.yaml');
     final main = readProjectFile('lib/main.dart');
 
-    expect(pubspec, contains('version: 1.2.84+4126'));
+    // Antes esta prueba fijaba la versión exacta ('version: 1.2.84+4126'), así
+    // que tronaba en CADA subida de versión y llevaba tiempo en rojo. Lo que
+    // de verdad importa para la App Store es la FORMA: nombre x.y.z y un
+    // número de build entero, que es lo que Apple compara contra el último
+    // subido (el build 104 de Codemagic falló justo por repetir el 4135).
+    final version =
+        RegExp(r'^version:\s*(\d+\.\d+\.\d+)\+(\d+)\s*$', multiLine: true)
+            .firstMatch(pubspec);
+    expect(version, isNotNull,
+        reason: 'pubspec.yaml debe traer "version: x.y.z+build"');
+    expect(int.parse(version!.group(2)!), greaterThan(4135),
+        reason: 'el build 4135 ya se subió a App Store Connect; '
+            'el siguiente tiene que ser mayor');
+
+    // useOnlyLangCode: true en main.dart hace que easy_localization distinga
+    // solo por idioma, no por país. Por eso aquí van 'en' y 'es' y NO 'es-MX'.
     expect(main, contains("Locale('en')"));
     expect(main, contains("Locale('es')"));
-    expect(main, contains("Locale('es', 'MX')"));
     expect(main, contains("fallbackLocale: const Locale('en')"));
   });
 

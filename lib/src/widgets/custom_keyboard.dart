@@ -162,12 +162,12 @@ class _CustomEmailKeyboardState extends State<CustomEmailKeyboard> {
                       minimumSize: const Size(0, 36),
                       elevation: 0,
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.check_rounded, size: 14),
-                        SizedBox(width: 4),
-                        Text('done'.tr(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                        const Icon(Icons.check_rounded, size: 14),
+                        const SizedBox(width: 4),
+                        Text('done'.tr(), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                       ],
                     ),
                   ),
@@ -404,12 +404,12 @@ class _CustomTextKeyboardState extends State<CustomTextKeyboard> {
                       minimumSize: const Size(0, 34),
                       elevation: 0,
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.check_rounded, size: 13),
-                        SizedBox(width: 4),
-                        Text('done'.tr(), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+                        const Icon(Icons.check_rounded, size: 13),
+                        const SizedBox(width: 4),
+                        Text('done'.tr(), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
                       ],
                     ),
                   ),
@@ -562,12 +562,12 @@ class _CustomNumericKeyboardState extends State<CustomNumericKeyboard> {
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       elevation: 0,
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.check_rounded, size: 18),
-                        SizedBox(width: 8),
-                        Text('done'.tr(), style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                        const Icon(Icons.check_rounded, size: 18),
+                        const SizedBox(width: 8),
+                        Text('done'.tr(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                       ],
                     ),
                   ),
@@ -730,12 +730,12 @@ class _CustomPhoneKeyboardState extends State<CustomPhoneKeyboard> {
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       elevation: 0,
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.check_rounded, size: 16),
-                        SizedBox(width: 6),
-                        Text('done'.tr(), style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                        const Icon(Icons.check_rounded, size: 16),
+                        const SizedBox(width: 6),
+                        Text('done'.tr(), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                       ],
                     ),
                   ),

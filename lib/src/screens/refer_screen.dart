@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -6,10 +5,10 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../utils/app_colors.dart';
 import '../utils/haptic_service.dart';
 import '../providers/driver_provider.dart';
+import '../services/driver_referral_code_service.dart';
 
 class ReferScreen extends StatefulWidget {
   const ReferScreen({super.key});
@@ -33,58 +32,23 @@ class _ReferScreenState extends State<ReferScreen> {
     _loadOrCreateReferralCode();
   }
 
+  /// Un solo lugar genera y guarda el código (DriverReferralCodeService), para
+  /// que esta pantalla y el QR del home muestren SIEMPRE el mismo, que además
+  /// es el que la base sabe resolver (drivers.referral_code).
   Future<void> _loadOrCreateReferralCode() async {
-    final driverProvider = context.read<DriverProvider>();
-    final driverId = driverProvider.driver?.id;
-
-    if (driverId == null) {
-      setState(() {
-        _referralCode = 'TORO0000';
-        _isLoading = false;
-      });
+    final driver = context.read<DriverProvider>().driver;
+    if (driver == null) {
+      setState(() => _isLoading = false);
       return;
     }
 
-    try {
-      final response = await Supabase.instance.client
-          .from('drivers')
-          .select('referral_code')
-          .eq('id', driverId)
-          .single();
-
-      if (response['referral_code'] != null && response['referral_code'].toString().isNotEmpty) {
-        setState(() {
-          _referralCode = response['referral_code'];
-          _isLoading = false;
-        });
-      } else {
-        await _generateAndSaveCode(driverId);
-      }
-    } catch (e) {
-      await _generateAndSaveCode(driverId);
-    }
-  }
-
-  Future<void> _generateAndSaveCode(String driverId) async {
-    final driverProvider = context.read<DriverProvider>();
-    final driverName = driverProvider.driver?.fullName ?? 'TORO';
-    final firstName = driverName.split(' ').first.toUpperCase();
-    final shortName = firstName.length > 6 ? firstName.substring(0, 6) : firstName;
-    final random = Random();
-    final digits = List.generate(4, (_) => random.nextInt(10)).join();
-    final newCode = '$shortName$digits';
-
-    try {
-      await Supabase.instance.client
-          .from('drivers')
-          .update({'referral_code': newCode})
-          .eq('id', driverId);
-    } catch (e) {
-      // Continue even if save fails
-    }
-
+    final codigo = await DriverReferralCodeService.instance.loadOrCreate(
+      driverId: driver.id,
+      fullName: driver.fullName,
+    );
+    if (!mounted) return;
     setState(() {
-      _referralCode = newCode;
+      _referralCode = codigo ?? '';
       _isLoading = false;
     });
   }

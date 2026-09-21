@@ -33,6 +33,8 @@ import '../utils/money_format.dart';
 import '../widgets/futuristic_widgets.dart' hide NeonButton, NeonSwitch;
 import '../config/supabase_config.dart';
 import '../services/audit_service.dart';
+import '../services/payment_methods_config_service.dart';
+import '../services/driver_referral_code_service.dart';
 import '../core/legal/legal_constants.dart';
 import 'package:crypto/crypto.dart';
 import 'package:uuid/uuid.dart';
@@ -53,7 +55,6 @@ import '../widgets/driver_connect_banner.dart';
 import 'tourism/vehicle_request_screen.dart';
 import 'organizer/organizer_home_screen.dart';
 import 'cash_balance_screen.dart';
-import 'account_suspended_screen.dart';
 import 'rental/browse_rentals_screen.dart';
 import '../widgets/toro_3d_pin.dart';
 import '../widgets/bug_report_button.dart';
@@ -91,6 +92,11 @@ class _HomeScreenState extends State<HomeScreen>
   bool _showWeeklyEarnings = true;
   bool _showRentalSection = false; // Collapsed by default
   bool _showQRTierExpanded = false; // QR tier panel expand/collapse
+
+  /// Código del QR del conductor = `drivers.referral_code`. Se carga una vez al
+  /// abrir el home; mientras sea null, el panel del QR no se dibuja (mejor sin
+  /// QR que con un código que nadie puede resolver).
+  String? _referralCode;
 
   // === APP LIFECYCLE OPTIMIZATION ===
   bool _isAppInBackground = false;
@@ -156,12 +162,24 @@ class _HomeScreenState extends State<HomeScreen>
       _subscribeToNotifications();
       _subscribeToChatMessages();
       _loadCashAccountStatus();
+      _loadReferralCode();
       _attachDriverListener();
       // Request permissions sequentially so dialogs don't overlap
       _requestPermissionsSequentially();
       // Run tourism schema diagnostics on startup
       TourismEventService().validateSchemaConnections();
     });
+  }
+
+  /// Trae (o crea) el código de referido del conductor para el QR del panel.
+  Future<void> _loadReferralCode() async {
+    final driver = context.read<DriverProvider>().driver;
+    if (driver == null) return;
+    final codigo = await DriverReferralCodeService.instance.loadOrCreate(
+      driverId: driver.id,
+      fullName: driver.fullName,
+    );
+    if (mounted && codigo != null) setState(() => _referralCode = codigo);
   }
 
   Future<void> _requestPermissionsSequentially() async {
@@ -300,6 +318,11 @@ class _HomeScreenState extends State<HomeScreen>
       final driver = driverProvider.driver;
       if (driver == null) return;
 
+      // Kill switch de tarjeta del pais del chofer. Se lee aqui porque esta es
+      // la carga que ya corre temprano y ya tiene al driver; el dialogo de
+      // "pagar deuda" lo consulta de forma sincrona mas adelante.
+      await DriverPaymentMethodsConfig.instance.load(driver.countryCode);
+
       final account = await _cashService.getCashAccount(driver.id);
       if (mounted && account != null) {
         final balance = (account['current_balance'] as num?)?.toDouble() ?? 0;
@@ -312,21 +335,20 @@ class _HomeScreenState extends State<HomeScreen>
           _cashAccountStatus = status;
         });
 
-        // Auto-navigate to suspended screen if account is suspended/blocked
-        if ((status == 'suspended' || status == 'blocked') && balance > 0) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => AccountSuspendedScreen(
-                amountOwed: balance,
-                blockedReason: account['blocked_reason'] as String?,
-              ),
-            ),
-          ).then((_) {
-            // Refresh status when returning from suspended screen
-            _loadCashAccountStatus();
-          });
-        }
+        // 2026-09-09 (Carlos): el chofer YA NO se bloquea por deber comision de
+        // viajes en efectivo. Antes, si su cuenta quedaba en 'suspended'/'blocked'
+        // con saldo > 0, se le empujaba a AccountSuspendedScreen y no podia
+        // trabajar hasta liquidar.
+        //
+        // Por que se quita: con Mexico en SOLO EFECTIVO la deuda de comision es
+        // la norma, no la excepcion — todos los choferes van a deber siempre.
+        // Bloquearlos por eso los deja sin trabajar y a TORO sin quien maneje.
+        // La deuda se SIGUE registrando y mostrando (_cashOwed abajo), y se cobra
+        // por deposito/transferencia externa desde Ganancias o Saldo en efectivo.
+        //
+        // Se conserva AccountSuspendedScreen: sigue existiendo para una suspension
+        // administrativa de verdad (documentos, fraude), que se dispara desde el
+        // Command Center, no por saldo.
       }
     } catch (e) {
       debugPrint('Error loading cash account: $e');
@@ -2916,11 +2938,17 @@ class _HomeScreenState extends State<HomeScreen>
     final driver = context.read<DriverProvider>().driver;
     if (driver == null) return const SizedBox.shrink();
 
-    final qrCode =
-        driver.qrCode ?? 'TORO-DRV-${driver.id.substring(0, 5).toUpperCase()}';
+    // El código del QR es el `referral_code` del conductor: es el ÚNICO que el
+    // sistema sabe resolver (la función award_qr_point de Supabase busca
+    // drivers.referral_code). Antes se usaba `drivers.qr_code`, que está vacío
+    // para los 54 conductores, y al venir nulo se inventaba
+    // 'TORO-DRV-<uuid>': ese QR no apuntaba a nadie, y por eso la tabla
+    // qr_scans no tiene ni un solo escaneo registrado.
+    final qrCode = _referralCode;
+    if (qrCode == null) return const SizedBox.shrink();
     // Beta cerrada: el QR manda al rider a la landing/waitlist de toro-ride.com
     // (registro de riders aún cerrado) con el ref del driver, no a la app.
-    final qrLink = 'https://toro-ride.com/d/$qrCode';
+    final qrLink = DriverReferralCodeService.link(qrCode);
 
     // Live data from DriverQRPointsService
     final qrLevel = _qrPointsService.currentLevel.level;
@@ -3198,14 +3226,7 @@ class _HomeScreenState extends State<HomeScreen>
                       version: QrVersions.auto,
                       size: 80,
                       backgroundColor: Colors.white,
-                      eyeStyle: const QrEyeStyle(
-                        eyeShape: QrEyeShape.square,
-                        color: Color(0xFF1E88E5),
-                      ),
-                      dataModuleStyle: const QrDataModuleStyle(
-                        dataModuleShape: QrDataModuleShape.square,
-                        color: Color(0xFF1E88E5),
-                      ),
+                      errorCorrectionLevel: QrErrorCorrectLevel.M,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -3386,19 +3407,16 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                 ],
               ),
+              // Negro y con corrección de errores M, igual que los demás QR de
+              // la app (referidos, colectivo, organizador). El azul claro sobre
+              // blanco bajaba el contraste y este era el único QR sin nivel de
+              // corrección declarado, o sea el que peor se dejaba escanear.
               child: QrImageView(
                 data: qrLink,
                 version: QrVersions.auto,
                 size: 220,
                 backgroundColor: Colors.white,
-                eyeStyle: const QrEyeStyle(
-                  eyeShape: QrEyeShape.square,
-                  color: panelBlue,
-                ),
-                dataModuleStyle: const QrDataModuleStyle(
-                  dataModuleShape: QrDataModuleShape.square,
-                  color: panelBlue,
-                ),
+                errorCorrectionLevel: QrErrorCorrectLevel.M,
               ),
             ),
             const SizedBox(height: 16),

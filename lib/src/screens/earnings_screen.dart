@@ -12,6 +12,7 @@ import '../utils/app_colors.dart';
 import '../utils/money_format.dart';
 import '../utils/money_logger.dart';
 import '../services/driver_qr_points_service.dart';
+import '../services/payment_methods_config_service.dart';
 import '../services/live_pricing.dart';
 import '../services/stripe_connect_service.dart';
 import 'qr_points_screen.dart';
@@ -151,7 +152,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
             ),
             const SizedBox(width: 4),
             Text(
-              '${DateFormat('MMM d').format(_selectedWeekStart)} - ${DateFormat('d').format(_selectedWeekStart.add(const Duration(days: 6)))}',
+              '${DateFormat('MMM d', context.locale.toString()).format(_selectedWeekStart)} - ${DateFormat('d', context.locale.toString()).format(_selectedWeekStart.add(const Duration(days: 6)))}',
               style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
             ),
             const SizedBox(width: 4),
@@ -231,8 +232,8 @@ class _EarningsScreenState extends State<EarningsScreen> {
                         ),
                       ),
                       const SizedBox(height: 2),
-                      const Text(
-                        'Ganado esta semana',
+                      Text(
+                        'earn.earned_this_week'.tr(),
                         style: TextStyle(
                           fontSize: 12,
                           color: AppColors.textSecondary,
@@ -428,15 +429,14 @@ class _EarningsScreenState extends State<EarningsScreen> {
                               ),
                               const SizedBox(height: 6),
                               Text(
-                                [
-                                  'M',
-                                  'T',
-                                  'W',
-                                  'T',
-                                  'F',
-                                  'S',
-                                  'S',
-                                ][d.date.weekday - 1],
+                                // La inicial del dia sale del idioma activo.
+                                // Antes era una lista fija en ingles (M T W T
+                                // F S S) aunque el app estuviera en espanol.
+                                DateFormat.E(context.locale.toString())
+                                    .format(d.date)
+                                    .characters
+                                    .first
+                                    .toUpperCase(),
                                 style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: isToday
@@ -457,25 +457,28 @@ class _EarningsScreenState extends State<EarningsScreen> {
                 const SizedBox(height: 32),
 
                 // Breakdown
-                const Text(
-                  'Breakdown',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                Text(
+                  'earnings_breakdown'.tr(),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 const SizedBox(height: 12),
-                _row('Net Fare', netFare),
+                _row('earn.net_fare'.tr(), netFare),
                 if (summary.weekQRBoost > 0)
-                  _row('QR Boost', summary.weekQRBoost),
+                  _row('earn.qr_boost'.tr(), summary.weekQRBoost),
                 if (summary.weekPeakHoursBonus > 0)
-                  _row('Peak Hours', summary.weekPeakHoursBonus),
+                  _row('earn.peak_hours'.tr(), summary.weekPeakHoursBonus),
                 if (summary.weekPromotions > 0)
-                  _row('Promotions', summary.weekPromotions),
+                  _row('promotions'.tr(), summary.weekPromotions),
                 if (summary.weekExtraBonus > 0)
-                  _row('Extra Bonus', summary.weekExtraBonus),
+                  _row('earn.extra_bonus'.tr(), summary.weekExtraBonus),
                 if (summary.weekDamageFee > 0)
-                  _row('Damage Fee', summary.weekDamageFee),
-                _row('Tips', tips),
+                  _row('earn.damage_fee'.tr(), summary.weekDamageFee),
+                _row('tips'.tr(), tips),
                 const Divider(height: 24),
-                _row('Total', total, bold: true),
+                _row('earn.total'.tr(), total, bold: true),
                 const SizedBox(height: 32),
 
                 // Stats row
@@ -484,10 +487,10 @@ class _EarningsScreenState extends State<EarningsScreen> {
                   children: [
                     if (countryCode != 'MX')
                       _stat(
-                        'Online Hours',
+                        'online_hours'.tr(),
                         _fmtTime(summary.weekOnlineMinutes),
                       ),
-                    _stat('Total Trips', '${summary.weekRides}'),
+                    _stat('earn.total_trips'.tr(), '${summary.weekRides}'),
                   ],
                 ),
                 const SizedBox(height: 32),
@@ -535,8 +538,8 @@ class _EarningsScreenState extends State<EarningsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Retiro en proceso',
+                Text(
+                  'earn.payout_in_progress'.tr(),
                   style: TextStyle(
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.w700,
@@ -627,7 +630,10 @@ class _EarningsScreenState extends State<EarningsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'QR Tier $tier — Tú llevas ${driverPercent.toStringAsFixed(0)}%',
+                    'earn.qr_tier_you_keep'.tr(namedArgs: {
+                      'tier': '$tier',
+                      'pct': driverPercent.toStringAsFixed(0),
+                    }),
                     style: TextStyle(
                       color: color,
                       fontWeight: FontWeight.bold,
@@ -636,7 +642,9 @@ class _EarningsScreenState extends State<EarningsScreen> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'TORO cobra ${toroPercent.toStringAsFixed(0)}% · Sube de tier para ganar más',
+                    'earn.qr_tier_toro_takes'.tr(namedArgs: {
+                      'pct': toroPercent.toStringAsFixed(0),
+                    }),
                     style: const TextStyle(color: Colors.white60, fontSize: 12),
                   ),
                   // DESGLOSE COMPLETO: antes solo se veían chofer + TORO (79%) y
@@ -645,9 +653,11 @@ class _EarningsScreenState extends State<EarningsScreen> {
                   if (_pct != null) ...[
                     const SizedBox(height: 3),
                     Text(
-                      'Seguro ${_pct!.insurance.toStringAsFixed(0)}% · '
-                      'IVA ${_pct!.iva.toStringAsFixed(0)}% · '
-                      'Retención SAT ${_pct!.totalRetention.toStringAsFixed(1)}% de tu parte',
+                      'earn.split_detail'.tr(namedArgs: {
+                        'insurance': _pct!.insurance.toStringAsFixed(0),
+                        'iva': _pct!.iva.toStringAsFixed(0),
+                        'retention': _pct!.totalRetention.toStringAsFixed(1),
+                      }),
                       style: const TextStyle(
                         color: Colors.white38,
                         fontSize: 11,
@@ -699,7 +709,8 @@ class _EarningsScreenState extends State<EarningsScreen> {
         final totalCashRides = cashProvider.totalCashRides;
         final byType = cashProvider.owedByType;
         final cutoff = _getNextCutoff();
-        final cutoffStr = DateFormat('EEEE d MMM').format(cutoff);
+        final cutoffStr =
+            DateFormat('EEEE d MMM', context.locale.toString()).format(cutoff);
 
         // Border color based on status
         final borderColor = isSuspended
@@ -742,7 +753,9 @@ class _EarningsScreenState extends State<EarningsScreen> {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      isSuspended ? 'CUENTA SUSPENDIDA' : 'BALANCE EFECTIVO',
+                      isSuspended
+                          ? 'earn.account_suspended'.tr()
+                          : 'earn.cash_balance'.tr(),
                       style: TextStyle(
                         color: isSuspended
                             ? AppColors.error
@@ -791,7 +804,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      'Fecha de corte: ',
+                      'earn.cutoff_date'.tr(),
                       style: TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 11,
@@ -813,7 +826,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
 
               // Cash rides + Debes a TORO
               _cashRow(
-                'Viajes en Efectivo',
+                'earn.cash_trips'.tr(),
                 '$totalCashRides',
                 Icons.local_taxi,
                 AppColors.textPrimary,
@@ -830,7 +843,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(14, 8, 14, 4),
                   child: Text(
-                    'Desglose por tipo:',
+                    'earn.breakdown_by_type'.tr(),
                     style: TextStyle(
                       color: AppColors.textSecondary,
                       fontSize: 11,
@@ -906,7 +919,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            'Tu cuenta esta suspendida. Deposita para reactivar.',
+                            'earn.suspended_deposit'.tr(),
                             style: TextStyle(
                               color: AppColors.error,
                               fontSize: 12,
@@ -1041,7 +1054,10 @@ class _EarningsScreenState extends State<EarningsScreen> {
   void _showPayNowDialog(double amountOwed) {
     final countryCode =
         context.read<DriverProvider>().driver?.countryCode ?? 'US';
-    String selectedMethod = 'card';
+    // Kill switch por pais. En Mexico la tarjeta esta apagada (Stripe MX detenido),
+    // asi que el chofer liquida por deposito/transferencia a cuenta externa.
+    final cardOn = DriverPaymentMethodsConfig.instance.cardEnabled;
+    String selectedMethod = cardOn ? 'card' : 'transfer';
     bool _submitting = false;
 
     showDialog(
@@ -1113,13 +1129,48 @@ class _EarningsScreenState extends State<EarningsScreen> {
                 ),
               ),
               const SizedBox(height: 8),
+              if (cardOn)
+                _payMethodOption(
+                  ctx,
+                  setDialogState,
+                  selectedMethod,
+                  'card',
+                  Icons.credit_card,
+                  'earnings.card_instant'.tr(),
+                  (value) => selectedMethod = value,
+                ),
+              // Deposito a cuenta externa. Ya existia el manejo abajo
+              // (submitDeposit -> driver_deposits, el admin aprueba) pero NUNCA
+              // se ofrecia: este dialogo solo pintaba la opcion de tarjeta, asi
+              // que la rama de transferencia era codigo inalcanzable.
+              const SizedBox(height: 8),
               _payMethodOption(
                 ctx,
                 setDialogState,
                 selectedMethod,
-                'card',
-                Icons.credit_card,
-                'earnings.card_instant'.tr(),
+                'transfer',
+                Icons.account_balance,
+                'screens.cash_balance.bank_transfer'.tr(),
+                (value) => selectedMethod = value,
+              ),
+              const SizedBox(height: 8),
+              _payMethodOption(
+                ctx,
+                setDialogState,
+                selectedMethod,
+                'spei',
+                Icons.swap_horiz,
+                'screens.cash_balance.spei'.tr(),
+                (value) => selectedMethod = value,
+              ),
+              const SizedBox(height: 8),
+              _payMethodOption(
+                ctx,
+                setDialogState,
+                selectedMethod,
+                'oxxo',
+                Icons.store,
+                'screens.cash_balance.oxxo'.tr(),
                 (value) => selectedMethod = value,
               ),
             ],

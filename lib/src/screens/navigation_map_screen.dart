@@ -709,7 +709,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
       targetType = 'pickup';
       targetLat = ride.pickupLocation.latitude;
       targetLng = ride.pickupLocation.longitude;
-      targetName = ride.pickupLocation.address ?? 'Punto de recogida';
+      targetName = ride.pickupLocation.address ?? 'nav.pickup_point'.tr();
     } else if (ride.status == RideStatus.inProgress ||
         ride.status == RideStatus.arrivedAtPickup) {
       targetType = 'dropoff';
@@ -835,16 +835,16 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
         );
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text(
-            'Has llegado al pickup — toca "He llegado" para confirmar',
+            'nav.arrived_pickup_hint'.tr(),
           ),
         ),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Has llegado al destino — toca "Completar viaje"'),
+        SnackBar(
+          content: Text('nav.arrived_dropoff_hint'.tr()),
         ),
       );
     }
@@ -966,11 +966,11 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
       // CANDADO #4: GPS falso -> no se puede iniciar (ya quedó en fraud_signals).
       if (_mockDetected) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text(
-              'GPS falso detectado. Desactiva la ubicación simulada para continuar.',
+              'error.fake_gps'.tr(),
             ),
-            backgroundColor: Color(0xFFEF4444),
+            backgroundColor: const Color(0xFFEF4444),
           ),
         );
         return;
@@ -1048,7 +1048,9 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Total: ${formatMoney(total, country: cc)}',
+                  'nav.cash_total'.tr(
+                    namedArgs: {'amount': formatMoney(total, country: cc)},
+                  ),
                   style: const TextStyle(
                     color: Color(0xFF22D3EE),
                     fontSize: 19,
@@ -1081,8 +1083,12 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                 if (paid > 0)
                   Text(
                     change >= 0
-                        ? 'Devuélvele de cambio: ${formatMoney(change, country: cc)}'
-                        : 'Falta: ${formatMoney(-change, country: cc)}',
+                        ? 'nav.cash_change'.tr(namedArgs: {
+                            'amount': formatMoney(change, country: cc),
+                          })
+                        : 'nav.cash_missing'.tr(namedArgs: {
+                            'amount': formatMoney(-change, country: cc),
+                          }),
                     style: TextStyle(
                       color: change >= 0
                           ? const Color(0xFF22D3EE)
@@ -1190,16 +1196,16 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF0D0E13),
-        title: const Text(
-          'Código de abordaje',
-          style: TextStyle(color: Colors.white),
+        title: Text(
+          'nav.boarding_code'.tr(),
+          style: const TextStyle(color: Colors.white),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              'Pídele al pasajero su código de 4 dígitos para iniciar el viaje.',
-              style: TextStyle(color: Colors.white70, fontSize: 13),
+            Text(
+              'nav.boarding_code_msg'.tr(),
+              style: const TextStyle(color: Colors.white70, fontSize: 13),
             ),
             const SizedBox(height: 14),
             TextField(
@@ -1231,7 +1237,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
               backgroundColor: const Color(0xFF22D3EE),
             ),
             onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
-            child: const Text('Verificar'),
+            child: Text('nav.verify'.tr()),
           ),
         ],
       ),
@@ -1368,9 +1374,9 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
       // CANDADO #4: GPS falso -> no se puede cerrar el viaje.
       if (_mockDetected) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('GPS falso detectado. No puedes cerrar el viaje.'),
-            backgroundColor: Color(0xFFEF4444),
+          SnackBar(
+            content: Text('nav.fake_gps_no_close'.tr()),
+            backgroundColor: const Color(0xFFEF4444),
           ),
         );
         return;
@@ -1452,9 +1458,9 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                 child: const Icon(Icons.check, color: Colors.white, size: 40),
               ),
               const SizedBox(height: 16),
-              const Text(
-                'Viaje completado',
-                style: TextStyle(
+              Text(
+                'trip_completed'.tr(),
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -1477,9 +1483,9 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const Text(
-                        'Tus ganancias',
-                        style: TextStyle(color: Colors.white60, fontSize: 14),
+                      Text(
+                        'nav.your_earnings'.tr(),
+                        style: const TextStyle(color: Colors.white60, fontSize: 14),
                       ),
                       const SizedBox(height: 20),
 
@@ -1512,7 +1518,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                                 0.01)
                               _earningsRow(
                                 // TORO NO ofrece seguro -> solo impuestos (IVA).
-                                'Impuestos',
+                                'nav.taxes'.tr(),
                                 '-${formatMoney(ride.fare - baseEarnings - ride.platformFee, country: cc)}',
                                 Icons.receipt_long,
                                 color: Colors.white38,
@@ -1526,7 +1532,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                               ),
                             const Divider(color: Colors.white24, height: 16),
                             _earningsRow(
-                              'Tu parte',
+                              'nav.your_share'.tr(),
                               formatMoney(ride.driverEarnings, country: cc),
                               Icons.account_balance_wallet,
                               highlight: true,
@@ -1628,19 +1634,19 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
           'nav.cancel_trip_question'.tr(),
           style: const TextStyle(color: Colors.white),
         ),
-        content: const Text(
-          'El viaje será liberado para que otro conductor lo tome.',
-          style: TextStyle(color: Colors.white70),
+        content: Text(
+          'nav.cancel_trip_msg'.tr(),
+          style: const TextStyle(color: Colors.white70),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('NO'),
+            child: Text('no'.tr()),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('SÍ, CANCELAR'),
+            child: Text('yes_cancel'.tr()),
           ),
         ],
       ),
@@ -1693,14 +1699,14 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: red.withOpacity(0.6)),
         ),
-        child: const Row(
+        child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.person_off_rounded, color: red, size: 18),
-            SizedBox(width: 8),
+            const Icon(Icons.person_off_rounded, color: red, size: 18),
+            const SizedBox(width: 8),
             Text(
-              'Pasajero no llegó · cobrar no-show',
-              style: TextStyle(
+              'nav.no_show'.tr(),
+              style: const TextStyle(
                 color: red,
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
@@ -1721,20 +1727,19 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
           'nav.passenger_no_show_question'.tr(),
           style: const TextStyle(color: Colors.white),
         ),
-        content: const Text(
-          'Se cerrará el viaje y se cobrará al pasajero la tarifa de no-show '
-          'más el tiempo que esperaste. Tú cobras tu parte.',
-          style: TextStyle(color: Colors.white70),
+        content: Text(
+          'nav.noshow_warning'.tr(),
+          style: const TextStyle(color: Colors.white70),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('NO'),
+            child: Text('no'.tr()),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('SÍ, NO LLEGÓ'),
+            child: Text('nav.yes_noshow'.tr()),
           ),
         ],
       ),
@@ -1755,7 +1760,10 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'No-show registrado · cobrado \$$total · tu parte \$$driverShare',
+            'nav.noshow_done'.tr(namedArgs: {
+              'total': '\$$total',
+              'share': '\$$driverShare',
+            }),
           ),
           backgroundColor: const Color(0xFF22D3EE),
           duration: const Duration(seconds: 5),
@@ -1763,7 +1771,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
       );
       if (widget.onBack != null) widget.onBack!();
     } else {
-      final err = res?['error']?.toString() ?? 'desconocido';
+      final err = res?['error']?.toString() ?? 'nav.unknown_error'.tr();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('nav.could_not_register_no_show'.tr(namedArgs: {'error': err.toString()})),
@@ -2308,10 +2316,10 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
     }
     final label = isMarket
         ? (isPickup
-              ? (_mktVendorName ?? 'Tienda')
-              : (_mktBuyerName ?? 'Cliente'))
+              ? (_mktVendorName ?? 'marketplace_delivery.store'.tr())
+              : (_mktBuyerName ?? 'marketplace_delivery.customer'.tr()))
         : (isPickup
-              ? (ride.pickupLocation.address ?? 'Recogida')
+              ? (ride.pickupLocation.address ?? 'pickup'.tr())
               : (ride.dropoffLocation.address ?? 'destination_label'.tr()));
 
     // Pin de IMAGEN nítido (no emoji): teardrop con ícono. Ámbar=recogida, rojo=destino.
@@ -2566,9 +2574,9 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
             children: [
               Row(
                 children: [
-                  const Text(
-                    'Pasos de la ruta',
-                    style: TextStyle(
+                  Text(
+                    'nav.route_steps'.tr(),
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -2625,7 +2633,9 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  step.instruction ?? step.name ?? 'Continúa',
+                                  step.instruction ??
+                                      step.name ??
+                                      'nav.continue'.tr(),
                                   style: TextStyle(
                                     color: isCurrentStep
                                         ? Colors.white
@@ -2824,10 +2834,10 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                         borderRadius: BorderRadius.circular(30),
                         border: Border.all(color: Colors.white10),
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          SizedBox(
+                          const SizedBox(
                             width: 18,
                             height: 18,
                             child: CircularProgressIndicator(
@@ -2835,10 +2845,10 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                               color: Colors.white54,
                             ),
                           ),
-                          SizedBox(width: 10),
+                          const SizedBox(width: 10),
                           Text(
-                            'Calculando ruta...',
-                            style: TextStyle(
+                            'nav.calculating_route'.tr(),
+                            style: const TextStyle(
                               color: Colors.white54,
                               fontSize: 14,
                             ),
@@ -2905,10 +2915,19 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
   // ============================================================================
 
   Widget _buildAvailableRidesPanel(RideProvider rideProvider) {
-    final rides = rideProvider.availableRides;
+    // EN LÍNEA es un estado del CONDUCTOR, no del mapa. Antes este panel
+    // pintaba el punto con `_isMapReady`, que solo dice si el mapa terminó de
+    // cargar: el conductor desconectado veía el punto VERDE y "Esperando
+    // viajes..." aunque no pudiera recibir ni uno. La verdad vive en
+    // DriverProvider.isOnline (columna drivers.is_online), la misma que manda
+    // el interruptor del home. Se lee con watch para repintar al conectarse.
+    final isOnline = context.watch<DriverProvider>().isOnline;
+    final List<RideModel> rides =
+        isOnline ? rideProvider.availableRides : const <RideModel>[];
 
     if (rides.isEmpty) {
-      // No rides - show minimal status
+      // Sin viajes: estado mínimo. Desconectado se ve distinto de conectado sin
+      // viajes, porque para el conductor son dos situaciones distintas.
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
@@ -2922,10 +2941,10 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
               width: 10,
               height: 10,
               decoration: BoxDecoration(
-                color: _isMapReady ? Colors.green : Colors.red,
+                color: isOnline ? Colors.green : Colors.red,
                 shape: BoxShape.circle,
                 boxShadow: [
-                  if (_isMapReady)
+                  if (isOnline)
                     BoxShadow(
                       color: Colors.green.withAlpha(120),
                       blurRadius: 6,
@@ -2934,9 +2953,13 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
               ),
             ),
             const SizedBox(width: 10),
-            const Text(
-              'Esperando viajes...',
-              style: TextStyle(color: Colors.white54, fontSize: 14),
+            Expanded(
+              child: Text(
+                isOnline
+                    ? 'nav.waiting_rides'.tr()
+                    : 'nav.offline_no_rides'.tr(),
+                style: const TextStyle(color: Colors.white54, fontSize: 14),
+              ),
             ),
           ],
         ),
@@ -2977,7 +3000,8 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  '${rides.length} ${rides.length == 1 ? 'viaje disponible' : 'viajes disponibles'}',
+                  '${rides.length} '
+                  '${rides.length == 1 ? 'nav.ride_available_one'.tr() : 'trips_available_plural'.tr()}',
                   style: const TextStyle(
                     color: Color(0xFFFF9500),
                     fontSize: 14,
@@ -3016,22 +3040,22 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
       case RideType.passenger:
         typeIcon = Icons.person;
         typeColor = const Color(0xFF1E88E5); // Blue
-        typeLabel = 'RIDE';
+        typeLabel = 'nav.type_ride'.tr();
         break;
       case RideType.package:
         typeIcon = Icons.inventory_2;
         typeColor = const Color(0xFF78909C); // Blue-gray
-        typeLabel = 'PKG';
+        typeLabel = 'nav.type_package'.tr();
         break;
       case RideType.carpool:
         typeIcon = Icons.groups;
         typeColor = const Color(0xFF42A5F5); // Light blue
-        typeLabel = 'POOL';
+        typeLabel = 'nav.type_pool'.tr();
         break;
       case RideType.marketplace:
         typeIcon = Icons.shopping_bag;
         typeColor = const Color(0xFFFFD700); // Gold for marketplace
-        typeLabel = 'MARKET';
+        typeLabel = 'nav.type_market'.tr();
         break;
     }
 
@@ -3115,7 +3139,16 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                       const Icon(Icons.payments, color: Colors.green, size: 12),
                       const SizedBox(width: 4),
                       Text(
-                        'Cobrar: ${formatMoney(ride.fare, country: context.read<DriverProvider>().driver?.countryCode ?? 'US')}',
+                        'nav.charge_amount'.tr(namedArgs: {
+                          'amount': formatMoney(
+                            ride.fare,
+                            country: context
+                                    .read<DriverProvider>()
+                                    .driver
+                                    ?.countryCode ??
+                                'US',
+                          ),
+                        }),
                         style: const TextStyle(
                           color: Colors.green,
                           fontSize: 14,
@@ -3181,7 +3214,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  ride.pickupLocation.address ?? 'Pickup',
+                  ride.pickupLocation.address ?? 'pickup'.tr(),
                   style: const TextStyle(color: Colors.white70, fontSize: 11),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -3299,14 +3332,14 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                     ),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.check, color: Colors.white, size: 16),
-                      SizedBox(width: 4),
+                      const Icon(Icons.check, color: Colors.white, size: 16),
+                      const SizedBox(width: 4),
                       Text(
-                        'ACEPTAR',
-                        style: TextStyle(
+                        'accept'.tr(),
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
@@ -3342,23 +3375,29 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
     IconData statusIcon;
     String? statusSubtitle;
     if (isGoingToPickup) {
-      statusLabel = isMarket ? 'En camino a la tienda' : 'En camino al pickup';
+      statusLabel = isMarket
+          ? 'nav.heading_to_store'.tr()
+          : 'nav.heading_to_pickup'.tr();
       statusColor = const Color(0xFF22D3EE); // admin cyan
       statusIcon = isMarket ? Icons.storefront : Icons.directions_car;
       if (_navState.isNavigating) {
         statusSubtitle = 'ETA: ${_navState.formattedETA}';
       } else if (isMarket) {
-        statusSubtitle = 'Recoge el pedido con el vendedor';
+        statusSubtitle = 'nav.collect_order_vendor'.tr();
       }
     } else if (isWaiting) {
-      statusLabel = isMarket ? 'Recoge el paquete' : 'Esperando pasajero';
+      statusLabel = isMarket
+          ? 'nav.pick_up_package'.tr()
+          : 'nav.waiting_passenger'.tr();
       statusColor = const Color(0xFF3B82F6); // admin blue
       statusIcon = isMarket ? Icons.shopping_bag : Icons.place;
       statusSubtitle = isMarket
-          ? 'Pide el código al vendedor'
-          : 'En el punto de recogida';
+          ? 'nav.ask_vendor_code'.tr()
+          : 'nav.at_pickup_point'.tr();
     } else if (isInProgress) {
-      statusLabel = isMarket ? 'Entregando al cliente' : 'Viaje en curso';
+      statusLabel = isMarket
+          ? 'nav.delivering_to_customer'.tr()
+          : 'nav.trip_in_progress'.tr();
       statusColor = const Color(0xFF22D3EE); // admin cyan
       statusIcon = isMarket ? Icons.delivery_dining : Icons.navigation;
     } else {
@@ -3503,7 +3542,8 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                               // a ser el comprador.
                               isMarket
                                   ? ((isGoingToPickup || isWaiting)
-                                        ? (_mktVendorName ?? 'Tienda')
+                                        ? (_mktVendorName ??
+                                            'marketplace_delivery.store'.tr())
                                         : (_mktBuyerName ?? ride.displayName))
                                   : ride.displayName,
                               style: const TextStyle(
@@ -3636,7 +3676,8 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                         // Mostrar la dirección del LEG actual. En marketplace la
                         // recogida abarca arrivedAtPickup -> dirección del vendedor.
                         (isGoingToPickup || (isMarket && isWaiting))
-                            ? (ride.pickupLocation.address ?? 'Recogida')
+                            ? (ride.pickupLocation.address ??
+                                  'pickup'.tr())
                             : (ride.dropoffLocation.address ?? 'destination_label'.tr()),
                         style: TextStyle(
                           color: Colors.white.withOpacity(0.88),
@@ -3678,12 +3719,24 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                               if (isInProgress) ...[
                                 _buildTripDetailChip(
                                   Icons.timer,
-                                  '${_fmtWait(_tripSeconds)} manejando',
+                                  'nav.driving_time'.tr(
+                                    namedArgs: {
+                                      'time': _fmtWait(_tripSeconds),
+                                    },
+                                  ),
                                 ),
                                 const SizedBox(width: 6),
                                 _buildTripDetailChip(
                                   Icons.straighten,
-                                  '${formatDistance(ride.actualDistanceKm, country: context.read<DriverProvider>().driver?.countryCode)} recorridos',
+                                  'nav.distance_done'.tr(namedArgs: {
+                                    'distance': formatDistance(
+                                      ride.actualDistanceKm,
+                                      country: context
+                                          .read<DriverProvider>()
+                                          .driver
+                                          ?.countryCode,
+                                    ),
+                                  }),
                                 ),
                                 const SizedBox(width: 6),
                               ],
@@ -3813,11 +3866,11 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                           // pedido al entregar (no solo el envío).
                           ride.paymentMethod == PaymentMethod.cash
                               ? (ride.type == RideType.marketplace
-                                    ? 'COBRA EL TOTAL AL ENTREGAR'
-                                    : 'COBRAR EN EFECTIVO')
+                                    ? 'nav.collect_total_on_delivery'.tr()
+                                    : 'nav.collect_cash'.tr())
                               : (ride.type == RideType.marketplace
-                                    ? 'PAGADO EN LA APP'
-                                    : 'YA PAGADO'),
+                                    ? 'nav.paid_in_app'.tr()
+                                    : 'nav.already_paid'.tr()),
                           style: TextStyle(
                             color: ride.paymentMethod == PaymentMethod.cash
                                 ? const Color(0xFF22D3EE).withOpacity(0.9)
@@ -3854,7 +3907,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                 // Navigate
                 _buildBottomAction(
                   icon: Icons.navigation,
-                  label: 'Navegar',
+                  label: 'tourism_navigate'.tr(),
                   color: const Color(0xFF22D3EE), // admin cyan
                   onTap: _launchExternalNav,
                 ),
@@ -3862,7 +3915,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                 // Report
                 _buildBottomAction(
                   icon: Icons.flag_rounded,
-                  label: 'Reportar',
+                  label: 'nav.report'.tr(),
                   color: const Color(0xFF3B82F6), // admin blue
                   onTap: () {
                     Navigator.push(
@@ -3971,24 +4024,24 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
       case RideStatus.accepted:
       case RideStatus.pending:
         label = isMarket
-            ? '🏪  DESLIZA → LLEGUÉ A LA TIENDA'
-            : '📍  DESLIZA → LLEGUÉ';
+            ? '🏪  ${'nav.slide_arrived_store'.tr()}'
+            : '📍  ${'nav.slide_arrived'.tr()}';
         color = const Color(0xFF22D3EE); // admin cyan
         onConfirm = _handleArriveAtPickup;
         break;
       case RideStatus.arrivedAtPickup:
         // Marketplace: al deslizar pide el CÓDIGO DE RECOGIDA al vendedor (OTP+foto+GPS).
         label = isMarket
-            ? '📦  DESLIZA → RECOGÍ EL PAQUETE'
-            : '▶  DESLIZA → INICIAR VIAJE';
+            ? '📦  ${'nav.slide_picked_package'.tr()}'
+            : '▶  ${'nav.slide_start_trip'.tr()}';
         color = const Color(0xFF22D3EE); // admin cyan
         onConfirm = _handleStartRide;
         break;
       case RideStatus.inProgress:
         // Marketplace: al deslizar pide el CÓDIGO DE ENTREGA al comprador (OTP+foto+GPS).
         label = isMarket
-            ? '🔑  DESLIZA → ENTREGAR (PIDE EL CÓDIGO)'
-            : '🏁  DESLIZA → FINALIZAR';
+            ? '🔑  ${'nav.slide_deliver_code'.tr()}'
+            : '🏁  ${'nav.slide_finish'.tr()}';
         color = const Color(0xFF22D3EE); // admin cyan
         onConfirm = _handleCompleteRide;
         break;
@@ -4107,7 +4160,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
           ),
           const SizedBox(width: 8),
           Text(
-            'Esperando: ${_fmtWait(_waitSeconds)}',
+            'nav.waiting_label'.tr(namedArgs: {'time': _fmtWait(_waitSeconds)}),
             style: TextStyle(
               color: isFreeTime ? Colors.blue : Colors.red,
               fontSize: 14,
@@ -4149,9 +4202,9 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
             children: [
               const Icon(Icons.local_parking, color: Colors.blue, size: 20),
               const SizedBox(width: 8),
-              const Text(
-                'Estacionamientos cercanos',
-                style: TextStyle(
+              Text(
+                'nav.nearby_parking'.tr(),
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
@@ -4207,7 +4260,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                             child: Text(
                               parking.address.isNotEmpty
                                   ? parking.address
-                                  : 'Cerca del destino',
+                                  : 'nav.near_destination'.tr(),
                               style: const TextStyle(
                                 color: Colors.white54,
                                 fontSize: 11,

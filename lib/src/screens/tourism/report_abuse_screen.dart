@@ -140,12 +140,11 @@ class _ReportAbuseScreenState extends State<ReportAbuseScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-                'report_abuse_sent_success'.tr()),
+          SnackBar(
+            content: Text('report_abuse_sent_success'.tr()),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
-            duration: Duration(seconds: 4),
+            duration: const Duration(seconds: 4),
           ),
         );
         Navigator.pop(context, true);

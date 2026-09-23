@@ -21,6 +21,7 @@ import '../providers/ride_provider.dart';
 import '../providers/driver_provider.dart';
 import '../models/ride_model.dart';
 import '../utils/money_format.dart';
+import '../utils/toro_map_style.dart';
 import '../services/geocoding_service.dart';
 import '../services/directions_service.dart';
 import '../services/navigation_service.dart';
@@ -272,6 +273,10 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
 
   void _onMapCreated(MapboxMap map) async {
     _map = map;
+
+    // Estilo Toro Night: si el estilo ya cargo antes de este callback,
+    // aplicarlo aqui (si no, lo aplica onStyleLoadedListener).
+    if (await map.style.isStyleLoaded()) ToroMapStyle.apply(map);
 
     // OPTIMIZACIÓN: Desactivar elementos de UI innecesarios
     await map.compass.updateSettings(CompassSettings(enabled: false));
@@ -2761,8 +2766,12 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                             // Navegacion 3D inclinada (45°) SIEMPRE con viaje activo.
                             pitch: ride != null ? 45.0 : 0.0,
                           ),
-                    styleUri: 'mapbox://styles/mapbox/navigation-night-v1',
+                    styleUri: ToroMapStyle.baseStyleUri,
                     onMapCreated: _onMapCreated,
+                    onStyleLoadedListener: (_) {
+                      final map = _map;
+                      if (map != null) ToroMapStyle.apply(map);
+                    },
                     androidHostingMode: AndroidPlatformViewHostingMode.VD,
                   ),
                 ),

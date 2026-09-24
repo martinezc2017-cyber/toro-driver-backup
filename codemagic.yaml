@@ -69,19 +69,27 @@ workflows:
             APP_ID=$(app-store-connect list-apps --bundle-id-identifier "$BUNDLE_ID" --json 2>/dev/null \
               | python3 -c "import sys,json;d=json.load(sys.stdin);print(d[0]['id'] if d else '')" 2>/dev/null)
           fi
+          # El del pubspec es la segunda fuente: si va mas adelante (bump manual
+          # tras un duplicado), manda el pubspec.
+          PUB=$(grep -E '^version:' pubspec.yaml | sed -E 's/.*\+([0-9]+).*/\1/')
+          echo "$PUB" | grep -qE '^[0-9]+$' || PUB=0
+          MAX=0
           if [ -n "$APP_ID" ]; then
-            # MAX de TestFlight y App Store (el mas alto YA subido) + 1.
-            TF=$(app-store-connect get-latest-testflight-build-number "$APP_ID" 2>/dev/null)
-            AS=$(app-store-connect get-latest-app-store-build-number "$APP_ID" 2>/dev/null)
-            echo "$TF" | grep -qE '^[0-9]+$' || TF=0
-            echo "$AS" | grep -qE '^[0-9]+$' || AS=0
-            MAX=$TF; [ "$AS" -gt "$MAX" ] && MAX=$AS
-            if [ "$MAX" -gt 0 ]; then
-              echo "BUILD_NUMBER=$((MAX + 1))" >> "$CM_ENV"
-              echo "==> Build number automatico: $((MAX + 1)) (TestFlight=$TF, AppStore=$AS)"
-            fi
+            # Comando MODERNO: MAX(TestFlight, App Store) en UNA llamada. Los viejos
+            # (get-latest-testflight/app-store-build-number) devolvian vacio -> caia
+            # al numero del pubspec ya subido y App Store Connect rechazaba el
+            # duplicado ("attribute with a value that has already been used", #107).
+            MAX_RAW=$(app-store-connect get-latest-build-number "$APP_ID" 2>&1)
+            MAX=$(echo "$MAX_RAW" | grep -E '^[0-9]+$' | tail -1)
+            [ -z "$MAX" ] && MAX=0
+            [ "$MAX" -eq 0 ] && { echo "==> get-latest-build-number no dio numero. Salida:"; echo "$MAX_RAW"; }
           fi
-          [ -z "$BUILD_NUMBER" ] && echo "==> Sin auto-incremento; se usa el del pubspec (no rompe el build)."
+          # Apple tarda en contar un build recien subido (sigue "processing"):
+          # por eso se toma el MAYOR entre Apple+1 y el pubspec.
+          NEXT=$((MAX + 1))
+          [ "$PUB" -gt "$NEXT" ] && NEXT=$PUB
+          echo "BUILD_NUMBER=$NEXT" >> "$CM_ENV"
+          echo "==> Build number: $NEXT (ultimo en ASC=$MAX, pubspec=$PUB)"
           true
 
       - name: Apply profiles and build IPA

@@ -389,17 +389,43 @@ class _DocumentsScreenState extends State<DocumentsScreen>
 
       final driver = driverResponse;
 
+      // El seguro NO vive en drivers: se guarda en el vehiculo
+      // (vehicles.insurance_policy_number / insurance_card_front_url). Antes se
+      // leia drivers.insurance_policy, que esta nulo en los 55 conductores.
+      Map<String, dynamic>? vehiculo;
+      try {
+        vehiculo = await SupabaseConfig.client
+            .from('vehicles')
+            .select('insurance_policy_number, insurance_card_front_url, insurance_expiry')
+            .eq('driver_id', driver['id'])
+            .maybeSingle();
+      } catch (_) {
+        vehiculo = null;
+      }
+
       // Check all required documents
       final bool hasAgreement = driver['agreement_signed'] == true;
       final bool hasLicense =
           driver['license_number'] != null &&
           driver['license_image_url'] != null;
-      final bool hasProfilePhoto = driver['profile_photo_url'] != null;
+      // La columna canonica de la foto es profile_image_url; profile_photo_url
+      // es LEGADO y esta vacia en los 55 (lo dice admin_mexico_documents_screen).
+      // Leer la legado hacia que este candado fuera imposible de abrir.
+      final bool hasProfilePhoto =
+          driver['profile_image_url'] != null ||
+          driver['profile_photo_url'] != null;
+      // No hay proveedor de antecedentes conectado: NADIE escribe 'approved'
+      // (los 55 estan en 'pending'). Exigirlo cerraba el alta para siempre.
+      // Se bloquea solo si fue RECHAZADO; la aprobacion real la da el admin.
       final bool hasBackgroundCheck =
-          driver['background_check_status'] == 'approved';
+          driver['background_check_status'] != 'rejected' &&
+          driver['background_check_status'] != 'failed';
       final bool hasVehicle =
           driver['vehicle_make'] != null && driver['vehicle_model'] != null;
-      final bool hasInsurance = driver['insurance_policy'] != null;
+      final bool hasInsurance =
+          vehiculo?['insurance_policy_number'] != null ||
+          vehiculo?['insurance_card_front_url'] != null ||
+          driver['insurance_policy'] != null;
 
       // All documents complete?
       final bool allComplete =

@@ -2898,39 +2898,30 @@ class _HomeScreenState extends State<HomeScreen>
   // Tier 5 max: platform baja hasta 5%.
   // ═══════════════════════════════════════════════════════════════════════════
 
-  // Commission tiers: index 0 = no QR, 1-5 = tier 1-5
-  // Tier thresholds (match apply-referral-bonus): T1: 1-4, T2: 5-9, T3: 10-19, T4: 20-34, T5: 35+
-  static const List<int> _tierMaxQRs = [0, 4, 9, 19, 34, 35];
-
-  // ╔═══════════════════════════════════════════════════════════════════════╗
-  // ║  CANDADO: TORO SIEMPRE se queda con MÍNIMO 5% de comisión.          ║
-  // ║  NUNCA tocar este valor. Si se pone 0, TORO no gana nada.           ║
-  // ║  La reducción máxima del tier JAMÁS puede bajar de este piso.        ║
-  // ╚═══════════════════════════════════════════════════════════════════════╝
-  static const double _minPlatformCommission = 5.0;
-
-  /// Comision de TORO para un tier, VIVA desde pricing_config.
-  /// Clamped a _minPlatformCommission (5%) — NUNCA baja de ahí.
-  double _tierCommissionOf(int tier) {
-    final base = _qrPointsService.basePlatformPercent;
-    final reduction = _qrPointsService.reductionForTier(tier.clamp(0, 5));
-    return (base - reduction).clamp(_minPlatformCommission, 100).toDouble();
+  /// Escaneos que cierran cada nivel (indice 0..5): t x escaneosPorNivel, la
+  /// MISMA formula que la RPC qr_nivel_de (2 por nivel, tope a los 10). Antes
+  /// habia metas quemadas 4/9/19/34 de un diseno que nadie mas compartia.
+  List<int> get _tierMaxQRs {
+    final n = _qrPointsService.escaneosPorNivel > 0
+        ? _qrPointsService.escaneosPorNivel
+        : 2;
+    return [for (var t = 0; t <= 5; t++) t * n];
   }
 
-  /// Lo que el chofer VE como su porcentaje: sube linealmente de
-  /// (100−basePlatform)% en T0 hasta 95% en T5. Cada tier muestra
-  /// un valor DIFERENTE y creciente. Es DISPLAY, no el split real.
-  double _driverEarningsOf(int tier) {
-    final tierNum = tier.clamp(0, 5);
-    final base = _qrPointsService.basePlatformPercent;
-    if (base <= 0) return 0; // Not loaded yet
-    final earningsAtTier0 = 100.0 - base;
-    const maxEarnings = 100.0 - _minPlatformCommission; // 95%
-    final step = (maxEarnings - earningsAtTier0) / 5.0;
-    return earningsAtTier0 + (step * tierNum);
-  }
+  /// % de TORO en viajes de INVITADOS para un nivel: el residuo del chofer
+  /// (100 - escalera). El piso de TORO ya viene garantizado por la escalera
+  /// de pricing_config (tope 95 -> TORO nunca baja de 5). VIVO del servicio.
+  double _tierCommissionOf(int tier) =>
+      _qrPointsService.platformPercentForTier(tier.clamp(0, 5));
 
-  // current_level IS the tier (set by apply-referral-bonus), use directly.
+  /// % del chofer en viajes de INVITADOS para un nivel: la escalera REAL que
+  /// paga la RPC referral_share_for_ride (70..95 semanal, 100 el primer viaje
+  /// de cada invitado). Antes esto era "solo display" con una recta inventada
+  /// hasta 95: hoy 95 es un numero que el motor SI paga, en esos viajes.
+  double _driverEarningsOf(int tier) =>
+      _qrPointsService.driverPercentForTier(tier.clamp(0, 5));
+
+  // current_level IS the tier (set by the deliveries trigger), use directly.
   int _getDriverTier(int currentLevel) => currentLevel.clamp(0, 5);
 
 
@@ -2950,8 +2941,10 @@ class _HomeScreenState extends State<HomeScreen>
     // (registro de riders aún cerrado) con el ref del driver, no a la app.
     final qrLink = DriverReferralCodeService.link(qrCode);
 
-    // Live data from DriverQRPointsService
-    final qrLevel = _qrPointsService.currentLevel.level;
+    // Live data from DriverQRPointsService. El avance se mide en ESCANEOS
+    // (viajes completados de invitados esta semana), no en la columna `level`:
+    // es el mismo conteo que usa la RPC para decidir el nivel.
+    final qrLevel = _qrPointsService.currentLevel.qrsAccepted;
     final currentTier = _qrPointsService.currentTier;
     final currentDriverEarnings = _driverEarningsOf(currentTier);
     final myRank = _qrPointsService.myStateRank;

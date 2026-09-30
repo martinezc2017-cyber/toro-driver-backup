@@ -421,7 +421,7 @@ class _TermsAcceptanceScreenState extends State<TermsAcceptanceScreen> {
               // Subtitle
               Text(
                 isEs
-                    ? 'Para comenzar a conducir con ${LegalConstants.companyName} debes aceptar nuestros terminos y condiciones'
+                    ? 'Para comenzar a conducir con ${LegalConstants.companyName} debes aceptar nuestros términos y condiciones'
                     : 'To start driving with ${LegalConstants.companyName} you must accept our terms and conditions',
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyLarge?.copyWith(
@@ -449,9 +449,9 @@ class _TermsAcceptanceScreenState extends State<TermsAcceptanceScreen> {
               _buildCheckbox(
                 value: _isOver21,
                 onChanged: (v) => setState(() => _isOver21 = v ?? false),
-                title: isEs ? 'Confirmo que tengo 21 anos o mas' : 'I confirm I am 21 years or older',
+                title: isEs ? 'Confirmo que tengo 21 años o más' : 'I confirm I am 21 years or older',
                 subtitle: isEs
-                    ? 'Debes tener al menos 21 anos para conducir con TORO DRIVER'
+                    ? 'Debes tener al menos 21 años para conducir con TORO DRIVER'
                     : 'You must be at least 21 years old to drive with TORO DRIVER',
                 theme: theme,
                 isChecked: _isOver21,
@@ -464,10 +464,10 @@ class _TermsAcceptanceScreenState extends State<TermsAcceptanceScreen> {
                 value: _hasAcceptedTerms,
                 onChanged: (v) => setState(() => _hasAcceptedTerms = v ?? false),
                 title: isEs
-                    ? 'Acepto todos los Terminos, Politicas y Acuerdos'
+                    ? 'Acepto todos los Términos, Políticas y Acuerdos'
                     : 'I accept all Terms, Policies and Agreements',
                 subtitle: isEs
-                    ? 'Terminos de Servicio, Politica de Privacidad, Acuerdo del Conductor y Exoneracion'
+                    ? 'Términos de Servicio, Política de Privacidad, Acuerdo del Conductor y Exoneración'
                     : 'Terms of Service, Privacy Policy, Driver Agreement and Liability Waiver',
                 theme: theme,
                 isChecked: _hasAcceptedTerms,

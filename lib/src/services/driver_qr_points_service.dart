@@ -156,16 +156,35 @@ class DriverQRPointsService extends ChangeNotifier {
   double _basePlatformPercent = 0;
   double _baseDriverPercent = 0;
   double _insurancePercent = 0;
+  /// Fila de pricing_config del estado del chofer (para leer los saltos del QR).
+  Map<String, dynamic>? _configRow;
+
+  /// Escaneos que hacen falta para subir UN nivel. Sale de
+  /// pricing_config.qr_scans_per_level. Decision del dueno el 29 sep 2026: 2,
+  /// o sea el nivel 5 (maximo) a los 10 escaneos. MISMA formula que la RPC
+  /// qr_nivel_de() y que el disparador de la base; si esto se desincroniza, el
+  /// chofer ve un nivel y se le paga otro.
+  int _escaneosPorNivel = 2;
+  int get escaneosPorNivel => _escaneosPorNivel;
   double _ivaPercent = 0;
-  int _qrTier1Max = 6;
-  double _qrTier1Reduction = 3.0; // 20% → 17%
-  int _qrTier2Max = 12;
-  double _qrTier2Reduction = 6.0; // 20% → 14%
-  int _qrTier3Max = 18;
-  double _qrTier3Reduction = 9.0; // 20% → 11%
-  int _qrTier4Max = 24;
-  double _qrTier4Reduction = 12.0; // 20% → 8%
-  double _qrTier5Reduction = 15.0; // 20% → 5%
+
+  // ESCALERA DE INVITADOS (30 sep 2026). El nivel del QR ya NO sube los viajes
+  // normales: paga UNICAMENTE en viajes de pasajeros que ESTE chofer invito
+  // (referred_by_driver). referral_tier_shares_json trae el % del chofer por
+  // nivel semanal 0..5, y es la MISMA lista que usa la RPC
+  // referral_share_for_ride: si esto se desincroniza, el chofer ve un numero
+  // y se le paga otro. _loadQRConfig pisa estos valores con la fila viva.
+  List<double> _referralShares = [70, 75, 80, 85, 90, 95]; // guardian-ok: valor inicial; _loadQRConfig lo pisa con referral_tier_shares_json
+  double _firstRideSharePct = 100; // guardian-ok: valor inicial; _loadQRConfig lo pisa con referral_first_ride_share_pct
+
+  // Lo que gana el INVITADO al escanear (para que el chofer lo pueda contar):
+  // la promo de lanzamiento viva en pricing_config. Si esta apagada, la
+  // tarjeta no se muestra y no se promete nada.
+  bool _promoInvitadoActiva = false;
+  double _descuentoInvitadoPct = 0;
+  bool get promoInvitadoActiva =>
+      _promoInvitadoActiva && _descuentoInvitadoPct > 0;
+  double get descuentoInvitadoPct => _descuentoInvitadoPct;
 
   DriverQRPointsLevel _currentLevel = DriverQRPointsLevel();
   List<QRTipReceived> _tipsReceived = [];
@@ -192,20 +211,20 @@ class DriverQRPointsService extends ChangeNotifier {
 
   /// Get current tier number (0-5).
   /// current_level in driver_qr_points IS the tier (set by apply-referral-bonus).
-  int get currentTier => _currentLevel.level.clamp(0, 5);
-
-  /// Get the commission reduction % for current tier
-  /// Tier 0: 0% | Tier 1: 4% | Tier 2: 8% | ... | Tier 5: 20%
-  double get currentCommissionReduction {
-    switch (currentTier) {
-      case 1: return _qrTier1Reduction;
-      case 2: return _qrTier2Reduction;
-      case 3: return _qrTier3Reduction;
-      case 4: return _qrTier4Reduction;
-      case 5: return _qrTier5Reduction;
-      default: return 0;
-    }
+  /// El nivel se calcula de los ESCANEOS, no de la columna `current_level`:
+  /// tres escritores distintos la llenaron con cosas distintas (el conteo, el
+  /// tier, y los puntos), asi que no se puede confiar en ella.
+  int get currentTier {
+    final n = _escaneosPorNivel > 0 ? _escaneosPorNivel : 2;
+    final porEscaneos = _currentLevel.qrsAccepted ~/ n;
+    return porEscaneos.clamp(0, 5);
   }
+
+  /// Puntos EXTRA (sobre su base) que el nivel actual le da al chofer en los
+  /// viajes de SUS invitados. En viajes normales el extra es CERO desde el
+  /// 30 sep 2026: el reparto normal no se toca y el fondo del seguro queda
+  /// intacto (de ahi sale el IMSS).
+  double get currentCommissionReduction => reduccionRealForTier(currentTier);
 
   /// Comision base del pais (pricing_config), SIN la reduccion del tier.
   double get basePlatformPercent => _basePlatformPercent;
@@ -213,58 +232,74 @@ class DriverQRPointsService extends ChangeNotifier {
   /// % base del chofer (pricing_config), SIN el bono del tier.
   double get baseDriverPercent => _baseDriverPercent;
 
-  /// Get effective platform commission % after QR reduction
-  /// Platform base comes from pricing_config (US/AZ=20.4%, MX/CDMX=25%)
-  double get effectivePlatformPercent =>
-      _basePlatformPercent - currentCommissionReduction;
+  /// % de TORO en viajes NORMALES. El nivel del QR ya no lo mueve.
+  double get effectivePlatformPercent => _basePlatformPercent;
 
-  /// Get effective driver % after QR reduction
-  /// Driver base comes from pricing_config (US/AZ=57%, MX/CDMX=75%)
-  double get effectiveDriverPercent =>
-      _baseDriverPercent + currentCommissionReduction;
+  /// % del chofer en viajes NORMALES. El nivel del QR ya no lo mueve:
+  /// el premio del nivel vive en shareForTier(), solo en viajes de invitados.
+  double get effectiveDriverPercent => _baseDriverPercent;
 
-  /// Get the commission reduction for a specific tier number (0-5).
-  /// Used by home screen and QR screen to preview tier percentages.
-  double reductionForTier(int tier) {
-    switch (tier) {
-      case 1: return _qrTier1Reduction;
-      case 2: return _qrTier2Reduction;
-      case 3: return _qrTier3Reduction;
-      case 4: return _qrTier4Reduction;
-      case 5: return _qrTier5Reduction;
-      default: return 0;
-    }
+  /// % del chofer en viajes de SUS invitados para un nivel dado (0-5).
+  /// MISMOS candados que la RPC referral_share_for_ride: nunca menos que el
+  /// reparto normal, nunca mas de 100.
+  double shareForTier(int tier) {
+    final t = tier.clamp(0, 5);
+    final crudo = t < _referralShares.length
+        ? _referralShares[t]
+        : _baseDriverPercent;
+    return crudo.clamp(_baseDriverPercent, 100.0);
   }
 
-  /// Platform % for a specific tier (for preview/display)
-  double platformPercentForTier(int tier) =>
-      _basePlatformPercent - reductionForTier(tier);
+  /// % del chofer en viajes de invitados en su nivel actual.
+  double get currentShare => shareForTier(currentTier);
 
-  /// Driver % for a specific tier (for preview/display)
-  double driverPercentForTier(int tier) =>
-      _baseDriverPercent + reductionForTier(tier);
+  /// El primer viaje de cada invitado (bono del gancho): 100 %.
+  double get firstRideSharePct => _firstRideSharePct;
+
+  /// Puntos extra sobre la base para un nivel, en viajes de invitados.
+  double reductionForTier(int tier) => shareForTier(tier) - _baseDriverPercent;
+
+  /// Alias historico: hoy es lo mismo que reductionForTier (los candados ya
+  /// van dentro de shareForTier). Lo consumen home y earnings.
+  double reduccionRealForTier(int tier) => reductionForTier(tier);
+
+  /// % de TORO en viajes de INVITADOS para un nivel (el fondo va apagado en
+  /// esos viajes, asi que TORO es simplemente el residuo del chofer).
+  double platformPercentForTier(int tier) =>
+      (100 - shareForTier(tier)).clamp(0, 100).toDouble();
+
+  /// % del chofer en viajes de INVITADOS para un nivel (para los anillos).
+  double driverPercentForTier(int tier) => shareForTier(tier);
 
   /// Get QRs needed for next tier (0 if already max).
   /// Uses qrsAccepted (actual count) with apply-referral-bonus breakpoints:
   /// T1: 1-4, T2: 5-9, T3: 10-19, T4: 20-34, T5: 35+
+  /// Escaneos que le faltan para el siguiente nivel. 0 si ya esta al tope.
+  /// Antes devolvia 4 / 9 / 19 / 34, metas de un diseno que ningun otro lado
+  /// compartia: le decia "te faltan 4" cuando con 2 ya subia.
   int get qrsForNextTier {
-    final qrs = _currentLevel.qrsAccepted;
-    if (qrs < _qrTier1Max) return _qrTier1Max;
-    if (qrs < _qrTier2Max) return _qrTier2Max;
-    if (qrs < _qrTier3Max) return _qrTier3Max;
-    if (qrs < _qrTier4Max) return _qrTier4Max;
-    if (qrs < _qrMaxLevel) return _qrMaxLevel;
-    return 0; // Already at max
+    if (currentTier >= 5) return 0;
+    final n = _escaneosPorNivel > 0 ? _escaneosPorNivel : 2;
+    return (currentTier + 1) * n;
   }
 
+  /// Escaneos para llegar al tope (nivel 5). Para pintar la barra.
+  int get escaneosParaElTope => 5 * (_escaneosPorNivel > 0 ? _escaneosPorNivel : 2);
+
+
   /// Tier breakpoints for display: (maxQRs, commissionReduction, platformPercent)
-  List<({int max, double reduction, double platformPercent})> get tierBreakpoints => [
-    (max: _qrTier1Max, reduction: _qrTier1Reduction, platformPercent: _basePlatformPercent - _qrTier1Reduction),
-    (max: _qrTier2Max, reduction: _qrTier2Reduction, platformPercent: _basePlatformPercent - _qrTier2Reduction),
-    (max: _qrTier3Max, reduction: _qrTier3Reduction, platformPercent: _basePlatformPercent - _qrTier3Reduction),
-    (max: _qrTier4Max, reduction: _qrTier4Reduction, platformPercent: _basePlatformPercent - _qrTier4Reduction),
-    (max: _qrMaxLevel, reduction: _qrTier5Reduction, platformPercent: _basePlatformPercent - _qrTier5Reduction),
-  ];
+  /// Escaneos por nivel y % de invitados, todo de pricing_config.
+  List<({int max, double reduction, double platformPercent})> get tierBreakpoints {
+    final n = _escaneosPorNivel > 0 ? _escaneosPorNivel : 2;
+    return [
+      for (var t = 1; t <= 5; t++)
+        (
+          max: t * n,
+          reduction: reductionForTier(t),
+          platformPercent: platformPercentForTier(t),
+        ),
+    ];
+  }
 
   /// Total tips received this week
   double get weeklyTipsTotal => _tipsReceived
@@ -310,16 +345,24 @@ class DriverQRPointsService extends ChangeNotifier {
         stateCode: stateCode as String?,
       );
       if (live != null) {
-        _basePlatformPercent = live.platform;
         _baseDriverPercent = live.driver;
         _insurancePercent = live.insurance;
         _ivaPercent = live.iva;
+        // OJO: la columna platform_commission (12 % en MX BC) NO es lo que se
+        // queda TORO. El motor le da el RESIDUO: gross - chofer - fondo, o sea
+        // 20 %. Con la columna, el nivel 5 pintaba TORO en -3 %, un numero
+        // imposible. Se usa el residuo, que es lo que de verdad reparte
+        // stripe-process-split, y si no cuadra se cae a la columna.
+        final residuo = 100 - live.driver - live.insurance;
+        _basePlatformPercent = residuo > 0 ? residuo : live.platform;
       }
 
       // qr_max_level, con el mismo criterio: estado del chofer -> DEFAULT.
       final rows = await _client
           .from('pricing_config')
-          .select('state_code, qr_max_level')
+          .select('state_code, qr_max_level, qr_scans_per_level, '
+              'referral_tier_shares_json, referral_first_ride_share_pct, '
+              'promo_active, first_ride_discount')
           .eq('country_code', countryCode)
           .eq('is_active', true);
       final list = (rows as List).cast<Map<String, dynamic>>();
@@ -337,25 +380,39 @@ class DriverQRPointsService extends ChangeNotifier {
           orElse: () => list.first,
         );
         _qrMaxLevel = (row['qr_max_level'] as num?)?.toInt() ?? 30;
+        _configRow = row;
+        _escaneosPorNivel =
+            (row['qr_scans_per_level'] as num?)?.toInt() ?? 2;
       }
 
-      // Tier breakpoints (match apply-referral-bonus): 4/9/19/34/35+ QRs.
-      // Tier reductions: 4% per tier → Tier 5 = 20% (TORO keeps 5% floor).
-      _qrTier1Max = 4;
-      _qrTier1Reduction = 4.0;
-      _qrTier2Max = 9;
-      _qrTier2Reduction = 8.0;
-      _qrTier3Max = 19;
-      _qrTier3Reduction = 12.0;
-      _qrTier4Max = 34;
-      _qrTier4Reduction = 16.0;
-      _qrTier5Reduction = 20.0;
+      // ESCALERA DE INVITADOS: % del chofer por nivel (0..5) en viajes de
+      // pasajeros que EL invito. Sale de referral_tier_shares_json, la MISMA
+      // lista que reparte la RPC referral_share_for_ride. La escala vieja
+      // (qr_tier_reductions_json, bono sobre TODOS los viajes) quedo RETIRADA
+      // en la base (en ceros) el 30 sep 2026.
+      final escalera = (_configRow?['referral_tier_shares_json'] as List?)
+          ?.map((e) => (e as num).toDouble())
+          .toList();
+      if (escalera != null && escalera.length >= 6) {
+        _referralShares = escalera;
+      }
+      final primerViaje =
+          (_configRow?['referral_first_ride_share_pct'] as num?)?.toDouble();
+      if (primerViaje != null && primerViaje > 0) {
+        _firstRideSharePct = primerViaje;
+      }
+
+      // Promo del invitado (la MISMA palanca que aplica el rider al cobrar:
+      // promo_active + first_ride_discount, con su tope). Solo para contarlo.
+      _promoInvitadoActiva = _configRow?['promo_active'] == true;
+      _descuentoInvitadoPct =
+          (_configRow?['first_ride_discount'] as num?)?.toDouble() ?? 0;
 
       // OJO: aqui habia un override que forzaba _qrMaxLevel = 30 para MX. Eso
       // pisaba el valor del admin (hoy qr_max_level = 10) y la pantalla decia
       // "0/30" cuando el maximo real es 10. Manda pricing_config, punto.
 
-      AppLogger.log('DRIVER_QR -> Config loaded: max=$_qrMaxLevel, tier reductions: $_qrTier1Reduction-$_qrTier5Reduction%');
+      AppLogger.log('DRIVER_QR -> Config loaded: max=$_qrMaxLevel, escalera de invitados: $_referralShares');
     } catch (e) {
       AppLogger.log('DRIVER_QR -> Error loading config: $e');
     }
@@ -665,14 +722,13 @@ class DriverQRPointsService extends ChangeNotifier {
     }
   }
 
-  /// Helper to get tier for any level
+  /// Nivel (0-5) para un numero de escaneos: la MISMA formula que la RPC
+  /// qr_nivel_de (2 escaneos por nivel). Antes usaba metas 4/9/19/34 de un
+  /// diseno viejo que nadie mas compartia.
   int _getTierForLevel(int level) {
     if (level <= 0) return 0;
-    if (level <= _qrTier1Max) return 1;
-    if (level <= _qrTier2Max) return 2;
-    if (level <= _qrTier3Max) return 3;
-    if (level <= _qrTier4Max) return 4;
-    return 5;
+    final n = _escaneosPorNivel > 0 ? _escaneosPorNivel : 2;
+    return (level ~/ n).clamp(0, 5);
   }
 
   /// Refresh data from Supabase

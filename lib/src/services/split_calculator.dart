@@ -51,14 +51,14 @@ class SplitConfig {
     this.currencyDecimals = 0,
     this.qrMaxLevel = 30,
     this.qrTier1Max = 4,
-    this.qrTier1CommissionReduction = 4.0,
+    this.qrTier1CommissionReduction = 4.0,  // guardian-ok: const; getQRCommissionReduction lo topa con la regla del motor
     this.qrTier2Max = 9,
-    this.qrTier2CommissionReduction = 8.0,
+    this.qrTier2CommissionReduction = 8.0,  // guardian-ok: const; getQRCommissionReduction lo topa con la regla del motor
     this.qrTier3Max = 19,
-    this.qrTier3CommissionReduction = 12.0,
+    this.qrTier3CommissionReduction = 12.0,  // guardian-ok: const; getQRCommissionReduction lo topa con la regla del motor
     this.qrTier4Max = 34,
-    this.qrTier4CommissionReduction = 16.0,
-    this.qrTier5CommissionReduction = 20.0,
+    this.qrTier4CommissionReduction = 16.0,  // guardian-ok: const; getQRCommissionReduction lo topa con la regla del motor
+    this.qrTier5CommissionReduction = 20.0,  // guardian-ok: const; getQRCommissionReduction lo topa con la regla del motor
   });
 
   /// Get effective platform % after QR tier commission reduction
@@ -70,13 +70,30 @@ class SplitConfig {
   }
 
   /// Get the commission reduction for a given QR level
+  /// Tope REAL del bono, el mismo que aplica stripe-process-split:
+  /// `100 - chofer - fondo - 5`. El bono solo puede comerse la parte de TORO,
+  /// nunca el fondo del IMSS, y TORO no baja de 5 %.
+  double get _topeDelBono =>
+      math.max(100 - driverPercent - insurancePercent - 5, 0).toDouble();
+
+  /// Puntos que suma el nivel del QR.
+  ///
+  /// OJO: este calculador es el QUINTO lugar que hace esta cuenta (trigger de la
+  /// base, servicio del app, pantalla, este, y el motor de cobro). Sus valores
+  /// por omision (4/8/12/16/20 y metas 4/9/19/34) son de un diseno que ningun
+  /// otro lado comparte: con la tarifa de MX BC daban 88 % mientras el motor
+  /// pagaba 83 %. Mientras no reciba los de pricing_config, se TOPA con la misma
+  /// regla del motor para que nunca prometa de mas.
+  ///
+  /// `qrLevel` es el NIVEL (0-5), no el numero de escaneos. Los escaneos se
+  /// convierten a nivel con pricing_config.qr_scans_per_level (2 por nivel).
   double getQRCommissionReduction(int qrLevel) {
-    if (qrLevel <= 0) return 0;
-    if (qrLevel <= qrTier1Max) return qrTier1CommissionReduction;
-    if (qrLevel <= qrTier2Max) return qrTier2CommissionReduction;
-    if (qrLevel <= qrTier3Max) return qrTier3CommissionReduction;
-    if (qrLevel <= qrTier4Max) return qrTier4CommissionReduction;
-    return qrTier5CommissionReduction;
+    // EL NIVEL DEL QR YA NO SUBE LOS VIAJES NORMALES (30 sep 2026). El premio
+    // del nivel vive en la RPC referral_share_for_ride y aplica SOLO en viajes
+    // de pasajeros que el chofer invito (escalera 70..95). Este calculador
+    // estima viajes normales, asi que el extra aqui es CERO: estimar con bono
+    // era prometer dinero que el motor ya no paga en estos viajes.
+    return 0;
   }
 
   /// Get driver's effective percentage after QR reduction

@@ -1,8 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../utils/app_colors.dart';
 import 'create_ticket_screen.dart';
+
+/// Un solo correo de soporte para toda la app. Antes esta pantalla decia
+/// drivers@toro-ride.com y la pantalla de bloqueo decia support@toro-ride.com:
+/// los dos llegan (el Worker de Cloudflare reenvia el dominio completo) pero al
+/// chofer se le mostraban dos direcciones distintas.
+const String correoSoporteToro = 'support@toro-ride.com';
 
 class SupportScreen extends StatelessWidget {
   const SupportScreen({super.key});
@@ -83,8 +90,10 @@ class SupportScreen extends StatelessWidget {
           // Contact Section
           _buildSectionTitle('contact_us'.tr()),
           const SizedBox(height: 8),
-          _buildContactItem(Icons.email, 'email'.tr(), 'drivers@toro-ride.com', AppColors.primary, () => _launchEmail()),
-          _buildContactItem(Icons.schedule, 'hours'.tr(), 'Mon-Sun 7AM - 11PM', Colors.purple, null),
+          _buildContactItem(Icons.email, 'email'.tr(), correoSoporteToro, AppColors.primary, () => _launchEmail(context)),
+          // Se quito la fila de "Horario: Mon-Sun 7AM - 11PM": estaba en ingles
+          // a pelo y prometia un horario de atencion que nadie esta cubriendo.
+          // Cuando haya un horario real, se agrega con su llave de idioma.
 
           const SizedBox(height: 24),
 
@@ -262,11 +271,29 @@ class SupportScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _launchEmail() async {
-    final uri = Uri.parse('mailto:drivers@toro-ride.com');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
+  /// Abre el correo y, si el telefono no tiene app de correo, copia la
+  /// direccion. Antes se apoyaba solo en canLaunchUrl: cuando devolvia false el
+  /// boton no hacia absolutamente nada y el chofer se quedaba sin salida.
+  Future<void> _launchEmail(BuildContext context) async {
+    final uri = Uri.parse('mailto:$correoSoporteToro');
+
+    var abrio = false;
+    try {
+      abrio = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      abrio = false;
     }
+    if (abrio) return;
+
+    await Clipboard.setData(const ClipboardData(text: correoSoporteToro));
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('gate_mail_failed'.tr()),
+        backgroundColor: AppColors.cardSecondary,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   Future<void> _call911() async {

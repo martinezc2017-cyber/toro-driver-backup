@@ -273,19 +273,25 @@ class _PermissionsGateScreenState extends State<PermissionsGateScreen>
                 width: double.infinity,
                 height: 52,
                 child: ElevatedButton(
+                  // Antes este boton estaba APAGADO (onPressed: null) hasta que
+                  // el chofer concediera todo. O sea: el boton principal de la
+                  // pantalla no hacia nada. Ahora pide el permiso que falta.
                   onPressed: allOk
                       ? () => setState(() => _allGranted = true)
-                      : null,
+                      : () async {
+                          if (!_locationGranted || !_gpsEnabled) {
+                            await _requestLocation();
+                          } else if (!_notificationGranted) {
+                            await _requestNotifications();
+                          }
+                        },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                        allOk ? const Color(0xFFFFD700) : const Color(0xFF2A2A2A),
+                    backgroundColor: const Color(0xFFFFD700),
                     foregroundColor: Colors.black,
-                    disabledBackgroundColor: const Color(0xFF2A2A2A),
-                    disabledForegroundColor: Colors.white38,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    elevation: allOk ? 4 : 0,
+                    elevation: 4,
                   ),
                   child: Text(
                     allOk ? 'permissions.continue_btn'.tr() : 'permissions.activate_all'.tr(),
@@ -353,6 +359,37 @@ class _PermissionsGateScreenState extends State<PermissionsGateScreen>
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.45),
                     fontSize: 11,
+                  ),
+                ),
+
+                // SALIDA. Esta pantalla ENCERRABA al chofer: sin permisos no
+                // habia forma de pasar, y un conductor nuevo que decia "no"
+                // se quedaba fuera de su propia app sin poder ni subir papeles.
+                //
+                // No se pierde nada: el GPS se sigue exigiendo donde de verdad
+                // hace falta, en el boton de conectarse (home_screen valida
+                // locationProvider.initialize() y abre su propio dialogo).
+                const SizedBox(height: 14),
+                TextButton(
+                  onPressed: () => setState(() => _allGranted = true),
+                  child: Text(
+                    'permissions.enter_anyway'.tr(),
+                    style: const TextStyle(
+                      color: Color(0xFFFFD700),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      decoration: TextDecoration.underline,
+                      decorationColor: Color(0xFFFFD700),
+                    ),
+                  ),
+                ),
+                Text(
+                  'permissions.enter_anyway_note'.tr(),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.4),
+                    fontSize: 11,
+                    height: 1.35,
                   ),
                 ),
               ],
@@ -437,12 +474,16 @@ class _PermissionCard extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
+                      // Flexible: sin esto un titulo largo se sale del renglon
+                      // y Flutter pinta la franja amarilla de "RIGHT OVERFLOWED".
+                      Flexible(
+                        child: Text(
+                          title,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 8),

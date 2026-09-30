@@ -18,7 +18,6 @@ import 'home_screen.dart';
 import 'organizer/organizer_home_screen.dart';
 import 'tourism/tourism_driver_home_screen.dart';
 import 'login_screen.dart';
-import 'pending_approval_screen.dart';
 import 'terms_acceptance_screen.dart';
 import 'driver_onboarding_screen.dart';
 import 'permissions_gate_screen.dart';
@@ -163,11 +162,18 @@ class _AuthWrapperState extends State<AuthWrapper> {
           return const DriverOnboardingScreen();
         }
 
-        final driverStatus = driver.status;
-        if (driverStatus == DriverStatus.suspended || driverStatus == DriverStatus.rejected) {
-          DebugLogger.log('WRAPPER_SCREEN', detail: 'PENDING_APPROVAL (status=$driverStatus)');
-          return const PendingApprovalScreen();
-        }
+        // AQUI HABIA UNA TRABA Y SE QUITO (30-sep-2026).
+        //
+        // Antes, con status 'suspended' o 'rejected' se devolvia
+        // PendingApprovalScreen y el chofer NO PODIA PASAR DE AHI: la app
+        // entera se reducia a esa pantalla, sin poder ver sus documentos, sus
+        // ganancias ni nada. Un usuario nuevo mal marcado quedaba encerrado.
+        //
+        // Nadie pierde seguridad con esto: recibir viajes NO depende de esta
+        // pantalla. Depende de `canGoOnline` en el cliente y, del lado del
+        // servidor, de que las funciones de despacho exigen `admin_approved`
+        // (ver memoria despacho-ignora-aprobacion). Un chofer suspendido puede
+        // entrar y moverse, pero no se le asigna un solo viaje.
 
         // Initialize providers only once per driver ID - prevent scheduling multiple callbacks
         final driverId = driver.id;

@@ -258,18 +258,15 @@ class _AccountStatusScreenState extends State<AccountStatusScreen> {
                   ),
                   child: Column(
                     children: [
+                      // Solo el correo. El telefono que estaba aqui,
+                      // +1 (602) 555-0123, es del rango ficticio reservado
+                      // 555-01xx: nadie contesta. Cuando haya un numero de
+                      // verdad se agrega aqui, no antes.
                       _buildContactOption(
                         icon: Icons.email_outlined,
                         title: 'email'.tr(),
                         subtitle: 'support@toro-ride.com',
                         color: const Color(0xFF3B82F6),
-                      ),
-                      const Divider(color: AppColors.border, height: 24),
-                      _buildContactOption(
-                        icon: Icons.phone_outlined,
-                        title: 'phone'.tr(),
-                        subtitle: '+1 (602) 555-0123',
-                        color: const Color(0xFF22C55E),
                       ),
                     ],
                   ),

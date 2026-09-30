@@ -6,6 +6,7 @@ import '../utils/app_colors.dart';
 import '../services/document_service.dart';
 import '../services/mexico_documents_service.dart';
 import '../config/supabase_config.dart';
+import 'pending_approval_screen.dart';
 
 class DocumentsScreen extends StatefulWidget {
   const DocumentsScreen({super.key});
@@ -143,7 +144,7 @@ class _DocumentsScreenState extends State<DocumentsScreen>
         ),
         DocumentItem(
           'doc_background_check'.tr(),
-          driverDocs.backgroundCheckStatus ?? 'pending'.tr(),
+          _labelBackgroundCheckStatus(driverDocs.backgroundCheckStatus),
           'doc_auto_verification'.tr(),
           Icons.security,
           _mapBackgroundCheckStatus(driverDocs.backgroundCheckStatus),
@@ -353,6 +354,21 @@ class _DocumentsScreenState extends State<DocumentsScreen>
         return DocumentStatus.rejected;
       default:
         return DocumentStatus.pending;
+    }
+  }
+
+  /// Texto que ve el chofer. Antes se pintaba el valor crudo de la base y en
+  /// pantalla salia "pending" en ingles, en medio de todo lo demas en espanol.
+  String _labelBackgroundCheckStatus(String? status) {
+    switch (status) {
+      case 'approved':
+      case 'passed':
+        return 'doc_bgcheck_approved'.tr();
+      case 'failed':
+      case 'rejected':
+        return 'doc_bgcheck_failed'.tr();
+      default:
+        return 'doc_bgcheck_pending'.tr();
     }
   }
 
@@ -1440,13 +1456,21 @@ class _DocumentsScreenState extends State<DocumentsScreen>
           icon: const Icon(Icons.arrow_back_ios, size: 18),
           onPressed: () => Navigator.pop(context),
         ),
+        // Se quito el icono de carpeta que iba antes del titulo: con el badge
+        // y los tres botones de la derecha ya no cabia y el titulo salia
+        // cortado ("Mis Documen..."). El Flexible se queda de red de seguridad
+        // para idiomas con palabras mas largas.
         title: Row(
           children: [
-            Icon(Icons.folder, size: 18, color: AppColors.primary),
-            const SizedBox(width: 8),
-            Text(
-              'documents_title'.tr(),
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            Flexible(
+              child: Text(
+                'documents_title'.tr(),
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ],
         ),
@@ -1472,6 +1496,22 @@ class _DocumentsScreenState extends State<DocumentsScreen>
                   ),
                 ),
               ],
+            ),
+          ),
+          // Unica entrada a PendingApprovalScreen. Ya no es una traba del
+          // arranque: se abre desde aqui, con su flecha para regresar.
+          IconButton(
+            icon: Icon(
+              Icons.help_outline_rounded,
+              size: 20,
+              color: AppColors.textSecondary,
+            ),
+            tooltip: 'gate_why_blocked'.tr(),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const PendingApprovalScreen(),
+              ),
             ),
           ),
           IconButton(
@@ -1569,8 +1609,12 @@ class _DocumentsScreenState extends State<DocumentsScreen>
                         color: AppColors.textPrimary,
                       ),
                     ),
+                    // Se muestra la fraccion de ESTA pestana, no solo el %.
+                    // Sin ella la pantalla decia "0/8" arriba (todos los
+                    // documentos) y "4 faltantes" abajo (solo la pestana), y
+                    // los dos numeros parecian contradecirse.
                     Text(
-                      '${(progress * 100).toInt()}%',
+                      '$approved/$total · ${(progress * 100).toInt()}%',
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.bold,

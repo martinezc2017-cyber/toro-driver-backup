@@ -566,15 +566,15 @@ class _EarningsScreenState extends State<EarningsScreen> {
     if (driver == null) return const SizedBox.shrink();
 
     final tier = _qrService.currentTier;
-    // El tier QR no da bono aparte: le BAJA la comisión a TORO y esa diferencia
-    // se la queda el chofer. Base viva de pricing_config + reducción del tier.
-    final reduction = _qrService.currentCommissionReduction;
-    final driverPercent = _pct != null
-        ? _pct!.driver + reduction
-        : _qrService.effectiveDriverPercent;
-    final toroPercent = _pct != null
-        ? (_pct!.platform - reduction).clamp(0.0, 100.0)
-        : _qrService.effectivePlatformPercent;
+    // ESCALERA DE INVITADOS (30 sep 2026): estos % son los de viajes de
+    // pasajeros que EL invito con su QR (los paga la RPC
+    // referral_share_for_ride: 70..95 por nivel semanal, 100 el primer viaje).
+    // Sus viajes normales NO cambian con el nivel.
+    final driverPercent = _qrService.driverPercentForTier(tier);
+    final toroPercent = _qrService.platformPercentForTier(tier);
+    // Sin la base cargada este letrero decia "te quedas 0 % / TORO 0 %".
+    // Mejor no pintar numeros que no existen todavia.
+    if (_qrService.baseDriverPercent <= 0) return const SizedBox.shrink();
 
     const tierColors = [
       Color(0xFF9E9E9E), // Tier 0 - grey
@@ -1396,16 +1396,10 @@ class _EarningsScreenState extends State<EarningsScreen> {
   }
 
   void _contactSupport() async {
-    final uri = Uri.parse(
-      'https://wa.me/+526865551234?text=Hola,%20necesito%20ayuda%20con%20mi%20balance%20de%20efectivo',
-    );
-    try {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } catch (_) {
-      if (mounted) {
-        Navigator.pushNamed(context, '/support');
-      }
-    }
+    // Antes abria WhatsApp al +52 686 555 1234, que NO EXISTE (555-1234 es
+    // relleno). El chofer acababa en un chat con un numero muerto. Ahora va a la
+    // pantalla de soporte, que si trae correo real y el boton de 911.
+    Navigator.pushNamed(context, '/support');
   }
 
   Widget _stat(String label, String value) {

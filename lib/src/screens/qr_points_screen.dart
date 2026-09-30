@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -202,6 +203,12 @@ class _QRPointsScreenState extends State<QRPointsScreen>
       child: Column(
         children: [
           _buildCommissionCard(service, level),
+          const SizedBox(height: 12),
+          // El dato que le AHORRA dinero al pasajero, visible para el chofer:
+          // es su argumento de venta al compartir el QR. Vive de pricing_config
+          // (promo_active + first_ride_discount); apagada la promo, no se
+          // muestra y no se promete nada.
+          _buildInvitadoCard(service),
           const SizedBox(height: 20),
           _buildTierCard(service),
           const SizedBox(height: 20),
@@ -224,17 +231,15 @@ class _QRPointsScreenState extends State<QRPointsScreen>
     // If previewing a tier, use that tier's percentages; otherwise use current
     final isPreview = _previewTier != null;
     final tier = isPreview ? _previewTier! : service.currentTier;
-    final driverPercent = isPreview
-        ? service.driverPercentForTier(tier)
-        : service.effectiveDriverPercent;
-    final platformPercent = isPreview
-        ? service.platformPercentForTier(tier)
-        : service.effectivePlatformPercent;
-    final insurancePercent = service.insurancePercent;
-    final ivaPercent = service.ivaPercent;
-    final reduction = isPreview
-        ? service.reductionForTier(tier)
-        : service.currentCommissionReduction;
+    // TODA esta tarjeta habla de VIAJES DE INVITADOS: el % que la RPC
+    // referral_share_for_ride paga cuando el chofer lleva a un pasajero que
+    // EL invito (escalera 70..95 por nivel semanal; el fondo va apagado en
+    // esos viajes). Sus viajes normales NO cambian: van en la linea de abajo
+    // y ahi si suman 100 con el fondo.
+    final driverPercent = service.driverPercentForTier(tier);
+    final platformPercent = service.platformPercentForTier(tier);
+    // Puntos extra sobre su base, con los mismos candados que el motor.
+    final reduction = service.reduccionRealForTier(tier);
 
     // Build pie sections — ONLY Driver vs TORO so the green slice dominates.
     // Insurance/IVA are fixed costs shown separately below.
@@ -280,75 +285,74 @@ class _QRPointsScreenState extends State<QRPointsScreen>
       ),
       child: Column(
         children: [
-          // Donut chart with center text
+          // ANILLOS por nivel. Antes era una dona sola que solo mostraba el
+          // nivel actual; asi se ve de un vistazo cuanto sube en cada nivel,
+          // como lo muestran Uber/DiDi. Se desliza para que nada quede cortado.
           SizedBox(
-            height: 200,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                PieChart(
-                  PieChartData(
-                    sections: sections,
-                    centerSpaceRadius: 55,
-                    sectionsSpace: 2,
-                    startDegreeOffset: -90,
-                  ),
-                  swapAnimationDuration: const Duration(milliseconds: 500),
-                  swapAnimationCurve: Curves.easeInOut,
+            height: 122,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              itemCount: 6,
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              itemBuilder: (context, i) => _AnilloNivel(
+                porcentaje: service.driverPercentForTier(i),
+                // Nivel 0 tambien es parte de la escalera de invitados (70 %),
+                // ya no es "la base": la base vive en los viajes normales.
+                etiqueta: '${'qr_tier_label'.tr()} $i',
+                esElMostrado: i == tier,
+                esElActual: i == service.currentTier,
+                onTap: () => setState(
+                  () => _previewTier = i == service.currentTier ? null : i,
                 ),
-                // Center text
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Tier badge
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 3),
-                      decoration: BoxDecoration(
-                        gradient: tier > 0
-                            ? const LinearGradient(colors: [
-                                Color(0xFF1E88E5),
-                                Color(0xFF00BCD4)
-                              ])
-                            : null,
-                        color: tier == 0 ? AppColors.surface : null,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        tier > 0 ? 'TIER $tier' : 'BASE',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color:
-                              tier > 0 ? Colors.white : AppColors.textSecondary,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    // Large driver percentage
-                    Text(
-                      '${driverPercent.toStringAsFixed(0)}%',
-                      style: const TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF00FF66),
-                        height: 1.1,
-                      ),
-                    ),
-                    Text(
-                      'qr_your_earnings'.tr(),
-                      style: const TextStyle(
-                        fontSize: 10,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+              ),
             ),
           ),
-          const SizedBox(height: 16),
-          // Legend row — Driver vs TORO only
+          const SizedBox(height: 8),
+          // De que viajes hablan estos anillos, y el gancho del primer viaje.
+          Text(
+            'qr_solo_invitados'.tr(),
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF00FF66),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'qr_primer_viaje_100'.tr(namedArgs: {
+              'pct': service.firstRideSharePct.toStringAsFixed(0),
+            }),
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 11,
+              color: AppColors.textSecondary.withValues(alpha: 0.8),
+            ),
+          ),
+          const SizedBox(height: 10),
+          // Cuanto sube respecto a la base, en PUNTOS (no "%% mas", que confunde).
+          if (reduction > 0)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFF00FF66).withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: const Color(0xFF00FF66).withValues(alpha: 0.35),
+                ),
+              ),
+              child: Text(
+                '+${reduction.toStringAsFixed(0)} ${'qr_points_over_base'.tr()}',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF00FF66),
+                ),
+              ),
+            ),
+          const SizedBox(height: 12),
+          // Reparto del nivel mostrado
           Wrap(
             alignment: WrapAlignment.center,
             spacing: 16,
@@ -356,7 +360,7 @@ class _QRPointsScreenState extends State<QRPointsScreen>
             children: [
               _buildLegendItem(
                 const Color(0xFF00FF66),
-                'Driver',
+                'qr_you'.tr(),
                 '${driverPercent.toStringAsFixed(0)}%',
               ),
               _buildLegendItem(
@@ -369,39 +373,26 @@ class _QRPointsScreenState extends State<QRPointsScreen>
               ),
             ],
           ),
-          // Fixed costs row (Insurance + IVA) — shown as subtle info
-          if (insurancePercent > 0 || ivaPercent > 0) ...[
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (insurancePercent > 0)
-                  Text(
-                    '${'qr_insurance_segment'.tr()} ${insurancePercent.toStringAsFixed(0)}%',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textSecondary.withValues(alpha: 0.7),
-                    ),
-                  ),
-                if (insurancePercent > 0 && ivaPercent > 0)
-                  Text(
-                    '  •  ',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textSecondary.withValues(alpha: 0.4),
-                    ),
-                  ),
-                if (ivaPercent > 0)
-                  Text(
-                    'IVA ${ivaPercent.toStringAsFixed(0)}%',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textSecondary.withValues(alpha: 0.7),
-                    ),
-                  ),
-              ],
+          // VIAJES NORMALES, para que la cuenta cierre a la vista:
+          // tu base + TORO + fondo = 100. El IVA va DENTRO de la parte de
+          // TORO (es el impuesto de su comision), por eso NO se suma aparte.
+          // Antes esta fila pintaba "Seguro 17% · IVA 3%" junto al reparto y
+          // cualquiera sumaba 103 %: numeros que parecen no cuadrar.
+          const SizedBox(height: 8),
+          Text(
+            'qr_normal_split_line'.tr(namedArgs: {
+              'driver': service.baseDriverPercent.toStringAsFixed(0),
+              'toro': service.basePlatformPercent.toStringAsFixed(0),
+              'seguro': service.insurancePercent.toStringAsFixed(0),
+              'iva': service.ivaPercent.toStringAsFixed(0),
+            }),
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 11,
+              height: 1.35,
+              color: AppColors.textSecondary.withValues(alpha: 0.7),
             ),
-          ],
+          ),
           if (isPreview) ...[
             const SizedBox(height: 12),
             Container(
@@ -415,7 +406,7 @@ class _QRPointsScreenState extends State<QRPointsScreen>
               ),
               child: Text(
                 'qr_preview_tier'.tr(namedArgs: {
-                  'tier': tier > 0 ? 'Tier $tier' : 'Base',
+                  'tier': '${'qr_tier_label'.tr()} $tier',
                 }),
                 style: const TextStyle(
                   fontSize: 11,
@@ -617,7 +608,7 @@ class _QRPointsScreenState extends State<QRPointsScreen>
                       ),
                       child: Center(
                         child: Text(
-                          tierNum == 0 ? 'B' : '$tierNum',
+                          '$tierNum',
                           style: TextStyle(
                             fontSize: isSelected ? 18 : 16,
                             fontWeight: FontWeight.bold,
@@ -633,7 +624,7 @@ class _QRPointsScreenState extends State<QRPointsScreen>
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      tierNum == 0 ? 'Base' : 'T$tierNum',
+                      'qr_tier_chip'.tr(namedArgs: {'n': '$tierNum'}),
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight:
@@ -682,8 +673,14 @@ class _QRPointsScreenState extends State<QRPointsScreen>
   }
 
   Widget _buildProgressBar(DriverQRPointsService service, DriverQRPointsLevel level) {
-    final maxLevel = service.qrMaxLevel;
-    final progress = maxLevel > 0 ? level.level / maxLevel : 0.0;
+    // La barra va por ESCANEOS hasta el tope (5 niveles x escaneosPorNivel).
+    // Antes iba de 0 a qr_max_level usando `level.level`, y le pintaba
+    // marcadores en 19 y 34: dos metas que ni cabian en la barra, de un diseno
+    // que ninguna otra capa compartia.
+    final tope = service.escaneosParaElTope;
+    final progress = tope > 0
+        ? (level.qrsAccepted / tope).clamp(0.0, 1.0).toDouble()
+        : 0.0;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -750,9 +747,9 @@ class _QRPointsScreenState extends State<QRPointsScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildMarker(0, level.level),
-              for (final bp in service.tierBreakpoints)
-                _buildMarker(bp.max, level.level),
+              _buildMarker(0, level.qrsAccepted),
+              for (var i = 1; i <= 5; i++)
+                _buildMarker(i * service.escaneosPorNivel, level.qrsAccepted),
             ],
           ),
         ],
@@ -787,6 +784,60 @@ class _QRPointsScreenState extends State<QRPointsScreen>
     );
   }
 
+  /// Lo que gana el INVITADO al escanear el QR, para que el chofer lo pueda
+  /// contar de frente. Sale VIVO de pricing_config; sin promo, sin tarjeta.
+  Widget _buildInvitadoCard(DriverQRPointsService service) {
+    if (!service.promoInvitadoActiva) return const SizedBox.shrink();
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF00FF66).withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0xFF00FF66).withValues(alpha: 0.3),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.card_giftcard_rounded,
+            color: Color(0xFF00FF66),
+            size: 22,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'qr_invitado_gana_titulo'.tr(),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF00FF66),
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  'qr_invitado_gana_desc'.tr(namedArgs: {
+                    'pct': service.descuentoInvitadoPct.toStringAsFixed(0),
+                  }),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    height: 1.4,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ).animate(delay: 150.ms).fadeIn();
+  }
+
   Widget _buildStatsRow(DriverQRPointsService service) {
     return Row(
       children: [
@@ -799,21 +850,24 @@ class _QRPointsScreenState extends State<QRPointsScreen>
           ),
         ),
         const SizedBox(width: 12),
+        // Antes decia "21% Comision / 62% Tu Ganancia" sin aclarar DE QUE
+        // viajes: junto a la escalera de invitados parecia contradiccion.
+        // Ahora cada tarjeta dice de que viajes habla.
         Expanded(
           child: _buildStatCard(
-            Icons.trending_down_rounded,
-            '${service.effectivePlatformPercent.toStringAsFixed(0)}%',
-            'qr.commission'.tr(),
-            const Color(0xFF00BCD4),
+            Icons.trending_up_rounded,
+            '${service.currentShare.toStringAsFixed(0)}%',
+            'qr_stat_invitados'.tr(),
+            const Color(0xFF00FF66),
           ),
         ),
         const SizedBox(width: 12),
         Expanded(
           child: _buildStatCard(
-            Icons.trending_up_rounded,
-            '${service.effectiveDriverPercent.toStringAsFixed(0)}%',
-            'qr_your_earnings'.tr(),
-            const Color(0xFF00FF66),
+            Icons.route_rounded,
+            '${service.baseDriverPercent.toStringAsFixed(0)}%',
+            'qr_stat_normales'.tr(),
+            const Color(0xFF00BCD4),
           ),
         ),
       ],
@@ -878,7 +932,19 @@ class _QRPointsScreenState extends State<QRPointsScreen>
           _buildStep(1, 'qr_step1_title'.tr(), 'qr_step1_desc'.tr()),
           _buildStep(2, 'qr_step2_title'.tr(), 'qr_step2_desc'.tr()),
           _buildStep(3, 'qr_step_commission_title'.tr(), 'qr_step_commission_desc'.tr()),
-          _buildStep(4, 'qr_step_tier_title'.tr(), 'qr_step_tier_desc'.tr()),
+          // Los numeros del paso 4 salen VIVOS de la escalera (pricing_config),
+          // nada horneado en el texto: antes decia "20% -> 5%", que era el
+          // modelo viejo retirado el 30 sep 2026.
+          _buildStep(
+            4,
+            'qr_step_tier_title'.tr(namedArgs: {
+              'tope': service.shareForTier(5).toStringAsFixed(0),
+            }),
+            'qr_step_tier_desc'.tr(namedArgs: {
+              'primero': service.firstRideSharePct.toStringAsFixed(0),
+              'tope': service.shareForTier(5).toStringAsFixed(0),
+            }),
+          ),
           const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.all(12),
@@ -1162,7 +1228,7 @@ class _QRPointsScreenState extends State<QRPointsScreen>
                       ],
                     ),
                     Text(
-                      'Tier ${entry.tier}',
+                      '${'qr_tier_label'.tr()} ${entry.tier}',
                       style: TextStyle(
                         fontSize: 11,
                         color: entry.tier >= 4
@@ -1429,4 +1495,137 @@ class _QRPointsScreenState extends State<QRPointsScreen>
       return DateFormat('dd/MM/yyyy').format(dateTime);
     }
   }
+}
+
+/// Un anillo de porcentaje. Sin libreria: CustomPaint pelon, para no meter
+/// otra dependencia nada mas por dibujar un circulo.
+class _AnilloNivel extends StatelessWidget {
+  const _AnilloNivel({
+    required this.porcentaje,
+    required this.etiqueta,
+    required this.esElMostrado,
+    required this.esElActual,
+    required this.onTap,
+  });
+
+  final double porcentaje;
+  final String etiqueta;
+  final bool esElMostrado;
+  final bool esElActual;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    const verde = Color(0xFF00FF66);
+    // Solo el nivel MOSTRADO (el actual, o el que el chofer toco para
+    // asomarse) va prendido. Los demas van bien APAGADOS: antes todos
+    // brillaban casi igual y no se distinguia en cual estas parado.
+    final prendido = esElMostrado;
+    final color = prendido
+        ? verde
+        : esElActual
+            ? verde.withValues(alpha: 0.65)
+            : verde.withValues(alpha: 0.16);
+    final colorTexto = prendido
+        ? Colors.white
+        : esElActual
+            ? AppColors.textSecondary
+            : AppColors.textDisabled;
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 66,
+            height: 66,
+            child: CustomPaint(
+              painter: _PintorAnillo(
+                porcentaje: porcentaje,
+                color: color,
+                fondo: AppColors.surface,
+                grosor: prendido ? 7 : 5,
+              ),
+              child: Center(
+                child: Text(
+                  '${porcentaje.toStringAsFixed(0)}%',
+                  style: TextStyle(
+                    fontSize: prendido ? 17 : 15,
+                    fontWeight: FontWeight.bold,
+                    color: colorTexto,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            etiqueta,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: esElActual ? FontWeight.bold : FontWeight.normal,
+              color: esElActual
+                  ? verde
+                  : prendido
+                      ? AppColors.textSecondary
+                      : AppColors.textDisabled,
+            ),
+          ),
+          const SizedBox(height: 2),
+          // Un punto marca en cual esta parado hoy.
+          Container(
+            width: 5,
+            height: 5,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: esElActual ? verde : Colors.transparent,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PintorAnillo extends CustomPainter {
+  _PintorAnillo({
+    required this.porcentaje,
+    required this.color,
+    required this.fondo,
+    required this.grosor,
+  });
+
+  final double porcentaje;
+  final Color color;
+  final Color fondo;
+  final double grosor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final centro = Offset(size.width / 2, size.height / 2);
+    final radio = (size.width - grosor) / 2;
+    final base = Paint()
+      ..color = fondo
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = grosor;
+    canvas.drawCircle(centro, radio, base);
+
+    final arco = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = grosor
+      ..strokeCap = StrokeCap.round;
+    // Arranca arriba y da la vuelta segun el porcentaje.
+    canvas.drawArc(
+      Rect.fromCircle(center: centro, radius: radio),
+      -math.pi / 2,
+      2 * math.pi * (porcentaje.clamp(0, 100) / 100),
+      false,
+      arco,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_PintorAnillo old) =>
+      old.porcentaje != porcentaje || old.color != color || old.grosor != grosor;
 }

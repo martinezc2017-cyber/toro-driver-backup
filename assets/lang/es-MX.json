@@ -3032,5 +3032,18 @@
   "qr_stat_normales": "Viajes normales",
   "qr_tier_chip": "N{n}",
   "qr_invitado_gana_titulo": "Lo que gana tu invitado",
-  "qr_invitado_gana_desc": "Su primer viaje trae {pct}% de descuento (promo de lanzamiento). Díselo cuando compartas tu QR."
+  "qr_invitado_gana_desc": "Su primer viaje trae {pct}% de descuento (promo de lanzamiento). Díselo cuando compartas tu QR.",
+  "qr_ayuda_titulo": "¿Cómo funciona tu QR?",
+  "qr_ayuda_p1_t": "Comparte tu QR",
+  "qr_ayuda_p1_b": "Cada pasajero que entra con tu código queda como TU invitado para siempre.",
+  "qr_ayuda_p2_t": "Su primer viaje es tuyo completo",
+  "qr_ayuda_p2_b": "Te quedas el {pct}% de lo que pague en ese primer viaje.",
+  "qr_ayuda_p3_t": "Sube tu nivel cada semana",
+  "qr_ayuda_p3_b": "Cada viaje que completa un invitado tuyo cuenta un punto; cada {n} puntos subes un nivel, hasta el {pct}% en los viajes de tus invitados. El nivel se reinicia el lunes.",
+  "qr_ayuda_p4_t": "Tus viajes normales no cambian",
+  "qr_ayuda_p4_b": "Tu tarifa de siempre sigue igual; esto es un premio encima, solo en viajes de la gente que TÚ trajiste.",
+  "qr_ayuda_invitado_t": "Tu invitado también gana",
+  "qr_ayuda_invitado_b": "Mientras dure la promoción de lanzamiento, su primer viaje trae {pct}% de descuento. Díselo cuando compartas tu QR.",
+  "qr_ayuda_banco": "En viajes con tarjeta la comisión del banco sale de tu parte; en efectivo no hay banco. Aplica hasta el límite mensual de viajes de invitado.",
+  "qr_ayuda_entendido": "Entendido"
 }

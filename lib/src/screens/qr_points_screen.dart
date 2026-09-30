@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/driver_qr_points_service.dart';
 import '../providers/driver_provider.dart';
 import '../utils/app_colors.dart';
@@ -44,13 +45,35 @@ class _QRPointsScreenState extends State<QRPointsScreen>
       if (driverId != null) {
         _qrService.initialize(driverId);
         _initialized = true;
+        // La PRIMERA vez que el chofer abre esta pantalla se le muestra la
+        // ayuda sola (cuando ya cargaron los % vivos); despues queda el boton "?".
+        _qrService.addListener(_alCargarMostrarAyuda);
       }
     }
+  }
+
+  void _alCargarMostrarAyuda() {
+    if (_qrService.isLoading) return;
+    _qrService.removeListener(_alCargarMostrarAyuda);
+    _quizasMostrarAyudaPrimeraVez();
+  }
+
+  Future<void> _quizasMostrarAyudaPrimeraVez() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getBool('qr_ayuda_vista') ?? false) return;
+      await prefs.setBool('qr_ayuda_vista', true);
+    } catch (_) {
+      // sin prefs no pasa nada: se muestra y ya
+    }
+    if (!mounted) return;
+    _mostrarAyudaQR();
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _qrService.removeListener(_alCargarMostrarAyuda);
     _qrService.dispose();
     super.dispose();
   }
@@ -160,9 +183,222 @@ class _QRPointsScreenState extends State<QRPointsScreen>
               ),
             ),
           ),
+          GestureDetector(
+            onTap: () {
+              HapticService.lightImpact();
+              _mostrarAyudaQR();
+            },
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.card,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: AppColors.border.withValues(alpha: 0.5),
+                ),
+              ),
+              child: const Icon(
+                Icons.help_outline_rounded,
+                color: AppColors.textPrimary,
+                size: 18,
+              ),
+            ),
+          ),
         ],
       ),
     ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.1, end: 0);
+  }
+
+  // ==================== AYUDA: COMO FUNCIONA TU QR ====================
+  // Todos los numeros salen del servicio (pricing_config): nada quemado.
+  void _mostrarAyudaQR() {
+    final s = _qrService;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // El theme del sheet ya pinta su barrita de agarre; no duplicar.
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      gradient: AppColors.successGradient,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.qr_code_2_rounded,
+                        color: Colors.white, size: 18),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'qr_ayuda_titulo'.tr(),
+                      style: const TextStyle(
+                        fontSize: 19,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              _pasoAyuda('1', 'qr_ayuda_p1_t'.tr(), 'qr_ayuda_p1_b'.tr()),
+              _pasoAyuda(
+                  '2',
+                  'qr_ayuda_p2_t'.tr(),
+                  'qr_ayuda_p2_b'.tr(namedArgs: {
+                    'pct': s.firstRideSharePct.toStringAsFixed(0),
+                  })),
+              _pasoAyuda(
+                  '3',
+                  'qr_ayuda_p3_t'.tr(),
+                  'qr_ayuda_p3_b'.tr(namedArgs: {
+                    'n': s.escaneosPorNivel.toString(),
+                    'pct': s.shareForTier(5).toStringAsFixed(0),
+                  })),
+              _pasoAyuda('4', 'qr_ayuda_p4_t'.tr(), 'qr_ayuda_p4_b'.tr()),
+              if (s.promoInvitadoActiva) ...[
+                const SizedBox(height: 4),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppColors.success.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: AppColors.success.withValues(alpha: 0.35),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'qr_ayuda_invitado_t'.tr(),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.success,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'qr_ayuda_invitado_b'.tr(namedArgs: {
+                          'pct': s.descuentoInvitadoPct.toStringAsFixed(0),
+                        }),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          height: 1.4,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              const SizedBox(height: 12),
+              Text(
+                'qr_ayuda_banco'.tr(),
+                style: const TextStyle(
+                  fontSize: 12,
+                  height: 1.4,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.success,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: Text(
+                    'qr_ayuda_entendido'.tr(),
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _pasoAyuda(String numero, String titulo, String cuerpo) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 26,
+            height: 26,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: AppColors.card,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: AppColors.border.withValues(alpha: 0.5),
+              ),
+            ),
+            child: Text(
+              numero,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: AppColors.success,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  titulo,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  cuerpo,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    height: 1.4,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildTabBar() {

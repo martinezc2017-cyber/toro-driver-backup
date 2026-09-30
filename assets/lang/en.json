@@ -3032,5 +3032,18 @@
   "qr_stat_normales": "Regular rides",
   "qr_tier_chip": "T{n}",
   "qr_invitado_gana_titulo": "What your guest gets",
-  "qr_invitado_gana_desc": "Their first ride comes with {pct}% off (launch promo). Tell them when you share your QR."
+  "qr_invitado_gana_desc": "Their first ride comes with {pct}% off (launch promo). Tell them when you share your QR.",
+  "qr_ayuda_titulo": "How your QR works",
+  "qr_ayuda_p1_t": "Share your QR",
+  "qr_ayuda_p1_b": "Every passenger who joins with your code becomes YOUR guest forever.",
+  "qr_ayuda_p2_t": "Their first ride is all yours",
+  "qr_ayuda_p2_b": "You keep {pct}% of what they pay on that first ride.",
+  "qr_ayuda_p3_t": "Level up each week",
+  "qr_ayuda_p3_b": "Every ride one of your guests completes counts as a point; every {n} points you go up one level, up to {pct}% on your guests' rides. Levels reset on Monday.",
+  "qr_ayuda_p4_t": "Your normal rides don't change",
+  "qr_ayuda_p4_b": "Your regular fare stays the same; this is a bonus on top, only on rides from people YOU brought in.",
+  "qr_ayuda_invitado_t": "Your guest wins too",
+  "qr_ayuda_invitado_b": "While the launch promo lasts, their first ride gets {pct}% off. Tell them when you share your QR.",
+  "qr_ayuda_banco": "On card rides the bank fee comes out of your share; cash has no bank fee. Applies up to the monthly guest-ride limit.",
+  "qr_ayuda_entendido": "Got it"
 }

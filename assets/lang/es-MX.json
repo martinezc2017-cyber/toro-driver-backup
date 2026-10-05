@@ -3045,5 +3045,17 @@
   "qr_ayuda_invitado_t": "Tu invitado también gana",
   "qr_ayuda_invitado_b": "Mientras dure la promoción de lanzamiento, su primer viaje trae {pct}% de descuento. Díselo cuando compartas tu QR.",
   "qr_ayuda_banco": "En viajes con tarjeta la comisión del banco sale de tu parte; en efectivo no hay banco. Aplica hasta el límite mensual de viajes de invitado.",
-  "qr_ayuda_entendido": "Entendido"
+  "qr_ayuda_entendido": "Entendido",
+  "home_docs_missing_title": "Te faltan documentos para conectarte",
+  "home_docs_missing_desc": "Súbelos en Documentos. En cuanto estén completos y vigentes podrás conectarte y recibir viajes.",
+  "home_docs_missing_list": "Falta: {}",
+  "home_docs_upload_btn": "Subir documentos",
+  "doc_tipo_driver_license": "Licencia de conducir",
+  "doc_tipo_ine": "INE",
+  "doc_tipo_profile_photo": "Foto de perfil",
+  "doc_tipo_proof_of_address": "Comprobante de domicilio",
+  "doc_tipo_rfc_constancia": "Constancia del RFC",
+  "doc_tipo_vehicle_insurance": "Seguro del vehículo",
+  "doc_tipo_vehicle_registration": "Tarjeta de circulación",
+  "doc_tipo_vencido": "{} (vencido)"
 }

@@ -3045,5 +3045,17 @@
   "qr_ayuda_invitado_t": "Your guest wins too",
   "qr_ayuda_invitado_b": "While the launch promo lasts, their first ride gets {pct}% off. Tell them when you share your QR.",
   "qr_ayuda_banco": "On card rides the bank fee comes out of your share; cash has no bank fee. Applies up to the monthly guest-ride limit.",
-  "qr_ayuda_entendido": "Got it"
+  "qr_ayuda_entendido": "Got it",
+  "home_docs_missing_title": "You're missing documents to go online",
+  "home_docs_missing_desc": "Upload them in Documents. As soon as they're complete and valid you can go online and receive rides.",
+  "home_docs_missing_list": "Missing: {}",
+  "home_docs_upload_btn": "Upload documents",
+  "doc_tipo_driver_license": "Driver's license",
+  "doc_tipo_ine": "INE (ID)",
+  "doc_tipo_profile_photo": "Profile photo",
+  "doc_tipo_proof_of_address": "Proof of address",
+  "doc_tipo_rfc_constancia": "RFC certificate",
+  "doc_tipo_vehicle_insurance": "Vehicle insurance",
+  "doc_tipo_vehicle_registration": "Vehicle registration card",
+  "doc_tipo_vencido": "{} (expired)"
 }

@@ -1286,6 +1286,7 @@ class _HomeScreenState extends State<HomeScreen>
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           // Profile completion banner for new drivers
+                          _buildDocsFaltantesBanner(),
                           _buildProfileCompletionBanner(),
                           // Recordatorio Stripe Connect ("conecta tu banco") — mismo
                           // patron que el banner del vendedor: aparece si el chofer
@@ -1335,6 +1336,79 @@ class _HomeScreenState extends State<HomeScreen>
           },
         );
     }
+  }
+
+  // Documentos que le faltan al chofer según la regla OFICIAL del servidor
+  // (estado_documentos_conductor: la misma que decide si se puede conectar y si
+  // se le aprueba). Antes el inicio solo revisaba las firmas: quien firmaba veía
+  // "Subir documentos" en verde aunque no hubiera subido INE, RFC ni comprobante.
+  Future<List<String>>? _faltantesFuture;
+  String? _faltantesDe;
+
+  Future<List<String>> _cargarFaltantes(String driverId) async {
+    try {
+      final r = await Supabase.instance.client
+          .rpc('estado_documentos_conductor', params: {'p_driver_id': driverId});
+      if (r is! Map) return const [];
+      final faltan = ((r['faltantes'] ?? []) as List).map((t) => 'doc_tipo_$t'.tr());
+      final vencidos = ((r['vencidos'] ?? []) as List)
+          .map((t) => 'doc_tipo_vencido'.tr(args: ['doc_tipo_$t'.tr()]));
+      return [...vencidos, ...faltan];
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  Widget _buildDocsFaltantesBanner() {
+    final driver = Provider.of<DriverProvider>(context, listen: false).driver;
+    if (driver == null) return const SizedBox.shrink();
+    if (_faltantesDe != driver.id || _faltantesFuture == null) {
+      _faltantesDe = driver.id;
+      _faltantesFuture = _cargarFaltantes(driver.id);
+    }
+    return FutureBuilder<List<String>>(
+      future: _faltantesFuture,
+      builder: (context, snap) {
+        final faltan = snap.data ?? const <String>[];
+        if (faltan.isEmpty) return const SizedBox.shrink();
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF2A1215),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.error.withValues(alpha: 0.5)),
+          ),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Icon(Icons.assignment_late, color: AppColors.error, size: 22),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text('home_docs_missing_title'.tr(),
+                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.bold)),
+              ),
+            ]),
+            const SizedBox(height: 6),
+            Text('home_docs_missing_list'.tr(args: [faltan.join(', ')]),
+                style: TextStyle(color: AppColors.error, fontSize: 13, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 4),
+            Text('home_docs_missing_desc'.tr(), style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => Navigator.pushNamed(context, '/documents').then((_) {
+                  if (mounted) setState(() => _faltantesFuture = null); // al volver, se revisa otra vez
+                }),
+                icon: const Icon(Icons.upload_file, size: 18),
+                label: Text('home_docs_upload_btn'.tr()),
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white),
+              ),
+            ),
+          ]),
+        );
+      },
+    );
   }
 
   /// Profile completion banner for newly registered drivers

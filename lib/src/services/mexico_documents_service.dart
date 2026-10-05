@@ -142,31 +142,24 @@ class MexicoDocumentsService {
     DateTime? expiryDate,
   }) async {
     try {
-      // Upload front file
-      final frontFileName = '${driverId}_${documentType}_front_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final frontPath = 'documents/$driverId/$frontFileName';
+      // Bucket PRIVADO driver-documents, carpeta = auth.uid() (lo exige su política
+      // de lectura). Antes iba al bucket PÚBLICO 'documents' con getPublicUrl: un
+      // INE o un comprobante de domicilio quedaban abiertos a cualquiera con la liga.
+      // Se guarda "driver-documents/<ruta>" (no una URL): quien lo ve lo firma.
+      const bucket = 'driver-documents';
+      final carpeta = _client.auth.currentUser?.id ?? driverId;
+      final ts = DateTime.now().millisecondsSinceEpoch;
 
-      await _client.storage
-          .from('documents')
-          .upload(frontPath, frontFile);
-
-      final frontUrl = _client.storage
-          .from('documents')
-          .getPublicUrl(frontPath);
+      final frontPath = '$carpeta/mx_${documentType}_front_$ts.jpg';
+      await _client.storage.from(bucket).upload(frontPath, frontFile);
+      final frontUrl = '$bucket/$frontPath';
 
       // Upload back file if provided
       String? backUrl;
       if (backFile != null) {
-        final backFileName = '${driverId}_${documentType}_back_${DateTime.now().millisecondsSinceEpoch}.jpg';
-        final backPath = 'documents/$driverId/$backFileName';
-
-        await _client.storage
-            .from('documents')
-            .upload(backPath, backFile);
-
-        backUrl = _client.storage
-            .from('documents')
-            .getPublicUrl(backPath);
+        final backPath = '$carpeta/mx_${documentType}_back_$ts.jpg';
+        await _client.storage.from(bucket).upload(backPath, backFile);
+        backUrl = '$bucket/$backPath';
       }
 
       // Insert document record

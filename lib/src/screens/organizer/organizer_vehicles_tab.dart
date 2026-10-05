@@ -160,7 +160,7 @@ class _OrganizerVehiclesTabState extends State<OrganizerVehiclesTab> {
 
     final driverAppLink = Platform.isIOS
         ? 'https://apps.apple.com/app/toro-driver/id6760872144'
-        : 'https://play.google.com/store/apps/details?id=com.toro.driver';
+        : 'https://play.google.com/store/apps/details?id=com.tororide.driver';
     final message = 'organizer.invite_message'.tr(namedArgs: {'link': driverAppLink});
 
     Share.share(message, subject: 'organizer.invite_driver'.tr());

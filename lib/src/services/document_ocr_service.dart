@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
@@ -217,10 +217,34 @@ class DocumentOcrService {
         .join(' ');
   }
 
+  /// Solo para pruebas: el mismo análisis que se hace sobre el texto del OCR.
+  @visibleForTesting
+  DriverLicenseData parseLicenseText(String text) => _parseDriverLicense(text);
+
   /// Parse driver's license text
   DriverLicenseData _parseDriverLicense(String text) {
     final upperText = text.toUpperCase();
     final lines = text.split('\n');
+
+    // Licencia mexicana: fechas día/mes, "VENCIMIENTO / EXPIRES ON" con la fecha
+    // en el renglón de abajo, número BC… o tras "NÚMERO DE LICENCIA", CURP y
+    // estado de 2 letras. Con el lector de EUA (5 oct 2026) ninguna de las 9
+    // licencias guardó vencimiento ni CURP, 4 números salieron basura
+    // ("ENCIAV", "NOMBRE") y el 05/09/2029 se habría leído como 9 de mayo.
+    if (_esLicenciaMx(upperText)) {
+      final mxLines = upperText.split('\n').map((l) => l.trim()).where((l) => l.isNotEmpty).toList();
+      return DriverLicenseData(
+        licenseNumber: _extractLicenseNumberMx(upperText, mxLines),
+        fullName: _extractLicenseName(lines),
+        dateOfBirth: null,
+        expiryDate: _extractLicenseExpiryMx(mxLines, upperText),
+        address: null,
+        state: _extractStateMx(upperText),
+        licenseClass: _extractLicenseClassMx(mxLines),
+        curp: _extractCurp(upperText),
+        rawText: text,
+      );
+    }
 
     return DriverLicenseData(
       licenseNumber: _extractLicenseNumber(upperText, lines),
@@ -255,9 +279,92 @@ class DocumentOcrService {
   /// H/M (sex) + 5 letters (state + consonants) + 2 alphanumeric (homoclave).
   /// The strict format makes regex extraction reliable.
   String? _extractCurp(String text) {
+    // Se corrigen confusiones típicas del OCR (O->0, S->5, B->8…) solo en las
+    // posiciones que por regla son dígitos: la fecha (5-10) y la homoclave final
+    // (17-18 para nacidos antes de 2000). "MOLM900905HBCSPRO5" -> "...PR05".
+    const dig = {'O': '0', 'Q': '0', 'D': '0', 'I': '1', 'L': '1', 'S': '5', 'B': '8', 'Z': '2', 'G': '6'};
+    String fix(String s) => s.split('').map((c) => dig[c] ?? c).join();
+    for (final linea in text.split('\n')) {
+      final s = linea.replaceAll(RegExp(r'[^A-Z0-9]'), '');
+      for (var i = 0; i + 18 <= s.length; i++) {
+        final c = s.substring(i, i + 18);
+        final cand = c.substring(0, 4) + fix(c.substring(4, 10)) + c.substring(10, 16) + fix(c.substring(16, 18));
+        if (RegExp(r'^[A-Z]{4}\d{6}[HM][A-Z]{5}\d{2}$').hasMatch(cand)) return cand;
+      }
+    }
     final curpRegex = RegExp(r'\b([A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]{2})\b');
-    final match = curpRegex.firstMatch(text);
-    return match?.group(1);
+    return curpRegex.firstMatch(text)?.group(1);
+  }
+
+  // ==========================================================================
+  // LICENCIA MEXICANA
+  // ==========================================================================
+
+  bool _esLicenciaMx(String t) =>
+      t.contains('LICENCIA') || t.contains('CURP') || t.contains('ESTADOS UNIDOS MEXICANOS');
+
+  /// Fechas dd/mm/aaaa (México).
+  List<DateTime> _fechasMx(String t) {
+    final out = <DateTime>[];
+    for (final m in RegExp(r'(\d{1,2})\/(\d{1,2})\/(\d{4})').allMatches(t)) {
+      final d = int.parse(m.group(1)!), mo = int.parse(m.group(2)!), y = int.parse(m.group(3)!);
+      if (mo < 1 || mo > 12 || d < 1 || d > 31) continue;
+      out.add(DateTime(y, mo, d));
+    }
+    return out;
+  }
+
+  DateTime? _extractLicenseExpiryMx(List<String> lines, String t) {
+    for (var i = 0; i < lines.length; i++) {
+      if (RegExp(r'VENC|EXPIRES|XPIRES|HASTA|RASTA').hasMatch(lines[i])) {
+        for (var j = i; j < lines.length && j <= i + 2; j++) {
+          final f = _fechasMx(lines[j]);
+          if (f.isNotEmpty) return f.reduce((a, b) => a.isAfter(b) ? a : b);
+        }
+      }
+    }
+    // Sin etiqueta legible: la fecha más lejana (nacimiento < expedición < vencimiento).
+    final f = _fechasMx(t);
+    if (f.isEmpty) return null;
+    final max = f.reduce((a, b) => a.isAfter(b) ? a : b);
+    return max.year >= DateTime.now().year ? max : null;
+  }
+
+  String? _extractLicenseNumberMx(String t, List<String> lines) {
+    final bc = RegExp(r'\bBC\d{12}\b').firstMatch(t);
+    if (bc != null) return bc.group(0);
+    final dosLetras = RegExp(r'\b[A-Z]{2}\d{8}\b').firstMatch(t);
+    if (dosLetras != null) return dosLetras.group(0);
+    for (var i = 0; i < lines.length; i++) {
+      if (RegExp(r'LICENSE NUMBER|N[UÚÜ]MERO.{0,3}DE LICENCIA').hasMatch(lines[i])) {
+        for (var j = i; j < lines.length && j <= i + 2; j++) {
+          final m = RegExp(r'\b\d{9,12}\b').firstMatch(lines[j]);
+          if (m != null) return m.group(0);
+        }
+      }
+    }
+    return null;
+  }
+
+  /// Estado en clave RENAPO de 2 letras (drivers.license_state es varchar(2)).
+  String? _extractStateMx(String t) {
+    const estados = {
+      'BAJA CALIFORNIA SUR': 'BS', 'BAJA CALIFORNIA': 'BC', 'SONORA': 'SR', 'CHIHUAHUA': 'CH',
+      'SINALOA': 'SL', 'JALISCO': 'JC', 'ZACATECAS': 'ZS', 'NUEVO LEON': 'NL', 'NUEVO LEÓN': 'NL',
+      'CIUDAD DE MEXICO': 'DF', 'CIUDAD DE MÉXICO': 'DF', 'ESTADO DE MEXICO': 'MC', 'ESTADO DE MÉXICO': 'MC',
+    };
+    for (final e in estados.entries) {
+      if (t.contains(e.key)) return e.value;
+    }
+    return null;
+  }
+
+  /// Tipo de licencia: renglón con una sola letra A-F (E1 en CDMX).
+  String? _extractLicenseClassMx(List<String> lines) {
+    for (final l in lines) {
+      if (RegExp(r'^[A-F]\d?$').hasMatch(l)) return l;
+    }
+    return null;
   }
 
   // ==========================================================================
@@ -1223,6 +1330,7 @@ class DriverLicenseData {
   final String? address;
   final String? state;
   final String? licenseClass;
+  final String? curp;
   final String rawText;
 
   DriverLicenseData({
@@ -1233,6 +1341,7 @@ class DriverLicenseData {
     this.address,
     this.state,
     this.licenseClass,
+    this.curp,
     required this.rawText,
   });
 

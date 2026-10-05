@@ -77,6 +77,11 @@ class DocumentService {
           if (ocrData.expiryDate != null) {
             updateData['license_expiry'] = ocrData.expiryDate!.toIso8601String().split('T')[0];
           }
+          // Antes se leían pero no se guardaban (5 oct 2026): sin vencimiento ni
+          // CURP en ninguna licencia. license_state es varchar(2).
+          if (ocrData.curp != null) updateData['curp'] = ocrData.curp;
+          if (ocrData.licenseClass != null) updateData['license_type'] = ocrData.licenseClass;
+          if (ocrData.state != null && ocrData.state!.length == 2) updateData['license_state'] = ocrData.state;
           // Store raw OCR text for admin review
           updateData['license_ocr_raw'] = ocrData.rawText;
         }

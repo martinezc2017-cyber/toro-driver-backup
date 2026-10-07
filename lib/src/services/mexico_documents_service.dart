@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
+import '../core/logging/toro_app_logger.dart';
 
 /// Service for handling Mexican driver documents
 class MexicoDocumentsService {
@@ -179,8 +180,10 @@ class MexicoDocumentsService {
           .select()
           .single();
 
+      ToroAppLogger.info(source: 'documentos', event: 'subio', context: {'tipo': documentType, 'mx': true});
       return MexicoDocument.fromJson(response);
     } catch (e) {
+      ToroAppLogger.warn(source: 'documentos', event: 'fallo_subida', message: e.toString(), context: {'tipo': documentType, 'mx': true});
       rethrow;
     }
   }

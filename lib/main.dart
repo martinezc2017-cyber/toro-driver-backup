@@ -76,6 +76,8 @@ import 'src/screens/organizer/organizer_profile_screen.dart';
 // Tourism screens
 import 'src/screens/tourism/vehicle_request_screen.dart';
 import 'src/screens/tourism/driver_bid_screen.dart';
+import 'src/core/logging/toro_app_logger.dart';
+import 'src/core/logging/uso_app_tracker.dart';
 
 /// FCM background handler - must be top-level function
 @pragma('vm:entry-point')
@@ -121,6 +123,8 @@ void main() async {
   // Supabase MUST init before runApp — AuthProvider accesses client in constructor
   await SupabaseConfig.initialize();
   debugPrint('[MAIN] Supabase done at ${_mainSw.elapsedMilliseconds}ms');
+  // Uso de la app (pantallas del chofer → app_logs, como el rider).
+  unawaited(ToroAppLogger.init());
   unawaited(AppInstallationService.instance.recordOpen());
 
   debugPrint('[MAIN] runApp at ${_mainSw.elapsedMilliseconds}ms');
@@ -250,6 +254,7 @@ class ToroDriverApp extends StatelessWidget {
       ],
       child: MaterialApp(
         navigatorKey: InAppBannerService.navigatorKey,
+        navigatorObservers: [UsoAppTracker.observer],
         title: 'Toro Driver',
         debugShowCheckedModeBanner: false,
         // Galaxy background behind EVERY screen (scaffolds are transparent).

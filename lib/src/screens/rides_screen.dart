@@ -498,7 +498,7 @@ class _RidesScreenState extends State<RidesScreen>
                       decoration: BoxDecoration(
                         gradient: ride.type == RideType.marketplace
                             ? const LinearGradient(
-                                colors: [AppColors.gold, Color(0xFFFFA500)],
+                                colors: [AppColors.gold, AppColors.goldDeep],
                               )
                             : AppColors.primaryGradient,
                         borderRadius: BorderRadius.circular(10),
@@ -621,7 +621,7 @@ class _RidesScreenState extends State<RidesScreen>
                                     gradient: const LinearGradient(
                                       colors: [
                                         AppColors.success,
-                                        Color(0xFF00BFA5),
+                                        AppColors.successLight,
                                       ],
                                     ),
                                     borderRadius: BorderRadius.circular(6),
@@ -980,7 +980,7 @@ class _RidesScreenState extends State<RidesScreen>
                         ),
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
-                            colors: [AppColors.success, Color(0xFF00BFA5)],
+                            colors: [AppColors.success, AppColors.successLight],
                           ),
                           borderRadius: BorderRadius.circular(4),
                         ),
@@ -1235,7 +1235,7 @@ class _RidesScreenState extends State<RidesScreen>
                                         gradient: const LinearGradient(
                                           colors: [
                                             AppColors.success,
-                                            Color(0xFF00BFA5),
+                                            AppColors.successLight,
                                           ],
                                         ),
                                         borderRadius: BorderRadius.circular(8),

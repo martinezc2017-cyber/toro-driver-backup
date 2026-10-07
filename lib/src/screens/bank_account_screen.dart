@@ -446,7 +446,7 @@ class _BankAccountScreenState extends State<BankAccountScreen>
               : AppColors.primary,
           foregroundColor: _accountStatus == StripeAccountStatus.active
               ? AppColors.primary
-              : Colors.black,
+              : Colors.white,
           disabledBackgroundColor: AppColors.card,
           padding: const EdgeInsets.symmetric(vertical: 14),
           shape: RoundedRectangleBorder(

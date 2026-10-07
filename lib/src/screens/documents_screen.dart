@@ -89,8 +89,8 @@ class _DocumentsScreenState extends State<DocumentsScreen>
           final isMexico =
               driverRow['country_code']?.toString().toUpperCase() == 'MX';
           if (_isMexico != isMexico) {
-            final oldIndex = _tabController.index;
-            _tabController.dispose();
+            final old = _tabController;
+            final oldIndex = old.index;
             _isMexico = isMexico;
             final tabCount = _isMexico ? 3 : 2;
             _tabController = TabController(
@@ -98,6 +98,9 @@ class _DocumentsScreenState extends State<DocumentsScreen>
               vsync: this,
               initialIndex: oldIndex < tabCount ? oldIndex : tabCount - 1,
             );
+            // El TabBar sigue suscrito al controlador viejo hasta que se
+            // reconstruya con el nuevo; desecharlo antes tronaba la pantalla.
+            WidgetsBinding.instance.addPostFrameCallback((_) => old.dispose());
           }
           _driverStateCode = (driverRow['state_code'] as String?) ?? 'MX';
           _driverRfc = driverRow['rfc'] as String?;

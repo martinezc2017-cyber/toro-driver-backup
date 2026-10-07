@@ -254,7 +254,7 @@ class MapboxNavigationService {
         bearing: bearing,
         pitch: 60, // 3D perspective
       ),
-      styleUri: MapboxStyles.DARK,
+      styleUri: MapboxStyles.LIGHT,
       onMapCreated: onMapCreated,
     );
   }

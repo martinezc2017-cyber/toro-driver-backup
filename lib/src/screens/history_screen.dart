@@ -532,7 +532,7 @@ ${_trips.take(5).map((t) => '- ${t.pickupAddress} → ${t.dropoffAddress}: ${for
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? Colors.black : AppColors.textSecondary,
+            color: isSelected ? Colors.white : AppColors.textSecondary,
             fontWeight: FontWeight.w600,
             fontSize: 12,
           ),

@@ -186,27 +186,27 @@ class _VehicleScreenState extends State<VehicleScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppColors.border,
+                  color: Colors.white.withValues(alpha: 0.22),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
                   vehicle.status.name.toUpperCase(),
-                  style: const TextStyle(color: AppColors.textPrimary, fontSize: 11, fontWeight: FontWeight.w600),
+                  style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 16),
-          Icon(Icons.directions_car, color: AppColors.textPrimary, size: 40),
+          Icon(Icons.directions_car, color: Colors.white, size: 40),
           const SizedBox(height: 12),
           Text(
             '${vehicle.brand} ${vehicle.model}',
-            style: const TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
+            style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 4),
           Text(
             '${vehicle.year} - ${vehicle.color}',
-            style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
+            style: TextStyle(color: Colors.white, fontSize: 13),
           ),
           const SizedBox(height: 12),
           Container(

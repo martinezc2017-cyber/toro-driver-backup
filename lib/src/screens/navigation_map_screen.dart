@@ -7,6 +7,7 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import '../utils/app_colors.dart';
 import 'package:flutter/services.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart' as geo;
@@ -1629,7 +1630,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
+        backgroundColor: AppColors.surface,
         title: Text(
           'nav.cancel_trip_question'.tr(),
           style: const TextStyle(color: Colors.white),
@@ -1722,7 +1723,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
+        backgroundColor: AppColors.surface,
         title: Text(
           'nav.passenger_no_show_question'.tr(),
           style: const TextStyle(color: Colors.white),
@@ -2554,7 +2555,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1C1C1E),
+      backgroundColor: AppColors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
@@ -2761,7 +2762,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                             // Navegacion 3D inclinada (45°) SIEMPRE con viaje activo.
                             pitch: ride != null ? 45.0 : 0.0,
                           ),
-                    styleUri: 'mapbox://styles/mapbox/navigation-night-v1',
+                    styleUri: 'mapbox://styles/mapbox/navigation-day-v1',
                     onMapCreated: _onMapCreated,
                     androidHostingMode: AndroidPlatformViewHostingMode.VD,
                   ),
@@ -2830,9 +2831,9 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                         vertical: 12,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1E1E1E).withOpacity(0.92),
+                        color: Colors.white.withValues(alpha: 0.96),
                         borderRadius: BorderRadius.circular(30),
-                        border: Border.all(color: Colors.white10),
+                        border: Border.all(color: AppColors.border),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -2881,23 +2882,17 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                       width: 46,
                       height: 46,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1E1E1E).withOpacity(0.9),
+                        color: Colors.white,
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.15),
-                          width: 1,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.4),
-                            blurRadius: 10,
-                            offset: const Offset(0, 3),
-                          ),
+                        border: Border.all(color: Colors.white, width: 1),
+                        boxShadow: const [
+                          BoxShadow(color: AppColors.edge, offset: Offset(0, 4)),
+                          BoxShadow(color: Color(0x24102A56), blurRadius: 14, offset: Offset(0, 6)),
                         ],
                       ),
                       child: const Icon(
                         Icons.arrow_back_rounded,
-                        color: Colors.white,
+                        color: AppColors.primary,
                         size: 24,
                       ),
                     ),
@@ -2931,9 +2926,9 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: const Color(0xFF1E1E1E).withOpacity(0.92),
+          color: Colors.white.withValues(alpha: 0.96),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.white10),
+          border: Border.all(color: AppColors.border),
         ),
         child: Row(
           children: [
@@ -2958,7 +2953,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                 isOnline
                     ? 'nav.waiting_rides'.tr()
                     : 'nav.offline_no_rides'.tr(),
-                style: const TextStyle(color: Colors.white54, fontSize: 14),
+                style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
               ),
             ),
           ],
@@ -2972,7 +2967,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
         maxHeight: MediaQuery.of(context).size.height * 0.45,
       ),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E1E1E).withOpacity(0.95),
+        color: Colors.white.withValues(alpha: 0.96),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white12),
       ),

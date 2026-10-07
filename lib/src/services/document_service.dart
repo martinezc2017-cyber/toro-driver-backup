@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
 import '../core/logging/app_logger.dart';
 import 'document_ocr_service.dart';
+import '../core/logging/toro_app_logger.dart';
 
 /// Service for managing driver documents with automatic OCR
 /// Uses existing tables: drivers, vehicles, vehicle_inspections
@@ -549,14 +550,20 @@ class DocumentService {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final fileName = '$entityId/${type}_$timestamp.$extension';
 
-    await _client.storage.from(_bucketName).upload(
-      fileName,
-      file,
-      fileOptions: FileOptions(
-        contentType: _getContentType(extension),
-        upsert: false,
-      ),
-    );
+    try {
+      await _client.storage.from(_bucketName).upload(
+        fileName,
+        file,
+        fileOptions: FileOptions(
+          contentType: _getContentType(extension),
+          upsert: false,
+        ),
+      );
+      ToroAppLogger.info(source: 'documentos', event: 'subio', context: {'tipo': type});
+    } catch (e) {
+      ToroAppLogger.warn(source: 'documentos', event: 'fallo_subida', message: e.toString(), context: {'tipo': type});
+      rethrow;
+    }
 
     return _client.storage.from(_bucketName).getPublicUrl(fileName);
   }

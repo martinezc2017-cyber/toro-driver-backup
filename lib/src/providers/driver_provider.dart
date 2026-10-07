@@ -12,6 +12,7 @@ import '../config/supabase_config.dart';
 import '../config/stripe_config.dart';
 import '../models/driver_model.dart';
 import '../utils/money_format.dart' show setUserCountry;
+import '../core/logging/toro_app_logger.dart';
 
 class DriverProvider with ChangeNotifier {
   final DriverService _driverService = DriverService();
@@ -256,7 +257,26 @@ class DriverProvider with ChangeNotifier {
 
   // Update online status
   // VALIDA documentos y auto-aprueba si están completos
+  //
+  // "Uso de la app": cada intento de conectarse queda registrado con su
+  // resultado y, si no pudo, el motivo (documentos que faltan, suspendido…).
   Future<void> setOnlineStatus(bool online) async {
+    if (_driver == null || !online) return _setOnlineStatus(online);
+    try {
+      await _setOnlineStatus(online);
+      ToroAppLogger.info(source: 'conexion', event: 'conectarse', context: {'resultado': 'ok'});
+    } catch (e) {
+      ToroAppLogger.warn(
+        source: 'conexion',
+        event: 'conectarse',
+        message: e.toString().replaceFirst('Exception: ', ''),
+        context: {'resultado': 'bloqueado'},
+      );
+      rethrow;
+    }
+  }
+
+  Future<void> _setOnlineStatus(bool online) async {
     if (_driver == null) return;
 
     // Si va a OFFLINE, permitir siempre

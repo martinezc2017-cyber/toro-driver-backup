@@ -23,6 +23,7 @@ import 'driver_onboarding_screen.dart';
 import 'permissions_gate_screen.dart';
 import '../services/version_check_service.dart';
 import '../widgets/version_check_dialog.dart';
+import '../core/logging/uso_app_tracker.dart';
 
 class AuthWrapper extends StatefulWidget {
   const AuthWrapper({super.key});
@@ -135,6 +136,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
     }
 
     if (_localTermsAccepted != true) {
+      _uso('/terminos');
       return const TermsAcceptanceScreen();
     }
 
@@ -150,6 +152,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
         if (!authProvider.isAuthenticated) {
           _initializedDriverId = null;
           DebugLogger.log('WRAPPER_SCREEN', detail: 'LOGIN (not authenticated)');
+          _uso('/login');
           return const LoginScreen();
         }
 
@@ -159,6 +162,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
           final email = Supabase.instance.client.auth.currentUser?.email ?? 'NO EMAIL';
           final uid = Supabase.instance.client.auth.currentUser?.id ?? 'NO UID';
           DebugLogger.log('WRAPPER_SCREEN', detail: 'ONBOARDING (driver null) email=$email uid=$uid');
+          _uso('/alta-chofer');
           return const DriverOnboardingScreen();
         }
 
@@ -188,6 +192,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
         }
 
         if (driver.vehicleMode == 'tourism' && driver.activeTourismEventId != null) {
+          _uso('/turismo');
           // Wrap in try-catch builder to prevent crash loop if event is invalid/limbo
           return PermissionsGateScreen(
             child: _SafeTourismWrapper(eventId: driver.activeTourismEventId!),
@@ -196,6 +201,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
         // Organizers go directly to OrganizerHomeScreen — skip driver HomeScreen
         if (driver.role == 'organizer') {
+          _uso('/organizador');
           return PermissionsGateScreen(
             child: Scaffold(
               backgroundColor: Colors.transparent,
@@ -205,9 +211,16 @@ class _AuthWrapperState extends State<AuthWrapper> {
         }
 
         DebugLogger.log('WRAPPER_SCREEN', detail: 'HOME (driver=${driver.id}, role=${driver.role}, vehicleMode=${driver.vehicleMode})');
+        _uso('/inicio');
         return const PermissionsGateScreen(child: HomeScreen());
       },
     );
+  }
+
+  /// "Uso de la app": qué pantalla raíz ve el chofer. Solo cuenta si está al
+  /// frente (una reconstrucción con otra pantalla encima no es una visita).
+  void _uso(String pantalla) {
+    UsoAppTracker.marcarRaiz(pantalla, visible: ModalRoute.of(context)?.isCurrent ?? true);
   }
 
   Widget _buildLoadingScreen() {

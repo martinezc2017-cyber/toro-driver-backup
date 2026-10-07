@@ -301,7 +301,7 @@ class _RidesScreenState extends State<RidesScreen>
                       filter,
                       style: TextStyle(
                         color: isSelected
-                            ? AppColors.textPrimary
+                            ? Colors.white
                             : AppColors.textSecondary,
                         fontWeight: FontWeight.w600,
                         fontSize: 11,
@@ -542,7 +542,7 @@ class _RidesScreenState extends State<RidesScreen>
                               child: Text(
                                 '🛒 ${'rides.marketplace'.tr().toUpperCase()}',
                                 style: const TextStyle(
-                                  color: Colors.black,
+                                  color: AppColors.textPrimary,
                                   fontSize: 11,
                                   fontWeight: FontWeight.w900,
                                   letterSpacing: 1,
@@ -566,7 +566,7 @@ class _RidesScreenState extends State<RidesScreen>
                               child: Text(
                                 '📅 PROGRAMADO · ${_fmtScheduled(ride.scheduledTime!)}',
                                 style: const TextStyle(
-                                  color: Colors.black,
+                                  color: Colors.white,
                                   fontSize: 11,
                                   fontWeight: FontWeight.w900,
                                   letterSpacing: 1,

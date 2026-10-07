@@ -1600,7 +1600,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                     child: Text(
                       '${_openEvents.length}',
                       style: const TextStyle(
-                        color: Colors.black,
+                        color: AppColors.textPrimary,
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
                       ),
@@ -1629,7 +1629,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                     child: Text(
                       '${_requests.length}',
                       style: const TextStyle(
-                        color: Colors.black,
+                        color: AppColors.textPrimary,
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
                       ),
@@ -1658,7 +1658,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                     child: Text(
                       '${_myBids.length}',
                       style: const TextStyle(
-                        color: Colors.black,
+                        color: AppColors.textPrimary,
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
                       ),
@@ -1687,7 +1687,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                     child: Text(
                       '${_tripRequests.length}',
                       style: const TextStyle(
-                        color: Colors.black,
+                        color: AppColors.textPrimary,
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
                       ),
@@ -1966,7 +1966,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                     child: const Text(
                       'Pujar',
                       style: TextStyle(
-                        color: Colors.black,
+                        color: AppColors.textPrimary,
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                       ),

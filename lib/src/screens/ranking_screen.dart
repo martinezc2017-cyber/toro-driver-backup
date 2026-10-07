@@ -326,8 +326,9 @@ class _RankingScreenState extends State<RankingScreen> with SingleTickerProvider
             Icon(Icons.leaderboard, size: 48, color: AppColors.textSecondary.withValues(alpha: 0.3)),
             const SizedBox(height: 16),
             Text(
-              isStateTab
-                  ? 'ranking.no_drivers_state'.tr(namedArgs: {'state': _myState ?? ''})
+              // Sin estado conocido no se dice "No drivers in " a secas.
+              isStateTab && (_myState ?? '').trim().isNotEmpty
+                  ? 'ranking.no_drivers_state'.tr(namedArgs: {'state': _myState!})
                   : 'ranking.no_top10_data'.tr(),
               style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
             ),

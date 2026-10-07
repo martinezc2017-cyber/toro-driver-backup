@@ -633,7 +633,7 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.warning,
-                  foregroundColor: Colors.black,
+                  foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),

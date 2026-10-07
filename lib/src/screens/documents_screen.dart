@@ -1572,7 +1572,7 @@ class _DocumentsScreenState extends State<DocumentsScreen>
       floatingActionButton: FloatingActionButton.small(
         onPressed: _showUploadOptions,
         backgroundColor: AppColors.primary,
-        child: const Icon(Icons.add, color: Colors.black, size: 20),
+        child: const Icon(Icons.add, color: Colors.white, size: 20),
       ),
     );
   }

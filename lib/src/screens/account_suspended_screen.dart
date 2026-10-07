@@ -399,7 +399,7 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen> {
               child: Text(
                 number,
                 style: const TextStyle(
-                  color: Colors.black,
+                  color: Colors.white,
                   fontWeight: FontWeight.w700,
                   fontSize: 11,
                 ),

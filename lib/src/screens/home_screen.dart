@@ -5336,7 +5336,7 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                           child: Text(
                             '📅 PROGRAMADO · ${_fmtSchedHome(widget.ride.scheduledTime!)}',
                             style: const TextStyle(
-                              color: Colors.black,
+                              color: Colors.white,
                               fontSize: 11,
                               fontWeight: FontWeight.w900,
                               letterSpacing: 0.5,

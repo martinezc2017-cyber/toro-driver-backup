@@ -185,8 +185,8 @@ class _MexicoInvoicesScreenState extends State<MexicoInvoicesScreen> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showRequestInvoiceDialog,
         backgroundColor: AppColors.primary,
-        icon: const Icon(Icons.add, color: Colors.black),
-        label: Text('mx_request_invoice'.tr(), style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w600)),
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: Text('mx_request_invoice'.tr(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
       ),
     );
   }

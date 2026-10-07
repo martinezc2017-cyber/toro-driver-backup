@@ -501,7 +501,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
               child: Text(
                 number,
                 style: const TextStyle(
-                  color: Colors.black,
+                  color: Colors.white,
                   fontWeight: FontWeight.w700,
                   fontSize: 12,
                 ),
@@ -1384,7 +1384,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
             ),
             child: Text(
               'request_reset_btn'.tr(),
-              style: const TextStyle(color: Colors.black),
+              style: const TextStyle(color: Colors.white),
             ),
           ),
         ],

@@ -813,7 +813,7 @@ class _OrganizerPassengersScreenState extends State<OrganizerPassengersScreen> {
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
+              color: Color(0x14102A56),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),

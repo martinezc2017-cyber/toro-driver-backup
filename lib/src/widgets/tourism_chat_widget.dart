@@ -842,7 +842,7 @@ class TourismChatWidgetState extends State<TourismChatWidget> {
                         message.message ?? '',
                         style: TextStyle(
                           color:
-                              isMe ? Colors.white : AppColors.textPrimary,
+                              isMe ? AppColors.textPrimary : AppColors.textPrimary,
                           fontSize: 13,
                         ),
                       ),
@@ -858,7 +858,7 @@ class TourismChatWidgetState extends State<TourismChatWidget> {
                             Icons.lock,
                             size: 10,
                             color: isMe
-                                ? Colors.white.withOpacity(0.6)
+                                ? AppColors.textSecondary
                                 : AppColors.warning,
                           ),
                           const SizedBox(width: 3),
@@ -866,7 +866,7 @@ class TourismChatWidgetState extends State<TourismChatWidget> {
                             'tourism_chat.private'.tr(),
                             style: TextStyle(
                               color: isMe
-                                  ? Colors.white.withOpacity(0.6)
+                                  ? AppColors.textSecondary
                                   : AppColors.warning,
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
@@ -878,7 +878,7 @@ class TourismChatWidgetState extends State<TourismChatWidget> {
                           timeStr,
                           style: TextStyle(
                             color: isMe
-                                ? Colors.white.withOpacity(0.7)
+                                ? AppColors.textSecondary
                                 : AppColors.textTertiary,
                             fontSize: 11,
                           ),
@@ -1165,11 +1165,11 @@ class TourismChatWidgetState extends State<TourismChatWidget> {
                           width: 18,
                           height: 18,
                           child: CircularProgressIndicator(
-                              color: Colors.white, strokeWidth: 2),
+                              color: AppColors.textPrimary, strokeWidth: 2),
                         )
                       : Icon(
                           _isPrivateMode ? Icons.lock : Icons.send,
-                          color: Colors.white,
+                          color: AppColors.textPrimary,
                           size: 18,
                         ),
                 ),
@@ -1343,7 +1343,7 @@ class _TourismChatFabState extends State<TourismChatFab> {
               child: Text(
                 _unreadCount > 99 ? '99+' : '$_unreadCount',
                 style: const TextStyle(
-                    color: Colors.white,
+                    color: AppColors.textPrimary,
                     fontSize: 11,
                     fontWeight: FontWeight.w700),
               ),

@@ -5,6 +5,7 @@
 
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../utils/app_colors.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:provider/provider.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -32,10 +33,10 @@ class MarketplaceDeliveryAcceptScreen extends StatefulWidget {
 }
 
 class _State extends State<MarketplaceDeliveryAcceptScreen> {
-  static const _bg = Color(0xFF0A0A0A);
+  static const _bg = AppColors.background;
   static const _card = Color(0xFF161616);
-  static const _yellow = Color(0xFFFFD700);
-  static const _green = Color(0xFF22C55E);
+  static const _yellow = AppColors.gold;
+  static const _green = AppColors.success;
   static const _muted = Color(0xFF8B9099);
 
   final _service = DeliveryService();
@@ -210,9 +211,9 @@ class _State extends State<MarketplaceDeliveryAcceptScreen> {
         elevation: 0,
         title: Text(
           'marketplace_delivery.title'.tr(),
-          style: const TextStyle(color: Colors.white),
+          style: const TextStyle(color: AppColors.textPrimary),
         ),
-        iconTheme: const IconThemeData(color: Colors.white),
+        iconTheme: const IconThemeData(color: AppColors.textPrimary),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: _yellow))
@@ -291,7 +292,7 @@ class _State extends State<MarketplaceDeliveryAcceptScreen> {
                       Text(
                         'marketplace_delivery.stacked_desc'.tr(),
                         style: const TextStyle(
-                          color: Colors.white70,
+                          color: AppColors.textSecondary,
                           fontSize: 12,
                         ),
                       ),
@@ -379,7 +380,7 @@ class _State extends State<MarketplaceDeliveryAcceptScreen> {
             decoration: BoxDecoration(
               color: _card,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFF2A2A2A)),
+              border: Border.all(color: AppColors.border),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -410,7 +411,7 @@ class _State extends State<MarketplaceDeliveryAcceptScreen> {
                         Expanded(
                           child: Text(
                             m['product_name_snapshot']?.toString() ?? '',
-                            style: const TextStyle(color: Colors.white),
+                            style: const TextStyle(color: AppColors.textPrimary),
                           ),
                         ),
                       ],
@@ -536,7 +537,7 @@ class _State extends State<MarketplaceDeliveryAcceptScreen> {
             child: LinearProgressIndicator(
               value: pct,
               minHeight: 6,
-              backgroundColor: Colors.white.withValues(alpha: 0.08),
+              backgroundColor: AppColors.border,
               valueColor: AlwaysStoppedAnimation(color),
             ),
           ),
@@ -558,7 +559,7 @@ class _State extends State<MarketplaceDeliveryAcceptScreen> {
       decoration: BoxDecoration(
         color: _card,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF2A2A2A)),
+        border: Border.all(color: AppColors.border),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -590,7 +591,7 @@ class _State extends State<MarketplaceDeliveryAcceptScreen> {
                 Text(
                   name,
                   style: const TextStyle(
-                    color: Colors.white,
+                    color: AppColors.textPrimary,
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
                   ),
@@ -604,7 +605,7 @@ class _State extends State<MarketplaceDeliveryAcceptScreen> {
                   Text(
                     subtitle,
                     style: const TextStyle(
-                      color: Colors.white70,
+                      color: AppColors.textSecondary,
                       fontSize: 12,
                       fontStyle: FontStyle.italic,
                     ),
@@ -624,7 +625,7 @@ class _State extends State<MarketplaceDeliveryAcceptScreen> {
       decoration: BoxDecoration(
         color: _card,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFF2A2A2A)),
+        border: Border.all(color: AppColors.border),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -633,7 +634,7 @@ class _State extends State<MarketplaceDeliveryAcceptScreen> {
           const SizedBox(width: 6),
           Text(
             text,
-            style: const TextStyle(color: Colors.white70, fontSize: 13),
+            style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
           ),
         ],
       ),

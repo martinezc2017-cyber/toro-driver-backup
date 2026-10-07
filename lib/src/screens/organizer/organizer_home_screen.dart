@@ -166,12 +166,12 @@ class _OrganizerHomeScreenState extends State<OrganizerHomeScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [Color(0xFFFF9500), Color(0xFFFF6B00)],
+            colors: [AppColors.warningLight, AppColors.warningLight],
           ),
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFFFF9500).withValues(alpha: 0.3),
+              color: AppColors.warningLight.withValues(alpha: 0.3),
               blurRadius: 10,
               offset: const Offset(0, 2),
             ),
@@ -182,10 +182,10 @@ class _OrganizerHomeScreenState extends State<OrganizerHomeScreen> {
             Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
+                color: AppColors.border,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(Icons.gavel_rounded, color: Colors.white, size: 18),
+              child: const Icon(Icons.gavel_rounded, color: AppColors.textPrimary, size: 18),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -195,7 +195,7 @@ class _OrganizerHomeScreenState extends State<OrganizerHomeScreen> {
                   Text(
                     '$_activeBidCount puja${_activeBidCount > 1 ? 's' : ''} activa${_activeBidCount > 1 ? 's' : ''}',
                     style: const TextStyle(
-                      color: Colors.white,
+                      color: AppColors.textPrimary,
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
                     ),
@@ -203,14 +203,14 @@ class _OrganizerHomeScreenState extends State<OrganizerHomeScreen> {
                   const Text(
                     'Toca para ver tus pujas',
                     style: TextStyle(
-                      color: Colors.white70,
+                      color: AppColors.textSecondary,
                       fontSize: 11,
                     ),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.arrow_forward_ios, color: Colors.white70, size: 14),
+            const Icon(Icons.arrow_forward_ios, color: AppColors.textSecondary, size: 14),
             const SizedBox(width: 4),
             // Dismiss button
             GestureDetector(
@@ -220,10 +220,10 @@ class _OrganizerHomeScreenState extends State<OrganizerHomeScreen> {
               child: Container(
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
+                  color: AppColors.border,
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: const Icon(Icons.close, color: Colors.white, size: 14),
+                child: const Icon(Icons.close, color: AppColors.textPrimary, size: 14),
               ),
             ),
           ],
@@ -248,7 +248,7 @@ class _OrganizerHomeScreenState extends State<OrganizerHomeScreen> {
           decoration: BoxDecoration(
             color: AppColors.surface.withValues(alpha: 0.5),
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFFFF9500), width: 1.5),
+            border: Border.all(color: AppColors.warningLight, width: 1.5),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -262,7 +262,7 @@ class _OrganizerHomeScreenState extends State<OrganizerHomeScreen> {
               Container(
                 padding: const EdgeInsets.all(5),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [Color(0xFFFF9500), Color(0xFFFF6B00)]),
+                  gradient: const LinearGradient(colors: [AppColors.warningLight, AppColors.warningLight]),
                   borderRadius: BorderRadius.circular(7),
                 ),
                 child: const Icon(Icons.directions_bus_rounded, color: Colors.white, size: 14),
@@ -286,7 +286,7 @@ class _OrganizerHomeScreenState extends State<OrganizerHomeScreen> {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.4),
+            color: Color(0x14102A56),
             blurRadius: 16,
             offset: const Offset(0, -4),
           ),

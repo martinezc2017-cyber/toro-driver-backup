@@ -270,9 +270,9 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
+        statusBarIconBrightness: Brightness.dark,
         systemNavigationBarColor: AppColors.surface,
-        systemNavigationBarIconBrightness: Brightness.light,
+        systemNavigationBarIconBrightness: Brightness.dark,
       ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
@@ -365,20 +365,20 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
       ),
       child: Row(
         children: [
-          const Icon(Icons.lock_outline, color: Color(0xFF856404), size: 18),
+          const Icon(Icons.lock_outline, color: AppColors.warning, size: 18),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               'chat.safety_banner'.tr(),
               style: const TextStyle(
-                color: Color(0xFF856404),
+                color: AppColors.warning,
                 fontSize: 12,
               ),
             ),
           ),
           GestureDetector(
             onTap: () => setState(() => _bannerDismissed = true),
-            child: const Icon(Icons.close, color: Color(0xFF856404), size: 16),
+            child: const Icon(Icons.close, color: AppColors.warning, size: 16),
           ),
         ],
       ),
@@ -496,7 +496,7 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
                     child: Text(
                       'chat.report_submit'.tr(),
                       style: const TextStyle(
-                        color: Colors.white,
+                        color: AppColors.textPrimary,
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
@@ -712,7 +712,7 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
                       child: Text(
                         message.message ?? '',
                         style: TextStyle(
-                          color: isMe ? Colors.white : AppColors.textPrimary,
+                          color: isMe ? AppColors.textPrimary : AppColors.textPrimary,
                           fontSize: 14,
                         ),
                       ),
@@ -727,7 +727,7 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
                           Icon(
                             Icons.person,
                             size: 10,
-                            color: isMe ? Colors.white.withOpacity(0.6) : AppColors.warning,
+                            color: isMe ? AppColors.textSecondary : AppColors.warning,
                           ),
                           const SizedBox(width: 3),
                         ],
@@ -735,7 +735,7 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
                           timeStr,
                           style: TextStyle(
                             color: isMe
-                                ? Colors.white.withOpacity(0.7)
+                                ? AppColors.textSecondary
                                 : AppColors.textTertiary,
                             fontSize: 11,
                           ),
@@ -1035,7 +1035,7 @@ class _TourismChatScreenState extends State<TourismChatScreen> {
                         )
                       : const Icon(
                           Icons.send,
-                          color: Colors.white,
+                          color: AppColors.textPrimary,
                           size: 20,
                         ),
                 ),

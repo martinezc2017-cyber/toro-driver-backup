@@ -1,8 +1,14 @@
-import 'dart:math';
+import 'dart:async';
 import 'dart:ui' show PlatformDispatcher;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../src/utils/app_colors.dart';
+import '../../src/widgets/toro_design_system.dart';
+
+/// Arranque del conductor: la franja eléctrica de la marca a pantalla completa,
+/// el logo REAL (assets/images/toro_logo.png) con su luz y una barra de progreso
+/// fina. Mismo arranque que el rider para que las dos apps se sientan una.
 class ToroSplashScreen extends StatefulWidget {
   final VoidCallback? onComplete;
   final Duration duration;
@@ -10,7 +16,7 @@ class ToroSplashScreen extends StatefulWidget {
   const ToroSplashScreen({
     super.key,
     this.onComplete,
-    this.duration = const Duration(seconds: 5),
+    this.duration = const Duration(milliseconds: 3500),
   });
 
   @override
@@ -22,393 +28,162 @@ class _ToroSplashScreenState extends State<ToroSplashScreen>
   bool get _isSpanish =>
       PlatformDispatcher.instance.locale.languageCode.toLowerCase() == 'es';
 
-  late AnimationController _logoController;
-  late AnimationController _particleController;
-  late AnimationController _textController;
-  late Animation<double> _logoScale;
-  late Animation<double> _logoGlow;
-  late Animation<double> _textOpacity;
-  late Animation<double> _loadingProgress;
-
-  final List<Particle> _particles = [];
-  final Random _random = Random();
+  late AnimationController _mainController;
+  late AnimationController _glowController;
+  late AnimationController _progressController;
+  late Animation<double> _fadeAnimation;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _glowAnimation;
+  late Animation<double> _progressAnimation;
 
   @override
   void initState() {
     super.initState();
-    // Modo edge-to-edge: barras transparentes pero visibles
-    // Evita el mensaje "Viewing full screen" del sistema
-    SystemChrome.setSystemUIOverlayStyle(
-      const SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
-        systemNavigationBarColor: Colors.black,
-        systemNavigationBarIconBrightness: Brightness.light,
-      ),
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+
+    _mainController = AnimationController(duration: const Duration(milliseconds: 2000), vsync: this);
+    _glowController = AnimationController(duration: const Duration(milliseconds: 1500), vsync: this)..repeat(reverse: true);
+    _progressController = AnimationController(duration: widget.duration - const Duration(milliseconds: 400), vsync: this);
+
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _mainController, curve: const Interval(0.0, 0.5, curve: Curves.easeOut)),
     );
-    
-    _initParticles();
-    _initAnimations();
-    _startAnimation();
-  }
-
-  void _initParticles() {
-    for (int i = 0; i < 50; i++) {
-      _particles.add(Particle(
-        x: _random.nextDouble(),
-        y: _random.nextDouble(),
-        size: _random.nextDouble() * 2 + 0.5,
-        speedX: (_random.nextDouble() - 0.5) * 0.002,
-        speedY: (_random.nextDouble() - 0.5) * 0.002,
-        opacity: _random.nextDouble(),
-      ));
-    }
-  }
-
-  void _initAnimations() {
-    _logoController = AnimationController(
-      duration: const Duration(seconds: 2),
-      vsync: this,
+    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(parent: _mainController, curve: const Interval(0.0, 0.6, curve: Curves.easeOutBack)),
+    );
+    _glowAnimation = Tween<double>(begin: 0.55, end: 1.0).animate(
+      CurvedAnimation(parent: _glowController, curve: Curves.easeInOut),
+    );
+    _progressAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _progressController, curve: Curves.easeInOut),
     );
 
-    _particleController = AnimationController(
-      duration: const Duration(seconds: 10),
-      vsync: this,
-    )..repeat();
-
-    _textController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    );
-
-    _logoScale = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _logoController,
-        curve: Curves.easeOutBack,
-      ),
-    );
-
-    _logoGlow = Tween<double>(begin: 0.5, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _logoController,
-        curve: Curves.easeInOut,
-      ),
-    );
-
-    _textOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _textController,
-        curve: Curves.easeIn,
-      ),
-    );
-
-    _loadingProgress = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _logoController,
-        curve: Curves.easeInOut,
-      ),
-    );
-  }
-
-  void _startAnimation() async {
-    await _logoController.forward();
-    await _textController.forward();
-    
-    await Future.delayed(widget.duration - const Duration(seconds: 2));
-    
-    if (mounted) {
-      widget.onComplete?.call();
-    }
+    _mainController.forward();
+    _progressController.forward();
+    Timer(widget.duration, () {
+      if (mounted) widget.onComplete?.call();
+    });
   }
 
   @override
   void dispose() {
-    _logoController.dispose();
-    _particleController.dispose();
-    _textController.dispose();
+    _mainController.dispose();
+    _glowController.dispose();
+    _progressController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          // Fondo con partículas animadas
-          AnimatedBuilder(
-            animation: _particleController,
-            builder: (context, child) {
-              return CustomPaint(
-                size: Size.infinite,
-                painter: GalaxyPainter(
-                  particles: _particles,
-                  progress: _particleController.value,
-                ),
-              );
-            },
-          ),
-
-          // Contenido centrado
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const SizedBox(height: 40),
-                
-                // Logo con efecto de brillo
-                AnimatedBuilder(
-                  animation: _logoController,
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light.copyWith(statusBarColor: Colors.transparent),
+      child: Scaffold(
+        backgroundColor: AppColors.ink,
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            AnimatedBuilder(
+              animation: _glowAnimation,
+              builder: (context, _) => ToroBand(
+                overlap: 0,
+                padding: EdgeInsets.zero,
+                intensity: _glowAnimation.value,
+                child: const SizedBox.expand(),
+              ),
+            ),
+            SafeArea(
+              child: Center(
+                child: AnimatedBuilder(
+                  animation: Listenable.merge([_mainController, _glowController]),
                   builder: (context, child) {
-                    return Transform.scale(
-                      scale: _logoScale.value,
-                      child: Container(
-                        width: 180,
-                        height: 180,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(32),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF00D4FF).withOpacity(0.6 * _logoGlow.value),
-                              blurRadius: 30,
-                              spreadRadius: 5,
+                    return FadeTransition(
+                      opacity: _fadeAnimation,
+                      child: ScaleTransition(
+                        scale: _scaleAnimation,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Spacer(flex: 2),
+                            Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(44),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: ToroColors.blue.withValues(alpha: 0.45 * _glowAnimation.value),
+                                    blurRadius: 70,
+                                    spreadRadius: 10,
+                                  ),
+                                  BoxShadow(
+                                    color: ToroColors.cyan.withValues(alpha: 0.25 * _glowAnimation.value),
+                                    blurRadius: 36,
+                                  ),
+                                ],
+                              ),
+                              child: const ToroLogo(size: 150, glow: false),
                             ),
-                            BoxShadow(
-                              color: const Color(0xFF0064FF).withOpacity(0.4 * _logoGlow.value),
-                              blurRadius: 60,
-                              spreadRadius: 10,
+                            const SizedBox(height: 28),
+                            Text(
+                              'TORO',
+                              style: ToroType.display(context, size: 34).copyWith(
+                                letterSpacing: 6,
+                                shadows: const [Shadow(color: Color(0x8035C6FF), blurRadius: 20)],
+                              ),
                             ),
+                            const SizedBox(height: 6),
+                            Text(
+                              _isSpanish ? 'CONDUCTOR' : 'DRIVER',
+                              style: const TextStyle(
+                                color: ToroColors.gold,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 5,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              _isSpanish ? 'Conduce el futuro' : 'Drive the future',
+                              style: ToroType.body(context, size: 14, color: const Color(0xB8FFFFFF)),
+                            ),
+                            const Spacer(),
+                            Container(
+                              width: 180,
+                              height: 4,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                              child: AnimatedBuilder(
+                                animation: _progressAnimation,
+                                builder: (context, child) => FractionallySizedBox(
+                                  alignment: Alignment.centerLeft,
+                                  widthFactor: _progressAnimation.value,
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      gradient: const LinearGradient(colors: [ToroColors.blue, ToroColors.cyan]),
+                                      borderRadius: BorderRadius.circular(2),
+                                      boxShadow: const [BoxShadow(color: Color(0x8035C6FF), blurRadius: 10, spreadRadius: 1)],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              _isSpanish ? 'CARGANDO' : 'LOADING',
+                              style: const TextStyle(color: Color(0x8CFFFFFF), fontSize: 11.5, letterSpacing: 3, fontWeight: FontWeight.w600),
+                            ),
+                            const Spacer(flex: 1),
                           ],
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(32),
-                          child: Image.asset(
-                            'assets/images/toro-driver-splash.png',
-                            fit: BoxFit.contain,
-                          ),
                         ),
                       ),
                     );
                   },
                 ),
-
-                const SizedBox(height: 40),
-
-                // Texto TORO DRIVER
-                FadeTransition(
-                  opacity: _textOpacity,
-                  child: Column(
-                    children: [
-                      const Text(
-                        'TORO DRIVER',
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 8,
-                          color: Colors.white,
-                          shadows: [
-                            Shadow(
-                              color: Color(0xFF00D4FF),
-                              blurRadius: 20,
-                            ),
-                            Shadow(
-                              color: Color(0xFF0064FF),
-                              blurRadius: 40,
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        _isSpanish ? 'CONDUCE EL FUTURO' : 'DRIVE THE FUTURE',
-                        style: TextStyle(
-                          fontSize: 12,
-                          letterSpacing: 4,
-                          color: const Color(0xFF00D4FF).withOpacity(0.8),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 60),
-
-                // Loading bar
-                FadeTransition(
-                  opacity: _textOpacity,
-                  child: Column(
-                    children: [
-                      Container(
-                        width: 200,
-                        height: 3,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(3),
-                        ),
-                        child: AnimatedBuilder(
-                          animation: _loadingProgress,
-                          builder: (context, child) {
-                            return FractionallySizedBox(
-                              alignment: Alignment.centerLeft,
-                              widthFactor: _loadingProgress.value,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(
-                                    colors: [
-                                      Color(0xFF00D4FF),
-                                      Color(0xFF0064FF),
-                                      Color(0xFF00D4FF),
-                                    ],
-                                  ),
-                                  borderRadius: BorderRadius.circular(3),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: const Color(0xFF00D4FF).withOpacity(0.8),
-                                      blurRadius: 10,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                      const SizedBox(height: 15),
-                      Text(
-                        _isSpanish ? 'CARGANDO...' : 'LOADING...',
-                        style: TextStyle(
-                          fontSize: 11,
-                          letterSpacing: 3,
-                          color: Colors.white.withOpacity(0.8),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
-}
-
-class Particle {
-  double x, y;
-  double size;
-  double speedX, speedY;
-  double opacity;
-
-  Particle({
-    required this.x,
-    required this.y,
-    required this.size,
-    required this.speedX,
-    required this.speedY,
-    required this.opacity,
-  });
-}
-
-class GalaxyPainter extends CustomPainter {
-  final List<Particle> particles;
-  final double progress;
-
-  GalaxyPainter({
-    required this.particles,
-    required this.progress,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    // Dibujar fondo degradado
-    final bgPaint = Paint()
-      ..shader = RadialGradient(
-        colors: [
-          const Color(0xFF001a33).withOpacity(0.4),
-          const Color(0xFF000d1a).withOpacity(0.2),
-          Colors.black.withOpacity(0.3),
-        ],
-        stops: const [0.0, 0.5, 1.0],
-      ).createShader(
-        Rect.fromCenter(
-          center: Offset(size.width / 2, size.height / 2),
-          width: size.width,
-          height: size.height,
-        ),
-      );
-    canvas.drawRect(Offset.zero & size, bgPaint);
-
-    // Efecto de pulso en el centro
-    final pulsePaint = Paint()
-      ..color = const Color(0xFF00D4FF).withOpacity(0.1 + sin(progress * pi * 2) * 0.05)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 50);
-    
-    canvas.drawCircle(
-      Offset(size.width / 2, size.height / 2),
-      100 + sin(progress * pi * 3) * 30,
-      pulsePaint,
-    );
-
-    // Dibujar partículas
-    for (var particle in particles) {
-      // Actualizar posición
-      particle.x += particle.speedX;
-      particle.y += particle.speedY;
-
-      // Efecto de atracción al centro
-      final centerX = 0.5;
-      final centerY = 0.5;
-      final dx = centerX - particle.x;
-      final dy = centerY - particle.y;
-      final dist = sqrt(dx * dx + dy * dy);
-
-      if (dist < 0.3) {
-        particle.x += dx * 0.002;
-        particle.y += dy * 0.002;
-      }
-
-      // Wrap around
-      if (particle.x < 0) particle.x = 1;
-      if (particle.x > 1) particle.x = 0;
-      if (particle.y < 0) particle.y = 1;
-      if (particle.y > 1) particle.y = 0;
-
-      // Dibujar partícula
-      final paint = Paint()
-        ..color = const Color(0xFF00D4FF).withOpacity(particle.opacity)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
-
-      canvas.drawCircle(
-        Offset(particle.x * size.width, particle.y * size.height),
-        particle.size,
-        paint,
-      );
-    }
-
-    // Dibujar líneas de conexión
-    final linePaint = Paint()
-      ..strokeWidth = 0.5
-      ..color = const Color(0xFF00D4FF).withOpacity(0.1);
-
-    for (int i = 0; i < particles.length; i++) {
-      for (int j = i + 1; j < particles.length; j++) {
-        final dx = (particles[i].x - particles[j].x) * size.width;
-        final dy = (particles[i].y - particles[j].y) * size.height;
-        final dist = sqrt(dx * dx + dy * dy);
-
-        if (dist < 80) {
-          linePaint.color = const Color(0xFF00D4FF).withOpacity(0.1 * (1 - dist / 80));
-          canvas.drawLine(
-            Offset(particles[i].x * size.width, particles[i].y * size.height),
-            Offset(particles[j].x * size.width, particles[j].y * size.height),
-            linePaint,
-          );
-        }
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }

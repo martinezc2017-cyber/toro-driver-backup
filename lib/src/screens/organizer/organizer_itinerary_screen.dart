@@ -1070,7 +1070,7 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
                                   : null,
                             });
                           },
-                          icon: const Icon(Icons.check, color: Colors.white),
+                          icon: const Icon(Icons.check, color: AppColors.textPrimary),
                           label: Text(
                             existingStop != null
                                 ? 'Guardar Cambios'
@@ -1650,20 +1650,20 @@ class _OrganizerItineraryScreenState extends State<OrganizerItineraryScreen>
                       child: hasDeparted
                           ? const Icon(
                               Icons.check,
-                              color: Colors.white,
+                              color: AppColors.textPrimary,
                               size: 14,
                             )
                           : hasArrived
                           ? const Icon(
                               Icons.location_on,
-                              color: Colors.white,
+                              color: AppColors.textPrimary,
                               size: 14,
                             )
                           : Text(
                               '${index + 1}',
                               style: TextStyle(
                                 color: isCurrentStop
-                                    ? Colors.white
+                                    ? AppColors.textPrimary
                                     : AppColors.textSecondary,
                                 fontSize: 12,
                                 fontWeight: FontWeight.w700,
@@ -2405,18 +2405,18 @@ class _ItineraryMapPickerState extends State<_ItineraryMapPicker> {
   Widget build(BuildContext context) {
     return Dialog.fullscreen(
       child: Scaffold(
-        backgroundColor: const Color(0xFF1E1E1E),
+        backgroundColor: AppColors.cardSecondary,
         appBar: AppBar(
-          backgroundColor: const Color(0xFF2A2A2A),
+          backgroundColor: AppColors.border,
           elevation: 0,
           leading: IconButton(
-            icon: const Icon(Icons.close, color: Colors.white),
+            icon: const Icon(Icons.close, color: AppColors.textPrimary),
             onPressed: () => Navigator.pop(context),
           ),
           title: Text(
             widget.title,
             style: const TextStyle(
-              color: Colors.white,
+              color: AppColors.textPrimary,
               fontWeight: FontWeight.bold,
               fontSize: 18,
             ),
@@ -2463,11 +2463,11 @@ class _ItineraryMapPickerState extends State<_ItineraryMapPicker> {
                 children: [
                   Container(
                     decoration: BoxDecoration(
-                      color: const Color(0xFF2A2A2A),
+                      color: AppColors.border,
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.3),
+                          color: Color(0x14102A56),
                           blurRadius: 12,
                           offset: const Offset(0, 4),
                         ),
@@ -2475,13 +2475,13 @@ class _ItineraryMapPickerState extends State<_ItineraryMapPicker> {
                     ),
                     child: TextField(
                       controller: _searchController,
-                      style: const TextStyle(fontSize: 14, color: Colors.white),
+                      style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
                       decoration: InputDecoration(
                         hintText: 'organizer.search_address'.tr(),
-                        hintStyle: TextStyle(color: Color(0xFF888888)),
+                        hintStyle: TextStyle(color: AppColors.textTertiary),
                         prefixIcon: Icon(
                           Icons.search,
-                          color: Color(0xFFAAAAAA),
+                          color: AppColors.textDisabled,
                           size: 20,
                         ),
                         border: InputBorder.none,
@@ -2497,11 +2497,11 @@ class _ItineraryMapPickerState extends State<_ItineraryMapPicker> {
                     Container(
                       margin: const EdgeInsets.only(top: 8),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF2A2A2A),
+                        color: AppColors.border,
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.3),
+                            color: Color(0x14102A56),
                             blurRadius: 12,
                           ),
                         ],
@@ -2513,7 +2513,7 @@ class _ItineraryMapPickerState extends State<_ItineraryMapPicker> {
                         itemCount: _suggestions.length,
                         separatorBuilder: (_, __) => Divider(
                           height: 1,
-                          color: Colors.white.withOpacity(0.1),
+                          color: AppColors.border,
                           indent: 16,
                           endIndent: 16,
                         ),
@@ -2555,7 +2555,7 @@ class _ItineraryMapPickerState extends State<_ItineraryMapPicker> {
                                         Text(
                                           s['text'] as String,
                                           style: const TextStyle(
-                                            color: Colors.white,
+                                            color: AppColors.textPrimary,
                                             fontSize: 14,
                                             fontWeight: FontWeight.w500,
                                           ),
@@ -2564,7 +2564,7 @@ class _ItineraryMapPickerState extends State<_ItineraryMapPicker> {
                                         Text(
                                           s['place_name'] as String,
                                           style: const TextStyle(
-                                            color: Color(0xFF888888),
+                                            color: AppColors.textTertiary,
                                             fontSize: 12,
                                           ),
                                           maxLines: 1,
@@ -2606,7 +2606,7 @@ class _ItineraryMapPickerState extends State<_ItineraryMapPicker> {
                       ),
                       child: const Icon(
                         Icons.location_on,
-                        color: Colors.white,
+                        color: AppColors.textPrimary,
                         size: 28,
                       ),
                     ),
@@ -2632,11 +2632,11 @@ class _ItineraryMapPickerState extends State<_ItineraryMapPicker> {
                 child: Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF2A2A2A),
+                    color: AppColors.border,
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.3),
+                        color: Color(0x14102A56),
                         blurRadius: 8,
                       ),
                     ],
@@ -2667,13 +2667,13 @@ class _ItineraryMapPickerState extends State<_ItineraryMapPicker> {
               child: Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF2A2A2A),
+                  color: AppColors.border,
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(24),
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.3),
+                      color: Color(0x14102A56),
                       blurRadius: 20,
                       offset: const Offset(0, -5),
                     ),
@@ -2687,7 +2687,7 @@ class _ItineraryMapPickerState extends State<_ItineraryMapPicker> {
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF1E1E1E),
+                          color: AppColors.cardSecondary,
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Row(
@@ -2721,7 +2721,7 @@ class _ItineraryMapPickerState extends State<_ItineraryMapPicker> {
                                         Text(
                                           'Obteniendo dirección...',
                                           style: TextStyle(
-                                            color: Color(0xFF999999),
+                                            color: AppColors.textTertiary,
                                             fontSize: 14,
                                           ),
                                         ),
@@ -2732,7 +2732,7 @@ class _ItineraryMapPickerState extends State<_ItineraryMapPicker> {
                                       style: const TextStyle(
                                         fontSize: 14,
                                         fontWeight: FontWeight.w500,
-                                        color: Colors.white,
+                                        color: AppColors.textPrimary,
                                       ),
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
@@ -2773,14 +2773,14 @@ class _ItineraryMapPickerState extends State<_ItineraryMapPicker> {
                             children: [
                               Icon(
                                 Icons.check_circle,
-                                color: Colors.white,
+                                color: AppColors.textPrimary,
                                 size: 22,
                               ),
                               SizedBox(width: 10),
                               Text(
                                 'Confirmar Ubicación',
                                 style: TextStyle(
-                                  color: Colors.white,
+                                  color: AppColors.textPrimary,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
                                 ),

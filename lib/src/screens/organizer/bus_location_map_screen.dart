@@ -425,7 +425,7 @@ class _BusLocationMapScreenState extends State<BusLocationMapScreen> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: AppColors.primary,
-                border: Border.all(color: Colors.white, width: 3),
+                border: Border.all(color: AppColors.border, width: 3),
                 boxShadow: [
                   BoxShadow(
                     color: AppColors.primary.withValues(alpha: 0.5),
@@ -455,7 +455,7 @@ class _BusLocationMapScreenState extends State<BusLocationMapScreen> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: AppColors.success,
-                border: Border.all(color: Colors.white, width: 2),
+                border: Border.all(color: AppColors.border, width: 2),
                 boxShadow: [
                   BoxShadow(
                     color: AppColors.success.withValues(alpha: 0.5),
@@ -494,7 +494,7 @@ class _BusLocationMapScreenState extends State<BusLocationMapScreen> {
                     ? AppColors.primary
                     : (isCheckedIn ? AppColors.purple : AppColors.warning),
                 border: Border.all(
-                  color: Colors.white,
+                  color: AppColors.border,
                   width: isSelected ? 3 : 2,
                 ),
                 boxShadow: [
@@ -509,7 +509,7 @@ class _BusLocationMapScreenState extends State<BusLocationMapScreen> {
               ),
               child: Icon(
                 isCheckedIn ? Icons.check_circle : Icons.person,
-                color: Colors.white,
+                color: AppColors.textPrimary,
                 size: isSelected ? 24 : 18,
               ),
             ),
@@ -531,7 +531,7 @@ class _BusLocationMapScreenState extends State<BusLocationMapScreen> {
           border: Border.all(color: AppColors.border),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.3),
+              color: Color(0x14102A56),
               blurRadius: 8,
             ),
           ],
@@ -566,7 +566,7 @@ class _BusLocationMapScreenState extends State<BusLocationMapScreen> {
         border: Border.all(color: AppColors.border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
+            color: Color(0x14102A56),
             blurRadius: 8,
           ),
         ],
@@ -629,7 +629,7 @@ class _BusLocationMapScreenState extends State<BusLocationMapScreen> {
         border: Border.all(color: AppColors.border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.4),
+            color: Color(0x14102A56),
             blurRadius: 12,
           ),
         ],

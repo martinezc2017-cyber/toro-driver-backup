@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/app_colors.dart';
 import 'package:easy_localization/easy_localization.dart';
 
 /// Custom Email Keyboard for email input fields
@@ -46,11 +47,11 @@ class _CustomEmailKeyboardState extends State<CustomEmailKeyboard> {
         child: ElevatedButton(
           onPressed: () => _insertText(char),
           style: ElevatedButton.styleFrom(
-            backgroundColor: color ?? const Color(0xFF1F2937),
+            backgroundColor: color ?? AppColors.surface,
             foregroundColor: Colors.white,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8),
-              side: const BorderSide(color: Color(0xFF374151), width: 1),
+              side: const BorderSide(color: AppColors.cardTertiary, width: 1),
             ),
             padding: const EdgeInsets.symmetric(vertical: 10),
             minimumSize: const Size(0, 36),
@@ -68,7 +69,7 @@ class _CustomEmailKeyboardState extends State<CustomEmailKeyboard> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: const Color(0xFF111827),
+      color: AppColors.surface,
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -76,9 +77,9 @@ class _CustomEmailKeyboardState extends State<CustomEmailKeyboard> {
           // Quick access buttons
           Row(
             children: [
-              _buildKey('@', color: const Color(0xFF2563EB)),
-              _buildKey('.com', color: const Color(0xFF2563EB)),
-              _buildKey('.es', color: const Color(0xFF2563EB)),
+              _buildKey('@', color: AppColors.primary),
+              _buildKey('.com', color: AppColors.primary),
+              _buildKey('.es', color: AppColors.primary),
             ],
           ),
           // QWERTY rows
@@ -132,11 +133,11 @@ class _CustomEmailKeyboardState extends State<CustomEmailKeyboard> {
                   child: ElevatedButton(
                     onPressed: () => _insertText(' '),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1F2937),
+                      backgroundColor: AppColors.surface,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
-                        side: const BorderSide(color: Color(0xFF374151), width: 1),
+                        side: const BorderSide(color: AppColors.cardTertiary, width: 1),
                       ),
                       padding: const EdgeInsets.symmetric(vertical: 10),
                       minimumSize: const Size(0, 36),
@@ -153,7 +154,7 @@ class _CustomEmailKeyboardState extends State<CustomEmailKeyboard> {
                   child: ElevatedButton(
                     onPressed: () => widget.onDone?.call(),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF2563EB),
+                      backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
@@ -255,11 +256,11 @@ class _CustomTextKeyboardState extends State<CustomTextKeyboard> {
         child: ElevatedButton(
           onPressed: () => _insertText(isShift ? char.toUpperCase() : char),
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF1F2937),
+            backgroundColor: AppColors.surface,
             foregroundColor: Colors.white,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8),
-              side: const BorderSide(color: Color(0xFF374151), width: 1),
+              side: const BorderSide(color: AppColors.cardTertiary, width: 1),
             ),
             padding: const EdgeInsets.symmetric(vertical: 8),
             minimumSize: const Size(0, 34),
@@ -277,7 +278,7 @@ class _CustomTextKeyboardState extends State<CustomTextKeyboard> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: const Color(0xFF111827),
+      color: AppColors.surface,
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -318,12 +319,12 @@ class _CustomTextKeyboardState extends State<CustomTextKeyboard> {
                   child: ElevatedButton(
                     onPressed: () => setState(() => isShift = !isShift),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: isShift ? const Color(0xFF2563EB) : const Color(0xFF1F2937),
+                      backgroundColor: isShift ? AppColors.primary : AppColors.surface,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                         side: BorderSide(
-                          color: isShift ? const Color(0xFF2563EB) : const Color(0xFF374151),
+                          color: isShift ? AppColors.primary : AppColors.cardTertiary,
                           width: 1,
                         ),
                       ),
@@ -349,11 +350,11 @@ class _CustomTextKeyboardState extends State<CustomTextKeyboard> {
                   child: ElevatedButton(
                     onPressed: _handleBackspace,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1F2937),
+                      backgroundColor: AppColors.surface,
                       foregroundColor: Colors.redAccent,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
-                        side: const BorderSide(color: Color(0xFF374151), width: 1),
+                        side: const BorderSide(color: AppColors.cardTertiary, width: 1),
                       ),
                       padding: const EdgeInsets.symmetric(vertical: 8),
                       minimumSize: const Size(0, 34),
@@ -374,11 +375,11 @@ class _CustomTextKeyboardState extends State<CustomTextKeyboard> {
                   child: ElevatedButton(
                     onPressed: () => _insertText(' '),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1F2937),
+                      backgroundColor: AppColors.surface,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
-                        side: const BorderSide(color: Color(0xFF374151), width: 1),
+                        side: const BorderSide(color: AppColors.cardTertiary, width: 1),
                       ),
                       padding: const EdgeInsets.symmetric(vertical: 8),
                       minimumSize: const Size(0, 34),
@@ -395,7 +396,7 @@ class _CustomTextKeyboardState extends State<CustomTextKeyboard> {
                   child: ElevatedButton(
                     onPressed: () => widget.onDone?.call(),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF2563EB),
+                      backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
@@ -491,11 +492,11 @@ class _CustomNumericKeyboardState extends State<CustomNumericKeyboard> {
         child: ElevatedButton(
           onPressed: () => _insertText(char),
           style: ElevatedButton.styleFrom(
-            backgroundColor: color ?? const Color(0xFF1F2937),
+            backgroundColor: color ?? AppColors.surface,
             foregroundColor: Colors.white,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
-              side: const BorderSide(color: Color(0xFF374151), width: 1),
+              side: const BorderSide(color: AppColors.cardTertiary, width: 1),
             ),
             padding: const EdgeInsets.symmetric(vertical: 14),
             elevation: 0,
@@ -512,7 +513,7 @@ class _CustomNumericKeyboardState extends State<CustomNumericKeyboard> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: const Color(0xFF111827),
+      color: AppColors.surface,
       padding: const EdgeInsets.all(8),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -522,7 +523,7 @@ class _CustomNumericKeyboardState extends State<CustomNumericKeyboard> {
           Row(children: [_buildKey('7'), _buildKey('8'), _buildKey('9')]),
           Row(
             children: [
-              _buildKey('.', color: const Color(0xFF2563EB)),
+              _buildKey('.', color: AppColors.primary),
               _buildKey('0'),
               Expanded(
                 flex: 10,
@@ -531,11 +532,11 @@ class _CustomNumericKeyboardState extends State<CustomNumericKeyboard> {
                   child: ElevatedButton(
                     onPressed: _handleBackspace,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1F2937),
+                      backgroundColor: AppColors.surface,
                       foregroundColor: Colors.redAccent,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
-                        side: const BorderSide(color: Color(0xFF374151), width: 1),
+                        side: const BorderSide(color: AppColors.cardTertiary, width: 1),
                       ),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       elevation: 0,
@@ -554,7 +555,7 @@ class _CustomNumericKeyboardState extends State<CustomNumericKeyboard> {
                   child: ElevatedButton(
                     onPressed: () => widget.onDone?.call(),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF2563EB),
+                      backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -649,11 +650,11 @@ class _CustomPhoneKeyboardState extends State<CustomPhoneKeyboard> {
         child: ElevatedButton(
           onPressed: () => _insertText(char),
           style: ElevatedButton.styleFrom(
-            backgroundColor: color ?? const Color(0xFF1F2937),
+            backgroundColor: color ?? AppColors.surface,
             foregroundColor: Colors.white,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
-              side: const BorderSide(color: Color(0xFF374151), width: 1),
+              side: const BorderSide(color: AppColors.cardTertiary, width: 1),
             ),
             padding: const EdgeInsets.symmetric(vertical: 14),
             elevation: 0,
@@ -670,7 +671,7 @@ class _CustomPhoneKeyboardState extends State<CustomPhoneKeyboard> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: const Color(0xFF111827),
+      color: AppColors.surface,
       padding: const EdgeInsets.all(8),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -680,9 +681,9 @@ class _CustomPhoneKeyboardState extends State<CustomPhoneKeyboard> {
           Row(children: [_buildKey('7'), _buildKey('8'), _buildKey('9')]),
           Row(
             children: [
-              _buildKey('*', color: const Color(0xFF2563EB)),
+              _buildKey('*', color: AppColors.primary),
               _buildKey('0'),
-              _buildKey('#', color: const Color(0xFF2563EB)),
+              _buildKey('#', color: AppColors.primary),
             ],
           ),
           Row(
@@ -702,11 +703,11 @@ class _CustomPhoneKeyboardState extends State<CustomPhoneKeyboard> {
                   child: ElevatedButton(
                     onPressed: _handleBackspace,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1F2937),
+                      backgroundColor: AppColors.surface,
                       foregroundColor: Colors.redAccent,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
-                        side: const BorderSide(color: Color(0xFF374151), width: 1),
+                        side: const BorderSide(color: AppColors.cardTertiary, width: 1),
                       ),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       elevation: 0,
@@ -722,7 +723,7 @@ class _CustomPhoneKeyboardState extends State<CustomPhoneKeyboard> {
                   child: ElevatedButton(
                     onPressed: () => widget.onDone?.call(),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF2563EB),
+                      backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),

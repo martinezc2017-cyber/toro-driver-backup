@@ -782,7 +782,7 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen>
   }) {
     final apagado = onTap == null;
     final colorTexto = principal
-        ? Colors.white
+        ? AppColors.textPrimary
         : (apagado ? AppColors.textDisabled : AppColors.primary);
 
     return SizedBox(

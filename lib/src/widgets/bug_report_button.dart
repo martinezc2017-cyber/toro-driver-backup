@@ -21,7 +21,7 @@ class BugReportButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return FloatingActionButton.small(
       heroTag: 'bug_report_$screenName',
-      backgroundColor: const Color(0xFFFF3B30).withValues(alpha: 0.9),
+      backgroundColor: AppColors.error.withValues(alpha: 0.9),
       onPressed: () => _showBugReportDialog(context),
       tooltip: 'bug.report_bug'.tr(),
       child: const Icon(Icons.bug_report_rounded, color: Colors.white, size: 20),
@@ -146,7 +146,7 @@ class _BugReportDialogState extends State<BugReportDialog> {
           children: [
             Row(
               children: [
-                const Icon(Icons.bug_report_rounded, color: Color(0xFFFF3B30), size: 28),
+                const Icon(Icons.bug_report_rounded, color: AppColors.error, size: 28),
                 const SizedBox(width: 12),
                 Text(
                   'bug.report_bug'.tr(),
@@ -239,7 +239,7 @@ class _BugReportDialogState extends State<BugReportDialog> {
                 ElevatedButton(
                   onPressed: _submitting ? null : _submit,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF3B30),
+                    backgroundColor: AppColors.error,
                     foregroundColor: Colors.white,
                   ),
                   child: _submitting
@@ -271,7 +271,7 @@ class _SeverityChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isSelected = value == selected;
-    Color color = const Color(0xFF999999);
+    Color color = AppColors.textTertiary;
     if (value == 'low') color = Colors.green;
     if (value == 'medium') color = Colors.orange;
     if (value == 'high') color = Colors.deepOrange;
@@ -289,7 +289,7 @@ class _SeverityChip extends StatelessWidget {
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? Colors.white : color,
+            color: isSelected ? AppColors.textPrimary : color,
             fontWeight: FontWeight.w600,
             fontSize: 13,
           ),

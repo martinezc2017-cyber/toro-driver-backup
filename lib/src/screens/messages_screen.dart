@@ -238,7 +238,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
               Expanded(
                 child: _isLoading
                     ? const Center(
-                        child: CircularProgressIndicator(color: Color(0xFFFF9500)),
+                        child: CircularProgressIndicator(color: AppColors.warningLight),
                       )
                     : _messages.isEmpty
                         ? _buildEmptyChat(activeRide)
@@ -322,8 +322,8 @@ class _MessagesScreenState extends State<MessagesScreen> {
               shape: BoxShape.circle,
               gradient: LinearGradient(
                 colors: [
-                  const Color(0xFFFF9500),
-                  const Color(0xFFFF9500).withValues(alpha: 0.7),
+                  AppColors.warningLight,
+                  AppColors.warningLight.withValues(alpha: 0.7),
                 ],
               ),
             ),
@@ -333,7 +333,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
                     ? ride.passengerName.split(' ').first[0].toUpperCase()
                     : '?',
                 style: const TextStyle(
-                  color: Colors.white,
+                  color: AppColors.textPrimary,
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
@@ -381,7 +381,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
       actions: [
         // Call button
         IconButton(
-          icon: const Icon(Icons.phone_rounded, color: Color(0xFFFF9500)),
+          icon: const Icon(Icons.phone_rounded, color: AppColors.warningLight),
           onPressed: () {
             HapticService.lightImpact();
             _callPassenger(ride.passengerPhone);
@@ -410,20 +410,20 @@ class _MessagesScreenState extends State<MessagesScreen> {
       ),
       child: Row(
         children: [
-          const Icon(Icons.lock_outline, color: Color(0xFF856404), size: 18),
+          const Icon(Icons.lock_outline, color: AppColors.warning, size: 18),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               'chat.safety_banner'.tr(),
               style: const TextStyle(
-                color: Color(0xFF856404),
+                color: AppColors.warning,
                 fontSize: 12,
               ),
             ),
           ),
           GestureDetector(
             onTap: () => setState(() => _bannerDismissed = true),
-            child: const Icon(Icons.close, color: Color(0xFF856404), size: 16),
+            child: const Icon(Icons.close, color: AppColors.warning, size: 16),
           ),
         ],
       ),
@@ -602,7 +602,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
-                  colors: [Color(0xFFFF9500), Color(0xFFFF6B00)],
+                  colors: [AppColors.warningLight, AppColors.warningLight],
                 ),
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -611,13 +611,13 @@ class _MessagesScreenState extends State<MessagesScreen> {
                       width: 22,
                       height: 22,
                       child: CircularProgressIndicator(
-                        color: Colors.white,
+                        color: AppColors.textPrimary,
                         strokeWidth: 2,
                       ),
                     )
                   : const Icon(
                       Icons.send_rounded,
-                      color: Colors.white,
+                      color: AppColors.textPrimary,
                       size: 22,
                     ),
             ),
@@ -662,21 +662,21 @@ class _QuickResponseChip extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
-            color: const Color(0xFFFF9500).withValues(alpha: 0.1),
+            color: AppColors.warningLight.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: const Color(0xFFFF9500).withValues(alpha: 0.3),
+              color: AppColors.warningLight.withValues(alpha: 0.3),
             ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, color: const Color(0xFFFF9500), size: 16),
+              Icon(icon, color: AppColors.warningLight, size: 16),
               const SizedBox(width: 6),
               Text(
                 label,
                 style: const TextStyle(
-                  color: Color(0xFFFF9500),
+                  color: AppColors.warningLight,
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
                 ),
@@ -717,13 +717,13 @@ class _MessageBubble extends StatelessWidget {
               height: 32,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFFFF9500).withValues(alpha: 0.2),
+                color: AppColors.warningLight.withValues(alpha: 0.2),
               ),
               child: Center(
                 child: Text(
                   passengerName.split(' ').first.isNotEmpty ? passengerName.split(' ').first[0].toUpperCase() : '?',
                   style: const TextStyle(
-                    color: Color(0xFFFF9500),
+                    color: AppColors.warningLight,
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
                   ),
@@ -739,7 +739,7 @@ class _MessageBubble extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: isMe ? const Color(0xFFFF9500) : AppColors.card,
+                color: isMe ? AppColors.warningLight : AppColors.card,
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(16),
                   topRight: const Radius.circular(16),
@@ -757,14 +757,14 @@ class _MessageBubble extends StatelessWidget {
                       children: [
                         Icon(
                           Icons.location_on,
-                          color: isMe ? Colors.white : const Color(0xFFFF9500),
+                          color: isMe ? AppColors.textPrimary : AppColors.warningLight,
                           size: 18,
                         ),
                         const SizedBox(width: 6),
                         Text(
                           'Shared location',
                           style: TextStyle(
-                            color: isMe ? Colors.white : AppColors.textPrimary,
+                            color: isMe ? AppColors.textPrimary : AppColors.textPrimary,
                             fontSize: 14,
                           ),
                         ),
@@ -775,7 +775,7 @@ class _MessageBubble extends StatelessWidget {
                     Text(
                       message.content,
                       style: TextStyle(
-                        color: isMe ? Colors.white : AppColors.textPrimary,
+                        color: isMe ? AppColors.textPrimary : AppColors.textPrimary,
                         fontSize: 14,
                       ),
                     ),
@@ -786,7 +786,7 @@ class _MessageBubble extends StatelessWidget {
                     _formatTime(message.createdAt),
                     style: TextStyle(
                       color: isMe
-                          ? Colors.white.withValues(alpha: 0.7)
+                          ? AppColors.textSecondary
                           : AppColors.textTertiary,
                       fontSize: 11,
                     ),
@@ -800,7 +800,7 @@ class _MessageBubble extends StatelessWidget {
             const SizedBox(width: 4),
             Icon(
               message.isRead ? Icons.done_all : Icons.done,
-              color: message.isRead ? const Color(0xFFFF9500) : AppColors.textTertiary,
+              color: message.isRead ? AppColors.warningLight : AppColors.textTertiary,
               size: 16,
             ),
           ],
@@ -1081,7 +1081,7 @@ class _ReportBottomSheetState extends State<_ReportBottomSheet> {
                           width: 24,
                           height: 24,
                           child: CircularProgressIndicator(
-                            color: Colors.white,
+                            color: AppColors.textPrimary,
                             strokeWidth: 2,
                           ),
                         ),
@@ -1090,7 +1090,7 @@ class _ReportBottomSheetState extends State<_ReportBottomSheet> {
                         child: Text(
                           'Submit Report',
                           style: TextStyle(
-                            color: Colors.white,
+                            color: AppColors.textPrimary,
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),

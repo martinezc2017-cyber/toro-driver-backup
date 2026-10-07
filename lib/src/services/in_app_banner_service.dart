@@ -209,7 +209,7 @@ class _BannerWidgetState extends State<_BannerWidget>
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.5),
+                    color: Color(0x14102A56),
                     blurRadius: 20,
                     offset: const Offset(0, 8),
                   ),

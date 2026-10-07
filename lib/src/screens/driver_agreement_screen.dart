@@ -73,13 +73,13 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
         backgroundColor: AppColors.surface,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
+          icon: const Icon(Icons.arrow_back_ios, color: AppColors.textPrimary, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           'driver_agreement_title'.tr(),
           style: const TextStyle(
-            color: Colors.white,
+            color: AppColors.textPrimary,
             fontSize: 18,
             fontWeight: FontWeight.w600,
           ),
@@ -408,7 +408,7 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
                 border: _hasAgreed ? null : Border.all(color: AppColors.border),
               ),
               child: _hasAgreed
-                  ? const Icon(Icons.check, color: Colors.white, size: 16)
+                  ? const Icon(Icons.check, color: AppColors.textPrimary, size: 16)
                   : null,
             ),
             const SizedBox(width: 10),
@@ -416,7 +416,7 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
               child: Text(
                 'driver_agreement_screen_checkbox'.tr(),
                 style: TextStyle(
-                  color: _hasAgreed ? Colors.white : AppColors.textSecondary,
+                  color: _hasAgreed ? AppColors.textPrimary : AppColors.textSecondary,
                   fontSize: 12,
                 ),
               ),
@@ -453,20 +453,20 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
                 height: 20,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.textPrimary),
                 ),
               )
             else ...[
               Icon(
                 Icons.check_circle,
-                color: canSubmit ? Colors.white : AppColors.textSecondary,
+                color: canSubmit ? AppColors.textPrimary : AppColors.textSecondary,
                 size: 20,
               ),
               const SizedBox(width: 8),
               Text(
                 'driver_agreement_screen_submit'.tr(),
                 style: TextStyle(
-                  color: canSubmit ? Colors.white : AppColors.textSecondary,
+                  color: canSubmit ? AppColors.textPrimary : AppColors.textSecondary,
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
                 ),

@@ -197,19 +197,19 @@ class _PermissionsGateScreenState extends State<PermissionsGateScreen>
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: const LinearGradient(
-                    colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                    colors: [AppColors.primaryLight, AppColors.primaryDark],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFFFFD700).withValues(alpha: 0.3),
+                      color: AppColors.primary.withValues(alpha: 0.3),
                       blurRadius: 20,
                       spreadRadius: 2,
                     ),
                   ],
                 ),
-                child: const Icon(Icons.local_taxi, color: Colors.black, size: 40),
+                child: const Icon(Icons.local_taxi, color: Colors.white, size: 40),
               ),
 
               const SizedBox(height: 20),
@@ -217,7 +217,7 @@ class _PermissionsGateScreenState extends State<PermissionsGateScreen>
               const Text(
                 'TORO Driver necesita permisos',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: AppColors.textPrimary,
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
                 ),
@@ -229,7 +229,7 @@ class _PermissionsGateScreenState extends State<PermissionsGateScreen>
                 'permissions.need_access'.tr(),
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.6),
+                  color: AppColors.textSecondary,
                   fontSize: 14,
                 ),
               ),
@@ -286,8 +286,8 @@ class _PermissionsGateScreenState extends State<PermissionsGateScreen>
                           }
                         },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFFD700),
-                    foregroundColor: Colors.black,
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -321,8 +321,8 @@ class _PermissionsGateScreenState extends State<PermissionsGateScreen>
                               fontSize: 13, fontWeight: FontWeight.w600),
                         ),
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFFFFD700),
-                          side: const BorderSide(color: Color(0xFF3A3A3A)),
+                          foregroundColor: AppColors.primary,
+                          side: const BorderSide(color: AppColors.borderStrong),
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -341,8 +341,8 @@ class _PermissionsGateScreenState extends State<PermissionsGateScreen>
                               fontSize: 13, fontWeight: FontWeight.w600),
                         ),
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.white70,
-                          side: const BorderSide(color: Color(0xFF3A3A3A)),
+                          foregroundColor: AppColors.textSecondary,
+                          side: const BorderSide(color: AppColors.borderStrong),
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -357,7 +357,7 @@ class _PermissionsGateScreenState extends State<PermissionsGateScreen>
                   'permissions.manual_instructions'.tr(),
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.45),
+                    color: AppColors.textSecondary,
                     fontSize: 11,
                   ),
                 ),
@@ -375,11 +375,11 @@ class _PermissionsGateScreenState extends State<PermissionsGateScreen>
                   child: Text(
                     'permissions.enter_anyway'.tr(),
                     style: const TextStyle(
-                      color: Color(0xFFFFD700),
+                      color: AppColors.gold,
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                       decoration: TextDecoration.underline,
-                      decorationColor: Color(0xFFFFD700),
+                      decorationColor: AppColors.gold,
                     ),
                   ),
                 ),
@@ -387,7 +387,7 @@ class _PermissionsGateScreenState extends State<PermissionsGateScreen>
                   'permissions.enter_anyway_note'.tr(),
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.4),
+                    color: AppColors.textSecondary,
                     fontSize: 11,
                     height: 1.35,
                   ),
@@ -400,7 +400,7 @@ class _PermissionsGateScreenState extends State<PermissionsGateScreen>
                 'permissions.privacy_note'.tr(),
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.3),
+                  color: AppColors.textSecondary,
                   fontSize: 11,
                 ),
               ),
@@ -438,22 +438,22 @@ class _PermissionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Color accentColor = granted
-        ? const Color(0xFF22C55E)
+        ? AppColors.success
         : blocked
-            ? const Color(0xFFEF4444)
-            : const Color(0xFFFFD700);
+            ? AppColors.error
+            : AppColors.primary;
 
     return GestureDetector(
       onTap: granted ? null : onTap,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFF141414),
+          color: AppColors.card,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: granted
-                ? const Color(0xFF22C55E).withValues(alpha: 0.3)
-                : const Color(0xFF2A2A2A),
+                ? AppColors.success.withValues(alpha: 0.3)
+                : AppColors.border,
           ),
         ),
         child: Row(
@@ -480,7 +480,7 @@ class _PermissionCard extends StatelessWidget {
                         child: Text(
                           title,
                           style: const TextStyle(
-                            color: Colors.white,
+                            color: AppColors.textPrimary,
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
                           ),
@@ -488,14 +488,14 @@ class _PermissionCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 8),
                       if (granted)
-                        const Icon(Icons.check_circle, color: Color(0xFF22C55E), size: 16),
+                        const Icon(Icons.check_circle, color: AppColors.success, size: 16),
                     ],
                   ),
                   const SizedBox(height: 4),
                   Text(
                     description,
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.5),
+                      color: AppColors.textSecondary,
                       fontSize: 12,
                     ),
                   ),

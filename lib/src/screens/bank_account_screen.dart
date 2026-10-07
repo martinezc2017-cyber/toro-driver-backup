@@ -371,13 +371,13 @@ class _BankAccountScreenState extends State<BankAccountScreen>
         children: [
           Text(
             'available_balance'.tr(),
-            style: const TextStyle(color: Colors.white70, fontSize: 12),
+            style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
           ),
           const SizedBox(height: 4),
           Text(
             formatMoney(available, country: countryCode),
             style: const TextStyle(
-              color: Colors.white,
+              color: AppColors.textPrimary,
               fontSize: 28,
               fontWeight: FontWeight.bold,
             ),
@@ -385,11 +385,11 @@ class _BankAccountScreenState extends State<BankAccountScreen>
           const SizedBox(height: 8),
           Row(
             children: [
-              Icon(Icons.schedule, color: Colors.white70, size: 14),
+              Icon(Icons.schedule, color: AppColors.textSecondary, size: 14),
               const SizedBox(width: 4),
               Text(
                 '${'pending'.tr()}: ${formatMoney(pending, country: countryCode)}',
-                style: const TextStyle(color: Colors.white70, fontSize: 12),
+                style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
               ),
             ],
           ),
@@ -435,7 +435,7 @@ class _BankAccountScreenState extends State<BankAccountScreen>
                 height: 18,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: Colors.white,
+                  color: AppColors.textPrimary,
                 ),
               )
             : Icon(buttonIcon, size: 18),

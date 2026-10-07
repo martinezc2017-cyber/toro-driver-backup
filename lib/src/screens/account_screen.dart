@@ -131,7 +131,7 @@ class _AccountScreenState extends State<AccountScreen> {
                 child: ElevatedButton.icon(
                   onPressed: _hasChanges && !isLoading ? _save : null,
                   icon: isLoading
-                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.textPrimary))
                       : const Icon(Icons.save, size: 18),
                   label: Text(isLoading ? 'saving'.tr() : 'save_changes'.tr()),
                   style: ElevatedButton.styleFrom(

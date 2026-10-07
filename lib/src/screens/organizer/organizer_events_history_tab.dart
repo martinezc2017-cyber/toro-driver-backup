@@ -373,7 +373,7 @@ class _OrganizerEventsHistoryTabState extends State<OrganizerEventsHistoryTab> {
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? Colors.white : AppColors.textSecondary,
+            color: isSelected ? AppColors.textPrimary : AppColors.textSecondary,
             fontWeight: FontWeight.w600,
           ),
         ),

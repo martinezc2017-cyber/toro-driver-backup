@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/app_colors.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../services/bus_tracking_service.dart';
 
@@ -62,10 +63,10 @@ class _BusEventPanelState extends State<BusEventPanel> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1A1A1A),
-        title: Text('bus.finalize_route'.tr(), style: const TextStyle(color: Colors.white)),
+        title: Text('bus.finalize_route'.tr(), style: const TextStyle(color: AppColors.textPrimary)),
         content: Text(
           'bus.confirm_finalize_route'.tr(),
-          style: const TextStyle(color: Colors.white70),
+          style: const TextStyle(color: AppColors.textSecondary),
         ),
         actions: [
           TextButton(
@@ -132,19 +133,19 @@ class _BusEventPanelState extends State<BusEventPanel> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1A1A1A),
-        title: Text(title, style: const TextStyle(color: Colors.white)),
+        title: Text(title, style: const TextStyle(color: AppColors.textPrimary)),
         content: TextField(
           controller: controller,
           keyboardType: isNumber ? TextInputType.number : TextInputType.text,
-          style: const TextStyle(color: Colors.white),
+          style: const TextStyle(color: AppColors.textPrimary),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: const TextStyle(color: Colors.white38),
+            hintStyle: const TextStyle(color: AppColors.textDisabled),
             filled: true,
-            fillColor: const Color(0xFF0A0A0A),
+            fillColor: AppColors.background,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: Color(0xFF2A2A2A)),
+              borderSide: const BorderSide(color: AppColors.border),
             ),
           ),
         ),
@@ -179,7 +180,7 @@ class _BusEventPanelState extends State<BusEventPanel> {
       decoration: BoxDecoration(
         color: const Color(0xFF141414),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF2A2A2A)),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -219,7 +220,7 @@ class _BusEventPanelState extends State<BusEventPanel> {
                       Text(
                         'bus.sending_location'.tr(),
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.5),
+                          color: AppColors.textSecondary,
                           fontSize: 11,
                         ),
                       ),

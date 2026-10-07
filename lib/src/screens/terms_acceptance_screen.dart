@@ -1,5 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import '../utils/app_colors.dart';
+import '../widgets/toro_design_system.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -37,7 +39,7 @@ class _TermsAcceptanceScreenState extends State<TermsAcceptanceScreen> {
   String _appVersion = '';
 
   // Theme colors
-  static const Color primaryColor = Color(0xFF1E88E5);
+  static const Color primaryColor = AppColors.primary;
   static const Color secondaryColor = Color(0xFF43A047);
 
   @override
@@ -365,54 +367,18 @@ class _TermsAcceptanceScreenState extends State<TermsAcceptanceScreen> {
                 const SizedBox(height: 24),
 
                 // TORO Logo
-              Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(28),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF00D9FF).withValues(alpha: 0.35),
-                      blurRadius: 30,
-                      spreadRadius: 2,
-                    ),
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.4),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(28),
-                  child: Image.asset(
-                    'assets/images/toro_logo_new.png',
-                    width: 120,
-                    height: 120,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Image.asset(
-                        'assets/images/toro_logo.png',
-                        width: 120,
-                        height: 120,
-                        fit: BoxFit.cover,
-                      );
-                    },
-                  ),
-                ),
-              ),
+              const ToroLogo(size: 120),
 
               const SizedBox(height: 32),
 
               // Title
-              ShaderMask(
-                shaderCallback: (bounds) => const LinearGradient(
-                  colors: [primaryColor, secondaryColor],
-                ).createShader(bounds),
-                child: Text(
-                  isEs ? 'Bienvenido a Toro Driver' : 'Welcome to Toro Driver',
-                  style: theme.textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
+              Text(
+                isEs ? 'Bienvenido a TORO Conductor' : 'Welcome to TORO Driver',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                  letterSpacing: -.5,
                 ),
               ),
 
@@ -511,7 +477,7 @@ class _TermsAcceptanceScreenState extends State<TermsAcceptanceScreen> {
                             height: 24,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              valueColor: AlwaysStoppedAnimation<Color>(AppColors.textPrimary),
                             ),
                           )
                         : Text(
@@ -519,7 +485,7 @@ class _TermsAcceptanceScreenState extends State<TermsAcceptanceScreen> {
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 16,
-                              color: Colors.white,
+                              color: AppColors.textPrimary,
                             ),
                           ),
                   ),

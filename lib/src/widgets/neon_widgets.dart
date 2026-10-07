@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../utils/app_colors.dart';
+import 'toro_design_system.dart';
 
 /// TORO DRIVER - Neon UI Widgets
 /// Animated glowing buttons and inputs with flowing gradient effect
@@ -89,39 +90,52 @@ class _NeonButtonState extends State<NeonButton>
       case NeonButtonStyle.success:
         return const [
           Color(0xFF059669),
-          Color(0xFF10B981),
+          AppColors.success,
           Color(0xFF34D399),
           Color(0xFF6EE7B7),
-          Color(0xFF10B981),
+          AppColors.success,
           Color(0xFF059669),
         ];
       case NeonButtonStyle.danger:
         return const [
-          Color(0xFFDC2626),
-          Color(0xFFEF4444),
+          AppColors.error,
+          AppColors.error,
           Color(0xFFF87171),
           Color(0xFFFCA5A5),
-          Color(0xFFEF4444),
-          Color(0xFFDC2626),
+          AppColors.error,
+          AppColors.error,
         ];
       case NeonButtonStyle.subtle:
         return const [
           Color(0xFF4B5563),
-          Color(0xFF6B7280),
+          AppColors.textSecondary,
           Color(0xFF9CA3AF),
-          Color(0xFF6B7280),
+          AppColors.textSecondary,
           Color(0xFF4B5563),
         ];
       case NeonButtonStyle.primary:
         return const [
           Color(0xFF0066FF),
           Color(0xFF00BFFF),
-          Color(0xFF60A5FA),
+          AppColors.primaryLight,
           Color(0xFF93C5FD),
-          Color(0xFF00D4FF),
+          AppColors.primary,
           Color(0xFF0066FF),
           Color(0xFF00BFFF),
         ];
+    }
+  }
+
+  ToroTone get _tone {
+    switch (widget.style) {
+      case NeonButtonStyle.success:
+        return ToroTone.green;
+      case NeonButtonStyle.danger:
+        return ToroTone.red;
+      case NeonButtonStyle.subtle:
+        return ToroTone.white;
+      case NeonButtonStyle.primary:
+        return ToroTone.blue;
     }
   }
 
@@ -169,34 +183,12 @@ class _NeonButtonState extends State<NeonButton>
               height: widget.height,
               transform: Matrix4.diagonal3Values(_isPressed ? 0.98 : 1.0, _isPressed ? 0.98 : 1.0, 1.0),
               transformAlignment: Alignment.center,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                gradient: isDisabled
-                    ? null
-                    : LinearGradient(
-                        begin: Alignment(beginX, -1),
-                        end: Alignment(endX, 1),
-                        colors: _getGradientColors(),
-                        tileMode: TileMode.repeated,
-                      ),
-                color: isDisabled ? const Color(0xFF2A2A2A) : null,
-                boxShadow: isDisabled
-                    ? null
-                    : [
-                        BoxShadow(
-                          color: neonColor
-                              .withValues(alpha: _isHovered ? 0.7 : 0.4),
-                          blurRadius: _isHovered ? 25 : 15,
-                          spreadRadius: _isHovered ? 2 : 0,
-                        ),
-                      ],
-              ),
+              // Volumen TORO por tono (el degradado animado y el relleno negro
+              // eran del tema oscuro). beginX/endX quedan sin uso a propósito.
+              decoration: ToroRaised.decoration(_tone, pressed: _isPressed, enabled: !isDisabled, radius: 16),
               child: Container(
-                margin: const EdgeInsets.all(3),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0A0A0A),
-                  borderRadius: BorderRadius.circular(13),
-                ),
+                margin: EdgeInsets.zero,
+                decoration: const BoxDecoration(),
                 child: Center(
                   child: widget.isLoading
                       ? SizedBox(
@@ -215,8 +207,10 @@ class _NeonButtonState extends State<NeonButton>
                               Icon(
                                 widget.icon,
                                 color: isDisabled
-                                    ? const Color(0xFF6B7280)
-                                    : neonColor,
+                                    ? AppColors.textSecondary
+                                    : widget.style == NeonButtonStyle.subtle
+                                        ? AppColors.textPrimary
+                                        : Colors.white,
                                 size: 22,
                               ),
                               const SizedBox(width: 10),
@@ -228,9 +222,9 @@ class _NeonButtonState extends State<NeonButton>
                                 fontWeight: FontWeight.w600,
                                 color: isDisabled
                                     ? AppColors.textTertiary
-                                    : _isHovered
-                                        ? AppColors.primaryPale
-                                        : Colors.white,
+                                    : widget.style == NeonButtonStyle.subtle
+                                        ? AppColors.textPrimary
+                                        : AppColors.textPrimary,
                               ),
                             ),
                           ],
@@ -312,7 +306,7 @@ class _NeonTextFieldState extends State<NeonTextField> {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       decoration: BoxDecoration(
-        color: const Color(0xFF0A0A0A),
+        color: AppColors.background,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: _isFocused
@@ -341,13 +335,13 @@ class _NeonTextFieldState extends State<NeonTextField> {
         enabled: widget.enabled,
         style: const TextStyle(
           fontSize: 16,
-          color: Colors.white,
+          color: AppColors.textPrimary,
         ),
         decoration: InputDecoration(
           hintText: widget.hintText,
           labelText: widget.labelText,
           hintStyle: const TextStyle(
-            color: Color(0xFF6B7280),
+            color: AppColors.textSecondary,
             fontSize: 15,
           ),
           labelStyle: TextStyle(
@@ -368,7 +362,7 @@ class _NeonTextFieldState extends State<NeonTextField> {
             vertical: 16,
           ),
           errorStyle: const TextStyle(
-            color: Color(0xFFFF6B6B),
+            color: AppColors.errorLight,
             fontSize: 12,
           ),
         ),
@@ -408,7 +402,7 @@ class NeonCard extends StatelessWidget {
         margin: margin,
         padding: padding ?? const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: const Color(0xFF141414),
+          color: AppColors.card,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: color.withValues(alpha: 0.2),
@@ -475,7 +469,7 @@ class _NeonIconButtonState extends State<NeonIconButton> {
         transform: Matrix4.diagonal3Values(_isPressed ? 0.95 : 1.0, _isPressed ? 0.95 : 1.0, 1.0),
         transformAlignment: Alignment.center,
         decoration: BoxDecoration(
-          color: widget.backgroundColor ?? const Color(0xFF1C1C1E),
+          color: widget.backgroundColor ?? AppColors.cardSecondary,
           borderRadius: BorderRadius.circular(widget.size / 4),
           border: Border.all(
             color: color.withValues(alpha: 0.3),
@@ -535,12 +529,12 @@ class NeonChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected
               ? chipColor.withValues(alpha: 0.2)
-              : const Color(0xFF1C1C1E),
+              : AppColors.cardSecondary,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: selected
                 ? chipColor.withValues(alpha: 0.6)
-                : const Color(0xFF2A2A2A),
+                : AppColors.border,
             width: 1,
           ),
           boxShadow: selected
@@ -700,9 +694,9 @@ class NeonSwitch extends StatelessWidget {
         padding: const EdgeInsets.all(3),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(15),
-          color: value ? color.withValues(alpha: 0.3) : const Color(0xFF2A2A2A),
+          color: value ? color.withValues(alpha: 0.3) : AppColors.border,
           border: Border.all(
-            color: value ? color.withValues(alpha: 0.6) : const Color(0xFF3A3A3A),
+            color: value ? color.withValues(alpha: 0.6) : AppColors.borderStrong,
             width: 1,
           ),
           boxShadow: value
@@ -724,7 +718,7 @@ class NeonSwitch extends StatelessWidget {
             height: 24,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: value ? color : const Color(0xFF6B7280),
+              color: value ? color : AppColors.textSecondary,
               boxShadow: value
                   ? [
                       BoxShadow(

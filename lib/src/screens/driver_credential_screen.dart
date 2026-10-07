@@ -544,7 +544,7 @@ class _DriverCredentialScreenState extends State<DriverCredentialScreen> {
                                   ? const SizedBox(
                                       width: 18,
                                       height: 18,
-                                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                      child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.textPrimary),
                                     )
                                   : const Icon(Icons.save, size: 20),
                               label: Text(

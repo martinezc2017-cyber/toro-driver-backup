@@ -68,7 +68,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppColors.background,
       body: GalaxyBackground(
         child: SafeArea(
         child: Consumer<DriverProvider>(
@@ -319,13 +319,9 @@ class _ProfileScreenState extends State<ProfileScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xFF12313A), Color(0xFF0C1418)],
-        ),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.primaryCyan.withValues(alpha: 0.55)),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.35)),
         boxShadow: [
           BoxShadow(
             color: AppColors.primaryCyan.withValues(alpha: 0.22),
@@ -337,7 +333,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.star_rounded, color: Color(0xFF67E8F9), size: 22),
+          const Icon(Icons.star_rounded, color: AppColors.primaryLight, size: 22),
           const SizedBox(width: 8),
           Text(
             displayRating.toStringAsFixed(2),
@@ -358,7 +354,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             child: Text(
               label,
               style: const TextStyle(
-                color: Color(0xFF67E8F9),
+                color: AppColors.primaryLight,
                 fontSize: 11,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 1,
@@ -690,7 +686,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               child: Text(
                 'community_join'.tr(),
                 style: const TextStyle(
-                  color: Colors.white,
+                  color: AppColors.textPrimary,
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
                 ),
@@ -991,7 +987,7 @@ class _ProfileMenuButtonState extends State<_ProfileMenuButton> {
                   AppColors.primaryBright,
                   AppColors.primaryLight,
                   _isPressed ? AppColors.neonCyan : AppColors.primaryCyan,
-                  _isPressed ? Colors.white : AppColors.neonCyan,
+                  _isPressed ? AppColors.textPrimary : AppColors.neonCyan,
                 ],
                 tileMode: TileMode.repeated,
               ),
@@ -1012,8 +1008,8 @@ class _ProfileMenuButtonState extends State<_ProfileMenuButton> {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: _isPressed
-                      ? const [Color(0xFF2A2E3A), Color(0xFF181B22), Color(0xFF101218)]
-                      : const [Color(0xFF20232D), Color(0xFF131519), Color(0xFF0B0C10)],
+                      ? const [Color(0xFFEAF2FF), Color(0xFFF3F6FA), Color(0xFFE6EAF0)]
+                      : const [Color(0xFFFFFFFF), Color(0xFFFFFFFF), Color(0xFFF3F6FA)],
                 ),
                 borderRadius: BorderRadius.circular(11),
                 border: Border.all(
@@ -1022,7 +1018,7 @@ class _ProfileMenuButtonState extends State<_ProfileMenuButton> {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.55),
+                    color: Color(0x14102A56),
                     blurRadius: 8,
                     offset: const Offset(0, 5),
                   ),
@@ -1032,7 +1028,7 @@ class _ProfileMenuButtonState extends State<_ProfileMenuButton> {
                     spreadRadius: -3,
                   ),
                   BoxShadow(
-                    color: Colors.white.withValues(alpha: 0.05),
+                    color: AppColors.border,
                     blurRadius: 1,
                     offset: const Offset(0, -1),
                   ),
@@ -1068,8 +1064,8 @@ class _ProfileMenuButtonState extends State<_ProfileMenuButton> {
                       widget.icon,
                       // bright/clear icon (was dim 0.8 alpha)
                       color: widget.color == AppColors.error
-                          ? const Color(0xFFFF6B6B)
-                          : const Color(0xFF67E8F9),
+                          ? AppColors.errorLight
+                          : AppColors.primaryLight,
                       size: 24,
                     ),
                   ),
@@ -1081,7 +1077,7 @@ class _ProfileMenuButtonState extends State<_ProfileMenuButton> {
                       fontWeight: _isPressed ? FontWeight.w700 : FontWeight.w600,
                       // WHITE labels (was gray textSecondary)
                       color: widget.color == AppColors.error
-                          ? const Color(0xFFFF6B6B)
+                          ? AppColors.errorLight
                           : AppColors.textPrimary,
                       letterSpacing: 0.2,
                     ),

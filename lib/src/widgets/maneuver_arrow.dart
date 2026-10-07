@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/app_colors.dart';
 
 /// Widget de flecha de maniobra usando iconos de Material Design
 /// Diseño limpio y profesional
@@ -18,7 +19,7 @@ class ManeuverArrow extends StatefulWidget {
     this.modifier,
     this.exitRef,
     this.size = 64,
-    this.color = Colors.white,
+    this.color = AppColors.textPrimary,
     this.backgroundColor = const Color(0xFF1A73E8),
     this.animate = true,
     this.distanceToManeuver = 1000,
@@ -152,7 +153,7 @@ class _ManeuverArrowState extends State<ManeuverArrow>
               borderRadius: BorderRadius.circular(14),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
+                  color: Color(0x14102A56),
                   blurRadius: 8,
                   offset: const Offset(0, 3),
                 ),

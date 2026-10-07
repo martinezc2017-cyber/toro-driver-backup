@@ -482,13 +482,13 @@ class _QRPointsScreenState extends State<QRPointsScreen>
     final sections = <PieChartSectionData>[
       PieChartSectionData(
         value: driverPercent,
-        color: const Color(0xFF00FF66),
+        color: AppColors.success,
         radius: 32,
         showTitle: false,
       ),
       PieChartSectionData(
         value: platformPercent.clamp(0.5, 100), // min visible sliver
-        color: const Color(0xFF1E88E5),
+        color: AppColors.primary,
         radius: 24,
         showTitle: false,
       ),
@@ -501,19 +501,19 @@ class _QRPointsScreenState extends State<QRPointsScreen>
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            const Color(0xFF1E88E5).withValues(alpha: 0.25),
-            const Color(0xFF00BCD4).withValues(alpha: 0.15),
+            AppColors.primary.withValues(alpha: 0.25),
+            AppColors.primary.withValues(alpha: 0.15),
             AppColors.card,
           ],
         ),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: const Color(0xFF1E88E5).withValues(alpha: 0.4),
+          color: AppColors.primary.withValues(alpha: 0.4),
           width: 2,
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF1E88E5).withValues(alpha: 0.2),
+            color: AppColors.primary.withValues(alpha: 0.2),
             blurRadius: 20,
             spreadRadius: -5,
           ),
@@ -552,7 +552,7 @@ class _QRPointsScreenState extends State<QRPointsScreen>
             style: const TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF00FF66),
+              color: AppColors.success,
             ),
           ),
           const SizedBox(height: 4),
@@ -572,10 +572,10 @@ class _QRPointsScreenState extends State<QRPointsScreen>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: const Color(0xFF00FF66).withValues(alpha: 0.12),
+                color: AppColors.success.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                  color: const Color(0xFF00FF66).withValues(alpha: 0.35),
+                  color: AppColors.success.withValues(alpha: 0.35),
                 ),
               ),
               child: Text(
@@ -583,7 +583,7 @@ class _QRPointsScreenState extends State<QRPointsScreen>
                 style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF00FF66),
+                  color: AppColors.success,
                 ),
               ),
             ),
@@ -595,12 +595,12 @@ class _QRPointsScreenState extends State<QRPointsScreen>
             runSpacing: 8,
             children: [
               _buildLegendItem(
-                const Color(0xFF00FF66),
+                AppColors.success,
                 'qr_you'.tr(),
                 '${driverPercent.toStringAsFixed(0)}%',
               ),
               _buildLegendItem(
-                const Color(0xFF1E88E5),
+                AppColors.primary,
                 'TORO',
                 '${platformPercent.toStringAsFixed(0)}%',
                 badge: reduction > 0
@@ -634,10 +634,10 @@ class _QRPointsScreenState extends State<QRPointsScreen>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: const Color(0xFF1E88E5).withValues(alpha: 0.1),
+                color: AppColors.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: const Color(0xFF1E88E5).withValues(alpha: 0.3),
+                  color: AppColors.primary.withValues(alpha: 0.3),
                 ),
               ),
               child: Text(
@@ -646,7 +646,7 @@ class _QRPointsScreenState extends State<QRPointsScreen>
                 }),
                 style: const TextStyle(
                   fontSize: 11,
-                  color: Color(0xFF1E88E5),
+                  color: AppColors.primary,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -716,7 +716,7 @@ class _QRPointsScreenState extends State<QRPointsScreen>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
             decoration: BoxDecoration(
-              color: const Color(0xFF00FF66).withValues(alpha: 0.15),
+              color: AppColors.success.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
@@ -724,7 +724,7 @@ class _QRPointsScreenState extends State<QRPointsScreen>
               style: const TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF00FF66),
+                color: AppColors.success,
               ),
             ),
           ),
@@ -807,13 +807,13 @@ class _QRPointsScreenState extends State<QRPointsScreen>
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                                 colors: [
-                                  Color(0xFF1E88E5),
-                                  Color(0xFF00BCD4),
+                                  AppColors.primary,
+                                  AppColors.primary,
                                 ],
                               )
                             : null,
                         color: !isCurrent && isReached
-                            ? const Color(0xFF00FF66)
+                            ? AppColors.success
                             : !isCurrent && !isReached
                                 ? Colors.transparent
                                 : null,
@@ -821,20 +821,20 @@ class _QRPointsScreenState extends State<QRPointsScreen>
                         border: !isReached && !isCurrent
                             ? Border.all(
                                 color: isSelected
-                                    ? const Color(0xFF1E88E5)
+                                    ? AppColors.primary
                                     : AppColors.border.withValues(alpha: 0.5),
                                 width: isSelected ? 2 : 1.5,
                               )
                             : isSelected
                                 ? Border.all(
-                                    color: Colors.white,
+                                    color: AppColors.border,
                                     width: 2,
                                   )
                                 : null,
                         boxShadow: isSelected
                             ? [
                                 BoxShadow(
-                                  color: const Color(0xFF1E88E5)
+                                  color: AppColors.primary
                                       .withValues(alpha: 0.4),
                                   blurRadius: 10,
                                   spreadRadius: 1,
@@ -849,9 +849,9 @@ class _QRPointsScreenState extends State<QRPointsScreen>
                             fontSize: isSelected ? 18 : 16,
                             fontWeight: FontWeight.bold,
                             color: isReached || isCurrent
-                                ? Colors.white
+                                ? AppColors.textPrimary
                                 : isSelected
-                                    ? const Color(0xFF1E88E5)
+                                    ? AppColors.primary
                                     : AppColors.textSecondary
                                         .withValues(alpha: 0.6),
                           ),
@@ -866,7 +866,7 @@ class _QRPointsScreenState extends State<QRPointsScreen>
                         fontWeight:
                             isCurrent ? FontWeight.bold : FontWeight.w500,
                         color: isCurrent
-                            ? const Color(0xFF1E88E5)
+                            ? AppColors.primary
                             : isReached
                                 ? AppColors.textPrimary
                                 : AppColors.textSecondary,
@@ -962,12 +962,12 @@ class _QRPointsScreenState extends State<QRPointsScreen>
                       height: 12,
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
-                          colors: [Color(0xFF1E88E5), Color(0xFF00BCD4)],
+                          colors: [AppColors.primary, AppColors.primary],
                         ),
                         borderRadius: BorderRadius.circular(6),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF1E88E5).withValues(alpha: 0.4),
+                            color: AppColors.primary.withValues(alpha: 0.4),
                             blurRadius: 8,
                           ),
                         ],
@@ -1002,7 +1002,7 @@ class _QRPointsScreenState extends State<QRPointsScreen>
           height: 8,
           decoration: BoxDecoration(
             color: isActive
-                ? const Color(0xFF1E88E5)
+                ? AppColors.primary
                 : AppColors.textSecondary.withValues(alpha: 0.3),
             borderRadius: BorderRadius.circular(1),
           ),
@@ -1012,7 +1012,7 @@ class _QRPointsScreenState extends State<QRPointsScreen>
           '$value',
           style: TextStyle(
             fontSize: 11,
-            color: isActive ? const Color(0xFF1E88E5) : AppColors.textSecondary,
+            color: isActive ? AppColors.primary : AppColors.textSecondary,
             fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
           ),
         ),
@@ -1028,10 +1028,10 @@ class _QRPointsScreenState extends State<QRPointsScreen>
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF00FF66).withValues(alpha: 0.08),
+        color: AppColors.success.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: const Color(0xFF00FF66).withValues(alpha: 0.3),
+          color: AppColors.success.withValues(alpha: 0.3),
         ),
       ),
       child: Row(
@@ -1039,7 +1039,7 @@ class _QRPointsScreenState extends State<QRPointsScreen>
         children: [
           const Icon(
             Icons.card_giftcard_rounded,
-            color: Color(0xFF00FF66),
+            color: AppColors.success,
             size: 22,
           ),
           const SizedBox(width: 12),
@@ -1052,7 +1052,7 @@ class _QRPointsScreenState extends State<QRPointsScreen>
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF00FF66),
+                    color: AppColors.success,
                   ),
                 ),
                 const SizedBox(height: 3),
@@ -1082,7 +1082,7 @@ class _QRPointsScreenState extends State<QRPointsScreen>
             Icons.qr_code_scanner_rounded,
             '${service.currentLevel.qrsAccepted}',
             'QRs',
-            const Color(0xFF1E88E5),
+            AppColors.primary,
           ),
         ),
         const SizedBox(width: 12),
@@ -1094,7 +1094,7 @@ class _QRPointsScreenState extends State<QRPointsScreen>
             Icons.trending_up_rounded,
             '${service.currentShare.toStringAsFixed(0)}%',
             'qr_stat_invitados'.tr(),
-            const Color(0xFF00FF66),
+            AppColors.success,
           ),
         ),
         const SizedBox(width: 12),
@@ -1103,7 +1103,7 @@ class _QRPointsScreenState extends State<QRPointsScreen>
             Icons.route_rounded,
             '${service.baseDriverPercent.toStringAsFixed(0)}%',
             'qr_stat_normales'.tr(),
-            const Color(0xFF00BCD4),
+            AppColors.primary,
           ),
         ),
       ],
@@ -1218,7 +1218,7 @@ class _QRPointsScreenState extends State<QRPointsScreen>
             width: 28,
             height: 28,
             decoration: const BoxDecoration(
-              gradient: LinearGradient(colors: [Color(0xFF1E88E5), Color(0xFF00BCD4)]),
+              gradient: LinearGradient(colors: [AppColors.primary, AppColors.primary]),
               shape: BoxShape.circle,
             ),
             child: Center(
@@ -1268,7 +1268,7 @@ class _QRPointsScreenState extends State<QRPointsScreen>
 
     return RefreshIndicator(
       onRefresh: () => service.refresh(),
-      color: const Color(0xFF1E88E5),
+      color: AppColors.primary,
       child: ranking.isEmpty
           ? _buildEmptyRanking(stateCode)
           : ListView.builder(
@@ -1326,19 +1326,19 @@ class _QRPointsScreenState extends State<QRPointsScreen>
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            const Color(0xFF1E88E5).withValues(alpha: 0.25),
-            const Color(0xFF00BCD4).withValues(alpha: 0.15),
+            AppColors.primary.withValues(alpha: 0.25),
+            AppColors.primary.withValues(alpha: 0.15),
             AppColors.card,
           ],
         ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFF1E88E5).withValues(alpha: 0.4)),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
       ),
       child: Column(
         children: [
           Row(
             children: [
-              const Icon(Icons.leaderboard_rounded, color: Color(0xFF1E88E5), size: 28),
+              const Icon(Icons.leaderboard_rounded, color: AppColors.primary, size: 28),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -1367,7 +1367,7 @@ class _QRPointsScreenState extends State<QRPointsScreen>
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
-                  colors: [Color(0xFF1E88E5), Color(0xFF00BCD4)],
+                  colors: [AppColors.primary, AppColors.primary],
                 ),
                 borderRadius: BorderRadius.circular(16),
               ),
@@ -1378,7 +1378,7 @@ class _QRPointsScreenState extends State<QRPointsScreen>
                     'qr_your_rank'.tr(),
                     style: const TextStyle(
                       fontSize: 14,
-                      color: Colors.white70,
+                      color: AppColors.textSecondary,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -1387,7 +1387,7 @@ class _QRPointsScreenState extends State<QRPointsScreen>
                     style: const TextStyle(
                       fontSize: 32,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      color: AppColors.textPrimary,
                     ),
                   ),
                 ],
@@ -1402,7 +1402,7 @@ class _QRPointsScreenState extends State<QRPointsScreen>
   Widget _buildRankItem(StateRankEntry entry, int index) {
     final isTop3 = entry.rank <= 3;
     final rankColors = [
-      const Color(0xFFFFD700), // Gold
+      AppColors.gold, // Gold
       const Color(0xFFC0C0C0), // Silver
       const Color(0xFFCD7F32), // Bronze
     ];
@@ -1414,11 +1414,11 @@ class _QRPointsScreenState extends State<QRPointsScreen>
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: entry.isMe
-                ? const Color(0xFF1E88E5).withValues(alpha: 0.15)
+                ? AppColors.primary.withValues(alpha: 0.15)
                 : AppColors.card,
             borderRadius: BorderRadius.circular(14),
             border: entry.isMe
-                ? Border.all(color: const Color(0xFF1E88E5).withValues(alpha: 0.5), width: 2)
+                ? Border.all(color: AppColors.primary.withValues(alpha: 0.5), width: 2)
                 : Border.all(color: AppColors.border.withValues(alpha: 0.2)),
           ),
           child: Row(
@@ -1437,7 +1437,7 @@ class _QRPointsScreenState extends State<QRPointsScreen>
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: entry.isMe ? const Color(0xFF1E88E5) : AppColors.textSecondary,
+                          color: entry.isMe ? AppColors.primary : AppColors.textSecondary,
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -1456,7 +1456,7 @@ class _QRPointsScreenState extends State<QRPointsScreen>
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: entry.isMe ? FontWeight.bold : FontWeight.w500,
-                              color: entry.isMe ? const Color(0xFF1E88E5) : AppColors.textPrimary,
+                              color: entry.isMe ? AppColors.primary : AppColors.textPrimary,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -1468,7 +1468,7 @@ class _QRPointsScreenState extends State<QRPointsScreen>
                       style: TextStyle(
                         fontSize: 11,
                         color: entry.tier >= 4
-                            ? const Color(0xFF00FF66)
+                            ? AppColors.success
                             : AppColors.textSecondary,
                         fontWeight: entry.tier >= 4 ? FontWeight.bold : FontWeight.normal,
                       ),
@@ -1480,7 +1480,7 @@ class _QRPointsScreenState extends State<QRPointsScreen>
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: (isTop3 ? rankColor : const Color(0xFF1E88E5)).withValues(alpha: 0.15),
+                  color: (isTop3 ? rankColor : AppColors.primary).withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
@@ -1488,7 +1488,7 @@ class _QRPointsScreenState extends State<QRPointsScreen>
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
-                    color: isTop3 ? rankColor : const Color(0xFF1E88E5),
+                    color: isTop3 ? rankColor : AppColors.primary,
                   ),
                 ),
               ),
@@ -1658,7 +1658,7 @@ class _QRPointsScreenState extends State<QRPointsScreen>
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF00FF66).withValues(alpha: 0.1),
+                            color: AppColors.success.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
@@ -1666,7 +1666,7 @@ class _QRPointsScreenState extends State<QRPointsScreen>
                             style: const TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFF00FF66),
+                              color: AppColors.success,
                             ),
                           ),
                         ),
@@ -1752,7 +1752,7 @@ class _AnilloNivel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const verde = Color(0xFF00FF66);
+    const verde = AppColors.success;
     // Solo el nivel MOSTRADO (el actual, o el que el chofer toco para
     // asomarse) va prendido. Los demas van bien APAGADOS: antes todos
     // brillaban casi igual y no se distinguia en cual estas parado.
@@ -1763,7 +1763,7 @@ class _AnilloNivel extends StatelessWidget {
             ? verde.withValues(alpha: 0.65)
             : verde.withValues(alpha: 0.16);
     final colorTexto = prendido
-        ? Colors.white
+        ? AppColors.textPrimary
         : esElActual
             ? AppColors.textSecondary
             : AppColors.textDisabled;

@@ -27,6 +27,7 @@ import '../providers/auth_provider.dart';
 import '../models/ride_model.dart';
 import '../models/driver_model.dart';
 import '../utils/app_colors.dart';
+import '../widgets/galaxy_background.dart';
 import '../utils/app_theme.dart';
 import '../utils/haptic_service.dart';
 import '../utils/money_format.dart';
@@ -416,7 +417,7 @@ class _HomeScreenState extends State<HomeScreen>
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
-                  colors: [Color(0xFF00FF66), Color(0xFF00CC99)],
+                  colors: [AppColors.success, Color(0xFF00CC99)],
                 ),
                 borderRadius: BorderRadius.circular(50),
               ),
@@ -426,7 +427,7 @@ class _HomeScreenState extends State<HomeScreen>
             Text(
               'home.tier_up_title'.tr(namedArgs: {'tier': '$newTier'}),
               style: const TextStyle(
-                color: Colors.white,
+                color: AppColors.textPrimary,
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
               ),
@@ -435,7 +436,7 @@ class _HomeScreenState extends State<HomeScreen>
             const SizedBox(height: 8),
             Text(
               'home.tier_up_body'.tr(namedArgs: {'percent': earnings.toStringAsFixed(0)}),
-              style: const TextStyle(color: Colors.white70, fontSize: 15),
+              style: const TextStyle(color: AppColors.textSecondary, fontSize: 15),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 20),
@@ -444,8 +445,8 @@ class _HomeScreenState extends State<HomeScreen>
               child: ElevatedButton(
                 onPressed: () => Navigator.of(ctx).pop(),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF00FF66),
-                  foregroundColor: Colors.black,
+                  backgroundColor: AppColors.success,
+                  foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
@@ -685,7 +686,7 @@ class _HomeScreenState extends State<HomeScreen>
         content: Text(
           body.isNotEmpty ? body : 'home.emergency_issued'.tr(),
           style: const TextStyle(
-            color: Colors.white,
+            color: AppColors.textPrimary,
             fontSize: 15,
             height: 1.4,
           ),
@@ -763,7 +764,7 @@ class _HomeScreenState extends State<HomeScreen>
                     child: Text(
                       body,
                       style: const TextStyle(
-                        color: Colors.white,
+                        color: AppColors.textPrimary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -842,7 +843,7 @@ class _HomeScreenState extends State<HomeScreen>
                   Expanded(
                     child: Text(
                       body,
-                      style: const TextStyle(color: Colors.white),
+                      style: const TextStyle(color: AppColors.textPrimary),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -1012,7 +1013,7 @@ class _HomeScreenState extends State<HomeScreen>
         title = 'home.documents_pending_title'.tr();
         message = 'home.documents_pending_message'.tr();
         icon = Icons.description_outlined;
-        color = const Color(0xFFFF9500);
+        color = AppColors.warningLight;
         break;
       case 'pending_admin_approval':
         title = 'home.approval_pending_title'.tr();
@@ -1024,19 +1025,19 @@ class _HomeScreenState extends State<HomeScreen>
         title = 'home.account_suspended_title'.tr();
         message = 'home.account_suspended_message'.tr();
         icon = Icons.block_rounded;
-        color = const Color(0xFFFF3B30);
+        color = AppColors.error;
         break;
       case 'account_rejected':
         title = 'home.account_rejected_title'.tr();
         message = 'home.account_rejected_message'.tr();
         icon = Icons.cancel_rounded;
-        color = const Color(0xFFFF3B30);
+        color = AppColors.error;
         break;
       default:
         title = 'home.disconnected_title'.tr();
         message = 'home.disconnected_message'.tr();
         icon = Icons.info_outline_rounded;
-        color = const Color(0xFFFF9500);
+        color = AppColors.warningLight;
     }
 
     showDialog(
@@ -1121,12 +1122,12 @@ class _HomeScreenState extends State<HomeScreen>
         return AnnotatedRegion<SystemUiOverlayStyle>(
           value: const SystemUiOverlayStyle(
             statusBarColor: Colors.transparent,
-            statusBarIconBrightness: Brightness.light,
+            statusBarIconBrightness: Brightness.dark,
             systemNavigationBarColor: AppColors.surface,
-            systemNavigationBarIconBrightness: Brightness.light,
+            systemNavigationBarIconBrightness: Brightness.dark,
           ),
           child: Scaffold(
-            backgroundColor: Colors.black,
+            backgroundColor: AppColors.background,
             // Bug report button moved to profile menu (it was covering UI here).
             // Search for `report_bug` action in the profile/settings to invoke it.
             body: Stack(
@@ -1134,8 +1135,8 @@ class _HomeScreenState extends State<HomeScreen>
                 // Pure-black galaxy background BEHIND the content (solo por fuera,
                 // matches the rider home). Stars must sit behind _buildBody so they
                 // don't get painted on top of the cards.
-                const Positioned.fill(child: ColoredBox(color: Colors.black)),
-                ..._buildFloatingParticles(),
+                // Fondo claro TORO (bruma azul y dorada); las estrellas eran del tema negro.
+                const Positioned.fill(child: GalaxyBackground()),
                 _buildBody(),
                 // Floating navbar overlay
                 if (!(_selectedNavIndex == 1 || _isTourismMode || _isOrganizer))
@@ -1375,7 +1376,7 @@ class _HomeScreenState extends State<HomeScreen>
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFF2A1215),
+            color: AppColors.errorSoft,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: AppColors.error.withValues(alpha: 0.5)),
           ),
@@ -1547,14 +1548,14 @@ class _HomeScreenState extends State<HomeScreen>
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
+            colors: [AppColors.primary, AppColors.primary],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF3B82F6).withOpacity(0.4),
+              color: AppColors.primary.withOpacity(0.4),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -1567,14 +1568,14 @@ class _HomeScreenState extends State<HomeScreen>
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
+                color: AppColors.border,
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 ride.type == RideType.marketplace
                     ? Icons.shopping_bag
                     : Icons.navigation_rounded,
-                color: Colors.white,
+                color: AppColors.textPrimary,
                 size: 28,
               ),
             ),
@@ -1589,7 +1590,7 @@ class _HomeScreenState extends State<HomeScreen>
                         ? 'ENTREGA ACTIVA'
                         : 'VIAJE ACTIVO',
                     style: const TextStyle(
-                      color: Colors.white,
+                      color: AppColors.textPrimary,
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                       letterSpacing: 1.2,
@@ -1599,7 +1600,7 @@ class _HomeScreenState extends State<HomeScreen>
                   Text(
                     ride.dropoffLocation.address ?? 'Destino',
                     style: const TextStyle(
-                      color: Colors.white,
+                      color: AppColors.textPrimary,
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
                     ),
@@ -1610,7 +1611,7 @@ class _HomeScreenState extends State<HomeScreen>
                   Text(
                     'home.your_earnings'.tr(namedArgs: {'amount': formatMoney(estimatedEarnings, country: Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US')}),
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.9),
+                      color: AppColors.textPrimary,
                       fontSize: 13,
                     ),
                   ),
@@ -1621,12 +1622,12 @@ class _HomeScreenState extends State<HomeScreen>
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
+                color: AppColors.border,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Icon(
                 Icons.arrow_forward_rounded,
-                color: Colors.white,
+                color: AppColors.textPrimary,
                 size: 20,
               ),
             ),
@@ -1674,7 +1675,7 @@ class _HomeScreenState extends State<HomeScreen>
                 height: 64,
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [Color(0xFFFF9500), Color(0xFFFF6B00)],
+                    colors: [AppColors.warningLight, AppColors.warningLight],
                   ),
                   borderRadius: BorderRadius.circular(20),
                 ),
@@ -1729,7 +1730,7 @@ class _HomeScreenState extends State<HomeScreen>
                         ),
                         child: const Icon(
                           Icons.hourglass_top_rounded,
-                          color: Color(0xFF2196F3),
+                          color: AppColors.primary,
                           size: 22,
                         ),
                       ),
@@ -1741,7 +1742,7 @@ class _HomeScreenState extends State<HomeScreen>
                             Text(
                               'trial_wait_title'.tr(),
                               style: const TextStyle(
-                                color: Colors.white,
+                                color: AppColors.textPrimary,
                                 fontWeight: FontWeight.w600,
                                 fontSize: 14,
                               ),
@@ -1775,13 +1776,13 @@ class _HomeScreenState extends State<HomeScreen>
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      const Color(0xFFFF9500).withValues(alpha: 0.1),
-                      const Color(0xFFFF6B00).withValues(alpha: 0.05),
+                      AppColors.warningLight.withValues(alpha: 0.1),
+                      AppColors.warningLight.withValues(alpha: 0.05),
                     ],
                   ),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: const Color(0xFFFF9500).withValues(alpha: 0.3),
+                    color: AppColors.warningLight.withValues(alpha: 0.3),
                   ),
                 ),
                 child: Column(
@@ -1799,7 +1800,7 @@ class _HomeScreenState extends State<HomeScreen>
                           ),
                           child: const Icon(
                             Icons.science_rounded,
-                            color: Color(0xFFFF9500),
+                            color: AppColors.warningLight,
                             size: 22,
                           ),
                         ),
@@ -1811,7 +1812,7 @@ class _HomeScreenState extends State<HomeScreen>
                               Text(
                                 'trial_mode_title'.tr(),
                                 style: const TextStyle(
-                                  color: Colors.white,
+                                  color: AppColors.textPrimary,
                                   fontWeight: FontWeight.w600,
                                   fontSize: 14,
                                 ),
@@ -1866,7 +1867,7 @@ class _HomeScreenState extends State<HomeScreen>
                               child: trialChecked
                                   ? const Icon(
                                       Icons.check,
-                                      color: Colors.white,
+                                      color: AppColors.textPrimary,
                                       size: 14,
                                     )
                                   : null,
@@ -1877,7 +1878,7 @@ class _HomeScreenState extends State<HomeScreen>
                                 'trial_checkbox'.tr(),
                                 style: TextStyle(
                                   color: trialChecked
-                                      ? Colors.white
+                                      ? AppColors.textPrimary
                                       : AppColors.textSecondary,
                                   fontSize: 11,
                                   height: 1.5,
@@ -1918,8 +1919,8 @@ class _HomeScreenState extends State<HomeScreen>
                           gradient: (trialChecked && !isSubmitting)
                               ? const LinearGradient(
                                   colors: [
-                                    Color(0xFFFF9500),
-                                    Color(0xFFFF6B00),
+                                    AppColors.warningLight,
+                                    AppColors.warningLight,
                                   ],
                                 )
                               : null,
@@ -1938,7 +1939,7 @@ class _HomeScreenState extends State<HomeScreen>
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
                                   valueColor: AlwaysStoppedAnimation<Color>(
-                                    Colors.white,
+                                    AppColors.textPrimary,
                                   ),
                                 ),
                               )
@@ -1946,7 +1947,7 @@ class _HomeScreenState extends State<HomeScreen>
                               Icon(
                                 Icons.check_circle,
                                 color: trialChecked
-                                    ? Colors.white
+                                    ? AppColors.textPrimary
                                     : AppColors.textTertiary,
                                 size: 18,
                               ),
@@ -1955,7 +1956,7 @@ class _HomeScreenState extends State<HomeScreen>
                                 'trial_activate'.tr(),
                                 style: TextStyle(
                                   color: trialChecked
-                                      ? Colors.white
+                                      ? AppColors.textPrimary
                                       : AppColors.textTertiary,
                                   fontSize: 13,
                                   fontWeight: FontWeight.bold,
@@ -2124,17 +2125,17 @@ class _HomeScreenState extends State<HomeScreen>
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: const Color(0xFF3B82F6).withValues(alpha: 0.3),
+              color: AppColors.primary.withValues(alpha: 0.3),
               width: 1.5,
             ),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF3B82F6).withValues(alpha: 0.15),
+                color: AppColors.primary.withValues(alpha: 0.15),
                 blurRadius: 12,
                 spreadRadius: 0,
               ),
               BoxShadow(
-                color: const Color(0xFF2563EB).withValues(alpha: 0.1),
+                color: AppColors.primary.withValues(alpha: 0.1),
                 blurRadius: 20,
                 spreadRadius: -4,
               ),
@@ -2166,7 +2167,7 @@ class _HomeScreenState extends State<HomeScreen>
                               children: [
                                 const Icon(
                                   Icons.block_rounded,
-                                  color: Color(0xFFFF3B30),
+                                  color: AppColors.error,
                                 ),
                                 const SizedBox(width: 12),
                                 Text(
@@ -2192,7 +2193,7 @@ class _HomeScreenState extends State<HomeScreen>
                               ElevatedButton(
                                 onPressed: () => Navigator.pop(ctx),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFFFF3B30),
+                                  backgroundColor: AppColors.error,
                                 ),
                                 child: Text('understood'.tr()),
                               ),
@@ -2248,7 +2249,7 @@ class _HomeScreenState extends State<HomeScreen>
                                 children: [
                                   Icon(
                                     Icons.location_off_rounded,
-                                    color: const Color(0xFFFF9500),
+                                    color: AppColors.warningLight,
                                   ),
                                   const SizedBox(width: 12),
                                   Text(
@@ -2279,7 +2280,7 @@ class _HomeScreenState extends State<HomeScreen>
                                 ElevatedButton(
                                   onPressed: () => Navigator.pop(context, true),
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFFFF9500),
+                                    backgroundColor: AppColors.warningLight,
                                   ),
                                   child: Text('open_settings'.tr()),
                                 ),
@@ -2342,7 +2343,7 @@ class _HomeScreenState extends State<HomeScreen>
                                 Expanded(child: Text(msg)),
                               ],
                             ),
-                            backgroundColor: const Color(0xFFFF3B30),
+                            backgroundColor: AppColors.error,
                             duration: const Duration(seconds: 4),
                             action: SnackBarAction(
                               label: 'Documentos',
@@ -2370,16 +2371,16 @@ class _HomeScreenState extends State<HomeScreen>
                     vertical: 3,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFF9500).withValues(alpha: 0.15),
+                    color: AppColors.warningLight.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(6),
                     border: Border.all(
-                      color: const Color(0xFFFF9500).withValues(alpha: 0.4),
+                      color: AppColors.warningLight.withValues(alpha: 0.4),
                     ),
                   ),
                   child: Text(
                     'trial_badge'.tr(),
                     style: const TextStyle(
-                      color: Color(0xFFFF9500),
+                      color: AppColors.warningLight,
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                     ),
@@ -2429,7 +2430,7 @@ class _HomeScreenState extends State<HomeScreen>
                         child: Icon(
                           Icons.local_taxi_rounded,
                           color: !_isTourismMode
-                              ? Colors.white
+                              ? AppColors.textPrimary
                               : AppColors.textTertiary,
                           size: 14,
                         ),
@@ -2451,7 +2452,7 @@ class _HomeScreenState extends State<HomeScreen>
                         child: Icon(
                           Icons.directions_bus_rounded,
                           color: _isTourismMode
-                              ? Colors.white
+                              ? AppColors.textPrimary
                               : AppColors.textTertiary,
                           size: 14,
                         ),
@@ -2519,7 +2520,7 @@ class _HomeScreenState extends State<HomeScreen>
               children: [
                 Icon(
                   Icons.local_shipping_outlined,
-                  color: const Color(0xFFFF9500),
+                  color: AppColors.warningLight,
                 ),
                 const SizedBox(width: 12),
                 Text(
@@ -2543,7 +2544,7 @@ class _HomeScreenState extends State<HomeScreen>
               ElevatedButton(
                 onPressed: () => Navigator.pop(context, true),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFF9500),
+                  backgroundColor: AppColors.warningLight,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -2551,7 +2552,7 @@ class _HomeScreenState extends State<HomeScreen>
                 child: Text(
                   'go_online'.tr(),
                   style: const TextStyle(
-                    color: Colors.white,
+                    color: AppColors.textPrimary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -2583,7 +2584,7 @@ class _HomeScreenState extends State<HomeScreen>
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(msg),
-                  backgroundColor: const Color(0xFFFF3B30),
+                  backgroundColor: AppColors.error,
                   duration: const Duration(seconds: 4),
                 ),
               );
@@ -2597,13 +2598,13 @@ class _HomeScreenState extends State<HomeScreen>
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              const Color(0xFFFF9500).withValues(alpha: 0.2),
-              const Color(0xFFFF6B00).withValues(alpha: 0.1),
+              AppColors.warningLight.withValues(alpha: 0.2),
+              AppColors.warningLight.withValues(alpha: 0.1),
             ],
           ),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: const Color(0xFFFF9500).withValues(alpha: 0.5),
+            color: AppColors.warningLight.withValues(alpha: 0.5),
             width: 1.5,
           ),
         ),
@@ -2619,7 +2620,7 @@ class _HomeScreenState extends State<HomeScreen>
                   Text(
                     '$rideCount ${rideCount == 1 ? 'trip_available_single'.tr() : 'trips_available_plural'.tr()}!',
                     style: const TextStyle(
-                      color: Color(0xFFFF9500),
+                      color: AppColors.warningLight,
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
                     ),
@@ -2637,7 +2638,7 @@ class _HomeScreenState extends State<HomeScreen>
             ),
             Icon(
               Icons.arrow_forward_ios_rounded,
-              color: const Color(0xFFFF9500),
+              color: AppColors.warningLight,
               size: 18,
             ),
           ],
@@ -2668,8 +2669,8 @@ class _HomeScreenState extends State<HomeScreen>
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: isSuspended
-                ? [const Color(0xFFDC2626), const Color(0xFFB91C1C)]
-                : [const Color(0xFFF59E0B), const Color(0xFFD97706)],
+                ? [AppColors.errorSoft, AppColors.errorSoft]
+                : [AppColors.warningSoft, AppColors.warningSoft],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -2678,8 +2679,8 @@ class _HomeScreenState extends State<HomeScreen>
             BoxShadow(
               color:
                   (isSuspended
-                          ? const Color(0xFFDC2626)
-                          : const Color(0xFFF59E0B))
+                          ? AppColors.error
+                          : AppColors.warningLight)
                       .withOpacity(0.3),
               blurRadius: 12,
               offset: const Offset(0, 4),
@@ -2692,7 +2693,7 @@ class _HomeScreenState extends State<HomeScreen>
               isSuspended
                   ? Icons.block_rounded
                   : Icons.account_balance_wallet_rounded,
-              color: Colors.white,
+              color: AppColors.textPrimary,
               size: 32,
             ),
             const SizedBox(width: 12),
@@ -2703,7 +2704,7 @@ class _HomeScreenState extends State<HomeScreen>
                   Text(
                     isSuspended ? 'home.suspended_account'.tr() : 'home.commission_to_pay'.tr(),
                     style: const TextStyle(
-                      color: Colors.white,
+                      color: AppColors.textPrimary,
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 1,
@@ -2721,7 +2722,7 @@ class _HomeScreenState extends State<HomeScreen>
                           'US',
                     ),
                     style: const TextStyle(
-                      color: Colors.white,
+                      color: AppColors.textPrimary,
                       fontSize: 24,
                       fontWeight: FontWeight.w800,
                     ),
@@ -2731,7 +2732,7 @@ class _HomeScreenState extends State<HomeScreen>
                         ? 'home.deposit_to_reactivate'.tr()
                         : 'home.from_cash_trips'.tr(),
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.85),
+                      color: AppColors.textPrimary,
                       fontSize: 12,
                     ),
                   ),
@@ -2741,13 +2742,13 @@ class _HomeScreenState extends State<HomeScreen>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
+                color: AppColors.border,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
                 isSuspended ? 'Depositar' : 'Ver',
                 style: const TextStyle(
-                  color: Colors.white,
+                  color: AppColors.textPrimary,
                   fontWeight: FontWeight.w700,
                   fontSize: 13,
                 ),
@@ -2791,11 +2792,11 @@ class _HomeScreenState extends State<HomeScreen>
                     width: 8,
                     height: 8,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFF9500),
+                      color: AppColors.warningLight,
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFFFF9500).withValues(alpha: 0.5),
+                          color: AppColors.warningLight.withValues(alpha: 0.5),
                           blurRadius: 8,
                         ),
                       ],
@@ -2805,7 +2806,7 @@ class _HomeScreenState extends State<HomeScreen>
                   Text(
                     '${rides.length} ${rides.length == 1 ? 'trip_available_single'.tr() : 'trips_available_plural'.tr()}',
                     style: TextStyle(
-                      color: const Color(0xFFFF9500),
+                      color: AppColors.warningLight,
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
                     ),
@@ -2860,7 +2861,7 @@ class _HomeScreenState extends State<HomeScreen>
                                             'home.offer_error'.tr(),
                                 ),
                                 backgroundColor: success
-                                    ? const Color(0xFF1E88E5)
+                                    ? AppColors.primary
                                     : Colors.red,
                               ),
                             );
@@ -3032,8 +3033,8 @@ class _HomeScreenState extends State<HomeScreen>
         ? qrLevel / _tierMaxQRs[currentTier + 1]
         : 1.0;
 
-    const panelBlue = Color(0xFF3B82F6); // admin blue
-    const panelSecondary = Color(0xFF22D3EE); // admin cyan
+    const panelBlue = AppColors.primary; // admin blue
+    const panelSecondary = AppColors.primary; // admin cyan
 
     return Container(
       decoration: BoxDecoration(
@@ -3086,7 +3087,7 @@ class _HomeScreenState extends State<HomeScreen>
                             Text(
                               'home.my_qr_level'.tr(),
                               style: const TextStyle(
-                                color: Colors.white,
+                                color: AppColors.textPrimary,
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -3115,7 +3116,7 @@ class _HomeScreenState extends State<HomeScreen>
                                     : 'home.qrs_count'.tr(
                                         namedArgs: {'count': '$qrLevel'}),
                                 style: const TextStyle(
-                                  color: Color(0xFF00FF66),
+                                  color: AppColors.success,
                                   fontSize: 13,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -3129,7 +3130,7 @@ class _HomeScreenState extends State<HomeScreen>
                           + (myRank > 0 ? 'home.ranking'.tr(namedArgs: {'rank': '$myRank'}) : '')
                           + (currentTier < 5 ? 'home.qrs_for_next'.tr(namedArgs: {'count': '$nextTierQRs', 'percent': nextDriverEarnings.toStringAsFixed(0)}) : 'home.qrs_max'.tr()),
                           style: const TextStyle(
-                            color: Colors.white70,
+                            color: AppColors.textSecondary,
                             fontSize: 12,
                           ),
                           maxLines: 1,
@@ -3140,7 +3141,7 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                   Icon(
                     _showQRTierExpanded ? Icons.expand_less : Icons.expand_more,
-                    color: Colors.white70,
+                    color: AppColors.textSecondary,
                     size: 28,
                   ),
                 ],
@@ -3154,7 +3155,7 @@ class _HomeScreenState extends State<HomeScreen>
             child: Container(
               height: 6,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.1),
+                color: AppColors.border,
                 borderRadius: BorderRadius.circular(3),
               ),
               child: FractionallySizedBox(
@@ -3163,12 +3164,12 @@ class _HomeScreenState extends State<HomeScreen>
                 child: Container(
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [Color(0xFF00FF66), Color(0xFF00CC99)],
+                      colors: [AppColors.success, Color(0xFF00CC99)],
                     ),
                     borderRadius: BorderRadius.circular(3),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF00FF66).withValues(alpha: 0.4),
+                        color: AppColors.success.withValues(alpha: 0.4),
                         blurRadius: 6,
                       ),
                     ],
@@ -3208,12 +3209,12 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                       decoration: BoxDecoration(
                         color: isCurrent
-                            ? const Color(0xFF00FF66).withValues(alpha: 0.15)
+                            ? AppColors.success.withValues(alpha: 0.15)
                             : Colors.transparent,
                         borderRadius: BorderRadius.circular(8),
                         border: isCurrent
                             ? Border.all(
-                                color: const Color(0xFF00FF66).withValues(alpha: 0.5),
+                                color: AppColors.success.withValues(alpha: 0.5),
                                 width: 1.5,
                               )
                             : null,
@@ -3230,10 +3231,10 @@ class _HomeScreenState extends State<HomeScreen>
                                     ? FontWeight.bold
                                     : FontWeight.w400,
                                 color: isCurrent
-                                    ? const Color(0xFF00FF66)
+                                    ? AppColors.success
                                     : isReached
-                                    ? Colors.white38
-                                    : Colors.white24,
+                                    ? AppColors.textDisabled
+                                    : AppColors.border,
                               ),
                             ),
                           ),
@@ -3246,8 +3247,8 @@ class _HomeScreenState extends State<HomeScreen>
                               style: TextStyle(
                                 fontSize: isCurrent ? 12 : 11,
                                 color: isCurrent
-                                    ? Colors.white
-                                    : Colors.white30,
+                                    ? AppColors.textPrimary
+                                    : AppColors.textDisabled,
                               ),
                             ),
                           ),
@@ -3257,10 +3258,10 @@ class _HomeScreenState extends State<HomeScreen>
                               fontSize: isCurrent ? 15 : 12,
                               fontWeight: isCurrent ? FontWeight.bold : FontWeight.w400,
                               color: isCurrent
-                                  ? const Color(0xFF00FF66)
+                                  ? AppColors.success
                                   : isReached
-                                  ? Colors.white38
-                                  : Colors.white24,
+                                  ? AppColors.textDisabled
+                                  : AppColors.border,
                             ),
                           ),
                           if (isCurrent) ...[
@@ -3268,7 +3269,7 @@ class _HomeScreenState extends State<HomeScreen>
                             const Icon(
                               Icons.arrow_back_rounded,
                               size: 12,
-                              color: Color(0xFF00FF66),
+                              color: AppColors.success,
                             ),
                           ],
                         ],
@@ -3311,14 +3312,14 @@ class _HomeScreenState extends State<HomeScreen>
                           width: double.infinity,
                           padding: const EdgeInsets.symmetric(vertical: 8),
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.1),
+                            color: AppColors.border,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
                             qrCode,
                             textAlign: TextAlign.center,
                             style: const TextStyle(
-                              color: Colors.white,
+                              color: AppColors.textPrimary,
                               fontWeight: FontWeight.bold,
                               fontSize: 13,
                               letterSpacing: 1.5,
@@ -3362,7 +3363,7 @@ class _HomeScreenState extends State<HomeScreen>
               child: Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.06),
+                  color: AppColors.border,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Row(
@@ -3376,7 +3377,7 @@ class _HomeScreenState extends State<HomeScreen>
                     Expanded(
                       child: Text(
                         'home.qr_tier_info'.tr(),
-                        style: const TextStyle(color: Colors.white60, fontSize: 11),
+                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
                       ),
                     ),
                   ],
@@ -3397,7 +3398,7 @@ class _HomeScreenState extends State<HomeScreen>
     required VoidCallback onTap,
   }) {
     return Material(
-      color: const Color(0xFF1E88E5).withValues(alpha: 0.25),
+      color: AppColors.primary.withValues(alpha: 0.25),
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
         borderRadius: BorderRadius.circular(10),
@@ -3407,12 +3408,12 @@ class _HomeScreenState extends State<HomeScreen>
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, color: Colors.white, size: 18),
+              Icon(icon, color: AppColors.textPrimary, size: 18),
               const SizedBox(width: 6),
               Text(
                 label,
                 style: const TextStyle(
-                  color: Colors.white,
+                  color: AppColors.textPrimary,
                   fontWeight: FontWeight.w600,
                   fontSize: 12,
                 ),
@@ -3425,7 +3426,7 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   void _showFullQRCode(String qrLink, String code) {
-    const panelBlue = Color(0xFF1E88E5);
+    const panelBlue = AppColors.primary;
 
     showModalBottomSheet(
       context: context,
@@ -3455,7 +3456,7 @@ class _HomeScreenState extends State<HomeScreen>
               style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
+                color: AppColors.textPrimary,
               ),
             ),
             const SizedBox(height: 8),
@@ -3590,17 +3591,17 @@ class _HomeScreenState extends State<HomeScreen>
             color: AppColors.card,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: const Color(0xFF22D3EE).withValues(alpha: 0.3),
+              color: AppColors.primary.withValues(alpha: 0.3),
               width: 1.5,
             ),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF22D3EE).withValues(alpha: 0.15),
+                color: AppColors.primary.withValues(alpha: 0.15),
                 blurRadius: 12,
                 spreadRadius: 0,
               ),
               BoxShadow(
-                color: const Color(0xFF22D3EE).withValues(alpha: 0.1),
+                color: AppColors.primary.withValues(alpha: 0.1),
                 blurRadius: 20,
                 spreadRadius: -4,
               ),
@@ -3638,7 +3639,7 @@ class _HomeScreenState extends State<HomeScreen>
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
                             color: _showDailyEarnings
-                                ? const Color(0xFFFF9500).withValues(alpha: 0.3)
+                                ? AppColors.warningLight.withValues(alpha: 0.3)
                                 : Colors.transparent,
                           ),
                         ),
@@ -3677,13 +3678,13 @@ class _HomeScreenState extends State<HomeScreen>
                                           'US',
                                     ),
                                     style: TextStyle(
-                                      color: const Color(0xFFFF9500),
+                                      color: AppColors.warningLight,
                                       fontSize: 22,
                                       fontWeight: FontWeight.w700,
                                     ),
                                   )
                                 : _TamagotchiPet(
-                                    color: const Color(0xFFFF9500),
+                                    color: AppColors.warningLight,
                                     seed: 1,
                                   ),
                           ],
@@ -3877,12 +3878,12 @@ class _HomeScreenState extends State<HomeScreen>
         color: AppColors.card,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: const Color(0xFF3B82F6).withValues(alpha: 0.25),
+          color: AppColors.primary.withValues(alpha: 0.25),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF3B82F6).withValues(alpha: 0.08),
+            color: AppColors.primary.withValues(alpha: 0.08),
             blurRadius: 20,
             spreadRadius: -4,
           ),
@@ -3905,12 +3906,12 @@ class _HomeScreenState extends State<HomeScreen>
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF3B82F6).withValues(alpha: 0.15),
+                      color: AppColors.primary.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: const Icon(
                       Icons.car_rental_rounded,
-                      color: Color(0xFF3B82F6),
+                      color: AppColors.primary,
                       size: 20,
                     ),
                   ),
@@ -4027,8 +4028,8 @@ class _HomeScreenState extends State<HomeScreen>
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(8),
-        splashColor: const Color(0xFF8B5CF6).withValues(alpha: 0.08),
-        highlightColor: const Color(0xFF8B5CF6).withValues(alpha: 0.04),
+        splashColor: AppColors.purple.withValues(alpha: 0.08),
+        highlightColor: AppColors.purple.withValues(alpha: 0.04),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
@@ -4040,11 +4041,11 @@ class _HomeScreenState extends State<HomeScreen>
                   color: AppColors.cardHover,
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: const Color(0xFF8B5CF6).withValues(alpha: 0.2),
+                    color: AppColors.purple.withValues(alpha: 0.2),
                     width: 1,
                   ),
                 ),
-                child: Icon(icon, color: const Color(0xFF8B5CF6), size: 18),
+                child: Icon(icon, color: AppColors.purple, size: 18),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -4410,8 +4411,8 @@ class _LuxuryActionButtonState extends State<_LuxuryActionButton> {
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: _isPressed
-                ? const Color(0xFF8B5CF6).withValues(alpha: 0.5)
-                : const Color(0xFF8B5CF6).withValues(alpha: 0.3),
+                ? AppColors.purple.withValues(alpha: 0.5)
+                : AppColors.purple.withValues(alpha: 0.3),
             width: 1.5,
           ),
           boxShadow: [
@@ -4433,7 +4434,7 @@ class _LuxuryActionButtonState extends State<_LuxuryActionButton> {
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(widget.icon, color: const Color(0xFF8B5CF6), size: 20),
+            Icon(widget.icon, color: AppColors.purple, size: 20),
             const SizedBox(width: 10),
             Text(
               widget.label,
@@ -4476,8 +4477,8 @@ class _FireGlowStatusBarState extends State<_FireGlowStatusBar>
   ];
 
   // FireGlow colors
-  static const Color _fireColor = Color(0xFFFF9500);
-  static const Color _emberColor = Color(0xFFFF6B00);
+  static const Color _fireColor = AppColors.warningLight;
+  static const Color _emberColor = AppColors.warningLight;
   static const Color _warmWhite = Color(0xFFFFF5E6);
 
   @override
@@ -4683,7 +4684,7 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
   late Animation<double> _pulseAnimation;
 
   // FireGlow colors
-  static const Color _fireColor = Color(0xFFFF9500);
+  static const Color _fireColor = AppColors.warningLight;
 
   // Card accent color
   Color get _cardAccentColor => _fireColor;
@@ -4798,7 +4799,7 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                 color: AppColors.surface,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: const Color(0xFF1E88E5).withValues(alpha: 0.5),
+                  color: AppColors.primary.withValues(alpha: 0.5),
                 ),
               ),
               child: Column(
@@ -4811,7 +4812,7 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
-                            colors: [Color(0xFF1E88E5), Color(0xFF00BCD4)],
+                            colors: [AppColors.primary, AppColors.primary],
                           ),
                           borderRadius: BorderRadius.circular(10),
                         ),
@@ -4838,7 +4839,7 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                               'Tier ${widget.driverQrTier} - Hasta +${maxPercent.toStringAsFixed(0)}%',
                               style: const TextStyle(
                                 fontSize: 12,
-                                color: Color(0xFF1E88E5),
+                                color: AppColors.primary,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -4895,7 +4896,7 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                             'home.your_offer'.tr(),
                             style: TextStyle(
                               fontSize: 12,
-                              color: Color(0xFF1E88E5),
+                              color: AppColors.primary,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -4912,7 +4913,7 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                             style: const TextStyle(
                               fontSize: 28,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFF1E88E5),
+                              color: AppColors.primary,
                             ),
                           ),
                         ],
@@ -4929,13 +4930,13 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF00FF66).withValues(alpha: 0.15),
+                        color: AppColors.success.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
                         '+${formatMoney(increase, country: Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US')} (+${increasePercent.toStringAsFixed(0)}%)',
                         style: const TextStyle(
-                          color: Color(0xFF00FF66),
+                          color: AppColors.success,
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
                         ),
@@ -4947,11 +4948,11 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                   // Slider
                   SliderTheme(
                     data: SliderThemeData(
-                      activeTrackColor: const Color(0xFF1E88E5),
+                      activeTrackColor: AppColors.primary,
                       inactiveTrackColor: const Color(
                         0xFF1E88E5,
                       ).withValues(alpha: 0.2),
-                      thumbColor: const Color(0xFF1E88E5),
+                      thumbColor: AppColors.primary,
                       overlayColor: const Color(
                         0xFF1E88E5,
                       ).withValues(alpha: 0.15),
@@ -4999,7 +5000,7 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                               ),
                               decoration: BoxDecoration(
                                 color: isSelected
-                                    ? const Color(0xFF1E88E5)
+                                    ? AppColors.primary
                                     : const Color(
                                         0xFF1E88E5,
                                       ).withValues(alpha: 0.1),
@@ -5014,8 +5015,8 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                                 '+$percent%',
                                 style: TextStyle(
                                   color: isSelected
-                                      ? Colors.white
-                                      : const Color(0xFF1E88E5),
+                                      ? AppColors.textPrimary
+                                      : AppColors.primary,
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -5049,7 +5050,7 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
-                            colors: [Color(0xFF1E88E5), Color(0xFF00BCD4)],
+                            colors: [AppColors.primary, AppColors.primary],
                           ),
                           borderRadius: BorderRadius.circular(12),
                           boxShadow: [
@@ -5067,14 +5068,14 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                           children: [
                             const Icon(
                               Icons.send_rounded,
-                              color: Colors.white,
+                              color: AppColors.textPrimary,
                               size: 18,
                             ),
                             const SizedBox(width: 8),
                             Text(
                               'ENVIAR OFERTA ${formatMoney(proposedPrice, country: Provider.of<DriverProvider>(context, listen: false).driver?.countryCode ?? 'US')}',
                               style: const TextStyle(
-                                color: Colors.white,
+                                color: AppColors.textPrimary,
                                 fontSize: 15,
                                 fontWeight: FontWeight.bold,
                                 letterSpacing: 0.5,
@@ -5190,14 +5191,14 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                         ),
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
-                            colors: [Color(0xFF00C853), Color(0xFF00897B)],
+                            colors: [AppColors.success, Color(0xFF00897B)],
                           ),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
                           'round_trip'.tr(),
                           style: const TextStyle(
-                            color: Colors.white,
+                            color: AppColors.textPrimary,
                             fontSize: 11,
                             fontWeight: FontWeight.bold,
                           ),
@@ -5329,7 +5330,7 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                             vertical: 3,
                           ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF4FC3F7),
+                            color: AppColors.primaryLight,
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
@@ -5349,7 +5350,7 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                             vertical: 3,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.14),
+                            color: AppColors.border,
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
@@ -5736,7 +5737,7 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                           ),
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
-                              colors: [Color(0xFF1E88E5), Color(0xFF00BCD4)],
+                              colors: [AppColors.primary, AppColors.primary],
                             ),
                             borderRadius: BorderRadius.circular(10),
                           ),
@@ -5745,14 +5746,14 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                             children: [
                               const Icon(
                                 Icons.handshake_rounded,
-                                color: Colors.white,
+                                color: AppColors.textPrimary,
                                 size: 16,
                               ),
                               const SizedBox(width: 4),
                               Text(
                                 'NEGOCIAR',
                                 style: const TextStyle(
-                                  color: Colors.white,
+                                  color: AppColors.textPrimary,
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -5805,7 +5806,7 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                                       )
                                     : const LinearGradient(
                                         colors: [
-                                          Color(0xFF22C55E),
+                                          AppColors.success,
                                           Color(0xFF16A34A),
                                         ],
                                       ),
@@ -5830,8 +5831,8 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                                         ? Icons.lock_clock
                                         : Icons.check_circle_rounded,
                                     color: locked
-                                        ? const Color(0xFF4FC3F7)
-                                        : Colors.white,
+                                        ? AppColors.primaryLight
+                                        : AppColors.textPrimary,
                                     size: 18,
                                   ),
                                   const SizedBox(width: 6),
@@ -5841,8 +5842,8 @@ class _FireGlowRideCardState extends State<_FireGlowRideCard>
                                         : 'ACEPTAR',
                                     style: TextStyle(
                                       color: locked
-                                          ? const Color(0xFF4FC3F7)
-                                          : Colors.white,
+                                          ? AppColors.primaryLight
+                                          : AppColors.textPrimary,
                                       fontSize: 13,
                                       fontWeight: FontWeight.bold,
                                       letterSpacing: 0.5,
@@ -5920,7 +5921,7 @@ class _PulsingDotState extends State<_PulsingDot>
           width: 12,
           height: 12,
           decoration: BoxDecoration(
-            color: const Color(0xFFFF9500),
+            color: AppColors.warningLight,
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
@@ -6127,12 +6128,12 @@ class _RoutePreviewSheetState extends State<_RoutePreviewSheet>
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFF9500).withValues(alpha: 0.15),
+                    color: AppColors.warningLight.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(
                     Icons.route_rounded,
-                    color: Color(0xFFFF9500),
+                    color: AppColors.warningLight,
                     size: 22,
                   ),
                 ),
@@ -6169,7 +6170,7 @@ class _RoutePreviewSheetState extends State<_RoutePreviewSheet>
                     ).driver?.countryCode,
                   ),
                   style: const TextStyle(
-                    color: Color(0xFFFF9500),
+                    color: AppColors.warningLight,
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                   ),
@@ -6196,7 +6197,7 @@ class _RoutePreviewSheetState extends State<_RoutePreviewSheet>
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
                           color: _showDailyEarnings
-                              ? const Color(0xFFFF9500).withValues(alpha: 0.3)
+                              ? AppColors.warningLight.withValues(alpha: 0.3)
                               : AppColors.border.withValues(alpha: 0.2),
                         ),
                       ),
@@ -6236,7 +6237,7 @@ class _RoutePreviewSheetState extends State<_RoutePreviewSheet>
                                       'US',
                                 ),
                                 style: const TextStyle(
-                                  color: Color(0xFFFF9500),
+                                  color: AppColors.warningLight,
                                   fontSize: 20,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -6323,7 +6324,7 @@ class _RoutePreviewSheetState extends State<_RoutePreviewSheet>
           Expanded(
             child: _isLoading
                 ? const Center(
-                    child: CircularProgressIndicator(color: Color(0xFFFF9500)),
+                    child: CircularProgressIndicator(color: AppColors.warningLight),
                   )
                 : ClipRRect(
                     borderRadius: const BorderRadius.vertical(
@@ -6368,7 +6369,7 @@ class _RoutePreviewSheetState extends State<_RoutePreviewSheet>
                                   // Main route line
                                   Polyline(
                                     points: _routePoints,
-                                    color: const Color(0xFFFF9500),
+                                    color: AppColors.warningLight,
                                     strokeWidth: 4,
                                   ),
                                 ],
@@ -6383,7 +6384,7 @@ class _RoutePreviewSheetState extends State<_RoutePreviewSheet>
                                     height: 24,
                                     child: Container(
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFFFFD700),
+                                        color: AppColors.gold,
                                         shape: BoxShape.circle,
                                         boxShadow: [
                                           BoxShadow(
@@ -6418,7 +6419,7 @@ class _RoutePreviewSheetState extends State<_RoutePreviewSheet>
                                       color: AppColors.success,
                                       shape: BoxShape.circle,
                                       border: Border.all(
-                                        color: Colors.white,
+                                        color: AppColors.border,
                                         width: 2,
                                       ),
                                       boxShadow: [
@@ -6433,7 +6434,7 @@ class _RoutePreviewSheetState extends State<_RoutePreviewSheet>
                                     ),
                                     child: const Icon(
                                       Icons.trip_origin,
-                                      color: Colors.white,
+                                      color: AppColors.textPrimary,
                                       size: 20,
                                     ),
                                   ),
@@ -6444,10 +6445,10 @@ class _RoutePreviewSheetState extends State<_RoutePreviewSheet>
                                   height: 40,
                                   child: Container(
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFFFF9500),
+                                      color: AppColors.warningLight,
                                       shape: BoxShape.circle,
                                       border: Border.all(
-                                        color: Colors.white,
+                                        color: AppColors.border,
                                         width: 2,
                                       ),
                                       boxShadow: [
@@ -6462,7 +6463,7 @@ class _RoutePreviewSheetState extends State<_RoutePreviewSheet>
                                     ),
                                     child: const Icon(
                                       Icons.flag_rounded,
-                                      color: Colors.white,
+                                      color: AppColors.textPrimary,
                                       size: 20,
                                     ),
                                   ),
@@ -6540,7 +6541,7 @@ class _RoutePreviewSheetState extends State<_RoutePreviewSheet>
                       width: 10,
                       height: 10,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFF9500),
+                        color: AppColors.warningLight,
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
@@ -6633,14 +6634,14 @@ class _RoutePreviewSheetState extends State<_RoutePreviewSheet>
                             children: [
                               const Icon(
                                 Icons.check_circle_rounded,
-                                color: Colors.white,
+                                color: AppColors.textPrimary,
                                 size: 20,
                               ),
                               const SizedBox(width: 8),
                               Text(
                                 'accept_trip'.tr().toUpperCase(),
                                 style: const TextStyle(
-                                  color: Colors.white,
+                                  color: AppColors.textPrimary,
                                   fontSize: 15,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -6873,7 +6874,7 @@ class _NavigationTrianglePainter extends CustomPainter {
 
     // Borde blanco
     final borderPaint = Paint()
-      ..color = Colors.white
+      ..color = AppColors.textPrimary
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.5;
     canvas.drawPath(path, borderPaint);
@@ -6900,7 +6901,7 @@ class _PublishVehicleSheet extends StatefulWidget {
 }
 
 class _PublishVehicleSheetState extends State<_PublishVehicleSheet> {
-  static const _accent = Color(0xFF8B5CF6);
+  static const _accent = AppColors.purple;
 
   String _countryCode = 'US';
   bool get _isMexico => _countryCode == 'MX';
@@ -7983,7 +7984,7 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
                               width: 22,
                               height: 22,
                               child: CircularProgressIndicator(
-                                color: Colors.white,
+                                color: AppColors.textPrimary,
                                 strokeWidth: 2.5,
                               ),
                             )
@@ -8158,7 +8159,7 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
                       child: Text(
                         'rental.primary'.tr(),
                         style: const TextStyle(
-                          color: Colors.white,
+                          color: AppColors.textPrimary,
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                         ),
@@ -8375,10 +8376,10 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFFEF4444).withValues(alpha: 0.05),
+            color: AppColors.error.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: const Color(0xFFEF4444).withValues(alpha: 0.3),
+              color: AppColors.error.withValues(alpha: 0.3),
             ),
           ),
           child: Column(
@@ -8388,14 +8389,14 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
                 children: [
                   Icon(
                     Icons.badge_rounded,
-                    color: const Color(0xFFEF4444),
+                    color: AppColors.error,
                     size: 20,
                   ),
                   const SizedBox(width: 8),
                   Text(
                     'rental.official_id_required'.tr(),
                     style: TextStyle(
-                      color: const Color(0xFFEF4444),
+                      color: AppColors.error,
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
                     ),
@@ -8491,7 +8492,7 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
                                   children: [
                                     const Icon(
                                       Icons.check_circle_rounded,
-                                      color: Colors.white,
+                                      color: AppColors.textPrimary,
                                       size: 14,
                                     ),
                                     const SizedBox(width: 4),
@@ -8500,7 +8501,7 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
                                           ? 'INE'
                                           : 'rental.driver_license'.tr(),
                                       style: const TextStyle(
-                                        color: Colors.white,
+                                        color: AppColors.textPrimary,
                                         fontSize: 11,
                                         fontWeight: FontWeight.w600,
                                       ),
@@ -8697,7 +8698,7 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
               color: const Color(0xFFFEF3C7).withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: const Color(0xFFEAB308).withValues(alpha: 0.4),
+                color: AppColors.warningLight.withValues(alpha: 0.4),
               ),
             ),
             child: Column(
@@ -8707,14 +8708,14 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
                   children: [
                     Icon(
                       Icons.warning_amber_rounded,
-                      color: const Color(0xFFEAB308),
+                      color: AppColors.warningLight,
                       size: 20,
                     ),
                     const SizedBox(width: 8),
                     Text(
                       'rental.driver_required'.tr(),
                       style: const TextStyle(
-                        color: Color(0xFFEAB308),
+                        color: AppColors.warningLight,
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
                       ),
@@ -8749,7 +8750,7 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
                         ),
                         decoration: BoxDecoration(
                           color: _driverVerified
-                              ? const Color(0xFF22C55E)
+                              ? AppColors.success
                               : _accent,
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -8759,12 +8760,12 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
                                 height: 20,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  color: Colors.white,
+                                  color: AppColors.textPrimary,
                                 ),
                               )
                             : Icon(
                                 _driverVerified ? Icons.check : Icons.search,
-                                color: Colors.white,
+                                color: AppColors.textPrimary,
                                 size: 20,
                               ),
                       ),
@@ -8776,17 +8777,17 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF22C55E).withValues(alpha: 0.1),
+                      color: AppColors.success.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                        color: const Color(0xFF22C55E).withValues(alpha: 0.3),
+                        color: AppColors.success.withValues(alpha: 0.3),
                       ),
                     ),
                     child: Row(
                       children: [
                         const Icon(
                           Icons.verified,
-                          color: Color(0xFF22C55E),
+                          color: AppColors.success,
                           size: 18,
                         ),
                         const SizedBox(width: 8),
@@ -8796,7 +8797,7 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
                               namedArgs: {'name': _assignedDriverName!},
                             ),
                             style: const TextStyle(
-                              color: Color(0xFF22C55E),
+                              color: AppColors.success,
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
                             ),
@@ -9091,7 +9092,7 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
                             child: Text(
                               '${index + 1}',
                               style: const TextStyle(
-                                color: Colors.white,
+                                color: AppColors.textPrimary,
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -9178,8 +9179,8 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
                   ),
                   style: TextStyle(
                     color: _busPhotos.isNotEmpty
-                        ? const Color(0xFF22C55E)
-                        : const Color(0xFFEAB308),
+                        ? AppColors.success
+                        : AppColors.warningLight,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
@@ -9349,7 +9350,7 @@ Al marcar la casilla y presionar "Firmar y Publicar", acepto TODOS los términos
                 child: _agreedToTerms
                     ? const Icon(
                         Icons.check_rounded,
-                        color: Colors.white,
+                        color: AppColors.textPrimary,
                         size: 18,
                       )
                     : null,
@@ -9474,7 +9475,7 @@ class _MyRentalsSheet extends StatefulWidget {
 }
 
 class _MyRentalsSheetState extends State<_MyRentalsSheet> {
-  static const _accent = Color(0xFF8B5CF6);
+  static const _accent = AppColors.purple;
   List<Map<String, dynamic>> _listings = [];
   // Active agreements for each listing (listing_id → agreement)
   Map<String, Map<String, dynamic>> _activeAgreements = {};
@@ -10108,7 +10109,7 @@ class _GpsTrackingSheet extends StatefulWidget {
 }
 
 class _GpsTrackingSheetState extends State<_GpsTrackingSheet> {
-  static const _accent = Color(0xFF8B5CF6);
+  static const _accent = AppColors.purple;
   List<Map<String, dynamic>> _rentedVehicles =
       []; // listings with active agreements
   Map<String, List<Map<String, dynamic>>> _checkins =
@@ -10850,7 +10851,7 @@ class _MyVehiclesSheetState extends State<_MyVehiclesSheet> {
     final countryCode =
         vehicle['country_code']?.toString().toUpperCase() == 'MX' ? 'MX' : 'US';
 
-    final accentColor = isRental ? const Color(0xFF8B5CF6) : AppColors.primary;
+    final accentColor = isRental ? AppColors.purple : AppColors.primary;
     final typeIcon = isRental
         ? Icons.directions_car_rounded
         : Icons.directions_bus_rounded;

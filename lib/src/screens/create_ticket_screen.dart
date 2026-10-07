@@ -237,7 +237,7 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
                         height: 20,
                         width: 20,
                         child: CircularProgressIndicator(
-                          color: Colors.white,
+                          color: AppColors.textPrimary,
                           strokeWidth: 2,
                         ),
                       )
@@ -246,7 +246,7 @@ class _CreateTicketScreenState extends State<CreateTicketScreen> {
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                          color: AppColors.textPrimary,
                         ),
                       ),
               ),

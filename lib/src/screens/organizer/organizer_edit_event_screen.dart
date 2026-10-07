@@ -775,7 +775,7 @@ class _OrganizerEditEventScreenState extends State<OrganizerEditEventScreen> {
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
               disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.3),
-              disabledForegroundColor: Colors.white60,
+              disabledForegroundColor: AppColors.textSecondary,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
               ),
@@ -785,7 +785,7 @@ class _OrganizerEditEventScreenState extends State<OrganizerEditEventScreen> {
                     width: 22,
                     height: 22,
                     child: CircularProgressIndicator(
-                      color: Colors.white,
+                      color: AppColors.textPrimary,
                       strokeWidth: 2.5,
                     ),
                   )

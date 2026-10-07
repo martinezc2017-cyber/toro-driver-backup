@@ -1216,9 +1216,9 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
+        statusBarIconBrightness: Brightness.dark,
         systemNavigationBarColor: AppColors.surface,
-        systemNavigationBarIconBrightness: Brightness.light,
+        systemNavigationBarIconBrightness: Brightness.dark,
       ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
@@ -1965,7 +1965,7 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
+            color: Color(0x14102A56),
             blurRadius: 12,
             offset: const Offset(0, -4),
           ),
@@ -1985,7 +1985,7 @@ class _LiveTripPanelScreenState extends State<LiveTripPanelScreen>
                             height: 18,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              color: Colors.white,
+                              color: AppColors.textPrimary,
                             ),
                           )
                         : const Icon(Icons.flag, size: 20),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/app_colors.dart';
 import 'package:easy_localization/easy_localization.dart';
 
 import '../config/supabase_config.dart';
@@ -100,28 +101,29 @@ class _DriverConnectBannerState extends State<DriverConnectBanner> with WidgetsB
     return Container(
       margin: widget.margin,
       decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [Color(0xFFB45309), Color(0xFFF59E0B)]),
+        color: AppColors.warningSoft,
+        border: Border.all(color: AppColors.warningLight.withValues(alpha: .45)),
         borderRadius: BorderRadius.circular(12),
       ),
       padding: const EdgeInsets.all(14),
       child: Row(children: [
-        const Icon(Icons.account_balance, color: Colors.white, size: 28),
+        const Icon(Icons.account_balance, color: AppColors.warning, size: 28),
         const SizedBox(width: 12),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('banner.connect_bank_title'.tr(),
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14, height: 1.15)),
+                style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 14, height: 1.15)),
             const SizedBox(height: 3),
             Text('banner.connect_bank_subtitle'.tr(),
-                style: const TextStyle(color: Colors.white, fontSize: 11.5, height: 1.2)),
+                style: const TextStyle(color: AppColors.textPrimary, fontSize: 11.5, height: 1.2)),
           ]),
         ),
         const SizedBox(width: 10),
         ElevatedButton(
           onPressed: _busy ? null : _activate,
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.white,
-            foregroundColor: const Color(0xFFB45309),
+            backgroundColor: AppColors.warning,
+            foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           ),
           child: _busy

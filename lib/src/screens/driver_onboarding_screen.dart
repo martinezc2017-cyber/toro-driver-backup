@@ -536,7 +536,7 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
                 ),
               ),
               child: isSelected
-                  ? const Icon(Icons.check, color: Colors.white, size: 16)
+                  ? const Icon(Icons.check, color: AppColors.textPrimary, size: 16)
                   : null,
             ),
           ],
@@ -699,7 +699,7 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
                             ? 'onb_btn_submit'.tr()
                             : 'onb_btn_continue'.tr(),
                         style: const TextStyle(
-                          color: Colors.white,
+                          color: AppColors.textPrimary,
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 1,
@@ -710,7 +710,7 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
                         _isLastStep
                             ? Icons.send_rounded
                             : Icons.arrow_forward_rounded,
-                        color: Colors.white,
+                        color: AppColors.textPrimary,
                         size: 18,
                       ),
                     ],

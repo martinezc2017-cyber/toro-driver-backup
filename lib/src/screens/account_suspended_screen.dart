@@ -70,7 +70,7 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen> {
             ),
           ],
         ),
-        backgroundColor: const Color(0xFF10B981),
+        backgroundColor: AppColors.success,
         duration: const Duration(seconds: 4),
       ),
     );
@@ -109,7 +109,7 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('screens.suspended.request_sent_admin'.tr()),
-              backgroundColor: const Color(0xFF10B981),
+              backgroundColor: AppColors.success,
             ),
           );
         }
@@ -120,7 +120,7 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('screens.suspended.error_generic'.tr(namedArgs: {'error': e.toString()})),
-            backgroundColor: const Color(0xFFDC2626),
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -166,7 +166,7 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('screens.suspended.account_still_suspended'.tr()),
-            backgroundColor: const Color(0xFFF59E0B),
+            backgroundColor: AppColors.warningLight,
           ),
         );
       }
@@ -189,12 +189,12 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen> {
                 width: 100,
                 height: 100,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFDC2626).withOpacity(0.15),
+                  color: AppColors.error.withOpacity(0.15),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
                   Icons.block_rounded,
-                  color: Color(0xFFDC2626),
+                  color: AppColors.error,
                   size: 56,
                 ),
               ),
@@ -204,7 +204,7 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen> {
               Text(
                 'screens.suspended.title'.tr(),
                 style: TextStyle(
-                  color: Color(0xFFDC2626),
+                  color: AppColors.error,
                   fontSize: 22,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 2,
@@ -217,7 +217,7 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen> {
                 'screens.suspended.subtitle'.tr(),
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.7),
+                  color: AppColors.textSecondary,
                   fontSize: 15,
                 ),
               ),
@@ -230,7 +230,7 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen> {
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [Color(0xFFDC2626), Color(0xFFB91C1C)],
+                    colors: [AppColors.error, Color(0xFFB91C1C)],
                   ),
                   borderRadius: BorderRadius.circular(20),
                 ),
@@ -239,7 +239,7 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen> {
                     Text(
                       'screens.suspended.pending_balance'.tr(),
                       style: TextStyle(
-                        color: Colors.white70,
+                        color: AppColors.textSecondary,
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                         letterSpacing: 1.5,
@@ -249,7 +249,7 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen> {
                     Text(
                       formatMoney(widget.amountOwed, country: context.read<DriverProvider>().driver?.countryCode ?? 'US'),
                       style: const TextStyle(
-                        color: Colors.white,
+                        color: AppColors.textPrimary,
                         fontSize: 48,
                         fontWeight: FontWeight.w800,
                       ),
@@ -260,7 +260,7 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen> {
                         widget.blockedReason!,
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.6),
+                          color: AppColors.textSecondary,
                           fontSize: 12,
                         ),
                       ),
@@ -277,7 +277,7 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen> {
                 decoration: BoxDecoration(
                   color: AppColors.surface,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.white12),
+                  border: Border.all(color: AppColors.border),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -285,7 +285,7 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen> {
                     Text(
                       'screens.suspended.reactivate_title'.tr(),
                       style: TextStyle(
-                        color: Colors.white,
+                        color: AppColors.textPrimary,
                         fontWeight: FontWeight.w700,
                         fontSize: 14,
                       ),
@@ -317,8 +317,8 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen> {
                     style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFF59E0B),
-                    foregroundColor: Colors.black,
+                    backgroundColor: AppColors.warningLight,
+                    foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
                 ),
@@ -334,7 +334,7 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen> {
                   onPressed: _isSendingRequest || _requestSent ? null : _contactAdmin,
                   icon: Icon(
                     _requestSent ? Icons.check : Icons.support_agent_rounded,
-                    color: _requestSent ? const Color(0xFF10B981) : Colors.white70,
+                    color: _requestSent ? AppColors.success : AppColors.textSecondary,
                   ),
                   label: Text(
                     _isSendingRequest
@@ -343,13 +343,13 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen> {
                             ? 'screens.suspended.request_sent'.tr()
                             : 'screens.suspended.contact_admin'.tr(),
                     style: TextStyle(
-                      color: _requestSent ? const Color(0xFF10B981) : Colors.white70,
+                      color: _requestSent ? AppColors.success : AppColors.textSecondary,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                   style: OutlinedButton.styleFrom(
                     side: BorderSide(
-                      color: _requestSent ? const Color(0xFF10B981) : Colors.white24,
+                      color: _requestSent ? AppColors.success : AppColors.border,
                     ),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
@@ -365,12 +365,12 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen> {
                     ? const SizedBox(
                         width: 16,
                         height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white38),
+                        child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.textDisabled),
                       )
-                    : const Icon(Icons.refresh, color: Colors.white38, size: 18),
+                    : const Icon(Icons.refresh, color: AppColors.textDisabled, size: 18),
                 label: Text(
                   _isCheckingStatus ? 'screens.suspended.checking'.tr() : 'screens.suspended.check_status'.tr(),
-                  style: const TextStyle(color: Colors.white38, fontSize: 13),
+                  style: const TextStyle(color: AppColors.textDisabled, fontSize: 13),
                 ),
               ),
 
@@ -392,7 +392,7 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen> {
             width: 22,
             height: 22,
             decoration: const BoxDecoration(
-              color: Color(0xFFF59E0B),
+              color: AppColors.warningLight,
               shape: BoxShape.circle,
             ),
             child: Center(
@@ -410,7 +410,7 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen> {
           Expanded(
             child: Text(
               text,
-              style: const TextStyle(color: Colors.white60, fontSize: 13),
+              style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
             ),
           ),
         ],

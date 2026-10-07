@@ -175,9 +175,9 @@ class _ReportAbuseScreenState extends State<ReportAbuseScreen> {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
+        statusBarIconBrightness: Brightness.dark,
         systemNavigationBarColor: AppColors.background,
-        systemNavigationBarIconBrightness: Brightness.light,
+        systemNavigationBarIconBrightness: Brightness.dark,
       ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
@@ -588,7 +588,7 @@ class _ReportAbuseScreenState extends State<ReportAbuseScreen> {
                   height: 22,
                   child: CircularProgressIndicator(
                     strokeWidth: 2.5,
-                    color: Colors.white,
+                    color: AppColors.textPrimary,
                   ),
                 )
               : Row(
@@ -596,14 +596,14 @@ class _ReportAbuseScreenState extends State<ReportAbuseScreen> {
                   children: [
                     const Icon(
                       Icons.report_rounded,
-                      color: Colors.white,
+                      color: AppColors.textPrimary,
                       size: 20,
                     ),
                     const SizedBox(width: 10),
                     Text(
                       'report_abuse_submit'.tr(),
                       style: const TextStyle(
-                        color: Colors.white,
+                        color: AppColors.textPrimary,
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
                       ),

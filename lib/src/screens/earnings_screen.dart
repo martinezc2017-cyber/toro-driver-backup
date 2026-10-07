@@ -581,8 +581,8 @@ class _EarningsScreenState extends State<EarningsScreen> {
       Color(0xFF795548), // Tier 1 - bronze
       Color(0xFF9E9E9E), // Tier 2 - silver
       Color(0xFFFFB300), // Tier 3 - gold
-      Color(0xFF1E88E5), // Tier 4 - diamond blue
-      Color(0xFF00FF66), // Tier 5 - neon green
+      AppColors.primary, // Tier 4 - diamond blue
+      AppColors.success, // Tier 5 - neon green
     ];
     final color = tierColors[tier.clamp(0, 5)];
 
@@ -645,7 +645,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
                     'earn.qr_tier_toro_takes'.tr(namedArgs: {
                       'pct': toroPercent.toStringAsFixed(0),
                     }),
-                    style: const TextStyle(color: Colors.white60, fontSize: 12),
+                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
                   ),
                   // DESGLOSE COMPLETO: antes solo se veían chofer + TORO (79%) y
                   // el chofer nunca sabía a dónde iba el 21% restante ni cuánto
@@ -659,7 +659,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
                         'retention': _pct!.totalRetention.toStringAsFixed(1),
                       }),
                       style: const TextStyle(
-                        color: Colors.white38,
+                        color: AppColors.textDisabled,
                         fontSize: 11,
                       ),
                     ),
@@ -669,7 +669,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
             ),
             const Icon(
               Icons.arrow_forward_ios_rounded,
-              color: Colors.white38,
+              color: AppColors.textDisabled,
               size: 14,
             ),
           ],
@@ -1237,7 +1237,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
                       height: 18,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: Colors.white,
+                        color: AppColors.textPrimary,
                       ),
                     )
                   : Text(

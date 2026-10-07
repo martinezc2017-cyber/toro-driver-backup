@@ -197,7 +197,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _buildSectionTitle('support'.tr()),
           _buildActionTile(
             icon: Icons.bug_report_rounded,
-            iconColor: const Color(0xFFFF3B30),
+            iconColor: AppColors.error,
             title: 'report_bug'.tr(),
             subtitle: 'report_bug_desc'.tr(),
             onTap: () {

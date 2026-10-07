@@ -348,7 +348,7 @@ class _OrganizerEarningsTabState extends State<OrganizerEarningsTab> {
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? Colors.white : AppColors.textSecondary,
+            color: isSelected ? AppColors.textPrimary : AppColors.textSecondary,
             fontSize: 12,
             fontWeight: FontWeight.w600,
           ),

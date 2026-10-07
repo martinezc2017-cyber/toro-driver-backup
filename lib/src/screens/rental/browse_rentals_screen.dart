@@ -15,7 +15,7 @@ class BrowseRentalsScreen extends StatefulWidget {
 }
 
 class _BrowseRentalsScreenState extends State<BrowseRentalsScreen> {
-  static const _accent = Color(0xFF8B5CF6);
+  static const _accent = AppColors.purple;
 
   List<Map<String, dynamic>> _allListings = [];
   List<Map<String, dynamic>> _listings = [];
@@ -561,7 +561,7 @@ class _VehicleCard extends StatelessWidget {
           border: Border.all(color: AppColors.border.withValues(alpha: 0.5)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.15),
+              color: Color(0x14102A56),
               blurRadius: 6,
               offset: const Offset(0, 2),
             ),
@@ -653,7 +653,7 @@ class _VehicleCard extends StatelessWidget {
                           child: Text(
                             type.toUpperCase(),
                             style: const TextStyle(
-                              color: Color(0xFF8B5CF6),
+                              color: AppColors.purple,
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
                               letterSpacing: 0.5,

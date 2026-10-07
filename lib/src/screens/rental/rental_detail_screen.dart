@@ -19,7 +19,7 @@ class RentalDetailScreen extends StatefulWidget {
 }
 
 class _RentalDetailScreenState extends State<RentalDetailScreen> {
-  static const _accent = Color(0xFF8B5CF6);
+  static const _accent = AppColors.purple;
 
   Map<String, dynamic>? _ownerInfo;
   bool _loadingOwner = true;
@@ -164,7 +164,7 @@ class _RentalDetailScreenState extends State<RentalDetailScreen> {
                             decoration: BoxDecoration(
                               color: i == _currentPhotoIndex
                                   ? _accent
-                                  : Colors.white.withValues(alpha: 0.4),
+                                  : AppColors.textSecondary,
                               borderRadius: BorderRadius.circular(4),
                             ),
                           ),
@@ -190,14 +190,14 @@ class _RentalDetailScreenState extends State<RentalDetailScreen> {
                           children: [
                             const Icon(
                               Icons.photo_library_rounded,
-                              color: Colors.white,
+                              color: AppColors.textPrimary,
                               size: 14,
                             ),
                             const SizedBox(width: 4),
                             Text(
                               '${_currentPhotoIndex + 1}/${imageUrls.length}',
                               style: const TextStyle(
-                                color: Colors.white,
+                                color: AppColors.textPrimary,
                                 fontSize: 12,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -692,14 +692,14 @@ class _RentalDetailScreenState extends State<RentalDetailScreen> {
                     children: [
                       const Icon(
                         Icons.phone_rounded,
-                        color: Colors.white,
+                        color: AppColors.textPrimary,
                         size: 20,
                       ),
                       const SizedBox(width: 8),
                       Text(
                         'rental.contact_owner'.tr(),
                         style: const TextStyle(
-                          color: Colors.white,
+                          color: AppColors.textPrimary,
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
                         ),

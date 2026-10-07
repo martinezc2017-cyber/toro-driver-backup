@@ -1108,7 +1108,7 @@ class _FullScreenPhotoViewerState extends State<_FullScreenPhotoViewer> {
     final isOwnPhoto = currentPhoto.senderId == widget.userId;
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppColors.background,
       body: GestureDetector(
         onTap: _toggleControls,
         child: Stack(
@@ -1171,14 +1171,14 @@ class _FullScreenPhotoViewerState extends State<_FullScreenPhotoViewer> {
                       child: Row(
                         children: [
                           IconButton(
-                            icon: const Icon(Icons.close, color: Colors.white),
+                            icon: const Icon(Icons.close, color: AppColors.textPrimary),
                             onPressed: () => Navigator.pop(context),
                           ),
                           const Spacer(),
                           Text(
                             '${_currentIndex + 1} / ${widget.photos.length}',
                             style: const TextStyle(
-                              color: Colors.white,
+                              color: AppColors.textPrimary,
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
                             ),
@@ -1234,7 +1234,7 @@ class _FullScreenPhotoViewerState extends State<_FullScreenPhotoViewer> {
                                       )
                                     : const Icon(
                                         Icons.person,
-                                        color: Colors.white,
+                                        color: AppColors.textPrimary,
                                         size: 20,
                                       ),
                               ),
@@ -1246,7 +1246,7 @@ class _FullScreenPhotoViewerState extends State<_FullScreenPhotoViewer> {
                                     Text(
                                       currentPhoto.senderName ?? 'Desconocido',
                                       style: const TextStyle(
-                                        color: Colors.white,
+                                        color: AppColors.textPrimary,
                                         fontSize: 14,
                                         fontWeight: FontWeight.w600,
                                       ),
@@ -1254,7 +1254,7 @@ class _FullScreenPhotoViewerState extends State<_FullScreenPhotoViewer> {
                                     Text(
                                       _formatDateTime(currentPhoto.createdAt),
                                       style: TextStyle(
-                                        color: Colors.white.withValues(alpha: 0.7),
+                                        color: AppColors.textSecondary,
                                         fontSize: 12,
                                       ),
                                     ),
@@ -1314,7 +1314,7 @@ class _FullScreenPhotoViewerState extends State<_FullScreenPhotoViewer> {
                       decoration: BoxDecoration(
                         color: index == _currentIndex
                             ? AppColors.primary
-                            : Colors.white.withValues(alpha: 0.5),
+                            : AppColors.textSecondary,
                         borderRadius: BorderRadius.circular(4),
                       ),
                     ),
@@ -1341,18 +1341,18 @@ class _FullScreenPhotoViewerState extends State<_FullScreenPhotoViewer> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          color: (color ?? Colors.white).withValues(alpha: 0.15),
+          color: (color ?? AppColors.textPrimary).withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: color ?? Colors.white, size: 18),
+            Icon(icon, color: color ?? AppColors.textPrimary, size: 18),
             const SizedBox(width: 6),
             Text(
               label,
               style: TextStyle(
-                color: color ?? Colors.white,
+                color: color ?? AppColors.textPrimary,
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
               ),

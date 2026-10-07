@@ -1240,7 +1240,7 @@ Enviado desde TORO
                                     child: Text(
                                       eventName,
                                       style: const TextStyle(
-                                        color: Colors.white,
+                                        color: AppColors.textPrimary,
                                         fontSize: 22,
                                         fontWeight: FontWeight.w800,
                                         letterSpacing: -0.5,
@@ -1292,14 +1292,14 @@ Enviado desde TORO
                             children: [
                               Icon(
                                 Icons.diamond,
-                                color: Colors.white,
+                                color: AppColors.textPrimary,
                                 size: 12,
                               ),
                               SizedBox(width: 4),
                               Text(
                                 'BLACK ROSE',
                                 style: TextStyle(
-                                  color: Colors.white,
+                                  color: AppColors.textPrimary,
                                   fontSize: 11,
                                   fontWeight: FontWeight.w900,
                                   letterSpacing: 1,
@@ -2489,7 +2489,7 @@ Enviado desde TORO
                                           child: Text(
                                             '${entry.key + 2}',
                                             style: const TextStyle(
-                                              color: Colors.white,
+                                              color: AppColors.textPrimary,
                                               fontSize: 11,
                                               fontWeight: FontWeight.bold,
                                             ),
@@ -2964,7 +2964,7 @@ Enviado desde TORO
                                 : isDestination
                                 ? Icons.flag
                                 : Icons.location_on,
-                            color: Colors.white,
+                            color: AppColors.textPrimary,
                             size: 14,
                           ),
                         ),
@@ -3356,7 +3356,7 @@ Enviado desde TORO
                                 height: 18,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  color: Colors.white,
+                                  color: AppColors.textPrimary,
                                 ),
                               )
                             : const Icon(Icons.save, size: 18),
@@ -3907,7 +3907,7 @@ Enviado desde TORO
                                 height: 18,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  color: Colors.white,
+                                  color: AppColors.textPrimary,
                                 ),
                               )
                             : const Icon(Icons.add_location_alt, size: 18),
@@ -5536,7 +5536,7 @@ Enviado desde TORO
                           child: Text(
                             organizerName,
                             style: const TextStyle(
-                              color: Colors.white,
+                              color: AppColors.textPrimary,
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
                               shadows: [
@@ -5907,7 +5907,7 @@ Enviado desde TORO
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: AppColors.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -6202,7 +6202,7 @@ Enviado desde TORO
               child: Text(
                 name.isNotEmpty ? name[0].toUpperCase() : 'P',
                 style: const TextStyle(
-                  color: Colors.white,
+                  color: AppColors.textPrimary,
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                 ),
@@ -6466,15 +6466,15 @@ Enviado desde TORO
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                const Color(0xFFDC2626).withOpacity(0.20),
-                const Color(0xFFFF6B00).withOpacity(0.12),
+                AppColors.error.withOpacity(0.20),
+                AppColors.warningLight.withOpacity(0.12),
               ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: const Color(0xFFDC2626).withOpacity(0.5),
+              color: AppColors.error.withOpacity(0.5),
               width: 1.5,
             ),
           ),
@@ -6484,7 +6484,7 @@ Enviado desde TORO
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFDC2626).withOpacity(0.25),
+                  color: AppColors.error.withOpacity(0.25),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: _isSendingEmergency
@@ -6492,12 +6492,12 @@ Enviado desde TORO
                         padding: EdgeInsets.all(10),
                         child: CircularProgressIndicator(
                           strokeWidth: 2.5,
-                          color: Color(0xFFFF6B6B),
+                          color: AppColors.errorLight,
                         ),
                       )
                     : const Icon(
                         Icons.warning_amber_rounded,
-                        color: Color(0xFFFF6B6B),
+                        color: AppColors.errorLight,
                         size: 26,
                       ),
               ),
@@ -6511,7 +6511,7 @@ Enviado desde TORO
                         const Text(
                           'Alerta de Emergencia',
                           style: TextStyle(
-                            color: Color(0xFFFF6B6B),
+                            color: AppColors.errorLight,
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
                           ),
@@ -6523,7 +6523,7 @@ Enviado desde TORO
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFDC2626),
+                            color: AppColors.error,
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: const Text(
@@ -6551,7 +6551,7 @@ Enviado desde TORO
               ),
               const Icon(
                 Icons.arrow_forward_ios_rounded,
-                color: Color(0xFFFF6B6B),
+                color: AppColors.errorLight,
                 size: 16,
               ),
             ],
@@ -6579,12 +6579,12 @@ Enviado desde TORO
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFDC2626).withOpacity(0.2),
+                  color: AppColors.error.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Icon(
                   Icons.warning_amber_rounded,
-                  color: Color(0xFFFF6B6B),
+                  color: AppColors.errorLight,
                   size: 24,
                 ),
               ),
@@ -6593,7 +6593,7 @@ Enviado desde TORO
                 child: Text(
                   'Alerta de Emergencia',
                   style: TextStyle(
-                    color: Color(0xFFFF6B6B),
+                    color: AppColors.errorLight,
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
                   ),
@@ -6608,17 +6608,17 @@ Enviado desde TORO
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFDC2626).withOpacity(0.08),
+                  color: AppColors.error.withOpacity(0.08),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: const Color(0xFFDC2626).withOpacity(0.2),
+                    color: AppColors.error.withOpacity(0.2),
                   ),
                 ),
                 child: Row(
                   children: [
                     const Icon(
                       Icons.info_outline,
-                      color: Color(0xFFFF6B6B),
+                      color: AppColors.errorLight,
                       size: 16,
                     ),
                     const SizedBox(width: 8),
@@ -6672,7 +6672,7 @@ Enviado desde TORO
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
                     borderSide: const BorderSide(
-                      color: Color(0xFFDC2626),
+                      color: AppColors.error,
                       width: 1.5,
                     ),
                   ),
@@ -6714,7 +6714,7 @@ Enviado desde TORO
               icon: const Icon(Icons.send_rounded, size: 18),
               label: Text('tourism_send_alert'.tr()),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFDC2626),
+                backgroundColor: AppColors.error,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
@@ -6761,7 +6761,7 @@ Enviado desde TORO
                 ),
               ],
             ),
-            backgroundColor: const Color(0xFFDC2626),
+            backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10),
@@ -9062,7 +9062,7 @@ Enviado desde TORO
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
+            color: Color(0x14102A56),
             blurRadius: 20,
             offset: const Offset(0, -4),
           ),
@@ -9421,10 +9421,10 @@ class _EventLiveMapScreenState extends State<_EventLiveMapScreen> {
                       ? AppColors.error
                       : AppColors.primary,
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 2),
+                  border: Border.all(color: AppColors.border, width: 2),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.3),
+                      color: Color(0x14102A56),
                       blurRadius: 6,
                     ),
                   ],
@@ -9436,7 +9436,7 @@ class _EventLiveMapScreenState extends State<_EventLiveMapScreen> {
                         : isLast
                         ? Icons.flag
                         : Icons.location_on,
-                    color: Colors.white,
+                    color: AppColors.textPrimary,
                     size: 18,
                   ),
                 ),
@@ -9462,7 +9462,7 @@ class _EventLiveMapScreenState extends State<_EventLiveMapScreen> {
             decoration: BoxDecoration(
               color: AppColors.warning,
               shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 3),
+              border: Border.all(color: AppColors.border, width: 3),
               boxShadow: [
                 BoxShadow(
                   color: AppColors.warning.withValues(alpha: 0.5),
@@ -9473,7 +9473,7 @@ class _EventLiveMapScreenState extends State<_EventLiveMapScreen> {
             ),
             child: const Icon(
               Icons.directions_bus,
-              color: Colors.white,
+              color: AppColors.textPrimary,
               size: 26,
             ),
           ),
@@ -9511,7 +9511,7 @@ class _EventLiveMapScreenState extends State<_EventLiveMapScreen> {
                     color: isCheckedIn ? AppColors.success : AppColors.primary,
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: isSelected ? AppColors.warning : Colors.white,
+                      color: isSelected ? AppColors.warning : AppColors.textPrimary,
                       width: isSelected ? 3 : 2,
                     ),
                     boxShadow: [
@@ -9527,7 +9527,7 @@ class _EventLiveMapScreenState extends State<_EventLiveMapScreen> {
                   ),
                   child: Icon(
                     isCheckedIn ? Icons.check : Icons.person,
-                    color: Colors.white,
+                    color: AppColors.textPrimary,
                     size: isSelected ? 24 : 20,
                   ),
                 ),
@@ -9641,14 +9641,14 @@ class _EventLiveMapScreenState extends State<_EventLiveMapScreen> {
                       children: [
                         const Icon(
                           Icons.gps_fixed,
-                          color: Colors.white,
+                          color: AppColors.textPrimary,
                           size: 14,
                         ),
                         const SizedBox(width: 4),
                         Text(
                           '$gpsCount',
                           style: const TextStyle(
-                            color: Colors.white,
+                            color: AppColors.textPrimary,
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
                           ),
@@ -9695,7 +9695,7 @@ class _EventLiveMapScreenState extends State<_EventLiveMapScreen> {
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.3),
+                      color: Color(0x14102A56),
                       blurRadius: 20,
                       offset: const Offset(0, -4),
                     ),

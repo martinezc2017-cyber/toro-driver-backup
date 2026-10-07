@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/app_colors.dart';
 import 'package:flutter/services.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -178,7 +179,7 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
             Text(
               'screens.cash_out.cash_out_success'.tr(),
               style: TextStyle(
-                color: Colors.white,
+                color: AppColors.textPrimary,
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
               ),
@@ -218,7 +219,7 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
               child: Text(
                 'screens.cash_out.done'.tr(),
                 style: TextStyle(
-                  color: Colors.white,
+                  color: AppColors.textPrimary,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -237,13 +238,13 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
         backgroundColor: AppTheme.background,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.close, color: Colors.white),
+          icon: const Icon(Icons.close, color: AppColors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           'screens.cash_out.title'.tr(),
           style: const TextStyle(
-            color: Colors.white,
+            color: AppColors.textPrimary,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -306,13 +307,13 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
             children: [
               const Icon(
                 Icons.account_balance_wallet,
-                color: Colors.white70,
+                color: AppColors.textSecondary,
                 size: 20,
               ),
               const SizedBox(width: 8),
               Text(
                 'screens.cash_out.available_balance'.tr(),
-                style: const TextStyle(color: Colors.white70, fontSize: 13),
+                style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
               ),
               const Spacer(),
               if (_pendingBalance > 0)
@@ -322,12 +323,12 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
+                    color: AppColors.border,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     '${formatMoney(_pendingBalance, country: _countryCode)} ${'screens.cash_out.pending_suffix'.tr()}',
-                    style: const TextStyle(color: Colors.white70, fontSize: 11),
+                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
                   ),
                 ),
             ],
@@ -337,7 +338,7 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
             // EXACTO, sin redondeo (Carlos: el balance = lo que se retira, sin imaginación).
             formatMoney(_availableBalance, country: _countryCode),
             style: const TextStyle(
-              color: Colors.white,
+              color: AppColors.textPrimary,
               fontSize: 36,
               fontWeight: FontWeight.bold,
             ),
@@ -370,7 +371,7 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
                 Text(
                   'screens.cash_out.processing_payout'.tr(),
                   style: const TextStyle(
-                    color: Colors.white,
+                    color: AppColors.textPrimary,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -397,7 +398,7 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
         Text(
           'screens.cash_out.amount_to_withdraw'.tr(),
           style: TextStyle(
-            color: Colors.white,
+            color: AppColors.textPrimary,
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
@@ -431,7 +432,7 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
                     decimal: true,
                   ),
                   style: const TextStyle(
-                    color: Colors.white,
+                    color: AppColors.textPrimary,
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
                   ),
@@ -523,7 +524,7 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
                   ? '${'screens.cash_out.all'.tr()} (${formatMoney(amount, country: _countryCode)})'
                   : formatMoney(amount, country: _countryCode),
               style: TextStyle(
-                color: isSelected ? AppTheme.primary : Colors.white,
+                color: isSelected ? AppTheme.primary : AppColors.textPrimary,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
             ),
@@ -540,7 +541,7 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
         Text(
           'screens.cash_out.payment_method'.tr(),
           style: TextStyle(
-            color: Colors.white,
+            color: AppColors.textPrimary,
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
@@ -583,7 +584,7 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
                     Text(
                       'screens.cash_out.stripe_bank_destination'.tr(),
                       style: const TextStyle(
-                        color: Colors.white,
+                        color: AppColors.textPrimary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -699,7 +700,7 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
           Text(
             label,
             style: TextStyle(
-              color: isTotal ? Colors.white : AppTheme.textMuted,
+              color: isTotal ? AppColors.textPrimary : AppTheme.textMuted,
               fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
             ),
           ),
@@ -708,7 +709,7 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
             style: TextStyle(
               color: isNegative
                   ? AppTheme.error
-                  : (isTotal ? AppTheme.success : Colors.white),
+                  : (isTotal ? AppTheme.success : AppColors.textPrimary),
               fontWeight: isTotal ? FontWeight.bold : FontWeight.w500,
               fontSize: isTotal ? 18 : 14,
             ),
@@ -736,19 +737,19 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
                 height: 20,
                 width: 20,
                 child: CircularProgressIndicator(
-                  color: Colors.white,
+                  color: AppColors.textPrimary,
                   strokeWidth: 2,
                 ),
               )
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.bolt, color: Colors.white),
+                  const Icon(Icons.bolt, color: AppColors.textPrimary),
                   const SizedBox(width: 8),
                   Text(
                     '${'screens.cash_out.withdraw'.tr()} ${formatMoney(_netAmount, country: _countryCode)}',
                     style: const TextStyle(
-                      color: Colors.white,
+                      color: AppColors.textPrimary,
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
@@ -805,7 +806,7 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
             Text(
               'screens.cash_out.add_payment_method'.tr(),
               style: TextStyle(
-                color: Colors.white,
+                color: AppColors.textPrimary,
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
@@ -822,7 +823,7 @@ class _CashOutScreenState extends ConsumerState<CashOutScreen> {
               ),
               title: Text(
                 'screens.cash_out.bank_account_label'.tr(),
-                style: const TextStyle(color: Colors.white),
+                style: const TextStyle(color: AppColors.textPrimary),
               ),
               subtitle: Text(
                 'screens.cash_out.one_three_business_days'.tr(),

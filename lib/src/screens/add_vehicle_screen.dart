@@ -358,7 +358,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                   ),
                 ],
               ),
-              backgroundColor: const Color(0xFF22C55E),
+              backgroundColor: AppColors.success,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -580,7 +580,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                   ),
                 ],
               ),
-              backgroundColor: const Color(0xFFFF9500),
+              backgroundColor: AppColors.warningLight,
               duration: const Duration(seconds: 4),
             ),
           );
@@ -698,12 +698,12 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: const Color(0xFF22C55E).withValues(alpha: 0.3),
+          color: AppColors.success.withValues(alpha: 0.3),
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF22C55E).withValues(alpha: 0.15),
+            color: AppColors.success.withValues(alpha: 0.15),
             blurRadius: 12,
           ),
         ],
@@ -736,12 +736,12 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFF22C55E), Color(0xFF16A34A)],
+                colors: [AppColors.success, Color(0xFF16A34A)],
               ),
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF22C55E).withValues(alpha: 0.3),
+                  color: AppColors.success.withValues(alpha: 0.3),
                   blurRadius: 8,
                 ),
               ],
@@ -776,12 +776,12 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
         color: AppColors.card,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: const Color(0xFF3B82F6).withValues(alpha: 0.4),
+          color: AppColors.primary.withValues(alpha: 0.4),
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF3B82F6).withValues(alpha: 0.15),
+            color: AppColors.primary.withValues(alpha: 0.15),
             blurRadius: 12,
           ),
         ],
@@ -795,7 +795,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
+                    colors: [AppColors.primary, AppColors.primary],
                   ),
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -847,15 +847,15 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFF22C55E).withValues(alpha: 0.1),
+                color: AppColors.success.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: const Color(0xFF22C55E).withValues(alpha: 0.3),
+                  color: AppColors.success.withValues(alpha: 0.3),
                 ),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.auto_awesome, color: Color(0xFF22C55E), size: 18),
+                  const Icon(Icons.auto_awesome, color: AppColors.success, size: 18),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(
@@ -866,7 +866,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                           style: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
-                            color: Color(0xFF22C55E),
+                            color: AppColors.success,
                           ),
                         ),
                         Text(
@@ -1006,7 +1006,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                   shaderCallback: (bounds) => AppColors.blackRoseGradient.createShader(bounds),
                   child: const Text(
                     'BLACK ROSE · PREMIUM',
-                    style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w900, letterSpacing: 1.5),
+                    style: TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w900, letterSpacing: 1.5),
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -1146,12 +1146,12 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
         color: AppColors.card,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: const Color(0xFFFF9500).withValues(alpha: 0.3),
+          color: AppColors.warningLight.withValues(alpha: 0.3),
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFFF9500).withValues(alpha: 0.1),
+            color: AppColors.warningLight.withValues(alpha: 0.1),
             blurRadius: 12,
           ),
         ],
@@ -1164,12 +1164,12 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFF9500).withValues(alpha: 0.15),
+                  color: AppColors.warningLight.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Icon(
                   Icons.shield_rounded,
-                  color: Color(0xFFFF9500),
+                  color: AppColors.warningLight,
                   size: 22,
                 ),
               ),
@@ -1204,17 +1204,17 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: const Color(0xFFFF9500).withValues(alpha: 0.1),
+              color: AppColors.warningLight.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: const Color(0xFFFF9500).withValues(alpha: 0.3),
+                color: AppColors.warningLight.withValues(alpha: 0.3),
               ),
             ),
             child: Row(
               children: [
                 const Icon(
                   Icons.info_outline,
-                  color: Color(0xFFFF9500),
+                  color: AppColors.warningLight,
                   size: 20,
                 ),
                 const SizedBox(width: 10),
@@ -1282,7 +1282,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                         data: Theme.of(context).copyWith(
                           colorScheme: ColorScheme.dark(
                             primary: AppColors.primary,
-                            onPrimary: Colors.white,
+                            onPrimary: AppColors.textPrimary,
                             surface: AppColors.card,
                             onSurface: AppColors.textPrimary,
                           ),
@@ -1353,12 +1353,12 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: _hasRideshareEndorsement
-                    ? const Color(0xFF22C55E).withValues(alpha: 0.1)
+                    ? AppColors.success.withValues(alpha: 0.1)
                     : AppColors.surface,
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
                   color: _hasRideshareEndorsement
-                      ? const Color(0xFF22C55E)
+                      ? AppColors.success
                       : AppColors.border.withValues(alpha: 0.5),
                   width: _hasRideshareEndorsement ? 2 : 1,
                 ),
@@ -1370,18 +1370,18 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                     height: 24,
                     decoration: BoxDecoration(
                       color: _hasRideshareEndorsement
-                          ? const Color(0xFF22C55E)
+                          ? AppColors.success
                           : Colors.transparent,
                       borderRadius: BorderRadius.circular(6),
                       border: Border.all(
                         color: _hasRideshareEndorsement
-                            ? const Color(0xFF22C55E)
+                            ? AppColors.success
                             : AppColors.textSecondary,
                         width: 2,
                       ),
                     ),
                     child: _hasRideshareEndorsement
-                        ? const Icon(Icons.check, color: Colors.white, size: 16)
+                        ? const Icon(Icons.check, color: AppColors.textPrimary, size: 16)
                         : null,
                   ),
                   const SizedBox(width: 14),
@@ -1482,7 +1482,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
         color: AppColors.card,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: const Color(0xFF22C55E).withValues(alpha: 0.3),
+          color: AppColors.success.withValues(alpha: 0.3),
           width: 1.5,
         ),
       ),
@@ -1494,12 +1494,12 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF22C55E).withValues(alpha: 0.15),
+                  color: AppColors.success.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Icon(
                   Icons.shield_rounded,
-                  color: Color(0xFF22C55E),
+                  color: AppColors.success,
                   size: 22,
                 ),
               ),
@@ -1556,12 +1556,12 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: const Color(0xFF22C55E).withValues(alpha: 0.08),
+              color: AppColors.success.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Row(
               children: [
-                Icon(Icons.check_circle_outline, color: const Color(0xFF22C55E), size: 18),
+                Icon(Icons.check_circle_outline, color: AppColors.success, size: 18),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
@@ -1648,11 +1648,11 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isProcessing
-                ? const Color(0xFF3B82F6).withValues(alpha: 0.5)
+                ? AppColors.primary.withValues(alpha: 0.5)
                 : hasImage
-                ? const Color(0xFF22C55E).withValues(alpha: 0.5)
+                ? AppColors.success.withValues(alpha: 0.5)
                 : isRequired
-                ? const Color(0xFFFF9500).withValues(alpha: 0.5)
+                ? AppColors.warningLight.withValues(alpha: 0.5)
                 : AppColors.border.withValues(alpha: 0.5),
             width: hasImage || isProcessing ? 2 : 1.5,
             strokeAlign: BorderSide.strokeAlignInside,
@@ -1660,14 +1660,14 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
           boxShadow: hasImage
               ? [
                   BoxShadow(
-                    color: const Color(0xFF22C55E).withValues(alpha: 0.2),
+                    color: AppColors.success.withValues(alpha: 0.2),
                     blurRadius: 8,
                   ),
                 ]
               : isProcessing
               ? [
                   BoxShadow(
-                    color: const Color(0xFF3B82F6).withValues(alpha: 0.3),
+                    color: AppColors.primary.withValues(alpha: 0.3),
                     blurRadius: 8,
                   ),
                 ]
@@ -1717,7 +1717,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                           children: [
                             const Icon(
                               Icons.check_circle,
-                              color: Color(0xFF22C55E),
+                              color: AppColors.success,
                               size: 16,
                             ),
                             const SizedBox(width: 6),
@@ -1725,7 +1725,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                               child: Text(
                                 label,
                                 style: const TextStyle(
-                                  color: Colors.white,
+                                  color: AppColors.textPrimary,
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -1747,12 +1747,12 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                               child: Container(
                                 padding: const EdgeInsets.all(4),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.2),
+                                  color: AppColors.border,
                                   shape: BoxShape.circle,
                                 ),
                                 child: const Icon(
                                   Icons.close,
-                                  color: Colors.white,
+                                  color: AppColors.textPrimary,
                                   size: 14,
                                 ),
                               ),
@@ -1780,7 +1780,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
           height: 36,
           child: CircularProgressIndicator(
             strokeWidth: 3,
-            color: const Color(0xFF3B82F6),
+            color: AppColors.primary,
           ),
         ),
         const SizedBox(height: 12),
@@ -1789,7 +1789,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: const Color(0xFF3B82F6),
+            color: AppColors.primary,
           ),
         ),
         const SizedBox(height: 4),
@@ -1808,10 +1808,10 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: const Color(0xFFFF9500).withValues(alpha: 0.1),
+            color: AppColors.warningLight.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
-          child: Icon(icon, color: const Color(0xFFFF9500), size: 28),
+          child: Icon(icon, color: AppColors.warningLight, size: 28),
         ),
         const SizedBox(height: 10),
         Text(
@@ -1837,7 +1837,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
               style: TextStyle(
                 fontSize: 11,
                 color: isRequired
-                    ? const Color(0xFFFF9500)
+                    ? AppColors.warningLight
                     : AppColors.textSecondary,
               ),
             ),
@@ -1921,7 +1921,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
           gradient: _isLoading
               ? null
               : const LinearGradient(
-                  colors: [Color(0xFF22C55E), Color(0xFF16A34A)],
+                  colors: [AppColors.success, Color(0xFF16A34A)],
                 ),
           color: _isLoading ? AppColors.surface : null,
           borderRadius: BorderRadius.circular(18),
@@ -1929,7 +1929,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
               ? null
               : [
                   BoxShadow(
-                    color: const Color(0xFF22C55E).withValues(alpha: 0.4),
+                    color: AppColors.success.withValues(alpha: 0.4),
                     blurRadius: 15,
                     offset: const Offset(0, 6),
                   ),
@@ -1948,12 +1948,12 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
               : Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.check_circle, color: Colors.white, size: 22),
+                    const Icon(Icons.check_circle, color: AppColors.textPrimary, size: 22),
                     const SizedBox(width: 10),
                     Text(
                       'vehicle.register_button'.tr(),
                       style: const TextStyle(
-                        color: Colors.white,
+                        color: AppColors.textPrimary,
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 1,

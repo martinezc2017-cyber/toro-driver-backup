@@ -783,14 +783,14 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
             Icon(
               icon,
               size: 16,
-              color: isActive ? Colors.white : AppColors.textSecondary,
+              color: isActive ? AppColors.textPrimary : AppColors.textSecondary,
             ),
             const SizedBox(width: 6),
             Flexible(
               child: Text(
                 label,
                 style: TextStyle(
-                  color: isActive ? Colors.white : AppColors.textSecondary,
+                  color: isActive ? AppColors.textPrimary : AppColors.textSecondary,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                 ),
@@ -1328,7 +1328,7 @@ class _OrganizerBiddingScreenState extends State<OrganizerBiddingScreen> {
                   ),
                 ),
                 child: isSelected
-                    ? const Icon(Icons.check, size: 16, color: Colors.white)
+                    ? const Icon(Icons.check, size: 16, color: AppColors.textPrimary)
                     : null,
               )
             else

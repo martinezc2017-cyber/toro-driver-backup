@@ -173,7 +173,7 @@ class _RidesScreenState extends State<RidesScreen>
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(msg),
-                          backgroundColor: const Color(0xFFFF3B30),
+                          backgroundColor: AppColors.error,
                           duration: const Duration(seconds: 4),
                           action: SnackBarAction(
                             label: 'Documentos',
@@ -301,7 +301,7 @@ class _RidesScreenState extends State<RidesScreen>
                       filter,
                       style: TextStyle(
                         color: isSelected
-                            ? Colors.white
+                            ? AppColors.textPrimary
                             : AppColors.textSecondary,
                         fontWeight: FontWeight.w600,
                         fontSize: 11,
@@ -498,7 +498,7 @@ class _RidesScreenState extends State<RidesScreen>
                       decoration: BoxDecoration(
                         gradient: ride.type == RideType.marketplace
                             ? const LinearGradient(
-                                colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                                colors: [AppColors.gold, Color(0xFFFFA500)],
                               )
                             : AppColors.primaryGradient,
                         borderRadius: BorderRadius.circular(10),
@@ -506,7 +506,7 @@ class _RidesScreenState extends State<RidesScreen>
                           BoxShadow(
                             color:
                                 (ride.type == RideType.marketplace
-                                        ? const Color(0xFFFFD700)
+                                        ? AppColors.gold
                                         : AppColors.primary)
                                     .withValues(alpha: 0.3),
                             blurRadius: 6,
@@ -519,7 +519,7 @@ class _RidesScreenState extends State<RidesScreen>
                             : Icons.local_taxi_rounded,
                         color: ride.type == RideType.marketplace
                             ? Colors.black
-                            : Colors.white,
+                            : AppColors.textPrimary,
                         size: 20,
                       ),
                     ),
@@ -536,7 +536,7 @@ class _RidesScreenState extends State<RidesScreen>
                                 vertical: 2,
                               ),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFFFD700),
+                                color: AppColors.gold,
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
@@ -560,7 +560,7 @@ class _RidesScreenState extends State<RidesScreen>
                                 vertical: 2,
                               ),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF4FC3F7),
+                                color: AppColors.primaryLight,
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
@@ -584,7 +584,7 @@ class _RidesScreenState extends State<RidesScreen>
                                 vertical: 2,
                               ),
                               decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.12),
+                                color: AppColors.border,
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
@@ -620,7 +620,7 @@ class _RidesScreenState extends State<RidesScreen>
                                   decoration: BoxDecoration(
                                     gradient: const LinearGradient(
                                       colors: [
-                                        Color(0xFF00C853),
+                                        AppColors.success,
                                         Color(0xFF00BFA5),
                                       ],
                                     ),
@@ -629,7 +629,7 @@ class _RidesScreenState extends State<RidesScreen>
                                   child: const Text(
                                     'ROUND TRIP',
                                     style: TextStyle(
-                                      color: Colors.white,
+                                      color: AppColors.textPrimary,
                                       fontSize: 11,
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -888,7 +888,7 @@ class _RidesScreenState extends State<RidesScreen>
                                 );
                               },
                               isOutlined: true,
-                              color: const Color(0xFF4FC3F7),
+                              color: AppColors.primaryLight,
                               height: 38,
                             )
                           : NeonButton(
@@ -980,14 +980,14 @@ class _RidesScreenState extends State<RidesScreen>
                         ),
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
-                            colors: [Color(0xFF00C853), Color(0xFF00BFA5)],
+                            colors: [AppColors.success, Color(0xFF00BFA5)],
                           ),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: const Text(
                           'RT',
                           style: TextStyle(
-                            color: Colors.white,
+                            color: AppColors.textPrimary,
                             fontSize: 11,
                             fontWeight: FontWeight.bold,
                           ),
@@ -1234,7 +1234,7 @@ class _RidesScreenState extends State<RidesScreen>
                                       decoration: BoxDecoration(
                                         gradient: const LinearGradient(
                                           colors: [
-                                            Color(0xFF00C853),
+                                            AppColors.success,
                                             Color(0xFF00BFA5),
                                           ],
                                         ),
@@ -1243,7 +1243,7 @@ class _RidesScreenState extends State<RidesScreen>
                                       child: const Text(
                                         'ROUND TRIP',
                                         style: TextStyle(
-                                          color: Colors.white,
+                                          color: AppColors.textPrimary,
                                           fontSize: 11,
                                           fontWeight: FontWeight.bold,
                                         ),
@@ -1487,7 +1487,7 @@ class _RidesScreenState extends State<RidesScreen>
                                     );
                                   },
                                   isOutlined: true,
-                                  color: const Color(0xFF4FC3F7),
+                                  color: AppColors.primaryLight,
                                   height: 54,
                                 )
                               : NeonButton(
@@ -1582,7 +1582,7 @@ class _RidesScreenState extends State<RidesScreen>
   /// Card = blue with card icon
   Widget _buildPaymentMethodBadge(PaymentMethod method) {
     final isCash = method == PaymentMethod.cash;
-    final color = isCash ? const Color(0xFF4CAF50) : AppColors.primary;
+    final color = isCash ? AppColors.success : AppColors.primary;
     final icon = isCash ? Icons.payments_outlined : Icons.credit_card_rounded;
     final text = isCash ? 'Efectivo' : 'Tarjeta';
 

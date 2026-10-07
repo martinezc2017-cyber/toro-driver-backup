@@ -267,7 +267,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       case 'bid_request':
       case 'bid_counter_offer':
       case 'vehicle_request':
-        return const Color(0xFF00D4FF); // TORO cyan
+        return AppColors.primary; // TORO cyan
       case 'bid_won':
         return Colors.green;
       case 'bid_lost':

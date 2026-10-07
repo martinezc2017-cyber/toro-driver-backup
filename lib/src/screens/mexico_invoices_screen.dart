@@ -217,7 +217,7 @@ class _MexicoInvoicesScreenState extends State<MexicoInvoicesScreen> {
               label: Text('mx_request_first_invoice'.tr()),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
-                foregroundColor: Colors.black,
+                foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               ),
             ),
@@ -430,7 +430,7 @@ class _MexicoInvoicesScreenState extends State<MexicoInvoicesScreen> {
                           label: const Text('PDF'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
-                            foregroundColor: Colors.black,
+                            foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 8),
                           ),
                         ),
@@ -593,7 +593,7 @@ class _MexicoInvoicesScreenState extends State<MexicoInvoicesScreen> {
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.black,
+                      foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     ),

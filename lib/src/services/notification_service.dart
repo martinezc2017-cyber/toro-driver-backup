@@ -1,3 +1,4 @@
+import '../utils/app_colors.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -92,12 +93,12 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     importance: Importance.max,
     priority: Priority.max,
     icon: '@drawable/ic_notification',
-    color: const Color(0xFF0D0D1A),
+    color: AppColors.background,
     visibility: NotificationVisibility.public,
     playSound: true,
     enableVibration: true,
     enableLights: true,
-    ledColor: const Color(0xFFFFD700),
+    ledColor: AppColors.gold,
     ledOnMs: 1000,
     ledOffMs: 500,
     fullScreenIntent: type.contains('ride') || type.contains('trip'),
@@ -272,12 +273,12 @@ class NotificationService {
       priority: Priority.max,
       showWhen: true,
       icon: '@drawable/ic_notification',
-      color: const Color(0xFF0D0D1A),
+      color: AppColors.background,
       visibility: NotificationVisibility.public,
       playSound: true,
       enableVibration: true,
       enableLights: true,
-      ledColor: const Color(0xFFFFD700),
+      ledColor: AppColors.gold,
       ledOnMs: 1000,
       ledOffMs: 500,
       category: AndroidNotificationCategory.message,

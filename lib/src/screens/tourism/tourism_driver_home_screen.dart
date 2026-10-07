@@ -733,9 +733,9 @@ class _TourismDriverHomeScreenState extends State<TourismDriverHomeScreen>
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
+        statusBarIconBrightness: Brightness.dark,
         systemNavigationBarColor: AppColors.surface,
-        systemNavigationBarIconBrightness: Brightness.light,
+        systemNavigationBarIconBrightness: Brightness.dark,
       ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
@@ -1169,7 +1169,7 @@ class _TourismDriverHomeScreenState extends State<TourismDriverHomeScreen>
                   border: Border.all(color: AppColors.border),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.3),
+                      color: Color(0x14102A56),
                       blurRadius: 8,
                     ),
                   ],
@@ -1249,12 +1249,12 @@ class _TourismDriverHomeScreenState extends State<TourismDriverHomeScreen>
             ),
             child: Center(
               child: isCompleted
-                  ? const Icon(Icons.check, color: Colors.white, size: 18)
+                  ? const Icon(Icons.check, color: AppColors.textPrimary, size: 18)
                   : Text(
                       '${i + 1}',
                       style: TextStyle(
                         color: isCurrentStop
-                            ? Colors.white
+                            ? AppColors.textPrimary
                             : AppColors.textSecondary,
                         fontWeight: FontWeight.w700,
                         fontSize: 14,
@@ -1278,7 +1278,7 @@ class _TourismDriverHomeScreenState extends State<TourismDriverHomeScreen>
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: AppColors.primary,
-          border: Border.all(color: Colors.white, width: 3),
+          border: Border.all(color: AppColors.border, width: 3),
           boxShadow: [
             BoxShadow(
               color: AppColors.primary.withOpacity(0.5),
@@ -1289,7 +1289,7 @@ class _TourismDriverHomeScreenState extends State<TourismDriverHomeScreen>
         ),
         child: const Icon(
           Icons.directions_bus,
-          color: Colors.white,
+          color: AppColors.textPrimary,
           size: 24,
         ),
       ),
@@ -1373,7 +1373,7 @@ class _TourismDriverHomeScreenState extends State<TourismDriverHomeScreen>
                           ),
                           child: Icon(
                             isOrigin ? Icons.trip_origin : isDestination ? Icons.flag : Icons.location_on,
-                            color: Colors.white, size: 14,
+                            color: AppColors.textPrimary, size: 14,
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -2905,12 +2905,12 @@ class _HomeMapPickerState extends State<_HomeMapPicker> {
   Widget build(BuildContext context) {
     return Dialog.fullscreen(
       child: Scaffold(
-        backgroundColor: const Color(0xFF1E1E1E),
+        backgroundColor: AppColors.cardSecondary,
         appBar: AppBar(
-          backgroundColor: const Color(0xFF2A2A2A),
+          backgroundColor: AppColors.border,
           elevation: 0,
-          leading: IconButton(icon: const Icon(Icons.close, color: Colors.white), onPressed: () => Navigator.pop(context)),
-          title: Text('tourism.select_location'.tr(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+          leading: IconButton(icon: const Icon(Icons.close, color: AppColors.textPrimary), onPressed: () => Navigator.pop(context)),
+          title: Text('tourism.select_location'.tr(), style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 18)),
           centerTitle: true,
         ),
         body: Stack(
@@ -2939,23 +2939,23 @@ class _HomeMapPickerState extends State<_HomeMapPicker> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    decoration: BoxDecoration(color: const Color(0xFF2A2A2A), borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 4))]),
+                    decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: Color(0x14102A56), blurRadius: 12, offset: const Offset(0, 4))]),
                     child: TextField(
                       controller: _searchController,
                       style: const TextStyle(fontSize: 14, color: Colors.white),
-                      decoration: InputDecoration(hintText: 'tourism.search_address_business'.tr(), hintStyle: const TextStyle(color: Color(0xFF888888)), prefixIcon: const Icon(Icons.search, color: Color(0xFFAAAAAA), size: 20), border: InputBorder.none, contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14)),
+                      decoration: InputDecoration(hintText: 'tourism.search_address_business'.tr(), hintStyle: const TextStyle(color: AppColors.textTertiary), prefixIcon: const Icon(Icons.search, color: AppColors.textDisabled, size: 20), border: InputBorder.none, contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14)),
                       onChanged: _fetchSuggestions,
                     ),
                   ),
                   if (_showSuggestions && _suggestions.isNotEmpty)
                     Container(
                       margin: const EdgeInsets.only(top: 8),
-                      decoration: BoxDecoration(color: const Color(0xFF2A2A2A), borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 12)]),
+                      decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: Color(0x14102A56), blurRadius: 12)]),
                       constraints: const BoxConstraints(maxHeight: 250),
                       child: ListView.separated(
                         shrinkWrap: true, padding: const EdgeInsets.symmetric(vertical: 8),
                         itemCount: _suggestions.length,
-                        separatorBuilder: (_, __) => Divider(height: 1, color: Colors.white.withOpacity(0.1), indent: 16, endIndent: 16),
+                        separatorBuilder: (_, __) => Divider(height: 1, color: AppColors.border, indent: 16, endIndent: 16),
                         itemBuilder: (context, index) {
                           final s = _suggestions[index];
                           return InkWell(
@@ -2974,7 +2974,7 @@ class _HomeMapPickerState extends State<_HomeMapPicker> {
                                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                                   Text(s['text'] as String, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500)),
                                   const SizedBox(height: 2),
-                                  Text(s['place_name'] as String, style: const TextStyle(color: Color(0xFF888888), fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                  Text(s['place_name'] as String, style: const TextStyle(color: AppColors.textTertiary, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
                                 ])),
                               ]),
                             ),
@@ -3006,7 +3006,7 @@ class _HomeMapPickerState extends State<_HomeMapPicker> {
                 onTap: _isLoadingGPS ? null : _goToCurrentLocation,
                 child: Container(
                   padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(color: const Color(0xFF2A2A2A), shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 8)]),
+                  decoration: BoxDecoration(color: AppColors.border, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Color(0x14102A56), blurRadius: 8)]),
                   child: _isLoadingGPS
                       ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.orange))
                       : const Icon(Icons.my_location, color: Colors.orange, size: 24),
@@ -3018,19 +3018,19 @@ class _HomeMapPickerState extends State<_HomeMapPicker> {
               left: 0, right: 0, bottom: 0,
               child: Container(
                 padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(color: const Color(0xFF2A2A2A), borderRadius: const BorderRadius.vertical(top: Radius.circular(24)), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, -5))]),
+                decoration: BoxDecoration(color: AppColors.border, borderRadius: const BorderRadius.vertical(top: Radius.circular(24)), boxShadow: [BoxShadow(color: Color(0x14102A56), blurRadius: 20, offset: const Offset(0, -5))]),
                 child: SafeArea(
                   top: false,
                   child: Column(mainAxisSize: MainAxisSize.min, children: [
                     Container(
                       padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(color: const Color(0xFF1E1E1E), borderRadius: BorderRadius.circular(16)),
+                      decoration: BoxDecoration(color: AppColors.cardSecondary, borderRadius: BorderRadius.circular(16)),
                       child: Row(children: [
                         Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: Colors.red.withOpacity(0.25), borderRadius: BorderRadius.circular(10)), child: const Icon(Icons.location_on, color: Colors.red, size: 22)),
                         const SizedBox(width: 14),
                         Expanded(
                           child: _isLoadingAddress
-                              ? Row(children: [const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.orange)), const SizedBox(width: 10), Text('tourism.getting_address'.tr(), style: const TextStyle(color: Color(0xFF999999), fontSize: 14))])
+                              ? Row(children: [const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.orange)), const SizedBox(width: 10), Text('tourism.getting_address'.tr(), style: const TextStyle(color: AppColors.textTertiary, fontSize: 14))])
                               : Text(_addressText, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.white), maxLines: 2, overflow: TextOverflow.ellipsis),
                         ),
                       ]),

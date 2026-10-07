@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import '../utils/app_colors.dart';
 import 'package:flutter/services.dart';
 
 /// Videogame-style animated splash screen
@@ -57,8 +58,8 @@ class _AnimatedSplashState extends State<AnimatedSplash>
   late Animation<double> _exitOpacity;
 
   // Colors
-  static const Color _neonCyan = Color(0xFF00D4FF);
-  static const Color _neonBlue = Color(0xFF60A5FA);
+  static const Color _neonCyan = AppColors.primary;
+  static const Color _neonBlue = AppColors.primaryLight;
   static const Color _deepBlue = Color(0xFF030B1A);
 
   /// Channel to tell native side the first Flutter frame is ready.
@@ -338,7 +339,7 @@ class _AnimatedSplashState extends State<AnimatedSplash>
                                   fontSize: 42,
                                   fontWeight: FontWeight.w900,
                                   letterSpacing: 14,
-                                  color: Colors.white,
+                                  color: AppColors.textPrimary,
                                   shadows: [
                                     Shadow(
                                       color: _neonCyan.withValues(
@@ -483,7 +484,7 @@ class _EnergyParticlePainter extends CustomPainter {
 
   // High-contrast colors visible on dark cosmic backgrounds
   static const Color _white = Color(0xFFFFFFFF);
-  static const Color _gold = Color(0xFFFFD700);
+  static const Color _gold = AppColors.gold;
 
   _EnergyParticlePainter({
     required this.particles,

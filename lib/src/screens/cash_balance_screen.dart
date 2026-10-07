@@ -95,14 +95,14 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
         backgroundColor: AppColors.surface,
         title: const Text(
           'Balance de Efectivo',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+          style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w700),
         ),
-        iconTheme: const IconThemeData(color: Colors.white),
+        iconTheme: const IconThemeData(color: AppColors.textPrimary),
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: const Color(0xFFF59E0B),
-          labelColor: const Color(0xFFF59E0B),
-          unselectedLabelColor: Colors.white54,
+          indicatorColor: AppColors.warningLight,
+          labelColor: AppColors.warningLight,
+          unselectedLabelColor: AppColors.textDisabled,
           tabs: [
             Tab(text: 'screens.cash_balance.summary_tab'.tr()),
             Tab(text: 'cash.history'.tr()),
@@ -112,7 +112,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
       ),
       body: _isLoading
           ? const Center(
-              child: CircularProgressIndicator(color: Color(0xFFF59E0B)),
+              child: CircularProgressIndicator(color: AppColors.warningLight),
             )
           : TabBarView(
               controller: _tabController,
@@ -157,10 +157,10 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: isSuspended
-                    ? [const Color(0xFFDC2626), const Color(0xFFB91C1C)]
+                    ? [AppColors.error, const Color(0xFFB91C1C)]
                     : cashOwed > 0
-                    ? [const Color(0xFFF59E0B), const Color(0xFFD97706)]
-                    : [const Color(0xFF10B981), const Color(0xFF059669)],
+                    ? [AppColors.warningLight, const Color(0xFFD97706)]
+                    : [AppColors.success, const Color(0xFF059669)],
               ),
               borderRadius: BorderRadius.circular(20),
             ),
@@ -172,14 +172,14 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
                       : cashOwed > 0
                       ? Icons.account_balance_wallet_rounded
                       : Icons.check_circle_rounded,
-                  color: Colors.white,
+                  color: AppColors.textPrimary,
                   size: 48,
                 ),
                 const SizedBox(height: 12),
                 Text(
                   isSuspended ? 'CUENTA SUSPENDIDA' : 'BALANCE EFECTIVO',
                   style: const TextStyle(
-                    color: Colors.white70,
+                    color: AppColors.textSecondary,
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 1.5,
@@ -189,7 +189,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
                 Text(
                   formatMoney(cashOwed, country: countryCode),
                   style: const TextStyle(
-                    color: Colors.white,
+                    color: AppColors.textPrimary,
                     fontSize: 42,
                     fontWeight: FontWeight.w800,
                   ),
@@ -202,13 +202,13 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
                       vertical: 8,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: AppColors.border,
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: const Text(
                       'Deposita para reactivar',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: AppColors.textPrimary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -227,9 +227,9 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFF1E293B),
+                color: AppColors.surface,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFF334155)),
+                border: Border.all(color: AppColors.textSecondary),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -238,14 +238,14 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
                     children: [
                       const Icon(
                         Icons.account_balance,
-                        color: Color(0xFF60A5FA),
+                        color: AppColors.primaryLight,
                         size: 18,
                       ),
                       const SizedBox(width: 8),
                       const Text(
                         'BALANCE STRIPE',
                         style: TextStyle(
-                          color: Color(0xFF94A3B8),
+                          color: AppColors.textTertiary,
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 1.5,
@@ -263,7 +263,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
                             Text(
                               'cash.available'.tr(),
                               style: const TextStyle(
-                                color: Color(0xFF94A3B8),
+                                color: AppColors.textTertiary,
                                 fontSize: 11,
                               ),
                             ),
@@ -274,7 +274,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
                                 country: countryCode,
                               ),
                               style: const TextStyle(
-                                color: Color(0xFF10B981),
+                                color: AppColors.success,
                                 fontSize: 20,
                                 fontWeight: FontWeight.w800,
                               ),
@@ -285,7 +285,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
                       Container(
                         width: 1,
                         height: 36,
-                        color: const Color(0xFF334155),
+                        color: AppColors.textSecondary,
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -295,7 +295,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
                             Text(
                               'pending_status'.tr(),
                               style: const TextStyle(
-                                color: Color(0xFF94A3B8),
+                                color: AppColors.textTertiary,
                                 fontSize: 11,
                               ),
                             ),
@@ -306,7 +306,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
                                 country: countryCode,
                               ),
                               style: const TextStyle(
-                                color: Color(0xFFF59E0B),
+                                color: AppColors.warningLight,
                                 fontSize: 20,
                                 fontWeight: FontWeight.w800,
                               ),
@@ -346,7 +346,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
             const Text(
               'DESGLOSE POR TIPO',
               style: TextStyle(
-                color: Colors.white70,
+                color: AppColors.textSecondary,
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
                 letterSpacing: 1,
@@ -367,7 +367,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
             decoration: BoxDecoration(
               color: AppColors.surface,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white12),
+              border: Border.all(color: AppColors.border),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -376,14 +376,14 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
                   children: [
                     Icon(
                       Icons.info_outline,
-                      color: Color(0xFFF59E0B),
+                      color: AppColors.warningLight,
                       size: 20,
                     ),
                     SizedBox(width: 8),
                     Text(
                       'Como depositar',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: AppColors.textPrimary,
                         fontWeight: FontWeight.w700,
                         fontSize: 15,
                       ),
@@ -411,7 +411,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
             const Text(
               'ESTADOS DE CUENTA',
               style: TextStyle(
-                color: Colors.white70,
+                color: AppColors.textSecondary,
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
                 letterSpacing: 1,
@@ -432,23 +432,23 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white12),
+          border: Border.all(color: AppColors.border),
         ),
         child: Column(
           children: [
-            Icon(icon, color: const Color(0xFFF59E0B), size: 24),
+            Icon(icon, color: AppColors.warningLight, size: 24),
             const SizedBox(height: 8),
             Text(
               value,
               style: const TextStyle(
-                color: Colors.white,
+                color: AppColors.textPrimary,
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
               ),
             ),
             Text(
               label,
-              style: const TextStyle(color: Colors.white54, fontSize: 12),
+              style: const TextStyle(color: AppColors.textDisabled, fontSize: 12),
             ),
           ],
         ),
@@ -470,12 +470,12 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
         children: [
           Text(
             label,
-            style: const TextStyle(color: Colors.white70, fontSize: 14),
+            style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
           ),
           Text(
             formatMoney(amount, country: countryCode),
             style: const TextStyle(
-              color: Colors.white,
+              color: AppColors.textPrimary,
               fontWeight: FontWeight.w600,
               fontSize: 14,
             ),
@@ -494,7 +494,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
             width: 24,
             height: 24,
             decoration: const BoxDecoration(
-              color: Color(0xFFF59E0B),
+              color: AppColors.warningLight,
               shape: BoxShape.circle,
             ),
             child: Center(
@@ -512,7 +512,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
           Expanded(
             child: Text(
               text,
-              style: const TextStyle(color: Colors.white70, fontSize: 13),
+              style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
             ),
           ),
         ],
@@ -538,7 +538,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white12),
+        border: Border.all(color: AppColors.border),
       ),
       child: Row(
         children: [
@@ -549,14 +549,14 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
                 Text(
                   '$weekStart → $weekEnd',
                   style: const TextStyle(
-                    color: Colors.white,
+                    color: AppColors.textPrimary,
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 Text(
                   'Adeudo: ${formatMoney(netOwed, country: countryCode)}',
-                  style: const TextStyle(color: Colors.white54, fontSize: 12),
+                  style: const TextStyle(color: AppColors.textDisabled, fontSize: 12),
                 ),
               ],
             ),
@@ -565,16 +565,16 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
               color: paymentStatus == 'paid'
-                  ? const Color(0xFF10B981).withOpacity(0.2)
-                  : const Color(0xFFF59E0B).withOpacity(0.2),
+                  ? AppColors.success.withOpacity(0.2)
+                  : AppColors.warningLight.withOpacity(0.2),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
               paymentStatus == 'paid' ? 'cash.paid'.tr() : 'pending_status'.tr(),
               style: TextStyle(
                 color: paymentStatus == 'paid'
-                    ? const Color(0xFF10B981)
-                    : const Color(0xFFF59E0B),
+                    ? AppColors.success
+                    : AppColors.warningLight,
                 fontWeight: FontWeight.w600,
                 fontSize: 12,
               ),
@@ -610,11 +610,11 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.receipt_long, color: Colors.white24, size: 64),
+            const Icon(Icons.receipt_long, color: AppColors.border, size: 64),
             const SizedBox(height: 16),
             Text(
               'cash.no_movements'.tr(),
-              style: const TextStyle(color: Colors.white54, fontSize: 16),
+              style: const TextStyle(color: AppColors.textDisabled, fontSize: 16),
             ),
           ],
         ),
@@ -673,8 +673,8 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: isDebit
-              ? const Color(0xFFF59E0B).withOpacity(0.3)
-              : const Color(0xFF10B981).withOpacity(0.3),
+              ? AppColors.warningLight.withOpacity(0.3)
+              : AppColors.success.withOpacity(0.3),
         ),
       ),
       child: Column(
@@ -688,8 +688,8 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
                 decoration: BoxDecoration(
                   color:
                       (isDebit
-                              ? const Color(0xFFF59E0B)
-                              : const Color(0xFF10B981))
+                              ? AppColors.warningLight
+                              : AppColors.success)
                           .withOpacity(0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -698,8 +698,8 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
                       ? Icons.arrow_upward_rounded
                       : Icons.arrow_downward_rounded,
                   color: isDebit
-                      ? const Color(0xFFF59E0B)
-                      : const Color(0xFF10B981),
+                      ? AppColors.warningLight
+                      : AppColors.success,
                   size: 20,
                 ),
               ),
@@ -711,7 +711,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
                     Text(
                       isDebit ? _sourceTypeLabel(sourceType) : 'Deposito',
                       style: const TextStyle(
-                        color: Colors.white,
+                        color: AppColors.textPrimary,
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
                       ),
@@ -719,7 +719,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
                     Text(
                       dateStr,
                       style: const TextStyle(
-                        color: Colors.white38,
+                        color: AppColors.textDisabled,
                         fontSize: 11,
                       ),
                     ),
@@ -733,15 +733,15 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
                     '${isDebit ? '+' : '-'}${formatMoney(amount, country: countryCode)}',
                     style: TextStyle(
                       color: isDebit
-                          ? const Color(0xFFF59E0B)
-                          : const Color(0xFF10B981),
+                          ? AppColors.warningLight
+                          : AppColors.success,
                       fontWeight: FontWeight.w700,
                       fontSize: 16,
                     ),
                   ),
                   Text(
                     'Bal: ${formatMoney(balanceAfter, country: countryCode)}',
-                    style: const TextStyle(color: Colors.white38, fontSize: 11),
+                    style: const TextStyle(color: AppColors.textDisabled, fontSize: 11),
                   ),
                 ],
               ),
@@ -753,7 +753,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.03),
+                color: AppColors.border,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Column(
@@ -762,7 +762,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
                   _buildMiniRow('Platform fee', platformFee),
                   _buildMiniRow('Insurance', insuranceFee),
                   _buildMiniRow('Tax', taxFee),
-                  const Divider(color: Colors.white12, height: 12),
+                  const Divider(color: AppColors.border, height: 12),
                   _buildMiniRow('cash.commission_payable'.tr(), amount, bold: true),
                 ],
               ),
@@ -772,7 +772,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
             const SizedBox(height: 6),
             Text(
               description,
-              style: const TextStyle(color: Colors.white38, fontSize: 12),
+              style: const TextStyle(color: AppColors.textDisabled, fontSize: 12),
             ),
           ],
         ],
@@ -795,7 +795,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
           Text(
             label,
             style: TextStyle(
-              color: Colors.white54,
+              color: AppColors.textDisabled,
               fontSize: 12,
               fontWeight: bold ? FontWeight.w600 : FontWeight.normal,
             ),
@@ -803,7 +803,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
           Text(
             formatMoney(value, country: countryCode),
             style: TextStyle(
-              color: bold ? const Color(0xFFF59E0B) : Colors.white70,
+              color: bold ? AppColors.warningLight : AppColors.textSecondary,
               fontSize: 12,
               fontWeight: bold ? FontWeight.w700 : FontWeight.normal,
             ),
@@ -835,17 +835,17 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFFF59E0B).withOpacity(0.1),
+              color: AppColors.warningLight.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: const Color(0xFFF59E0B).withOpacity(0.3),
+                color: AppColors.warningLight.withOpacity(0.3),
               ),
             ),
             child: Row(
               children: [
                 const Icon(
                   Icons.account_balance_wallet,
-                  color: Color(0xFFF59E0B),
+                  color: AppColors.warningLight,
                 ),
                 const SizedBox(width: 12),
                 Column(
@@ -853,12 +853,12 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
                   children: [
                     const Text(
                       'Saldo pendiente',
-                      style: TextStyle(color: Colors.white54, fontSize: 12),
+                      style: TextStyle(color: AppColors.textDisabled, fontSize: 12),
                     ),
                     Text(
                       formatMoney(cashOwed, country: countryCode),
                       style: const TextStyle(
-                        color: Color(0xFFF59E0B),
+                        color: AppColors.warningLight,
                         fontSize: 22,
                         fontWeight: FontWeight.w800,
                       ),
@@ -875,7 +875,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
           const Text(
             'Monto a depositar',
             style: TextStyle(
-              color: Colors.white70,
+              color: AppColors.textSecondary,
               fontSize: 13,
               fontWeight: FontWeight.w600,
             ),
@@ -884,28 +884,28 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
           TextField(
             controller: _depositAmountController,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            style: const TextStyle(color: Colors.white, fontSize: 18),
+            style: const TextStyle(color: AppColors.textPrimary, fontSize: 18),
             decoration: InputDecoration(
               prefixText: '\$ ',
               prefixStyle: const TextStyle(
-                color: Color(0xFFF59E0B),
+                color: AppColors.warningLight,
                 fontSize: 18,
               ),
               hintText: cashOwed.toStringAsFixed(2),
-              hintStyle: const TextStyle(color: Colors.white24),
+              hintStyle: const TextStyle(color: AppColors.border),
               filled: true,
               fillColor: AppColors.surface,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.white12),
+                borderSide: const BorderSide(color: AppColors.border),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.white12),
+                borderSide: const BorderSide(color: AppColors.border),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFFF59E0B)),
+                borderSide: const BorderSide(color: AppColors.warningLight),
               ),
             ),
           ),
@@ -916,7 +916,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
           const Text(
             'Metodo de pago',
             style: TextStyle(
-              color: Colors.white70,
+              color: AppColors.textSecondary,
               fontSize: 13,
               fontWeight: FontWeight.w600,
             ),
@@ -927,14 +927,14 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
             decoration: BoxDecoration(
               color: AppColors.surface,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white12),
+              border: Border.all(color: AppColors.border),
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
                 value: _depositMethod,
                 isExpanded: true,
                 dropdownColor: AppColors.surface,
-                style: const TextStyle(color: Colors.white),
+                style: const TextStyle(color: AppColors.textPrimary),
                 items: [
                   DropdownMenuItem(
                     value: 'transfer',
@@ -973,7 +973,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
           const Text(
             'Numero de referencia',
             style: TextStyle(
-              color: Colors.white70,
+              color: AppColors.textSecondary,
               fontSize: 13,
               fontWeight: FontWeight.w600,
             ),
@@ -981,23 +981,23 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
           const SizedBox(height: 8),
           TextField(
             controller: _depositRefController,
-            style: const TextStyle(color: Colors.white),
+            style: const TextStyle(color: AppColors.textPrimary),
             decoration: InputDecoration(
               hintText: 'Ej: TRF-123456',
-              hintStyle: const TextStyle(color: Colors.white24),
+              hintStyle: const TextStyle(color: AppColors.border),
               filled: true,
               fillColor: AppColors.surface,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.white12),
+                borderSide: const BorderSide(color: AppColors.border),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.white12),
+                borderSide: const BorderSide(color: AppColors.border),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFFF59E0B)),
+                borderSide: const BorderSide(color: AppColors.warningLight),
               ),
             ),
           ),
@@ -1008,7 +1008,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
           const Text(
             'Comprobante de pago',
             style: TextStyle(
-              color: Colors.white70,
+              color: AppColors.textSecondary,
               fontSize: 13,
               fontWeight: FontWeight.w600,
             ),
@@ -1023,8 +1023,8 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: _proofUrl != null
-                      ? const Color(0xFF10B981)
-                      : Colors.white12,
+                      ? AppColors.success
+                      : AppColors.border,
                   style: _proofUrl != null
                       ? BorderStyle.solid
                       : BorderStyle.none,
@@ -1043,7 +1043,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
                             child: Container(
                               padding: const EdgeInsets.all(4),
                               decoration: const BoxDecoration(
-                                color: Color(0xFF10B981),
+                                color: AppColors.success,
                                 shape: BoxShape.circle,
                               ),
                               child: const Icon(
@@ -1061,13 +1061,13 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
                       children: [
                         Icon(
                           Icons.camera_alt_rounded,
-                          color: Colors.white24,
+                          color: AppColors.border,
                           size: 36,
                         ),
                         SizedBox(height: 8),
                         Text(
                           'Toca para subir foto del comprobante',
-                          style: TextStyle(color: Colors.white38, fontSize: 13),
+                          style: TextStyle(color: AppColors.textDisabled, fontSize: 13),
                         ),
                       ],
                     ),
@@ -1082,12 +1082,12 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
             child: ElevatedButton(
               onPressed: _isSubmitting ? null : _submitDeposit,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFF59E0B),
-                foregroundColor: Colors.black,
+                backgroundColor: AppColors.warningLight,
+                foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
-                disabledBackgroundColor: Colors.white12,
+                disabledBackgroundColor: AppColors.border,
               ),
               child: _isSubmitting
                   ? const SizedBox(
@@ -1115,7 +1115,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
             const Text(
               'DEPOSITOS ANTERIORES',
               style: TextStyle(
-                color: Colors.white70,
+                color: AppColors.textSecondary,
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
                 letterSpacing: 1,
@@ -1129,13 +1129,13 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
           const SizedBox(height: 16),
           OutlinedButton.icon(
             onPressed: _requestReset,
-            icon: const Icon(Icons.restart_alt, color: Colors.white54),
+            icon: const Icon(Icons.restart_alt, color: AppColors.textDisabled),
             label: Text(
               'request_week_reset'.tr(),
-              style: const TextStyle(color: Colors.white54),
+              style: const TextStyle(color: AppColors.textDisabled),
             ),
             style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: Colors.white24),
+              side: const BorderSide(color: AppColors.border),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -1173,15 +1173,15 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
     String statusLabel;
     switch (status) {
       case 'approved':
-        statusColor = const Color(0xFF10B981);
+        statusColor = AppColors.success;
         statusLabel = 'approved_status'.tr();
         break;
       case 'rejected':
-        statusColor = const Color(0xFFDC2626);
+        statusColor = AppColors.error;
         statusLabel = 'rejected_status'.tr();
         break;
       default:
-        statusColor = const Color(0xFFF59E0B);
+        statusColor = AppColors.warningLight;
         statusLabel = 'pending_status'.tr();
     }
 
@@ -1191,7 +1191,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white12),
+        border: Border.all(color: AppColors.border),
       ),
       child: Row(
         children: [
@@ -1220,14 +1220,14 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
                 Text(
                   '${formatMoney(amount, country: countryCode)} - ${_methodLabel(method)}',
                   style: const TextStyle(
-                    color: Colors.white,
+                    color: AppColors.textPrimary,
                     fontWeight: FontWeight.w600,
                     fontSize: 14,
                   ),
                 ),
                 Text(
                   dateStr,
-                  style: const TextStyle(color: Colors.white38, fontSize: 11),
+                  style: const TextStyle(color: AppColors.textDisabled, fontSize: 11),
                 ),
               ],
             ),
@@ -1334,7 +1334,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('screens.cash_balance.deposit_sent'.tr()),
-          backgroundColor: const Color(0xFF10B981),
+          backgroundColor: AppColors.success,
         ),
       );
       _depositAmountController.clear();
@@ -1345,7 +1345,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('screens.cash_balance.deposit_error'.tr()),
-          backgroundColor: const Color(0xFFDC2626),
+          backgroundColor: AppColors.error,
         ),
       );
     }
@@ -1363,24 +1363,24 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
         backgroundColor: AppColors.surface,
         title: Text(
           'request_reset_title'.tr(),
-          style: const TextStyle(color: Colors.white),
+          style: const TextStyle(color: AppColors.textPrimary),
         ),
         content: Text(
           'request_reset_body'.tr().replaceAll('{amount}', formatMoney(cashOwed, country: driver.countryCode)),
-          style: const TextStyle(color: Colors.white70),
+          style: const TextStyle(color: AppColors.textSecondary),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
             child: Text(
               'cancel'.tr(),
-              style: const TextStyle(color: Colors.white54),
+              style: const TextStyle(color: AppColors.textDisabled),
             ),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFF59E0B),
+              backgroundColor: AppColors.warningLight,
             ),
             child: Text(
               'request_reset_btn'.tr(),
@@ -1402,7 +1402,7 @@ class _CashBalanceScreenState extends State<CashBalanceScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('screens.cash_balance.request_sent_admin'.tr()),
-            backgroundColor: const Color(0xFF10B981),
+            backgroundColor: AppColors.success,
           ),
         );
       }

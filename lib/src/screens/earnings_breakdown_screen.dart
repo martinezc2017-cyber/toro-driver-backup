@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/app_colors.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -215,7 +216,7 @@ class _EarningsBreakdownScreenState extends ConsumerState<EarningsBreakdownScree
       pinned: true,
       backgroundColor: AppTheme.background,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back, color: Colors.white),
+        icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
         onPressed: () => Navigator.pop(context),
       ),
       actions: [
@@ -249,13 +250,13 @@ class _EarningsBreakdownScreenState extends ConsumerState<EarningsBreakdownScree
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.chevron_left, color: Colors.white70),
+                        icon: const Icon(Icons.chevron_left, color: AppColors.textSecondary),
                         onPressed: _previousWeek,
                       ),
                       Text(
                         '${dateFormat.format(_weekStart)} - ${dateFormat.format(_weekEnd)}',
                         style: const TextStyle(
-                          color: Colors.white70,
+                          color: AppColors.textSecondary,
                           fontSize: 16,
                         ),
                       ),
@@ -263,8 +264,8 @@ class _EarningsBreakdownScreenState extends ConsumerState<EarningsBreakdownScree
                         icon: Icon(
                           Icons.chevron_right,
                           color: _weekStart.add(const Duration(days: 7)).isBefore(DateTime.now())
-                              ? Colors.white70
-                              : Colors.white24,
+                              ? AppColors.textSecondary
+                              : AppColors.border,
                         ),
                         onPressed: _nextWeek,
                       ),
@@ -275,14 +276,14 @@ class _EarningsBreakdownScreenState extends ConsumerState<EarningsBreakdownScree
                   Text(
                     formatMoney(totalEarnings, country: _countryCode),
                     style: const TextStyle(
-                      color: Colors.white,
+                      color: AppColors.textPrimary,
                       fontSize: 48,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   const Text(
                     'Total Ganado',
-                    style: TextStyle(color: Colors.white70, fontSize: 14),
+                    style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
                   ),
                 ],
               ),
@@ -306,7 +307,7 @@ class _EarningsBreakdownScreenState extends ConsumerState<EarningsBreakdownScree
           color: AppTheme.primary,
           borderRadius: BorderRadius.circular(10),
         ),
-        labelColor: Colors.white,
+        labelColor: AppColors.textPrimary,
         unselectedLabelColor: AppTheme.textMuted,
         labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
         tabs: [
@@ -351,7 +352,7 @@ class _EarningsBreakdownScreenState extends ConsumerState<EarningsBreakdownScree
                 _buildRow(
                   '🎯 Reducción QR Tier ${_summary['qr_tier'] ?? ''}',
                   null,
-                  color: const Color(0xFF00BCD4),
+                  color: AppColors.primary,
                   icon: Icons.qr_code_2_rounded,
                 ),
               _buildRow('IVA (16%)', _summary['tax_fee'], negative: true),
@@ -493,7 +494,7 @@ class _EarningsBreakdownScreenState extends ConsumerState<EarningsBreakdownScree
                             Text(
                               day['day'] ?? '',
                               style: const TextStyle(
-                                color: Colors.white,
+                                color: AppColors.textPrimary,
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -661,7 +662,7 @@ class _EarningsBreakdownScreenState extends ConsumerState<EarningsBreakdownScree
                 Text(
                   label,
                   style: const TextStyle(
-                    color: Colors.white,
+                    color: AppColors.textPrimary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -750,7 +751,7 @@ class _EarningsBreakdownScreenState extends ConsumerState<EarningsBreakdownScree
             child: Text(
               label,
               style: TextStyle(
-                color: bold ? Colors.white : AppTheme.textMuted,
+                color: bold ? AppColors.textPrimary : AppTheme.textMuted,
                 fontWeight: bold ? FontWeight.w600 : FontWeight.normal,
               ),
             ),
@@ -788,7 +789,7 @@ class _EarningsBreakdownScreenState extends ConsumerState<EarningsBreakdownScree
           Text(
             value,
             style: TextStyle(
-              color: highlight ? AppTheme.success : Colors.white,
+              color: highlight ? AppTheme.success : AppColors.textPrimary,
               fontWeight: FontWeight.bold,
               fontSize: highlight ? 18 : 16,
             ),
@@ -1007,25 +1008,25 @@ class _EarningsBreakdownScreenState extends ConsumerState<EarningsBreakdownScree
         children: [
           Row(
             children: [
-              const Icon(Icons.account_balance_wallet, color: Colors.white, size: 24),
+              const Icon(Icons.account_balance_wallet, color: AppColors.textPrimary, size: 24),
               const SizedBox(width: 12),
               const Text(
                 'TU PAYOUT',
-                style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold),
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.bold),
               ),
               const Spacer(),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
+                  color: AppColors.border,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(statusIcon, color: Colors.white, size: 14),
+                    Icon(statusIcon, color: AppColors.textPrimary, size: 14),
                     const SizedBox(width: 4),
-                    Text(statusText, style: const TextStyle(color: Colors.white, fontSize: 12)),
+                    Text(statusText, style: const TextStyle(color: AppColors.textPrimary, fontSize: 12)),
                   ],
                 ),
               ),
@@ -1035,7 +1036,7 @@ class _EarningsBreakdownScreenState extends ConsumerState<EarningsBreakdownScree
           Text(
             formatMoney(payoutAmount, country: _countryCode),
             style: const TextStyle(
-              color: Colors.white,
+              color: AppColors.textPrimary,
               fontSize: 36,
               fontWeight: FontWeight.bold,
             ),
@@ -1043,7 +1044,7 @@ class _EarningsBreakdownScreenState extends ConsumerState<EarningsBreakdownScree
           const SizedBox(height: 8),
           const Text(
             'Deposito cada Domingo',
-            style: TextStyle(color: Colors.white70, fontSize: 13),
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
           ),
         ],
       ),

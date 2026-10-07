@@ -12,6 +12,7 @@ import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../providers/auth_provider.dart';
 import '../services/biometric_service.dart';
 import '../utils/app_colors.dart';
+import '../widgets/toro_design_system.dart';
 import '../utils/haptic_service.dart';
 import '../widgets/neon_widgets.dart';
 import '../core/logging/app_logger.dart';
@@ -507,14 +508,15 @@ class _LoginScreenState extends State<LoginScreen>
     final size = MediaQuery.of(context).size;
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: AppColors.ink,
       resizeToAvoidBottomInset: false,
       body: Stack(
         children: [
-          // Animated city background with skyline and highway
-          _buildCityBackground(size),
-          _buildHighway(size),
-          _buildAmbientParticles(size),
+          // La franja eléctrica de la marca a pantalla completa (continúa el
+          // arranque); la tarjeta blanca con volumen flota encima.
+          const Positioned.fill(
+            child: ToroBand(overlap: 0, padding: EdgeInsets.zero, radius: 0, child: SizedBox.expand()),
+          ),
 
           // Main content - constrained width on web for mobile-like experience
           SafeArea(
@@ -561,152 +563,10 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  Widget _buildCityBackground(Size size) {
-    return AnimatedBuilder(
-      animation: _cityLightsController,
-      builder: (context, child) {
-        return Stack(
-          children: [
-            Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Color(0xFF0A0A12),
-                    Color(0xFF0D0D15),
-                    Color(0xFF12121A),
-                    Color(0xFF151520),
-                  ],
-                ),
-              ),
-            ),
-            Positioned(
-              bottom: size.height * 0.3,
-              left: 0,
-              right: 0,
-              child: Container(
-                height: 100,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      const Color(0xFF1A1A25).withValues(alpha: 0.3),
-                      const Color(0xFF252535).withValues(alpha: 0.2),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            CustomPaint(
-              size: size,
-              painter: _CitySkylinePainter(
-                twinkleValue: _cityLightsController.value,
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildHighway(Size size) {
-    return AnimatedBuilder(
-      animation: _carFlowController,
-      builder: (context, child) {
-        return CustomPaint(
-          size: size,
-          painter: _HighwayPainter(carProgress: _carFlowController.value),
-        );
-      },
-    );
-  }
-
-  Widget _buildAmbientParticles(Size size) {
-    return AnimatedBuilder(
-      animation: _particleController,
-      builder: (context, child) {
-        return Stack(
-          children: List.generate(12, (index) {
-            final offset = (index * 0.083 + _particleController.value) % 1.0;
-            final x = (math.sin(index * 1.5) * 0.4 + 0.5) * size.width;
-            final y = offset * size.height * 1.2 - 50;
-            final opacity = (math.sin(offset * math.pi) * 0.2).clamp(
-              0.03,
-              0.12,
-            );
-            final particleSize = 2.0 + (index % 3);
-
-            return Positioned(
-              left: x,
-              top: y,
-              child: Container(
-                width: particleSize,
-                height: particleSize,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.primary.withValues(alpha: opacity),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primary.withValues(alpha: opacity * 0.5),
-                      blurRadius: 4,
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }),
-        );
-      },
-    );
-  }
-
   Widget _buildAnimatedLogo() {
-    return AnimatedBuilder(
-      animation: _pulseAnimation,
-      builder: (context, child) {
-        return Transform.scale(
-          scale: _pulseAnimation.value,
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(28),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF00D9FF).withValues(alpha: 0.25),
-                  blurRadius: 12,
-                  spreadRadius: 0,
-                ),
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.4),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(28),
-              child: Image.asset(
-                'assets/images/toro_logo_new.png',
-                width: 120,
-                height: 120,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Image.asset(
-                    'assets/images/toro_logo.png',
-                    width: 120,
-                    height: 120,
-                    fit: BoxFit.cover,
-                  );
-                },
-              ),
-            ),
-          ),
-        );
-      },
-    ).animate().fadeIn(duration: 600.ms).scale(begin: const Offset(0.8, 0.8));
+    return const ToroLogo(size: 116);
   }
+
 
   Widget _buildBrandName() {
     return AnimatedBuilder(
@@ -737,9 +597,10 @@ class _LoginScreenState extends State<LoginScreen>
             'TORO DRIVER',
             style: TextStyle(
               fontSize: 28,
-              fontWeight: FontWeight.w300,
+              fontWeight: FontWeight.w800,
               color: Colors.white,
               letterSpacing: 6,
+              shadows: [Shadow(color: Color(0x8035C6FF), blurRadius: 18)],
             ),
           ),
         );
@@ -753,7 +614,7 @@ class _LoginScreenState extends State<LoginScreen>
       style: TextStyle(
         fontSize: 13,
         fontWeight: FontWeight.w400,
-        color: AppColors.textSecondary,
+        color: const Color(0xB8FFFFFF),
         letterSpacing: 1,
       ),
     ).animate().fadeIn(delay: 200.ms);
@@ -764,32 +625,10 @@ class _LoginScreenState extends State<LoginScreen>
       width: kIsWeb ? 360 : null, // Constrain width on web
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppColors.card,
-            AppColors.card.withValues(alpha: 0.95),
-            AppColors.surface,
-          ],
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: const Color(0xFF00D9FF), // Cyan border like Rider app
-          width: 1.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF00D9FF).withValues(alpha: 0.2),
-            blurRadius: 20,
-            spreadRadius: 0,
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.4),
-            blurRadius: 30,
-            offset: const Offset(0, 15),
-          ),
-        ],
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(ToroRadius.card),
+        border: Border.all(color: AppColors.border),
+        boxShadow: const [BoxShadow(color: AppColors.edge, offset: Offset(0, 5)), ...ToroShadows.floating],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -800,11 +639,8 @@ class _LoginScreenState extends State<LoginScreen>
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
+                  color: AppColors.accentSoft,
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: AppColors.border.withValues(alpha: 0.5),
-                  ),
                 ),
                 child: Icon(
                   _isLogin ? Icons.login_rounded : Icons.person_add_rounded,
@@ -1115,7 +951,7 @@ class _LoginScreenState extends State<LoginScreen>
                     await authProvider.signInWithApple();
                   },
             text: 'continue_with_apple'.tr(),
-            style: SignInWithAppleButtonStyle.white,
+            style: SignInWithAppleButtonStyle.whiteOutlined,
             borderRadius: BorderRadius.circular(12),
             height: 48,
           ),
@@ -1258,7 +1094,7 @@ class _LoginScreenState extends State<LoginScreen>
       _appVersion,
       style: TextStyle(
         fontSize: 12,
-        color: AppColors.textSecondary.withValues(alpha: 0.5),
+        color: const Color(0xB8FFFFFF).withValues(alpha: 0.5),
         letterSpacing: 1,
       ),
     );
@@ -1354,7 +1190,7 @@ class _HighwayPainter extends CustomPainter {
       paint,
     );
 
-    paint.color = const Color(0xFF2A2A2A);
+    paint.color = AppColors.border;
     paint.strokeWidth = 2;
     canvas.drawLine(
       Offset(0, baseY + size.height * 0.05),
@@ -1367,7 +1203,7 @@ class _HighwayPainter extends CustomPainter {
       paint,
     );
 
-    paint.color = const Color(0xFF3A3A3A);
+    paint.color = AppColors.borderStrong;
     for (double x = 0; x < size.width; x += 30) {
       canvas.drawLine(
         Offset(x, baseY + size.height * 0.075),
@@ -1485,35 +1321,10 @@ class _GoogleNeonButtonState extends State<_GoogleNeonButton>
               1.0,
             ),
             transformAlignment: Alignment.center,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              gradient: LinearGradient(
-                begin: Alignment(beginX, -1),
-                end: Alignment(endX, 1),
-                colors: const [
-                  Color(0xFFEA4335), // Google Red
-                  Color(0xFFFBBC05), // Google Yellow
-                  Color(0xFF34A853), // Google Green
-                  Color(0xFF4285F4), // Google Blue
-                  Color(0xFFEA4335), // Google Red
-                  Color(0xFFFBBC05), // Google Yellow
-                ],
-                tileMode: TileMode.repeated,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF4285F4).withValues(alpha: 0.4),
-                  blurRadius: 15,
-                  spreadRadius: 0,
-                ),
-              ],
-            ),
+            decoration: ToroRaised.decoration(ToroTone.white),
             child: Container(
-              margin: const EdgeInsets.all(3),
-              decoration: BoxDecoration(
-                color: const Color(0xFF0A0A0A),
-                borderRadius: BorderRadius.circular(13),
-              ),
+              margin: EdgeInsets.zero,
+              decoration: const BoxDecoration(),
               child: Center(
                 child: widget.isLoading
                     ? const SizedBox(
@@ -1521,7 +1332,7 @@ class _GoogleNeonButtonState extends State<_GoogleNeonButton>
                         height: 24,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: Colors.white,
+                          color: AppColors.textPrimary,
                         ),
                       )
                     : Row(
@@ -1535,6 +1346,7 @@ class _GoogleNeonButtonState extends State<_GoogleNeonButton>
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: AppColors.border),
                             ),
                             child: const Center(
                               child: Text(
@@ -1553,7 +1365,7 @@ class _GoogleNeonButtonState extends State<_GoogleNeonButton>
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
-                              color: Colors.white,
+                              color: AppColors.textPrimary,
                             ),
                           ),
                         ],

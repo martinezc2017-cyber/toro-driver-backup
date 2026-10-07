@@ -893,7 +893,7 @@ class _DriverBidScreenState extends State<DriverBidScreen>
                             label: Text('bid_send_counter'.tr()),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.warning,
-                              foregroundColor: Colors.black,
+                              foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(vertical: 14),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(14),
@@ -2101,9 +2101,9 @@ class _DriverBidScreenState extends State<DriverBidScreen>
   /// Event type badge
   Widget _buildEventTypeBadge(String? eventType) {
     final typeMap = {
-      'tour': ('Tour', Icons.tour, const Color(0xFF3B82F6)),
-      'charter': ('Transporte', Icons.directions_bus, const Color(0xFF10B981)),
-      'excursion': ('Excursión', Icons.hiking, const Color(0xFFF59E0B)),
+      'tour': ('Tour', Icons.tour, AppColors.primary),
+      'charter': ('Transporte', Icons.directions_bus, AppColors.success),
+      'excursion': ('Excursión', Icons.hiking, AppColors.warningLight),
       'corporate': ('Corporativo', Icons.business, const Color(0xFF6366F1)),
       'wedding': ('Boda', Icons.favorite, const Color(0xFFEC4899)),
       'other': ('Otro', Icons.category, AppColors.textSecondary),

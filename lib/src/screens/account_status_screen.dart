@@ -46,7 +46,7 @@ class _AccountStatusScreenState extends State<AccountStatusScreen> {
           }
 
           final canGoOnline = driver.canGoOnline;
-          final statusColor = canGoOnline ? AppColors.success : const Color(0xFFFF9500);
+          final statusColor = canGoOnline ? AppColors.success : AppColors.warningLight;
           final statusIcon = canGoOnline ? Icons.check_circle : Icons.warning_rounded;
           final statusText = canGoOnline ? 'account_active'.tr() : 'account_restricted'.tr();
 
@@ -157,20 +157,20 @@ class _AccountStatusScreenState extends State<AccountStatusScreen> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFF3B30).withOpacity(0.1),
+                      color: AppColors.error.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFFF3B30).withOpacity(0.3)),
+                      border: Border.all(color: AppColors.error.withOpacity(0.3)),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.error_outline, color: Color(0xFFFF3B30), size: 24),
+                        const Icon(Icons.error_outline, color: AppColors.error, size: 24),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
                             driver.onboardingStage == 'suspended'
                                 ? 'account_suspended_msg'.tr()
                                 : 'application_rejected_msg'.tr(),
-                            style: const TextStyle(color: Color(0xFFFF3B30), fontSize: 13),
+                            style: const TextStyle(color: AppColors.error, fontSize: 13),
                           ),
                         ),
                       ],
@@ -231,12 +231,12 @@ class _AccountStatusScreenState extends State<AccountStatusScreen> {
                               ? const SizedBox(
                                   width: 16,
                                   height: 16,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.textPrimary),
                                 )
                               : const Icon(Icons.support_agent, size: 18),
                           label: Text(_isRequestingHelp ? 'sending'.tr() : 'request_help'.tr()),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF8B5CF6),
+                            backgroundColor: AppColors.purple,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -266,7 +266,7 @@ class _AccountStatusScreenState extends State<AccountStatusScreen> {
                         icon: Icons.email_outlined,
                         title: 'email'.tr(),
                         subtitle: 'support@toro-ride.com',
-                        color: const Color(0xFF3B82F6),
+                        color: AppColors.primary,
                       ),
                     ],
                   ),
@@ -292,12 +292,12 @@ class _AccountStatusScreenState extends State<AccountStatusScreen> {
     List<_RequirementDetail>? details,
   }) {
     final color = isBlocked
-        ? const Color(0xFFFF3B30)
+        ? AppColors.error
         : isComplete
             ? AppColors.success
             : showPending
                 ? const Color(0xFFFFD60A)
-                : const Color(0xFFFF9500);
+                : AppColors.warningLight;
 
     final statusIcon = isBlocked
         ? Icons.block
@@ -441,7 +441,7 @@ class _AccountStatusScreenState extends State<AccountStatusScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('please_describe_problem'.tr()),
-          backgroundColor: const Color(0xFFFF9500),
+          backgroundColor: AppColors.warningLight,
         ),
       );
       return;
@@ -462,7 +462,7 @@ class _AccountStatusScreenState extends State<AccountStatusScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('request_sent_contact'.tr()),
-            backgroundColor: const Color(0xFF22C55E),
+            backgroundColor: AppColors.success,
           ),
         );
       }
@@ -471,7 +471,7 @@ class _AccountStatusScreenState extends State<AccountStatusScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('${'error_sending'.tr()}: $e'),
-            backgroundColor: const Color(0xFFFF3B30),
+            backgroundColor: AppColors.error,
           ),
         );
       }

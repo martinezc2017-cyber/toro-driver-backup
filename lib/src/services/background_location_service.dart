@@ -14,6 +14,7 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import '../utils/app_colors.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:geolocator/geolocator.dart';
@@ -186,7 +187,7 @@ void onStart(ServiceInstance service) async {
           ongoing: true,
           autoCancel: false,
           icon: '@drawable/ic_notification',
-          color: Color(0xFF2196F3),
+          color: AppColors.primary,
           showWhen: false,
         );
         final flnp = FlutterLocalNotificationsPlugin();

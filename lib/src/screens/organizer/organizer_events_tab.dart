@@ -1261,7 +1261,7 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
               emoji: '\u{1F68C}',
               title: 'Ruta Fija',
               subtitle: 'Microbús, camión, escolar',
-              color: const Color(0xFF2196F3),
+              color: AppColors.primary,
               onTap: () {
                 Navigator.pop(ctx);
                 _createEventWithType('fixed_route');
@@ -1291,7 +1291,7 @@ class _OrganizerEventsTabState extends State<OrganizerEventsTab>
               emoji: '\u{270B}',
               title: '¿Quién más va?',
               subtitle: 'Junta gente al mismo destino',
-              color: const Color(0xFF4CAF50),
+              color: AppColors.success,
               onTap: () {
                 Navigator.pop(ctx);
                 _createEventWithType('shared_trip');
@@ -1658,7 +1658,7 @@ class _AnimatedEmptyStateState extends State<_AnimatedEmptyState>
                   Text(
                     'organizer.first_trip_title'.tr(),
                     style: const TextStyle(
-                      color: Colors.white,
+                      color: AppColors.textPrimary,
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 0.5,
@@ -1672,7 +1672,7 @@ class _AnimatedEmptyStateState extends State<_AnimatedEmptyState>
                   Text(
                     'organizer.first_trip_subtitle'.tr(),
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.6),
+                      color: AppColors.textSecondary,
                       fontSize: 16,
                       height: 1.5,
                     ),
@@ -1690,17 +1690,17 @@ class _AnimatedEmptyStateState extends State<_AnimatedEmptyState>
                       vertical: 12,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF22D3EE).withOpacity(0.08),
+                      color: AppColors.primary.withOpacity(0.08),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: const Color(0xFF22D3EE).withOpacity(0.3),
+                        color: AppColors.primary.withOpacity(0.3),
                       ),
                     ),
                     child: Row(
                       children: [
                         const Icon(
                           Icons.info_outline_rounded,
-                          color: Color(0xFF22D3EE),
+                          color: AppColors.primary,
                           size: 18,
                         ),
                         const SizedBox(width: 10),
@@ -1708,7 +1708,7 @@ class _AnimatedEmptyStateState extends State<_AnimatedEmptyState>
                           child: Text(
                             'organizer.colectivo_role'.tr(),
                             style: const TextStyle(
-                              color: Colors.white,
+                              color: AppColors.textPrimary,
                               fontSize: 13,
                               height: 1.4,
                             ),
@@ -1728,18 +1728,18 @@ class _AnimatedEmptyStateState extends State<_AnimatedEmptyState>
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                         colors: [
-                          Colors.white.withOpacity(0.1),
-                          Colors.white.withOpacity(0.05),
+                          AppColors.border,
+                          AppColors.border,
                         ],
                       ),
                       borderRadius: BorderRadius.circular(24),
                       border: Border.all(
-                        color: Colors.white.withOpacity(0.2),
+                        color: AppColors.border,
                         width: 1,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.3),
+                          color: Color(0x14102A56),
                           blurRadius: 20,
                           offset: const Offset(0, 10),
                         ),
@@ -1841,14 +1841,14 @@ class _AnimatedEmptyStateState extends State<_AnimatedEmptyState>
                             children: [
                               const Icon(
                                 Icons.add_circle_outline,
-                                color: Colors.white,
+                                color: AppColors.textPrimary,
                                 size: 24,
                               ),
                               const SizedBox(width: 12),
                               Text(
                                 'organizer.create_trip'.tr(),
                                 style: const TextStyle(
-                                  color: Colors.white,
+                                  color: AppColors.textPrimary,
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
                                   letterSpacing: 0.5,
@@ -1880,17 +1880,17 @@ class _AnimatedEmptyStateState extends State<_AnimatedEmptyState>
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
+              color: AppColors.border,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, color: Colors.white.withOpacity(0.9), size: 18),
+            child: Icon(icon, color: AppColors.textPrimary, size: 18),
           ),
           const SizedBox(width: 14),
           Expanded(
             child: Text(
               text,
               style: TextStyle(
-                color: Colors.white.withOpacity(0.85),
+                color: AppColors.textPrimary,
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
@@ -1976,7 +1976,7 @@ class _ParticlePainter extends CustomPainter {
     final bgPaint = Paint()
       ..shader =
           RadialGradient(
-            colors: [const Color(0xFF0A1628), const Color(0xFF050A10)],
+            colors: [AppColors.background, const Color(0xFF050A10)],
             stops: const [0.0, 1.0],
           ).createShader(
             Rect.fromCenter(

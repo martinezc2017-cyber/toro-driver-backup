@@ -1068,7 +1068,7 @@ class _OrganizerPassengersTrackingScreenState
                 decoration: BoxDecoration(
                   color: isOnboard ? AppColors.success : AppColors.primary,
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 2),
+                  border: Border.all(color: AppColors.border, width: 2),
                   boxShadow: [
                     BoxShadow(
                       color: (isOnboard ? AppColors.success : AppColors.primary)
@@ -1082,7 +1082,7 @@ class _OrganizerPassengersTrackingScreenState
                   child: Text(
                     _getInitials(name),
                     style: const TextStyle(
-                      color: Colors.white,
+                      color: AppColors.textPrimary,
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
                     ),

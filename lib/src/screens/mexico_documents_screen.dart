@@ -521,7 +521,7 @@ class _MexicoDocumentsScreenState extends State<MexicoDocumentsScreen> {
                       label: Text('mx_gallery'.tr()),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.black,
+                        foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),

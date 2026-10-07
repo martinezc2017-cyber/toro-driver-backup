@@ -1304,7 +1304,7 @@ class _OrganizerCreateEventSimpleScreenState
                   child: Text(
                     'org_create_event'.tr(),
                     style: const TextStyle(
-                      color: Colors.white,
+                      color: AppColors.textPrimary,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
@@ -1481,7 +1481,7 @@ class _OrganizerCreateEventSimpleScreenState
                       type['icon'] as IconData,
                       size: 16,
                       color: isSelected
-                          ? Colors.white
+                          ? AppColors.textPrimary
                           : AppColors.textSecondary,
                     ),
                     const SizedBox(width: 4),
@@ -1737,7 +1737,7 @@ class _OrganizerCreateEventSimpleScreenState
                   label: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.route, size: 16, color: Colors.white),
+                      const Icon(Icons.route, size: 16, color: AppColors.textPrimary),
                       const SizedBox(width: 4),
                       Text('org_route_fixed'.tr()),
                     ],
@@ -1764,7 +1764,7 @@ class _OrganizerCreateEventSimpleScreenState
                       const Icon(
                         Icons.location_on,
                         size: 16,
-                        color: Colors.white,
+                        color: AppColors.textPrimary,
                       ),
                       const SizedBox(width: 4),
                       Text('org_area_free'.tr()),
@@ -2288,7 +2288,7 @@ class _OrganizerCreateEventSimpleScreenState
                           child: const Icon(
                             Icons.camera_alt,
                             size: 10,
-                            color: Colors.white,
+                            color: AppColors.textPrimary,
                           ),
                         ),
                       ),
@@ -2431,7 +2431,7 @@ class _OrganizerCreateEventSimpleScreenState
                         child: const Icon(
                           Icons.camera_alt,
                           size: 12,
-                          color: Colors.white,
+                          color: AppColors.textPrimary,
                         ),
                       ),
                     ),
@@ -2666,7 +2666,7 @@ class _OrganizerCreateEventSimpleScreenState
                       height: 18,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: Colors.white,
+                        color: AppColors.textPrimary,
                       ),
                     )
                   : const Icon(Icons.save, size: 20),
@@ -2944,7 +2944,7 @@ class _OrganizerCreateEventSimpleScreenState
                           Text(
                             'Predeterminado',
                             style: TextStyle(
-                              color: Colors.white,
+                              color: AppColors.textPrimary,
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
                             ),
@@ -4640,7 +4640,7 @@ class _OrganizerCreateEventSimpleScreenState
                                   : null,
                             });
                           },
-                          icon: Icon(Icons.check, color: Colors.white),
+                          icon: Icon(Icons.check, color: AppColors.textPrimary),
                           label: Text(
                             existingStop != null
                                 ? 'organizer.save_changes'.tr()
@@ -5256,18 +5256,18 @@ class _SimpleMapPickerState extends State<_SimpleMapPicker> {
   Widget build(BuildContext context) {
     return Dialog.fullscreen(
       child: Scaffold(
-        backgroundColor: const Color(0xFF1E1E1E),
+        backgroundColor: AppColors.cardSecondary,
         appBar: AppBar(
-          backgroundColor: const Color(0xFF2A2A2A),
+          backgroundColor: AppColors.border,
           elevation: 0,
           leading: IconButton(
-            icon: const Icon(Icons.close, color: Colors.white),
+            icon: const Icon(Icons.close, color: AppColors.textPrimary),
             onPressed: () => Navigator.pop(context),
           ),
           title: Text(
             widget.title,
             style: const TextStyle(
-              color: Colors.white,
+              color: AppColors.textPrimary,
               fontWeight: FontWeight.bold,
               fontSize: 18,
             ),
@@ -5309,11 +5309,11 @@ class _SimpleMapPickerState extends State<_SimpleMapPicker> {
                 children: [
                   Container(
                     decoration: BoxDecoration(
-                      color: const Color(0xFF2A2A2A),
+                      color: AppColors.border,
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.3),
+                          color: Color(0x14102A56),
                           blurRadius: 12,
                           offset: const Offset(0, 4),
                         ),
@@ -5321,13 +5321,13 @@ class _SimpleMapPickerState extends State<_SimpleMapPicker> {
                     ),
                     child: TextField(
                       controller: _searchController,
-                      style: const TextStyle(fontSize: 14, color: Colors.white),
+                      style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
                       decoration: InputDecoration(
                         hintText: 'organizer.search_address'.tr(),
-                        hintStyle: const TextStyle(color: Color(0xFF888888)),
+                        hintStyle: const TextStyle(color: AppColors.textTertiary),
                         prefixIcon: const Icon(
                           Icons.search,
-                          color: Color(0xFFAAAAAA),
+                          color: AppColors.textDisabled,
                           size: 20,
                         ),
                         suffixIcon: _isSearching
@@ -5346,7 +5346,7 @@ class _SimpleMapPickerState extends State<_SimpleMapPicker> {
                             ? IconButton(
                                 icon: const Icon(
                                   Icons.clear,
-                                  color: Color(0xFFAAAAAA),
+                                  color: AppColors.textDisabled,
                                   size: 20,
                                 ),
                                 onPressed: () {
@@ -5376,11 +5376,11 @@ class _SimpleMapPickerState extends State<_SimpleMapPicker> {
                     Container(
                       margin: const EdgeInsets.only(top: 8),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF2A2A2A),
+                        color: AppColors.border,
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.3),
+                            color: Color(0x14102A56),
                             blurRadius: 12,
                             offset: const Offset(0, 4),
                           ),
@@ -5393,7 +5393,7 @@ class _SimpleMapPickerState extends State<_SimpleMapPicker> {
                         itemCount: _suggestions.length,
                         separatorBuilder: (_, _) => Divider(
                           height: 1,
-                          color: Colors.white.withOpacity(0.1),
+                          color: AppColors.border,
                           indent: 16,
                           endIndent: 16,
                         ),
@@ -5437,7 +5437,7 @@ class _SimpleMapPickerState extends State<_SimpleMapPicker> {
                                         Text(
                                           suggestion['text'] as String,
                                           style: const TextStyle(
-                                            color: Colors.white,
+                                            color: AppColors.textPrimary,
                                             fontSize: 14,
                                             fontWeight: FontWeight.w500,
                                           ),
@@ -5446,7 +5446,7 @@ class _SimpleMapPickerState extends State<_SimpleMapPicker> {
                                         Text(
                                           suggestion['place_name'] as String,
                                           style: const TextStyle(
-                                            color: Color(0xFF888888),
+                                            color: AppColors.textTertiary,
                                             fontSize: 12,
                                           ),
                                           maxLines: 1,
@@ -5488,7 +5488,7 @@ class _SimpleMapPickerState extends State<_SimpleMapPicker> {
                       ),
                       child: const Icon(
                         Icons.location_on,
-                        color: Colors.white,
+                        color: AppColors.textPrimary,
                         size: 28,
                       ),
                     ),
@@ -5514,11 +5514,11 @@ class _SimpleMapPickerState extends State<_SimpleMapPicker> {
                 child: Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF2A2A2A),
+                    color: AppColors.border,
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.3),
+                        color: Color(0x14102A56),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),
@@ -5558,11 +5558,11 @@ class _SimpleMapPickerState extends State<_SimpleMapPicker> {
                     child: Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF2A2A2A),
+                        color: AppColors.border,
                         borderRadius: BorderRadius.circular(8),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.3),
+                            color: Color(0x14102A56),
                             blurRadius: 4,
                           ),
                         ],
@@ -5570,7 +5570,7 @@ class _SimpleMapPickerState extends State<_SimpleMapPicker> {
                       child: const Icon(
                         Icons.add,
                         size: 22,
-                        color: Colors.white,
+                        color: AppColors.textPrimary,
                       ),
                     ),
                   ),
@@ -5585,11 +5585,11 @@ class _SimpleMapPickerState extends State<_SimpleMapPicker> {
                     child: Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF2A2A2A),
+                        color: AppColors.border,
                         borderRadius: BorderRadius.circular(8),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.3),
+                            color: Color(0x14102A56),
                             blurRadius: 4,
                           ),
                         ],
@@ -5597,7 +5597,7 @@ class _SimpleMapPickerState extends State<_SimpleMapPicker> {
                       child: const Icon(
                         Icons.remove,
                         size: 22,
-                        color: Colors.white,
+                        color: AppColors.textPrimary,
                       ),
                     ),
                   ),
@@ -5613,13 +5613,13 @@ class _SimpleMapPickerState extends State<_SimpleMapPicker> {
               child: Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF2A2A2A),
+                  color: AppColors.border,
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(24),
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.3),
+                      color: Color(0x14102A56),
                       blurRadius: 20,
                       offset: const Offset(0, -5),
                     ),
@@ -5634,7 +5634,7 @@ class _SimpleMapPickerState extends State<_SimpleMapPicker> {
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF1E1E1E),
+                          color: AppColors.cardSecondary,
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Row(
@@ -5668,7 +5668,7 @@ class _SimpleMapPickerState extends State<_SimpleMapPicker> {
                                         Text(
                                           'tourism.getting_address'.tr(),
                                           style: const TextStyle(
-                                            color: Color(0xFF999999),
+                                            color: AppColors.textTertiary,
                                             fontSize: 14,
                                           ),
                                         ),
@@ -5679,7 +5679,7 @@ class _SimpleMapPickerState extends State<_SimpleMapPicker> {
                                       style: const TextStyle(
                                         fontSize: 14,
                                         fontWeight: FontWeight.w500,
-                                        color: Colors.white,
+                                        color: AppColors.textPrimary,
                                       ),
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
@@ -5723,14 +5723,14 @@ class _SimpleMapPickerState extends State<_SimpleMapPicker> {
                             children: [
                               const Icon(
                                 Icons.check_circle,
-                                color: Colors.white,
+                                color: AppColors.textPrimary,
                                 size: 22,
                               ),
                               const SizedBox(width: 10),
                               Text(
                                 'organizer.confirm_location'.tr(),
                                 style: const TextStyle(
-                                  color: Colors.white,
+                                  color: AppColors.textPrimary,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
                                 ),

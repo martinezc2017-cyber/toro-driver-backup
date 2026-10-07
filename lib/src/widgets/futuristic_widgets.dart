@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../utils/app_colors.dart';
+import 'toro_design_system.dart';
 import '../utils/app_theme.dart';
 import '../utils/haptic_service.dart';
 
@@ -88,7 +89,7 @@ class _NeonButtonState extends State<NeonButton>
     final buttonColor = widget.color ?? AppColors.primary;
     final buttonGradient = widget.gradient ??
         LinearGradient(
-          colors: [buttonColor, buttonColor.withValues(alpha: 0.8)],
+          colors: [Color.lerp(buttonColor, Colors.white, 0.18)!, buttonColor, Color.lerp(buttonColor, Colors.black, 0.12)!],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         );
@@ -113,22 +114,16 @@ class _NeonButtonState extends State<NeonButton>
             child: Container(
               width: widget.width,
               height: widget.height,
-              decoration: BoxDecoration(
-                gradient: widget.isOutlined ? null : buttonGradient,
-                borderRadius: BorderRadius.circular(16),
-                border: widget.isOutlined
-                    ? Border.all(color: buttonColor, width: 2)
-                    : null,
-                boxShadow: widget.isOutlined
-                    ? null
-                    : [
-                        BoxShadow(
-                          color: buttonColor.withValues(alpha: _glowAnimation.value),
-                          blurRadius: 20,
-                          spreadRadius: 0,
-                        ),
+              decoration: widget.isOutlined
+                  ? ToroRaised.decoration(ToroTone.white, radius: 16)
+                  : BoxDecoration(
+                      gradient: buttonGradient,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(color: buttonColor.withValues(alpha: 0.9), offset: const Offset(0, 4)),
+                        BoxShadow(color: buttonColor.withValues(alpha: 0.28), blurRadius: 16, offset: const Offset(0, 8)),
                       ],
-              ),
+                    ),
               child: Material(
                 color: Colors.transparent,
                 child: Center(
@@ -141,7 +136,7 @@ class _NeonButtonState extends State<NeonButton>
                             valueColor: AlwaysStoppedAnimation<Color>(
                               widget.isOutlined
                                   ? buttonColor
-                                  : AppColors.background,
+                                  : Colors.white,
                             ),
                           ),
                         )
@@ -153,7 +148,7 @@ class _NeonButtonState extends State<NeonButton>
                                 widget.icon,
                                 color: widget.isOutlined
                                     ? buttonColor
-                                    : AppColors.background,
+                                    : Colors.white,
                                 size: 22,
                               ),
                               const SizedBox(width: 10),
@@ -163,7 +158,7 @@ class _NeonButtonState extends State<NeonButton>
                               style: TextStyle(
                                 color: widget.isOutlined
                                     ? buttonColor
-                                    : AppColors.background,
+                                    : Colors.white,
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
                                 letterSpacing: 0.5,
@@ -221,7 +216,7 @@ class GlassCard extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(borderRadius),
           border: Border.all(
-            color: borderColor ?? AppColors.neonCyan.withValues(alpha: 0.35),
+            color: borderColor ?? Colors.white,
             width: 1.5,
           ),
           boxShadow: [
@@ -669,7 +664,7 @@ class NeonSwitch extends StatelessWidget {
               color: AppColors.textPrimary,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.2),
+                  color: Color(0x14102A56),
                   blurRadius: 4,
                   offset: const Offset(0, 2),
                 ),
@@ -1181,15 +1176,8 @@ class _FireGlowButtonState extends State<FireGlowButton>
 
   @override
   Widget build(BuildContext context) {
-    final activeColor = widget.hasActiveGlow
-        ? AppColors.success
-        : Colors.white;
-    final inactiveColor = const Color(0xFFB0B0B0);
-    final selectedBg = (widget.hasActiveGlow
-        ? AppColors.success
-        : AppColors.primaryCyan).withValues(alpha: 0.30);
-
     final showGlow = widget.hasActiveGlow && !widget.isSelected;
+    final tone = widget.hasActiveGlow ? ToroTone.green : ToroTone.blue;
 
     Widget item = GestureDetector(
       onTap: () {
@@ -1198,39 +1186,32 @@ class _FireGlowButtonState extends State<FireGlowButton>
       },
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: EdgeInsets.symmetric(
-          horizontal: widget.isSelected ? 10 : 8,
-          vertical: 8,
-        ),
-        decoration: BoxDecoration(
-          color: widget.isSelected ? selectedBg : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-        ),
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOut,
+        padding: EdgeInsets.symmetric(horizontal: widget.isSelected ? 14 : 10, vertical: 10),
+        decoration: widget.isSelected
+            ? ToroRaised.decoration(tone, radius: 18)
+            : const BoxDecoration(color: Colors.transparent),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              widget.isSelected || widget.hasActiveGlow
-                  ? (widget.activeIcon ?? widget.icon)
-                  : widget.icon,
+              widget.isSelected || widget.hasActiveGlow ? (widget.activeIcon ?? widget.icon) : widget.icon,
               color: widget.isSelected
-                  ? activeColor
+                  ? Colors.white
                   : showGlow
                       ? AppColors.success
-                      : inactiveColor,
-              size: 20,
+                      : AppColors.navy,
+              size: 22,
             ),
             if (widget.isSelected) ...[
-              const SizedBox(width: 4),
+              const SizedBox(width: 6),
               Text(
                 widget.label,
-                style: TextStyle(
-                  color: activeColor,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w800, letterSpacing: .1),
               ),
             ],
           ],
@@ -1314,45 +1295,20 @@ class _FireGlowBottomNavBarState extends State<FireGlowBottomNavBar>
         final bottomPadding = MediaQuery.of(context).padding.bottom;
 
         return Container(
-          margin: EdgeInsets.fromLTRB(20, 0, 20, bottomPadding + 8),
+          margin: EdgeInsets.fromLTRB(16, 0, 16, bottomPadding + 10),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24),
-            gradient: LinearGradient(
-              begin: Alignment(beginX, -1),
-              end: Alignment(endX, 1),
-              // Admin cyan->azul (era rainbow). Fluye, sin colores fuera de paleta.
-              colors: const [
-                Color(0xFF3B82F6),
-                Color(0xFF22D3EE),
-                Color(0xFF67E8F9),
-                Color(0xFF3B82F6),
-                Color(0xFF1D4ED8),
-                Color(0xFF22D3EE),
-                Color(0xFF3B82F6),
-              ],
-              tileMode: TileMode.repeated,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF22D3EE).withValues(alpha: 0.45),
-                blurRadius: 8,
-                spreadRadius: 0,
-              ),
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.3),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: AppColors.border),
+            boxShadow: const [
+              BoxShadow(color: AppColors.edge, offset: Offset(0, 5)),
+              BoxShadow(color: Color(0x2E102A56), blurRadius: 30, offset: Offset(0, 14)),
             ],
           ),
           child: Container(
-            margin: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: Colors.black,
-              borderRadius: BorderRadius.circular(20),
-            ),
+            decoration: const BoxDecoration(),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: widget.items.asMap().entries.map((entry) {

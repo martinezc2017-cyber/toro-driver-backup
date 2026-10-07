@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/app_colors.dart';
 import 'package:easy_localization/easy_localization.dart';
 
 /// Scrollable wheel-style time picker with AM/PM.
@@ -30,7 +31,7 @@ Future<TimeOfDay?> showScrollableTimePicker(
               gradient: const LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Color(0xFF1E1E3F), Color(0xFF0D0D1A)],
+                colors: [Color(0xFF1E1E3F), AppColors.background],
               ),
               borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
               border: Border.all(color: primaryColor.withValues(alpha: 0.4), width: 1.5),
@@ -72,7 +73,7 @@ Future<TimeOfDay?> showScrollableTimePicker(
                       Text(
                         'time_picker.select_time'.tr(),
                         style: TextStyle(
-                          color: Colors.white,
+                          color: AppColors.textPrimary,
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
                           letterSpacing: 0.5,
@@ -127,7 +128,7 @@ Future<TimeOfDay?> showScrollableTimePicker(
                                       style: TextStyle(
                                         fontSize: sel ? 36 : 24,
                                         fontWeight: sel ? FontWeight.bold : FontWeight.w400,
-                                        color: sel ? Colors.white : Colors.white38,
+                                        color: sel ? AppColors.textPrimary : AppColors.textDisabled,
                                         fontFamily: 'monospace',
                                       ),
                                       child: Text(hour.toString().padLeft(2, '0')),
@@ -172,7 +173,7 @@ Future<TimeOfDay?> showScrollableTimePicker(
                                       style: TextStyle(
                                         fontSize: sel ? 36 : 24,
                                         fontWeight: sel ? FontWeight.bold : FontWeight.w400,
-                                        color: sel ? Colors.white : Colors.white38,
+                                        color: sel ? AppColors.textPrimary : AppColors.textDisabled,
                                         fontFamily: 'monospace',
                                       ),
                                       child: Text(i.toString().padLeft(2, '0')),
@@ -213,7 +214,7 @@ Future<TimeOfDay?> showScrollableTimePicker(
                                         style: TextStyle(
                                           fontSize: sel ? 22 : 18,
                                           fontWeight: sel ? FontWeight.bold : FontWeight.w400,
-                                          color: sel ? primaryColor : Colors.white38,
+                                          color: sel ? primaryColor : AppColors.textDisabled,
                                         ),
                                       ),
                                     ),
@@ -245,7 +246,7 @@ Future<TimeOfDay?> showScrollableTimePicker(
                             gradient: LinearGradient(
                               begin: Alignment.bottomCenter,
                               end: Alignment.topCenter,
-                              colors: [Color(0xFF0D0D1A), Color(0x000D0D1A)],
+                              colors: [AppColors.background, Color(0x000D0D1A)],
                             ),
                           ),
                         ),
@@ -265,12 +266,12 @@ Future<TimeOfDay?> showScrollableTimePicker(
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
-                              side: const BorderSide(color: Colors.white24),
+                              side: const BorderSide(color: AppColors.border),
                             ),
                           ),
                           child: Text(
                             'cancel'.tr(),
-                            style: const TextStyle(color: Colors.white70, fontSize: 16, fontWeight: FontWeight.w500),
+                            style: const TextStyle(color: AppColors.textSecondary, fontSize: 16, fontWeight: FontWeight.w500),
                           ),
                         ),
                       ),

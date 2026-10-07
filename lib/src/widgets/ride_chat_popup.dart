@@ -282,13 +282,13 @@ class _RideChatPopupState extends State<RideChatPopup> {
                               width: 20,
                               height: 20,
                               child: CircularProgressIndicator(
-                                color: Colors.white,
+                                color: AppColors.textPrimary,
                                 strokeWidth: 2,
                               ),
                             )
                           : const Icon(
                               Icons.send,
-                              color: Colors.white,
+                              color: AppColors.textPrimary,
                               size: 20,
                             ),
                     ),
@@ -365,7 +365,7 @@ class _RideChatPopupState extends State<RideChatPopup> {
                 Text(
                   text,
                   style: TextStyle(
-                    color: isMe ? Colors.white : AppColors.textPrimary,
+                    color: isMe ? AppColors.textPrimary : AppColors.textPrimary,
                     fontSize: 14,
                   ),
                 ),
@@ -373,7 +373,7 @@ class _RideChatPopupState extends State<RideChatPopup> {
                 Text(
                   timeStr,
                   style: TextStyle(
-                    color: isMe ? Colors.white70 : AppColors.textTertiary,
+                    color: isMe ? AppColors.textSecondary : AppColors.textTertiary,
                     fontSize: 11,
                   ),
                 ),

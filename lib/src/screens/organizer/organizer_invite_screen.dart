@@ -1078,7 +1078,7 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
             children: [
               Icon(
                 _panelOpen ? Icons.chevron_right : Icons.qr_code_2,
-                color: Colors.white,
+                color: AppColors.textPrimary,
                 size: 20,
               ),
               const SizedBox(height: 6),
@@ -1087,7 +1087,7 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
                 child: Text(
                   'QR',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: AppColors.textPrimary,
                     fontSize: 11,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 1.5,
@@ -1125,7 +1125,7 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.4),
+              color: Color(0x14102A56),
               blurRadius: 24,
               offset: const Offset(-4, 0),
             ),
@@ -1161,7 +1161,7 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
                         width: 32,
                         height: 32,
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.05),
+                          color: AppColors.border,
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: const Icon(
@@ -1348,7 +1348,7 @@ class _OrganizerInviteScreenState extends State<OrganizerInviteScreen>
                           width: 18,
                           height: 18,
                           child: CircularProgressIndicator(
-                            color: Colors.white,
+                            color: AppColors.textPrimary,
                             strokeWidth: 2,
                           ),
                         )

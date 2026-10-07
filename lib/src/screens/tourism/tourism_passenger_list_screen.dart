@@ -1030,7 +1030,7 @@ class _CheckInModalState extends State<_CheckInModal> {
                         width: 20,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: Colors.white,
+                          color: AppColors.textPrimary,
                         ),
                       )
                     : Text(

@@ -616,7 +616,7 @@ class _OrganizerEarningsTabNewState extends State<OrganizerEarningsTabNew> {
                 height: 16,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: Colors.white,
+                  color: AppColors.textPrimary,
                 ),
               )
             : const Icon(Icons.support_agent, size: 18),
@@ -872,7 +872,7 @@ class _OrganizerEarningsTabNewState extends State<OrganizerEarningsTabNew> {
             Text(
               label,
               style: TextStyle(
-                color: isSelected ? Colors.white : AppColors.textSecondary,
+                color: isSelected ? AppColors.textPrimary : AppColors.textSecondary,
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
               ),
@@ -883,14 +883,14 @@ class _OrganizerEarningsTabNewState extends State<OrganizerEarningsTabNew> {
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? Colors.white.withValues(alpha: 0.25)
+                      ? AppColors.textSecondary
                       : AppColors.primary.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
                   '$count',
                   style: TextStyle(
-                    color: isSelected ? Colors.white : AppColors.primary,
+                    color: isSelected ? AppColors.textPrimary : AppColors.primary,
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
                   ),

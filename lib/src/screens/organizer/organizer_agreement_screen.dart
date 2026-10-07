@@ -119,13 +119,13 @@ class _OrganizerAgreementScreenState extends State<OrganizerAgreementScreen> {
         backgroundColor: AppColors.surface,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
+          icon: const Icon(Icons.arrow_back_ios, color: AppColors.textPrimary, size: 20),
           onPressed: () => Navigator.pop(context, false),
         ),
         title: Text(
           'org_agreement_simple_title'.tr(),
           style: const TextStyle(
-              color: Colors.white, fontSize: 17, fontWeight: FontWeight.w600),
+              color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.w600),
         ),
         centerTitle: true,
       ),
@@ -163,11 +163,11 @@ class _OrganizerAgreementScreenState extends State<OrganizerAgreementScreen> {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFFFF9500).withValues(alpha: 0.1),
+            color: AppColors.warningLight.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
           child: const Icon(Icons.handshake_outlined,
-              color: Color(0xFFFF9500), size: 40),
+              color: AppColors.warningLight, size: 40),
         ),
         const SizedBox(height: 16),
         Text(
@@ -276,7 +276,7 @@ class _OrganizerAgreementScreenState extends State<OrganizerAgreementScreen> {
             margin: const EdgeInsets.only(top: 2),
             decoration: BoxDecoration(
               color: _hasAgreed
-                  ? const Color(0xFFFF9500)
+                  ? AppColors.warningLight
                   : AppColors.surface,
               borderRadius: BorderRadius.circular(6),
               border: _hasAgreed
@@ -284,7 +284,7 @@ class _OrganizerAgreementScreenState extends State<OrganizerAgreementScreen> {
                   : Border.all(color: AppColors.border),
             ),
             child: _hasAgreed
-                ? const Icon(Icons.check, color: Colors.white, size: 18)
+                ? const Icon(Icons.check, color: AppColors.textPrimary, size: 18)
                 : null,
           ),
           const SizedBox(width: 12),
@@ -292,7 +292,7 @@ class _OrganizerAgreementScreenState extends State<OrganizerAgreementScreen> {
             child: Text(
               'org_agreement_simple_checkbox'.tr(),
               style: TextStyle(
-                color: _hasAgreed ? Colors.white : AppColors.textSecondary,
+                color: _hasAgreed ? AppColors.textPrimary : AppColors.textSecondary,
                 fontSize: 13,
                 height: 1.4,
               ),
@@ -318,7 +318,7 @@ class _OrganizerAgreementScreenState extends State<OrganizerAgreementScreen> {
         decoration: BoxDecoration(
           gradient: canSubmit
               ? const LinearGradient(
-                  colors: [Color(0xFFFF9500), Color(0xFFFF6B00)])
+                  colors: [AppColors.warningLight, AppColors.warningLight])
               : null,
           color: canSubmit ? null : AppColors.card,
           borderRadius: BorderRadius.circular(12),
@@ -331,12 +331,12 @@ class _OrganizerAgreementScreenState extends State<OrganizerAgreementScreen> {
                   child: CircularProgressIndicator(
                       strokeWidth: 2,
                       valueColor:
-                          AlwaysStoppedAnimation<Color>(Colors.white)),
+                          AlwaysStoppedAnimation<Color>(AppColors.textPrimary)),
                 )
               : Text(
                   'org_agreement_simple_accept'.tr(),
                   style: TextStyle(
-                    color: canSubmit ? Colors.white : AppColors.textSecondary,
+                    color: canSubmit ? AppColors.textPrimary : AppColors.textSecondary,
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),

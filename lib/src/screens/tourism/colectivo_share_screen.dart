@@ -159,7 +159,7 @@ class _ColectivoShareScreenState extends State<ColectivoShareScreen> {
               icon: _sharing
                   ? const SizedBox(
                       width: 18, height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.textPrimary))
                   : const Icon(Icons.ios_share),
               label: Text('colectivo_share_button'.tr()),
               style: ElevatedButton.styleFrom(
@@ -225,14 +225,14 @@ class _ColectivoShareScreenState extends State<ColectivoShareScreen> {
               Expanded(
                 child: Text(_origin,
                     style: const TextStyle(
-                        color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800)),
+                        color: AppColors.textPrimary, fontSize: 22, fontWeight: FontWeight.w800)),
               ),
               const Icon(Icons.arrow_forward_rounded, color: gold, size: 20),
               Expanded(
                 child: Text(_destination,
                     textAlign: TextAlign.right,
                     style: const TextStyle(
-                        color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800)),
+                        color: AppColors.textPrimary, fontSize: 22, fontWeight: FontWeight.w800)),
               ),
             ],
           ),
@@ -244,7 +244,7 @@ class _ColectivoShareScreenState extends State<ColectivoShareScreen> {
             ),
           ],
           const SizedBox(height: 14),
-          Container(height: 1, color: const Color(0xFF2A2A2A)),
+          Container(height: 1, color: AppColors.border),
           const SizedBox(height: 14),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -259,7 +259,7 @@ class _ColectivoShareScreenState extends State<ColectivoShareScreen> {
                       Text(
                         '${formatMoney(_price, country: _country)} ${e['currency'] ?? ''}',
                         style: const TextStyle(
-                            color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800),
+                            color: AppColors.textPrimary, fontSize: 20, fontWeight: FontWeight.w800),
                       ),
                       const SizedBox(height: 8),
                     ],
@@ -268,7 +268,7 @@ class _ColectivoShareScreenState extends State<ColectivoShareScreen> {
                           ? 'colectivo_share_seats'.tr(namedArgs: {'n': '$libres'})
                           : 'colectivo_share_full'.tr(),
                       style: TextStyle(
-                          color: libres > 3 ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
+                          color: libres > 3 ? AppColors.success : AppColors.warningLight,
                           fontSize: 13.5,
                           fontWeight: FontWeight.w700),
                     ),
@@ -296,7 +296,7 @@ class _ColectivoShareScreenState extends State<ColectivoShareScreen> {
                   const SizedBox(height: 6),
                   Text(_code,
                       style: const TextStyle(
-                          color: Colors.white,
+                          color: AppColors.textPrimary,
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 0.8)),

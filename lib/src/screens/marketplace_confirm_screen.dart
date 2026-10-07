@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import '../utils/app_colors.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart';
@@ -103,10 +104,10 @@ class _MarketplaceConfirmScreenState extends State<MarketplaceConfirmScreen> {
       builder: (c) => AlertDialog(
         backgroundColor: const Color(0xFF161616),
         title: Text('marketplace.report_no_show'.tr(),
-            style: const TextStyle(color: Colors.white)),
+            style: const TextStyle(color: AppColors.textPrimary)),
         content: Text(
             'marketplace.confirm_no_show'.tr(namedArgs: {'who': who}),
-            style: const TextStyle(color: Colors.white70)),
+            style: const TextStyle(color: AppColors.textSecondary)),
         actions: [
           TextButton(onPressed: () => Navigator.pop(c, false), child: Text('go_back'.tr())),
           ElevatedButton(
@@ -252,11 +253,11 @@ class _MarketplaceConfirmScreenState extends State<MarketplaceConfirmScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0A),
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0A0A0A),
-        title: Text(_title, style: const TextStyle(color: Colors.white)),
-        iconTheme: const IconThemeData(color: Colors.white),
+        backgroundColor: AppColors.background,
+        title: Text(_title, style: const TextStyle(color: AppColors.textPrimary)),
+        iconTheme: const IconThemeData(color: AppColors.textPrimary),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -284,15 +285,15 @@ class _MarketplaceConfirmScreenState extends State<MarketplaceConfirmScreen> {
                               style: TextStyle(color: _accent, fontSize: 13, fontWeight: FontWeight.w600)),
                           if (widget.vendorBusinessName != null && _isPickup)
                             Text(widget.vendorBusinessName!,
-                                style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                                style: const TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.bold)),
                           if (widget.buyerName != null && !_isPickup)
                             Text(widget.buyerName!,
-                                style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                                style: const TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.bold)),
                           if (widget.address != null && widget.address!.trim().isNotEmpty)
                             Padding(
                               padding: const EdgeInsets.only(top: 2),
                               child: Text(widget.address!,
-                                  style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
                             ),
                         ],
                       ),
@@ -307,21 +308,21 @@ class _MarketplaceConfirmScreenState extends State<MarketplaceConfirmScreen> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.05),
+                    color: AppColors.border,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.person, color: Colors.white54),
+                      const Icon(Icons.person, color: AppColors.textDisabled),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(_contactName ?? (_isPickup ? 'marketplace.vendor'.tr() : 'marketplace.buyer'.tr()),
-                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                                style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
                             Text(_contactPhone!,
-                                style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                                style: const TextStyle(color: AppColors.textDisabled, fontSize: 12)),
                           ],
                         ),
                       ),
@@ -341,19 +342,19 @@ class _MarketplaceConfirmScreenState extends State<MarketplaceConfirmScreen> {
               const SizedBox(height: 24),
 
               // OTP input
-              Text(_otpLabel, style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
+              Text(_otpLabel, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
               TextField(
                 controller: _otpCtrl,
                 keyboardType: TextInputType.number,
                 maxLength: 4,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold, letterSpacing: 8),
+                style: const TextStyle(color: AppColors.textPrimary, fontSize: 28, fontWeight: FontWeight.bold, letterSpacing: 8),
                 decoration: InputDecoration(
                   hintText: '0000',
-                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.2), letterSpacing: 8),
+                  hintStyle: TextStyle(color: AppColors.border, letterSpacing: 8),
                   filled: true,
-                  fillColor: Colors.white.withOpacity(0.05),
+                  fillColor: AppColors.border,
                   counterText: '',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -364,17 +365,17 @@ class _MarketplaceConfirmScreenState extends State<MarketplaceConfirmScreen> {
               const SizedBox(height: 24),
 
               // Photo
-              Text(_photoLabel, style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
+              Text(_photoLabel, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
               GestureDetector(
                 onTap: _takePhoto,
                 child: Container(
                   height: 220,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.05),
+                    color: AppColors.border,
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
-                      color: _photo == null ? Colors.white24 : Colors.green,
+                      color: _photo == null ? AppColors.border : Colors.green,
                       width: _photo == null ? 1 : 2,
                     ),
                     image: _photo != null
@@ -389,9 +390,9 @@ class _MarketplaceConfirmScreenState extends State<MarketplaceConfirmScreen> {
                             Icon(Icons.add_a_photo, color: _accent, size: 48),
                             const SizedBox(height: 8),
                             Text('marketplace.tap_to_take_photo'.tr(),
-                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold)),
                             Text('marketplace.clear_product_photo'.tr(),
-                                style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12)),
+                                style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
                           ],
                         )
                       : Align(
@@ -413,7 +414,7 @@ class _MarketplaceConfirmScreenState extends State<MarketplaceConfirmScreen> {
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.04),
+                  color: AppColors.border,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
@@ -436,8 +437,8 @@ class _MarketplaceConfirmScreenState extends State<MarketplaceConfirmScreen> {
                     ),
                     IconButton(
                       icon: _capturingGps
-                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                          : const Icon(Icons.refresh, color: Colors.white60),
+                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.textPrimary))
+                          : const Icon(Icons.refresh, color: AppColors.textSecondary),
                       onPressed: _capturingGps ? null : _captureGps,
                     ),
                   ],
@@ -463,7 +464,7 @@ class _MarketplaceConfirmScreenState extends State<MarketplaceConfirmScreen> {
               Text(
                 'marketplace.missing_requirements'.tr(),
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 11),
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
               ),
               // No-show: el comprador no se presento a la entrega -> cancelar.
               if (!_isPickup) ...[

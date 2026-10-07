@@ -16,13 +16,13 @@ class AppTheme {
   static ThemeData get darkTheme {
     return ThemeData(
       useMaterial3: true,
-      brightness: Brightness.dark,
+      brightness: Brightness.light,
       scaffoldBackgroundColor: Colors.transparent,
       primaryColor: AppColors.primary,
       canvasColor: AppColors.background,
 
       // Executive Color Scheme
-      colorScheme: ColorScheme.dark(
+      colorScheme: ColorScheme.light(
         primary: AppColors.primary,
         primaryContainer: AppColors.primaryDark,
         secondary: AppColors.textSecondary,
@@ -32,14 +32,14 @@ class AppTheme {
         surface: AppColors.surface,
         error: AppColors.error,
         errorContainer: AppColors.errorDark,
-        onPrimary: AppColors.background,
+        onPrimary: Colors.white,
         onSecondary: AppColors.textPrimary,
         onSurface: AppColors.textPrimary,
         onError: AppColors.textPrimary,
         outline: AppColors.border,
         outlineVariant: AppColors.borderSubtle,
-        shadow: Colors.black,
-        scrim: Colors.black.withValues(alpha: 0.7),
+        shadow: AppColors.navy,
+        scrim: AppColors.ink.withValues(alpha: 0.45),
         inverseSurface: AppColors.textPrimary,
         onInverseSurface: AppColors.background,
         inversePrimary: AppColors.primaryDark,
@@ -54,10 +54,10 @@ class AppTheme {
         centerTitle: true,
         systemOverlayStyle: const SystemUiOverlayStyle(
           statusBarColor: Colors.transparent,
-          statusBarIconBrightness: Brightness.light,
-          statusBarBrightness: Brightness.dark,
+          statusBarIconBrightness: Brightness.dark,
+          statusBarBrightness: Brightness.light,
           systemNavigationBarColor: AppColors.background,
-          systemNavigationBarIconBrightness: Brightness.light,
+          systemNavigationBarIconBrightness: Brightness.dark,
         ),
         iconTheme: const IconThemeData(
           color: AppColors.textPrimary,
@@ -82,7 +82,7 @@ class AppTheme {
       cardTheme: CardThemeData(
         color: AppColors.card,
         elevation: 0,
-        shadowColor: Colors.black.withValues(alpha: 0.3),
+        shadowColor: AppColors.navy.withValues(alpha: 0.10),
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
@@ -98,8 +98,8 @@ class AppTheme {
       // Premium Button - Subtle with micro-interactions
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.card,
-          foregroundColor: AppColors.textPrimary,
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white,
           disabledBackgroundColor: AppColors.cardSecondary,
           disabledForegroundColor: AppColors.textDisabled,
           elevation: 0,
@@ -121,10 +121,10 @@ class AppTheme {
         ).copyWith(
           overlayColor: WidgetStateProperty.resolveWith((states) {
             if (states.contains(WidgetState.pressed)) {
-              return Colors.white.withValues(alpha: 0.05);
+              return AppColors.navy.withValues(alpha: 0.06);
             }
             if (states.contains(WidgetState.hovered)) {
-              return Colors.white.withValues(alpha: 0.03);
+              return AppColors.navy.withValues(alpha: 0.06);
             }
             return null;
           }),
@@ -171,7 +171,7 @@ class AppTheme {
       iconButtonTheme: IconButtonThemeData(
         style: IconButton.styleFrom(
           foregroundColor: AppColors.textSecondary,
-          highlightColor: Colors.white.withValues(alpha: 0.05),
+          highlightColor: AppColors.navy.withValues(alpha: 0.06),
           padding: const EdgeInsets.all(10),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
@@ -259,7 +259,7 @@ class AppTheme {
       // Navigation Bar (Material 3)
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: AppColors.surface,
-        indicatorColor: Colors.white.withValues(alpha: 0.08),
+        indicatorColor: AppColors.navy.withValues(alpha: 0.06),
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         height: 64,
@@ -293,7 +293,7 @@ class AppTheme {
         indicatorColor: AppColors.textPrimary,
         indicatorSize: TabBarIndicatorSize.label,
         dividerColor: Colors.transparent,
-        overlayColor: WidgetStateProperty.all(Colors.white.withValues(alpha: 0.03)),
+        overlayColor: WidgetStateProperty.all(AppColors.navy.withValues(alpha: 0.06)),
         labelStyle: GoogleFonts.inter(
           fontSize: 14,
           fontWeight: FontWeight.w600,
@@ -313,7 +313,7 @@ class AppTheme {
         focusElevation: 6,
         hoverElevation: 6,
         highlightElevation: 8,
-        splashColor: Colors.white.withValues(alpha: 0.1),
+        splashColor: AppColors.navy.withValues(alpha: 0.06),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
         ),
@@ -349,7 +349,7 @@ class AppTheme {
           }
           return Colors.transparent;
         }),
-        checkColor: WidgetStateProperty.all(AppColors.background),
+        checkColor: WidgetStateProperty.all(Colors.white),
         side: BorderSide(color: AppColors.border, width: 1.5),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(4),
@@ -371,7 +371,7 @@ class AppTheme {
         activeTrackColor: AppColors.textPrimary,
         inactiveTrackColor: AppColors.border,
         thumbColor: AppColors.textPrimary,
-        overlayColor: Colors.white.withValues(alpha: 0.1),
+        overlayColor: AppColors.navy.withValues(alpha: 0.06),
         trackHeight: 3,
         thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
         overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
@@ -407,7 +407,7 @@ class AppTheme {
         backgroundColor: AppColors.card,
         surfaceTintColor: Colors.transparent,
         elevation: 24,
-        shadowColor: Colors.black.withValues(alpha: 0.5),
+        shadowColor: AppColors.navy.withValues(alpha: 0.10),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
         ),
@@ -431,7 +431,7 @@ class AppTheme {
         backgroundColor: AppColors.surface,
         surfaceTintColor: Colors.transparent,
         modalBackgroundColor: AppColors.surface,
-        modalBarrierColor: Colors.black.withValues(alpha: 0.7),
+        modalBarrierColor: AppColors.ink.withValues(alpha: 0.45),
         elevation: 0,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -485,7 +485,7 @@ class AppTheme {
         side: BorderSide(color: AppColors.border.withValues(alpha: 0.3), width: 0.5),
         checkmarkColor: AppColors.textPrimary,
         deleteIconColor: AppColors.textSecondary,
-        brightness: Brightness.dark,
+        brightness: Brightness.light,
         elevation: 0,
         pressElevation: 0,
       ),
@@ -507,7 +507,7 @@ class AppTheme {
       // ListTile
       listTileTheme: ListTileThemeData(
         tileColor: Colors.transparent,
-        selectedTileColor: Colors.white.withValues(alpha: 0.05),
+        selectedTileColor: AppColors.navy.withValues(alpha: 0.06),
         iconColor: AppColors.textSecondary,
         textColor: AppColors.textPrimary,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -538,7 +538,7 @@ class AppTheme {
         color: AppColors.card,
         surfaceTintColor: Colors.transparent,
         elevation: 8,
-        shadowColor: Colors.black.withValues(alpha: 0.4),
+        shadowColor: AppColors.navy.withValues(alpha: 0.10),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
@@ -643,7 +643,7 @@ class AppTheme {
         surfaceTintColor: WidgetStateProperty.all(Colors.transparent),
         elevation: WidgetStateProperty.all(0),
         shadowColor: WidgetStateProperty.all(Colors.transparent),
-        overlayColor: WidgetStateProperty.all(Colors.white.withValues(alpha: 0.03)),
+        overlayColor: WidgetStateProperty.all(AppColors.navy.withValues(alpha: 0.06)),
         shape: WidgetStateProperty.all(
           RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -674,7 +674,7 @@ class AppTheme {
         style: ButtonStyle(
           backgroundColor: WidgetStateProperty.resolveWith((states) {
             if (states.contains(WidgetState.selected)) {
-              return Colors.white.withValues(alpha: 0.1);
+              return AppColors.navy.withValues(alpha: 0.06);
             }
             return Colors.transparent;
           }),

@@ -104,9 +104,9 @@ void main() async {
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
+        statusBarIconBrightness: Brightness.dark,
         systemNavigationBarColor: AppColors.surface,
-        systemNavigationBarIconBrightness: Brightness.light,
+        systemNavigationBarIconBrightness: Brightness.dark,
       ),
     );
   }
@@ -253,12 +253,23 @@ class ToroDriverApp extends StatelessWidget {
         title: 'Toro Driver',
         debugShowCheckedModeBanner: false,
         // Galaxy background behind EVERY screen (scaffolds are transparent).
-        builder: (context, child) =>
-            GalaxyBackground(child: child ?? const SizedBox.shrink()),
+        // Fondo claro TORO detrás de TODA pantalla (los Scaffold son transparentes)
+        // e íconos de la barra de estado oscuros; las pantallas con franja
+        // oscura (arranque, login) ponen su propio AnnotatedRegion encima.
+        builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
+          value: const SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: Brightness.dark,
+            statusBarBrightness: Brightness.light,
+            systemNavigationBarColor: Colors.transparent,
+            systemNavigationBarIconBrightness: Brightness.dark,
+          ),
+          child: GalaxyBackground(child: child ?? const SizedBox.shrink()),
+        ),
         // Futuristic Dark Theme - Uber Style
         theme: AppTheme.darkTheme,
         darkTheme: AppTheme.darkTheme,
-        themeMode: ThemeMode.dark,
+        themeMode: ThemeMode.light,
         localizationsDelegates: context.localizationDelegates,
         supportedLocales: context.supportedLocales,
         locale: context.locale,
@@ -363,7 +374,7 @@ class ToroDriverApp extends StatelessWidget {
                     child: const Icon(
                       Icons.logout_rounded,
                       size: 48,
-                      color: Colors.white,
+                      color: AppColors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -456,7 +467,7 @@ class ToroDriverApp extends StatelessWidget {
                               child: Text(
                                 'btn.exit'.tr(),
                                 style: const TextStyle(
-                                  color: Colors.white,
+                                  color: AppColors.textPrimary,
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
                                 ),

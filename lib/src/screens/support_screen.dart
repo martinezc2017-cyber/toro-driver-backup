@@ -217,18 +217,18 @@ class SupportScreen extends StatelessWidget {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
+                  color: AppColors.border,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.emergency, color: Colors.white, size: 20),
+                child: const Icon(Icons.emergency, color: AppColors.textPrimary, size: 20),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('emergency'.tr(), style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
-                    Text('emergency_subtitle'.tr(), style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                    Text('emergency'.tr(), style: const TextStyle(color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.bold)),
+                    Text('emergency_subtitle'.tr(), style: const TextStyle(color: AppColors.textSecondary, fontSize: 11)),
                   ],
                 ),
               ),
@@ -255,7 +255,7 @@ class SupportScreen extends StatelessWidget {
                 child: ElevatedButton.icon(
                   onPressed: () {},
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white.withValues(alpha: 0.2),
+                    backgroundColor: AppColors.border,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 10),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),

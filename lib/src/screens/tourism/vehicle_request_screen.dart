@@ -122,7 +122,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                         child: Text(
                           'Tu puja fue aceptada!',
                           style: TextStyle(
-                            color: Colors.white,
+                            color: AppColors.textPrimary,
                             fontWeight: FontWeight.w700,
                             fontSize: 15,
                           ),
@@ -1123,7 +1123,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                           label: Text('send_counter_offer'.tr()),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.warning,
-                            foregroundColor: Colors.black,
+                            foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14),
@@ -1476,9 +1476,9 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
+        statusBarIconBrightness: Brightness.dark,
         systemNavigationBarColor: AppColors.background,
-        systemNavigationBarIconBrightness: Brightness.light,
+        systemNavigationBarIconBrightness: Brightness.dark,
       ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
@@ -2893,7 +2893,7 @@ class _VehicleRequestScreenState extends State<VehicleRequestScreen>
                   label: const Text('Contra-oferta'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.warning,
-                    foregroundColor: Colors.black,
+                    foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),

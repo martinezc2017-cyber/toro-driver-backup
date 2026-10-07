@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../utils/app_colors.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -180,7 +181,7 @@ class NavigationUI extends StatelessWidget {
                 child: Text(
                   gpsHighwayShield!,
                   style: const TextStyle(
-                    color: Colors.white,
+                    color: AppColors.textPrimary,
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
                   ),
@@ -193,7 +194,7 @@ class NavigationUI extends StatelessWidget {
               child: Text(
                 currentStreetName ?? '',
                 style: const TextStyle(
-                  color: Colors.white,
+                  color: AppColors.textPrimary,
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
                 ),
@@ -209,8 +210,8 @@ class NavigationUI extends StatelessWidget {
 
   Color _getShieldColor(String shield) {
     final upper = shield.toUpperCase();
-    if (upper.startsWith('I-')) return const Color(0xFF1A3D7C); // Interstate azul
-    if (upper.startsWith('US')) return const Color(0xFF1A3D7C);
+    if (upper.startsWith('I-')) return AppColors.primaryDark; // Interstate azul
+    if (upper.startsWith('US')) return AppColors.primaryDark;
     if (upper.contains('LOOP') || upper.startsWith('AZ') || upper.startsWith('SR')) {
       return const Color(0xFF2E7D32); // State route verde
     }
@@ -224,9 +225,9 @@ class NavigationUI extends StatelessWidget {
     Color textColor = Colors.white;
 
     if (text.startsWith('I-')) {
-      bgColor = const Color(0xFF1A3D7C); // Azul interstate
+      bgColor = AppColors.primaryDark; // Azul interstate
     } else if (text.startsWith('US')) {
-      bgColor = Colors.white;
+      bgColor = AppColors.textPrimary;
       textColor = Colors.black;
     } else if (text.contains('LOOP') || text.startsWith('AZ')) {
       bgColor = const Color(0xFF2E7D32); // Verde state route
@@ -239,7 +240,7 @@ class NavigationUI extends StatelessWidget {
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(4),
-        border: bgColor == Colors.white
+        border: bgColor == AppColors.textPrimary
             ? Border.all(color: Colors.black, width: 1)
             : null,
       ),
@@ -263,10 +264,10 @@ class NavigationUI extends StatelessWidget {
 
     if (text.startsWith('I-') || text.contains('Interstate')) {
       // Interstate - rojo/azul
-      bgColor = const Color(0xFF1A3D7C); // Azul interstate
+      bgColor = AppColors.primaryDark; // Azul interstate
     } else if (text.startsWith('US-') || text.startsWith('US ')) {
       // US Route - blanco con borde negro
-      bgColor = Colors.white;
+      bgColor = AppColors.textPrimary;
       textColor = Colors.black;
     } else if (text.contains('Loop') || text.contains('202') || text.contains('101')) {
       // State route / Loop - verde
@@ -282,7 +283,7 @@ class NavigationUI extends StatelessWidget {
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(4),
-        border: bgColor == Colors.white
+        border: bgColor == AppColors.textPrimary
             ? Border.all(color: Colors.black, width: 1)
             : null,
       ),
@@ -317,7 +318,7 @@ class NavigationUI extends StatelessWidget {
               spreadRadius: -2,
             ),
             BoxShadow(
-              color: Colors.black.withAlpha(90),
+              color: Color(0x14102A56).withAlpha(90),
               blurRadius: 10,
               offset: const Offset(0, 3),
             ),
@@ -337,7 +338,7 @@ class NavigationUI extends StatelessWidget {
                   modifier: state.maneuverModifier,
                   exitRef: state.exitRef,
                   size: 56,
-                  color: Colors.white,
+                  color: AppColors.textPrimary,
                   backgroundColor: const Color(0xFF0E2A33), // dark cyan
                   animate: state.distanceToNextManeuver < 300,
                   distanceToManeuver: state.distanceToNextManeuver,
@@ -351,7 +352,7 @@ class NavigationUI extends StatelessWidget {
                       Text(
                         state.formattedDistanceToManeuver,
                         style: const TextStyle(
-                          color: Colors.white,
+                          color: AppColors.textPrimary,
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
                           height: 1.1,
@@ -403,7 +404,7 @@ class NavigationUI extends StatelessWidget {
                       state.nextStep?.maneuver.type ?? 'straight',
                       state.nextStep?.maneuver.modifier,
                     ),
-                    color: Colors.white70,
+                    color: AppColors.textSecondary,
                     size: 16,
                   ),
                   const SizedBox(width: 6),
@@ -411,7 +412,7 @@ class NavigationUI extends StatelessWidget {
                     child: Text(
                       state.nextInstruction!,
                       style: const TextStyle(
-                        color: Colors.white70,
+                        color: AppColors.textSecondary,
                         fontSize: 12,
                       ),
                       overflow: TextOverflow.ellipsis,
@@ -472,7 +473,7 @@ class NavigationUI extends StatelessWidget {
           return Icon(
             _getLaneIcon(indication),
             color: isValid
-                ? (isActive ? Colors.white : Colors.white.withAlpha(204))
+                ? (isActive ? AppColors.textPrimary : Colors.white.withAlpha(204))
                 : Colors.white.withAlpha(77),
             size: 16,
           );
@@ -514,7 +515,7 @@ class NavigationUI extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withAlpha(77),
+            color: Color(0x14102A56).withAlpha(77),
             blurRadius: 8,
           ),
         ],
@@ -523,12 +524,12 @@ class NavigationUI extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.signal_cellular_connected_no_internet_0_bar, color: Colors.white, size: 20),
+          Icon(Icons.signal_cellular_connected_no_internet_0_bar, color: AppColors.textPrimary, size: 20),
           const SizedBox(width: 8),
           const Text(
             'TUNEL - GPS limitado',
             style: TextStyle(
-              color: Colors.white,
+              color: AppColors.textPrimary,
               fontSize: 13,
               fontWeight: FontWeight.w600,
             ),
@@ -542,14 +543,14 @@ class NavigationUI extends StatelessWidget {
   Widget _buildCompactBottomPanel() {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF1C1C1E),
+        color: AppColors.cardSecondary,
         borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(16),
           topRight: Radius.circular(16),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withAlpha(100),
+            color: Color(0x14102A56).withAlpha(100),
             blurRadius: 8,
             offset: const Offset(0, -2),
           ),
@@ -664,7 +665,7 @@ class NavigationUI extends StatelessWidget {
                         color: const Color(0xFFE53935),
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: const Icon(Icons.close, color: Colors.white, size: 18),
+                      child: const Icon(Icons.close, color: AppColors.textPrimary, size: 18),
                     ),
                   ),
                 ],
@@ -690,7 +691,7 @@ class NavigationUI extends StatelessWidget {
     switch (r.type) {
       case RideType.passenger:
         typeIcon = Icons.person;
-        typeColor = const Color(0xFF4CAF50);
+        typeColor = AppColors.success;
         typeLabel = 'Rider';
         break;
       case RideType.package:
@@ -700,12 +701,12 @@ class NavigationUI extends StatelessWidget {
         break;
       case RideType.carpool:
         typeIcon = Icons.groups;
-        typeColor = const Color(0xFF2196F3);
+        typeColor = AppColors.primary;
         typeLabel = 'Carpool';
         break;
       case RideType.marketplace:
         typeIcon = Icons.shopping_bag;
-        typeColor = const Color(0xFFFFD700);
+        typeColor = AppColors.gold;
         typeLabel = 'Market';
         break;
     }
@@ -804,7 +805,7 @@ class NavigationUI extends StatelessWidget {
                       child: Text(
                         r.displayName,
                         style: const TextStyle(
-                          color: Colors.white,
+                          color: AppColors.textPrimary,
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
                         ),
@@ -868,7 +869,7 @@ class NavigationUI extends StatelessWidget {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF4CAF50),
+                  color: AppColors.success,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: const Icon(Icons.phone, color: Colors.white, size: 20),
@@ -893,13 +894,13 @@ class NavigationUI extends StatelessWidget {
       case RideStatus.pending:
         label = 'LLEGUÉ';
         icon = Icons.location_on;
-        color = const Color(0xFF2196F3);
+        color = AppColors.primary;
         onTap = onArriveAtPickup;
         break;
       case RideStatus.arrivedAtPickup:
         label = 'INICIAR VIAJE';
         icon = Icons.play_arrow_rounded;
-        color = const Color(0xFF4CAF50);
+        color = AppColors.success;
         onTap = onStartRide;
         break;
       case RideStatus.inProgress:
@@ -931,12 +932,12 @@ class NavigationUI extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: Colors.white, size: 22),
+            Icon(icon, color: AppColors.textPrimary, size: 22),
             const SizedBox(width: 8),
             Text(
               label,
               style: const TextStyle(
-                color: Colors.white,
+                color: AppColors.textPrimary,
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 0.5,
@@ -1008,7 +1009,7 @@ class NavigationUI extends StatelessWidget {
           color: Colors.grey[800],
           borderRadius: BorderRadius.circular(20),
         ),
-        child: Icon(icon, color: Colors.white, size: 20),
+        child: Icon(icon, color: AppColors.textPrimary, size: 20),
       ),
     );
   }
@@ -1059,8 +1060,8 @@ class NavigationUI extends StatelessWidget {
   /// Card = blue with card icon
   Widget _buildPaymentMethodBadge(PaymentMethod method) {
     final isCash = method == PaymentMethod.cash;
-    final color = isCash ? const Color(0xFF4CAF50) : const Color(0xFF2196F3);
-    final bgColor = isCash ? const Color(0xFF4CAF50) : const Color(0xFF2196F3);
+    final color = isCash ? AppColors.success : AppColors.primary;
+    final bgColor = isCash ? AppColors.success : AppColors.primary;
     final icon = isCash ? Icons.payments_outlined : Icons.credit_card_rounded;
     final text = isCash ? 'CASH' : 'CARD';
 
@@ -1154,7 +1155,7 @@ class NextManeuverCompact extends StatelessWidget {
               spreadRadius: -2,
             ),
             BoxShadow(
-              color: Colors.black.withAlpha(77),
+              color: Color(0x14102A56).withAlpha(77),
               blurRadius: 8,
             ),
           ],
@@ -1164,14 +1165,14 @@ class NextManeuverCompact extends StatelessWidget {
           children: [
             Icon(
               _getManeuverIcon(state.maneuverType, state.maneuverModifier),
-              color: Colors.white,
+              color: AppColors.textPrimary,
               size: 24,
             ),
             const SizedBox(width: 12),
             Text(
               state.formattedDistanceToManeuver,
               style: const TextStyle(
-                color: Colors.white,
+                color: AppColors.textPrimary,
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
@@ -1181,7 +1182,7 @@ class NextManeuverCompact extends StatelessWidget {
               child: Text(
                 state.streetName,
                 style: const TextStyle(
-                  color: Colors.white70,
+                  color: AppColors.textSecondary,
                   fontSize: 14,
                 ),
                 overflow: TextOverflow.ellipsis,
@@ -1320,7 +1321,7 @@ class _SOSCountdownDialogState extends State<_SOSCountdownDialog> {
         children: [
           Text(
             'nav.calling_911'.tr(namedArgs: {'seconds': _countdown.toString()}),
-            style: const TextStyle(color: Colors.white70, fontSize: 16),
+            style: const TextStyle(color: AppColors.textSecondary, fontSize: 16),
           ),
           const SizedBox(height: 16),
           SizedBox(
@@ -1341,7 +1342,7 @@ class _SOSCountdownDialogState extends State<_SOSCountdownDialog> {
             _timer.cancel();
             Navigator.of(context).pop();
           },
-          child: Text('cancel'.tr(), style: const TextStyle(color: Colors.white54)),
+          child: Text('cancel'.tr(), style: const TextStyle(color: AppColors.textDisabled)),
         ),
         ElevatedButton(
           style: ElevatedButton.styleFrom(backgroundColor: Colors.red),

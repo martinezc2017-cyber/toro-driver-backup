@@ -411,18 +411,40 @@ class TravelCardWidget extends StatelessWidget {
   Widget _buildQrRow() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildQrCard(),
-          const SizedBox(width: 20),
-          Expanded(child: _buildTripStats()),
-        ],
+      // El QR se achica con la tarjeta (antes 185 fijo): en teléfonos de
+      // 320–360 dp no cabía junto a las estadísticas. Si ni así cabe, columna.
+      child: LayoutBuilder(
+        builder: (context, c) {
+          const gap = 20.0;
+          const statsMin = 96.0;
+          const boxMin = 110.0;
+          final ancho = c.maxWidth;
+          if (ancho < boxMin + gap + statsMin) {
+            final box = ancho.clamp(120.0, 185.0);
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(child: _buildQrCard(box)),
+                const SizedBox(height: 14),
+                _buildTripStats(),
+              ],
+            );
+          }
+          final box = (ancho - gap - statsMin).clamp(boxMin, 185.0);
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildQrCard(box),
+              const SizedBox(width: gap),
+              Expanded(child: _buildTripStats()),
+            ],
+          );
+        },
       ),
     );
   }
 
-  Widget _buildQrCard() {
+  Widget _buildQrCard(double box) {
     ImageProvider? embeddedImage;
     final logoUrl = personLogoUrl.isNotEmpty ? personLogoUrl : personAvatarUrl;
     if (logoUrl.isNotEmpty) {
@@ -432,8 +454,8 @@ class TravelCardWidget extends StatelessWidget {
     }
 
     return Container(
-      width: 185,
-      height: 185,
+      width: box,
+      height: box,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
@@ -446,10 +468,14 @@ class TravelCardWidget extends StatelessWidget {
       ),
       padding: const EdgeInsets.all(10),
       child: QrImageView(
-        data: 'tororider://tourism/invite/$invitationCode',
+        // https y no tororider://: la cámara de quien NO tiene la app no sabe
+        // abrir un esquema propio (en iPhone ni lo ofrece). /event/CODIGO abre
+        // el viaje en la app del pasajero (router: EVT-… boleto, INV-…
+        // invitación) y sin app cae en la página web del viaje (viaje.html).
+        data: 'https://toro-ride.com/event/$invitationCode',
         version: QrVersions.auto,
         errorCorrectionLevel: QrErrorCorrectLevel.H,
-        size: 165,
+        size: box - 20,
         backgroundColor: Colors.white,
         embeddedImage: embeddedImage,
         embeddedImageStyle: const QrEmbeddedImageStyle(size: Size(32, 32)),

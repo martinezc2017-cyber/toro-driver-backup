@@ -35,27 +35,53 @@ class DriverReferralCodeService {
     if (enCache != null) return enCache;
 
     final db = Supabase.instance.client;
+    // La fila del chofer: por su id y, si no aparece (a veces lo que llega es
+    // el id del USUARIO, que en 55 de 56 choferes no coincide con drivers.id),
+    // por la cuenta con sesión.
+    String idReal = driverId;
+    String? nombre = fullName;
     try {
-      final fila = await db
+      var fila = await db
           .from('drivers')
-          .select('referral_code')
+          .select('id, referral_code, full_name, name')
           .eq('id', driverId)
           .maybeSingle();
-      final actual = (fila?['referral_code'] ?? '').toString().trim();
-      if (actual.isNotEmpty) {
-        _cache[driverId] = actual;
-        return actual;
+      final uid = db.auth.currentUser?.id;
+      if (fila == null && uid != null) {
+        fila = await db
+            .from('drivers')
+            .select('id, referral_code, full_name, name')
+            .eq('user_id', uid)
+            .order('created_at', ascending: false)
+            .limit(1)
+            .maybeSingle();
+      }
+      if (fila != null) {
+        idReal = (fila['id'] ?? driverId).toString();
+        nombre ??= (fila['full_name'] ?? fila['name'])?.toString();
+        final actual = (fila['referral_code'] ?? '').toString().trim();
+        if (actual.isNotEmpty) {
+          _cache[driverId] = actual;
+          _cache[idReal] = actual;
+          return actual;
+        }
       }
     } catch (_) {
       // Sin red o sin permiso: se intenta generar abajo.
     }
 
-    final nuevo = _generar(fullName);
+    final nuevo = _generar(nombre);
     try {
-      await db
+      final guardado = await db
           .from('drivers')
-          .update({'referral_code': nuevo}).eq('id', driverId);
+          .update({'referral_code': nuevo})
+          .eq('id', idReal)
+          .select('id');
+      // Sin fila actualizada no hay código guardado, y un QR con un código que
+      // no existe en la base no le sirve a nadie.
+      if ((guardado as List).isEmpty) return null;
       _cache[driverId] = nuevo;
+      _cache[idReal] = nuevo;
       return nuevo;
     } catch (_) {
       // No se pudo guardar: sin código guardado el QR no serviría de nada, así
@@ -64,16 +90,37 @@ class DriverReferralCodeService {
     }
   }
 
+  /// El código del chofer con sesión, aunque el perfil (DriverProvider) todavía
+  /// no haya cargado: antes Referidos pintaba un QR a `toro-ride.com/d/` (sin
+  /// código, a nadie) cuando el perfil venía nulo.
+  Future<String?> loadForCurrentUser() async {
+    final uid = Supabase.instance.client.auth.currentUser?.id;
+    if (uid == null) return null;
+    return loadOrCreate(driverId: uid);
+  }
+
   /// Mismo formato que ya usaba la pantalla de Referidos: nombre + 4 dígitos.
   String _generar(String? fullName) {
     final nombre = (fullName ?? 'TORO').trim();
-    final primero =
-        (nombre.isEmpty ? 'TORO' : nombre.split(' ').first).toUpperCase();
-    final corto = primero.length > 6 ? primero.substring(0, 6) : primero;
+    // Sin acentos ni símbolos: el código viaja en una liga (toro-ride.com/d/…)
+    // y el router del app solo acepta A-Z y dígitos. "JOSUÉ6793" no abría nada.
+    final primero = _sinAcentos(
+            (nombre.isEmpty ? 'TORO' : nombre.split(' ').first).toUpperCase())
+        .replaceAll(RegExp(r'[^A-Z0-9]'), '');
+    final base = primero.isEmpty ? 'TORO' : primero;
+    final corto = base.length > 6 ? base.substring(0, 6) : base;
     final rnd = Random();
     final digitos = List.generate(4, (_) => rnd.nextInt(10)).join();
     return '$corto$digitos';
   }
+
+  static String _sinAcentos(String t) => t
+      .replaceAll(RegExp('[ÁÀÄÂ]'), 'A')
+      .replaceAll(RegExp('[ÉÈËÊ]'), 'E')
+      .replaceAll(RegExp('[ÍÌÏÎ]'), 'I')
+      .replaceAll(RegExp('[ÓÒÖÔ]'), 'O')
+      .replaceAll(RegExp('[ÚÙÜÛ]'), 'U')
+      .replaceAll('Ñ', 'N');
 
   /// La liga que se codifica en el QR y la que se comparte. Una sola forma para
   /// toda la app, para que no vuelvan a existir dos rutas distintas.

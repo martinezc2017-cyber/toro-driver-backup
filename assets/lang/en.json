@@ -3057,5 +3057,20 @@
   "doc_tipo_rfc_constancia": "RFC certificate",
   "doc_tipo_vehicle_insurance": "Vehicle insurance",
   "doc_tipo_vehicle_registration": "Vehicle registration card",
-  "doc_tipo_vencido": "{} (expired)"
+  "doc_tipo_vencido": "{} (expired)",
+  "invitar.titulo": "Invite by phone or email",
+  "invitar.texto": "Enter their number or email and we send your code. The invitation stays reserved for that contact: when they sign up with it, it is applied automatically.",
+  "invitar.hint": "Phone or email",
+  "invitar.boton": "Send invitation",
+  "invitar.pais_mx": "Mexico +52",
+  "invitar.pais_us": "USA +1",
+  "invitar.enviado_sms": "Invitation sent by text to {destino}.",
+  "invitar.enviado_correo": "Invitation sent by email to {destino}.",
+  "invitar.ya_tiene_cuenta": "That person already has a TORO account.",
+  "invitar.propio": "That contact is yours.",
+  "invitar.repetido": "You already invited that contact recently.",
+  "invitar.tope": "You reached today's invitation limit.",
+  "invitar.invalido": "Enter a 10-digit phone number or a valid email.",
+  "invitar.sin_codigo": "Your invite code is not ready yet. Open the QR again.",
+  "invitar.error": "The invitation could not be sent. Try again later."
 }

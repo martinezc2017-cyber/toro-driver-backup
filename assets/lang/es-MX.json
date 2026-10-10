@@ -3057,5 +3057,20 @@
   "doc_tipo_rfc_constancia": "Constancia del RFC",
   "doc_tipo_vehicle_insurance": "Seguro del vehículo",
   "doc_tipo_vehicle_registration": "Tarjeta de circulación",
-  "doc_tipo_vencido": "{} (vencido)"
+  "doc_tipo_vencido": "{} (vencido)",
+  "invitar.titulo": "Invita por teléfono o correo",
+  "invitar.texto": "Escribe su número o correo y le mandamos tu código. La invitación queda apartada a ese dato: al registrarse con él, se aplica sola.",
+  "invitar.hint": "Teléfono o correo",
+  "invitar.boton": "Enviar invitación",
+  "invitar.pais_mx": "México +52",
+  "invitar.pais_us": "EE. UU. +1",
+  "invitar.enviado_sms": "Invitación enviada por SMS a {destino}.",
+  "invitar.enviado_correo": "Invitación enviada por correo a {destino}.",
+  "invitar.ya_tiene_cuenta": "Esa persona ya tiene cuenta en TORO.",
+  "invitar.propio": "Ese contacto es el tuyo.",
+  "invitar.repetido": "Ya le mandaste una invitación hace poco.",
+  "invitar.tope": "Llegaste al límite de invitaciones por hoy.",
+  "invitar.invalido": "Escribe un teléfono de 10 dígitos o un correo válido.",
+  "invitar.sin_codigo": "Tu código de invitación aún no está listo. Vuelve a abrir el QR.",
+  "invitar.error": "No se pudo enviar la invitación. Inténtalo más tarde."
 }

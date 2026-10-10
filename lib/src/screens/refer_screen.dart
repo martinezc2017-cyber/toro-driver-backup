@@ -9,6 +9,7 @@ import '../utils/app_colors.dart';
 import '../utils/haptic_service.dart';
 import '../providers/driver_provider.dart';
 import '../services/driver_referral_code_service.dart';
+import '../widgets/invitar_contacto_card.dart';
 
 class ReferScreen extends StatefulWidget {
   const ReferScreen({super.key});
@@ -37,15 +38,15 @@ class _ReferScreenState extends State<ReferScreen> {
   /// es el que la base sabe resolver (drivers.referral_code).
   Future<void> _loadOrCreateReferralCode() async {
     final driver = context.read<DriverProvider>().driver;
-    if (driver == null) {
-      setState(() => _isLoading = false);
-      return;
-    }
-
-    final codigo = await DriverReferralCodeService.instance.loadOrCreate(
-      driverId: driver.id,
-      fullName: driver.fullName,
-    );
+    // Con el perfil cargado se usa su id; si todavía no cargó (o falló), el
+    // código se busca por la cuenta con sesión. Antes aquí se salía sin código
+    // y el QR de abajo apuntaba a toro-ride.com/d/ (a nadie).
+    final codigo = driver != null
+        ? await DriverReferralCodeService.instance.loadOrCreate(
+            driverId: driver.id,
+            fullName: driver.fullName,
+          )
+        : await DriverReferralCodeService.instance.loadForCurrentUser();
     if (!mounted) return;
     setState(() {
       _referralCode = codigo ?? '';
@@ -124,6 +125,16 @@ class _ReferScreenState extends State<ReferScreen> {
               children: [
                 if (_isLoading)
                   const SizedBox(height: 120, child: Center(child: CircularProgressIndicator()))
+                else if (_referralCode.isEmpty)
+                  // Sin código guardado no se pinta un QR que no lleva a nadie.
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    child: Text(
+                      'invitar.sin_codigo'.tr(),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                    ),
+                  )
                 else ...[
                   // QR
                   Container(
@@ -171,6 +182,11 @@ class _ReferScreenState extends State<ReferScreen> {
               ],
             ),
           ),
+          const SizedBox(height: 16),
+
+          // Invitar por teléfono o correo: la invitación queda apartada a ese
+          // dato y se aplica sola cuando esa persona se registra con él.
+          const InvitarContactoCard(),
           const SizedBox(height: 16),
 
           // Share Options - Compact row

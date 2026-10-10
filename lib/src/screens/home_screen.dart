@@ -175,11 +175,13 @@ class _HomeScreenState extends State<HomeScreen>
   /// Trae (o crea) el código de referido del conductor para el QR del panel.
   Future<void> _loadReferralCode() async {
     final driver = context.read<DriverProvider>().driver;
-    if (driver == null) return;
-    final codigo = await DriverReferralCodeService.instance.loadOrCreate(
-      driverId: driver.id,
-      fullName: driver.fullName,
-    );
+    // Sin perfil cargado, el código se busca por la cuenta con sesión.
+    final codigo = driver != null
+        ? await DriverReferralCodeService.instance.loadOrCreate(
+            driverId: driver.id,
+            fullName: driver.fullName,
+          )
+        : await DriverReferralCodeService.instance.loadForCurrentUser();
     if (mounted && codigo != null) setState(() => _referralCode = codigo);
   }
 
@@ -3552,7 +3554,19 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
+            // Invitar por teléfono o correo vive en Referidos (ahí hay espacio
+            // para el teclado); desde aquí solo se llega con un toque.
+            TextButton.icon(
+              onPressed: () {
+                Navigator.pop(ctx);
+                Navigator.pushNamed(context, '/refer');
+              },
+              icon: const Icon(Icons.send_rounded, size: 16),
+              label: Text('invitar.titulo'.tr()),
+              style: TextButton.styleFrom(foregroundColor: panelBlue),
+            ),
+            const SizedBox(height: 8),
             Text(
               qrLink,
               style: TextStyle(fontSize: 11, color: AppColors.textTertiary),

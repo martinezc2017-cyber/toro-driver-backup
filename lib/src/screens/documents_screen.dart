@@ -255,7 +255,6 @@ class _DocumentsScreenState extends State<DocumentsScreen>
         ];
       } else {
         final usVehicleDocs = vehicleDocs;
-        final photoCount = usVehicleDocs?.vehiclePhotosCount ?? 0;
         _vehicleDocs = [
           DocumentItem(
             'doc_vehicle_insurance'.tr(),
@@ -281,26 +280,30 @@ class _DocumentsScreenState extends State<DocumentsScreen>
                 : DocumentStatus.missing,
             onTap: () => _showUploadDialog(DocumentUploadType.endorsement),
           ),
+          // La regla oficial cuenta la tarjeta de circulación en drivers.circulation_card_url
+          // (vehicles no tiene registration_url ni columnas de fotos: esas subidas fallaban).
           DocumentItem(
             'doc_vehicle_registration'.tr(),
-            usVehicleDocs?.hasRegistration == true
+            (driverDocs.hasCirculationCard || usVehicleDocs?.hasRegistration == true)
                 ? 'doc_uploaded'.tr()
                 : 'doc_not_uploaded'.tr(),
             'doc_required'.tr(),
             Icons.directions_car,
-            usVehicleDocs?.hasRegistration == true
-                ? DocumentStatus.pending
-                : DocumentStatus.missing,
+            driverDocs.hasCirculationCard
+                ? mapDoc(driverDocs.circulationCardStatus)
+                : usVehicleDocs?.hasRegistration == true
+                    ? DocumentStatus.pending
+                    : DocumentStatus.missing,
             onTap: () => _showUploadDialog(DocumentUploadType.registration),
           ),
-          DocumentItem(
-            'doc_vehicle_photos'.tr(),
-            '$photoCount/4',
-            'doc_required_verification'.tr(),
-            Icons.photo_camera,
-            photoCount == 4 ? DocumentStatus.pending : DocumentStatus.missing,
-            onTap: () => _showUploadDialog(DocumentUploadType.vehiclePhotos),
-          ),
+          vehPhoto('docs.vehicle_photo_front'.tr(), 'docs.front_of_car'.tr(),
+              driverDocs.vehiclePhotoFrontUrl, DocumentUploadType.vehFront),
+          vehPhoto('docs.vehicle_photo_back'.tr(), 'docs.rear_side'.tr(),
+              driverDocs.vehiclePhotoBackUrl, DocumentUploadType.vehBack),
+          vehPhoto('docs.vehicle_photo_left'.tr(), 'docs.left_side'.tr(),
+              driverDocs.vehiclePhotoLeftUrl, DocumentUploadType.vehLeft),
+          vehPhoto('docs.vehicle_photo_right'.tr(), 'docs.right_side'.tr(),
+              driverDocs.vehiclePhotoRightUrl, DocumentUploadType.vehRight),
         ];
       }
 
@@ -614,12 +617,9 @@ class _DocumentsScreenState extends State<DocumentsScreen>
           }
           break;
         case DocumentUploadType.registration:
-          if (_vehicleId != null) {
-            success = await _documentService.uploadRegistration(
-              _vehicleId!,
-              file,
-            );
-          }
+          success =
+              await _documentService.uploadCirculationCard(_driverId!, file) !=
+              null;
           break;
         case DocumentUploadType.vehiclePhotos:
         case DocumentUploadType.usFront:

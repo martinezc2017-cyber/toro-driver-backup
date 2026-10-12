@@ -21,7 +21,12 @@ void main() {
     final client = SupabaseClient(
       'https://documents.test',
       'test-key',
-      httpClient: MockClient(handler),
+      // postgrest lee response.request (método y Accept): la respuesta falsa debe traerlo.
+      httpClient: MockClient((request) async {
+        final r = await handler(request);
+        return http.Response.bytes(r.bodyBytes, r.statusCode,
+            headers: r.headers, request: request);
+      }),
     );
     addTearDown(client.dispose);
     return DocumentService.withClient(client);
@@ -60,7 +65,7 @@ void main() {
           ]);
         }
         expect(request.url.queryParameters['driver_id'], 'eq.driver-id');
-        expect(request.url.queryParameters['order'], 'updated_at.desc');
+        expect(request.url.queryParameters['order'], 'updated_at.desc.nullslast');
         return rows([
           {'id': 'owned-vehicle', 'driver_id': 'driver-id'},
         ]);

@@ -7,6 +7,7 @@ import '../services/document_service.dart';
 import '../services/mexico_documents_service.dart';
 import '../config/supabase_config.dart';
 import 'pending_approval_screen.dart';
+import '../widgets/datos_fiscales_sheet.dart';
 
 class DocumentsScreen extends StatefulWidget {
   const DocumentsScreen({super.key});
@@ -987,6 +988,20 @@ class _DocumentsScreenState extends State<DocumentsScreen>
           _buildFiscalRow(Icons.description, 'RFC', rfc),
           const SizedBox(height: 8),
           _buildFiscalRow(Icons.badge, 'CURP', curp),
+          if (_driverId != null) ...[
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () async {
+                  final ok = await mostrarDatosFiscales(context, _driverId!);
+                  if (ok && mounted) _loadDocuments();
+                },
+                icon: const Icon(Icons.edit_note, size: 18),
+                label: Text((_driverRfc ?? '').isEmpty ? 'fiscal_boton'.tr() : 'fiscal_editar'.tr()),
+              ),
+            ),
+          ],
         ],
       ),
     );

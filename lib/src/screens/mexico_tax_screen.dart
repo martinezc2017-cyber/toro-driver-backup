@@ -5,6 +5,7 @@ import '../utils/app_colors.dart';
 import '../utils/money_format.dart';
 import '../services/mexico_tax_service.dart';
 import '../config/supabase_config.dart';
+import '../widgets/datos_fiscales_sheet.dart';
 
 class MexicoTaxScreen extends StatefulWidget {
   const MexicoTaxScreen({super.key});
@@ -487,7 +488,16 @@ class _MexicoTaxScreenState extends State<MexicoTaxScreen> {
     );
   }
 
+  // 12 oct 2026: el RFC solo no alcanza para la factura de retenciones; abre el formulario completo
+  // (RFC, nombre como en el SAT, CP fiscal, régimen, idCIF). El diálogo viejo queda sin uso.
   Future<void> _showRfcDialog() async {
+    if (_driverId == null) return;
+    final ok = await mostrarDatosFiscales(context, _driverId!);
+    if (ok && mounted) _loadData();
+  }
+
+  // ignore: unused_element
+  Future<void> _showRfcDialogViejo() async {
     final controller = TextEditingController();
 
     final rfc = await showDialog<String>(

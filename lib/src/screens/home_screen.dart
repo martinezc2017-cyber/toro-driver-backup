@@ -60,6 +60,7 @@ import 'rental/browse_rentals_screen.dart';
 import '../widgets/toro_3d_pin.dart';
 import '../widgets/bug_report_button.dart';
 import '../core/logging/app_logger.dart';
+import '../widgets/datos_fiscales_sheet.dart';
 
 /// Tracks which event chat screens are currently open on the driver side.
 /// Used to suppress chat notifications when the user is viewing the chat.
@@ -1408,6 +1409,25 @@ class _HomeScreenState extends State<HomeScreen>
                 style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white),
               ),
             ),
+            // La constancia del RFC también se puede ESCRIBIR (RFC, nombre, CP y régimen).
+            if (faltan.contains('doc_tipo_rfc_constancia'.tr())) ...[
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    final ok = await mostrarDatosFiscales(context, driver.id);
+                    if (ok && mounted) setState(() => _faltantesFuture = null);
+                  },
+                  icon: const Icon(Icons.edit_note, size: 18),
+                  label: Text('fiscal_boton'.tr()),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.error,
+                    side: BorderSide(color: AppColors.error.withValues(alpha: 0.7)),
+                  ),
+                ),
+              ),
+            ],
           ]),
         );
       },

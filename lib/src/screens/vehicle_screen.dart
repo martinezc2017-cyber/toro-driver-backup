@@ -3,6 +3,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../utils/app_colors.dart';
 import '../models/vehicle_model.dart';
+import '../services/document_service.dart';
 
 class VehicleScreen extends StatefulWidget {
   const VehicleScreen({super.key});
@@ -14,6 +15,7 @@ class VehicleScreen extends StatefulWidget {
 class _VehicleScreenState extends State<VehicleScreen> {
   VehicleModel? _vehicle;
   bool _isLoading = true;
+  bool _loadFailed = false;
 
   @override
   void initState() {
@@ -22,6 +24,10 @@ class _VehicleScreenState extends State<VehicleScreen> {
   }
 
   Future<void> _loadVehicle() async {
+    setState(() {
+      _isLoading = true;
+      _loadFailed = false;
+    });
     try {
       final user = Supabase.instance.client.auth.currentUser;
       if (user == null) {
@@ -29,38 +35,30 @@ class _VehicleScreenState extends State<VehicleScreen> {
         return;
       }
 
-      // Query by driver_id (matches RLS policy + add_vehicle_screen insert)
-      final response = await Supabase.instance.client
-          .from('vehicles')
-          .select()
-          .eq('driver_id', user.id)
-          .order('updated_at', ascending: false)
-          .limit(1)
+      var driver = await Supabase.instance.client
+          .from('drivers')
+          .select('id')
+          .eq('user_id', user.id)
           .maybeSingle();
+      driver ??= await Supabase.instance.client.from('drivers').select('id')
+          .eq('id', user.id).maybeSingle();
+      final driverId = driver?['id'] as String?;
+      if (driverId == null) throw StateError('Driver profile not found');
 
-      if (response != null && mounted) {
-        setState(() {
-          _vehicle = VehicleModel.fromJson(response);
-          _isLoading = false;
-        });
-      } else if (mounted) {
-        // Fallback: try user_id in case driver_id != user.id
-        final fallback = await Supabase.instance.client
-            .from('vehicles')
-            .select()
-            .eq('user_id', user.id)
-            .order('updated_at', ascending: false)
-            .limit(1)
-            .maybeSingle();
-
-        setState(() {
-          _vehicle = fallback != null ? VehicleModel.fromJson(fallback) : null;
-          _isLoading = false;
-        });
-      }
+      final response = await DocumentService.instance.getDriverVehicle(driverId);
+      if (!mounted) return;
+      setState(() {
+        _vehicle = response == null ? null : VehicleModel.fromJson(response);
+        _isLoading = false;
+      });
     } catch (e) {
       debugPrint('VehicleScreen: Error loading vehicle: $e');
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _loadFailed = true;
+        });
+      }
     }
   }
 
@@ -91,9 +89,23 @@ class _VehicleScreenState extends State<VehicleScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : _vehicle == null
-              ? _buildNoVehicle()
-              : _buildVehicleContent(),
+          : _loadFailed
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('error.connection_retry'.tr()),
+                      const SizedBox(height: 12),
+                      TextButton(
+                        onPressed: _loadVehicle,
+                        child: Text('retry'.tr()),
+                      ),
+                    ],
+                  ),
+                )
+              : _vehicle == null
+                  ? _buildNoVehicle()
+                  : _buildVehicleContent(),
     );
   }
 
@@ -144,7 +156,7 @@ class _VehicleScreenState extends State<VehicleScreen> {
         const SizedBox(height: 12),
         _buildVehicleDetails(),
         const SizedBox(height: 12),
-        _buildInsuranceSection(),
+        _buildDocumentsLink(),
         const SizedBox(height: 40),
       ],
     );
@@ -287,129 +299,19 @@ class _VehicleScreenState extends State<VehicleScreen> {
     );
   }
 
-  Widget _buildInsuranceSection() {
-    final vehicle = _vehicle!;
-    final isExpiringSoon = vehicle.insuranceExpiry != null &&
-        vehicle.insuranceExpiry!.difference(DateTime.now()).inDays <= 30;
-    final isExpired = vehicle.insuranceExpiry != null &&
-        vehicle.insuranceExpiry!.isBefore(DateTime.now());
-
-    final statusColor = isExpired ? AppColors.error : isExpiringSoon ? Colors.orange : AppColors.success;
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: statusColor.withValues(alpha: 0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: statusColor.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(Icons.shield, color: statusColor, size: 16),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('vehicle_insurance'.tr(), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: (vehicle.insuranceVerified ? AppColors.success : Colors.orange).withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            vehicle.insuranceVerified ? 'verified'.tr() : 'pending'.tr(),
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: vehicle.insuranceVerified ? AppColors.success : Colors.orange),
-                          ),
-                        ),
-                        if (vehicle.hasRideshareEndorsement) ...[
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: const Text('TNC', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.primary)),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-
-          if (isExpired || isExpiringSoon) ...[
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: statusColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  Icon(isExpired ? Icons.error_outline : Icons.warning_amber, color: statusColor, size: 16),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      isExpired
-                          ? 'insurance_expired'.tr()
-                          : 'insurance_expiring'.tr(namedArgs: {'days': '${vehicle.insuranceExpiry!.difference(DateTime.now()).inDays}'}),
-                      style: TextStyle(fontSize: 11, color: statusColor),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-
-          const SizedBox(height: 12),
-          if (vehicle.insuranceCompany != null) _buildDetailRow('company'.tr(), vehicle.insuranceCompany!),
-          if (vehicle.insurancePolicyNumber != null) _buildDetailRow('policy'.tr(), vehicle.insurancePolicyNumber!),
-          if (vehicle.insuranceExpiry != null)
-            _buildDetailRow('expires'.tr(), '${vehicle.insuranceExpiry!.month}/${vehicle.insuranceExpiry!.day}/${vehicle.insuranceExpiry!.year}'),
-          _buildDetailRow('endorsement'.tr(), vehicle.hasRideshareEndorsement ? 'yes_tnc'.tr() : 'no'.tr()),
-
-          if (!vehicle.hasRideshareEndorsement) ...[
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: AppColors.error.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.warning_amber, color: AppColors.error, size: 16),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'no_endorsement_warning'.tr(),
-                      style: TextStyle(fontSize: 11, color: AppColors.error),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ],
+  Widget _buildDocumentsLink() {
+    return Card(
+      margin: EdgeInsets.zero,
+      color: AppColors.card,
+      child: ListTile(
+        leading: const Icon(Icons.folder_outlined, color: AppColors.primary),
+        title: Text('documents_title'.tr()),
+        subtitle: Text('documents_vehicle'.tr()),
+        trailing: const Icon(Icons.chevron_right, color: AppColors.primary),
+        onTap: () async {
+          await Navigator.pushNamed(context, '/documents', arguments: 'vehicle');
+          if (mounted) await _loadVehicle();
+        },
       ),
     );
   }

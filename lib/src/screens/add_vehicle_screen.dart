@@ -79,15 +79,18 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
     _loadDriverCountry();
   }
 
+  Future<Map<String, dynamic>?> _driverProfile(String userId) async {
+    final profile = await Supabase.instance.client.from('drivers').select('id, country_code')
+        .eq('user_id', userId).maybeSingle();
+    return profile ?? await Supabase.instance.client.from('drivers').select('id, country_code')
+        .eq('id', userId).maybeSingle();
+  }
+
   Future<void> _loadDriverCountry() async {
     try {
       final user = Supabase.instance.client.auth.currentUser;
       if (user == null) return;
-      final driver = await Supabase.instance.client
-          .from('drivers')
-          .select('country_code')
-          .eq('id', user.id)
-          .maybeSingle();
+      final driver = await _driverProfile(user.id);
       if (driver != null && mounted) {
         setState(() {
           _countryCode = (driver['country_code'] as String?) ?? 'US';
@@ -448,6 +451,10 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
     try {
       final user = Supabase.instance.client.auth.currentUser;
       if (user == null) throw Exception('vehicle.not_authenticated'.tr());
+      final driver = await _driverProfile(user.id);
+      if (driver == null) throw StateError('Driver profile not found');
+      final driverId = driver['id'] as String;
+      String? registeredVehicleId;
 
       // Upload insurance card photos
       String? frontUrl;
@@ -553,7 +560,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
             .from('vehicles')
             .select('id')
             .eq('plate', plate)
-            .eq('driver_id', user.id)
+            .inFilter('driver_id', [user.id, driverId])
             .maybeSingle();
 
         // Check if plate is used by OTHER drivers (shared/rental vehicle)
@@ -561,7 +568,8 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
             .from('vehicles')
             .select('id, driver_id')
             .eq('plate', plate)
-            .neq('driver_id', user.id);
+            .neq('driver_id', user.id)
+            .neq('driver_id', driverId);
 
         if (othersWithPlate.isNotEmpty && mounted) {
           // Show info alert — vehicle is shared with other accounts
@@ -587,6 +595,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
         }
 
         if (ownExisting != null) {
+          registeredVehicleId = ownExisting['id'] as String;
           // Update existing vehicle for this driver
           await Supabase.instance.client
               .from('vehicles')
@@ -595,9 +604,9 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
         } else {
           // Insert new vehicle for this driver
           vehicleData['created_at'] = now;
-          await Supabase.instance.client
-              .from('vehicles')
-              .insert(vehicleData);
+          final registered = await Supabase.instance.client
+              .from('vehicles').insert(vehicleData).select('id').single();
+          registeredVehicleId = registered['id'] as String;
         }
       }
 
@@ -609,19 +618,20 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
         _ => 'standard',
       };
       await Supabase.instance.client.from('drivers').update({
+        if (registeredVehicleId != null) 'current_vehicle_id': registeredVehicleId,
         'vehicle_type': driverVehicleType,
         'vehicle_make': _makeController.text.trim(),
         'vehicle_model': _modelController.text.trim(),
         'vehicle_year': int.parse(_yearController.text.trim()),
         'vehicle_plate': _plateController.text.trim().toUpperCase(),
         'vehicle_color': _colorController.text.trim(),
-      }).eq('id', user.id);
+      }).eq('id', driverId);
 
       if (mounted) {
         // Refresh driver provider so home screen updates immediately
         try {
           final driverProvider = Provider.of<DriverProvider>(context, listen: false);
-          await driverProvider.initialize(user.id);
+          await driverProvider.initialize(driverId);
         } catch (_) {}
 
         HapticService.success();

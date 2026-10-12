@@ -702,7 +702,6 @@ class _ProfileScreenState extends State<ProfileScreen>
     // All items use cyan glow except logout (red)
     const neonBlue = AppColors.primaryCyan;
     const neonRed = AppColors.error;
-    final isMexico = driver?.countryCode == 'MX';
 
     final menuItems = [
       {'icon': Icons.badge_rounded, 'label': 'cred_title'.tr(), 'route': '/driver-credential', 'color': neonBlue},
@@ -718,13 +717,6 @@ class _ProfileScreenState extends State<ProfileScreen>
       {'icon': Icons.leaderboard_rounded, 'label': 'ranking'.tr(), 'route': '/ranking', 'color': neonBlue},
       {'icon': Icons.card_giftcard_rounded, 'label': 'refer'.tr(), 'route': '/refer', 'color': neonBlue},
       {'icon': Icons.language_rounded, 'label': 'language'.tr(), 'route': '/language', 'color': neonBlue},
-      // Mexico specific options — only visible for MX drivers
-      // NOTE: "Documentos México" (INE/RFC/CURP) is now merged into the unified
-      // "Documentos" screen (/documents -> Fiscal MX tab). No separate entry.
-      if (isMexico) ...[
-        {'icon': Icons.account_balance_rounded, 'label': 'mx_tax_title'.tr(), 'route': '/mexico-tax', 'color': neonBlue},
-        {'icon': Icons.receipt_long_rounded, 'label': 'mx_cfdi_title'.tr(), 'route': '/mexico-invoices', 'color': neonBlue},
-      ],
       {'icon': Icons.logout_rounded, 'label': 'logout'.tr(), 'route': '/logout', 'color': neonRed},
     ];
 

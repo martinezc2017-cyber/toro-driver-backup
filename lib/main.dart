@@ -300,7 +300,9 @@ class ToroDriverApp extends StatelessWidget {
           '/earnings': (context) => const EarningsScreen(),
           '/vehicle': (context) => const VehicleScreen(),
           '/support': (context) => const SupportScreen(),
-          '/documents': (context) => const DocumentsScreen(),
+          '/documents': (context) => DocumentsScreen(
+            initialSection: ModalRoute.of(context)?.settings.arguments is String
+                ? ModalRoute.of(context)!.settings.arguments as String : 'personal'),
           '/refer': (context) => const ReferScreen(),
           '/language': (context) => const LanguageScreen(),
           '/notifications': (context) => const NotificationsScreen(),
@@ -315,7 +317,7 @@ class ToroDriverApp extends StatelessWidget {
           // Mexico routes
           // MX docs (INE/RFC/CURP) merged into the unified DocumentsScreen
           // (Fiscal MX tab). Route kept as an alias so existing deep links work.
-          '/mexico-documents': (context) => const DocumentsScreen(),
+          '/mexico-documents': (context) => const DocumentsScreen(initialSection: 'tax'),
           '/mexico-tax': (context) => const MexicoTaxScreen(),
           '/mexico-invoices': (context) => const MexicoInvoicesScreen(),
           // Organizer routes

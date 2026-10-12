@@ -62,34 +62,49 @@ class StripeConfig {
   /// Get publishable key for current provider
   static String get publishableKey => getPublishableKey(_currentProvider);
 
-  /// Initialize Stripe with default provider (US)
+  // 12 oct 2026: al abrir la app, DriverProvider llama switchProvider ANTES de que
+  // PaymentService.initialize ponga la primera pk. switchProvider leía
+  // `Stripe.publishableKey`, que TRUENA si aún no hay pk → tumbaba la carga del conductor
+  // (driver = null: sin nombre, sin aviso de documentos, sin notificaciones). Y si
+  // initialize terminaba después, dejaba la pk de US a un conductor de MX.
+  // Ahora: se recuerda la pk aplicada (sin leer el getter) y gana la ÚLTIMA elección.
+  static String? _appliedKey;
+  static bool _paisElegido = false;
+  static int _turno = 0;
+
+  /// Initialize Stripe with default provider (US), salvo que el país del conductor ya se eligió.
   static Future<void> initialize() async {
-    await initializeWithProvider(StripeProvider.us);
+    await _aplicar(_paisElegido ? _currentProvider : StripeProvider.us);
   }
 
   /// Initialize Stripe with a specific provider
   static Future<void> initializeWithProvider(StripeProvider provider) async {
+    _paisElegido = true;
+    await _aplicar(provider);
+  }
+
+  /// Switch to a different provider at runtime
+  static Future<void> switchProvider(StripeProvider provider) async {
+    _paisElegido = true;
+    await _aplicar(provider);
+  }
+
+  static Future<void> _aplicar(StripeProvider provider) async {
+    final turno = ++_turno;
     _currentProvider = provider;
     await loadServerPk(provider);
+    if (turno != _turno) return; // llegó otra elección mientras cargaba: gana la última
     final key = getPublishableKey(provider);
     if (key.isEmpty) {
       debugPrint('STRIPE_CONFIG -> ERROR: No publishable key for $provider — Stripe will NOT work');
       return;
     }
+    if (_appliedKey == key) return;
     Stripe.publishableKey = key;
     Stripe.merchantIdentifier = merchantId;
     await Stripe.instance.applySettings();
+    _appliedKey = key;
     debugPrint('STRIPE_CONFIG -> Initialized with $provider (key=${key.substring(0, 12)}...)');
-  }
-
-  /// Switch to a different provider at runtime
-  static Future<void> switchProvider(StripeProvider provider) async {
-    _currentProvider = provider;
-    await loadServerPk(provider);
-    final key = getPublishableKey(provider);
-    if (key.isEmpty || Stripe.publishableKey == key) return;
-    Stripe.publishableKey = key;
-    await Stripe.instance.applySettings();
   }
 
   /// Detect provider from coordinates (Mexico or USA).

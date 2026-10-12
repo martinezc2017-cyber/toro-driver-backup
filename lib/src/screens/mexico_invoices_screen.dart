@@ -14,6 +14,8 @@ class MexicoInvoicesScreen extends StatefulWidget {
 
 class _MexicoInvoicesScreenState extends State<MexicoInvoicesScreen> {
   bool _isLoading = true;
+  bool _isMexico = false;
+  bool _loadError = false;
   String? _driverId;
   List<CfdiInvoice> _invoices = [];
   int _selectedYear = DateTime.now().year;
@@ -26,21 +28,33 @@ class _MexicoInvoicesScreenState extends State<MexicoInvoicesScreen> {
   }
 
   Future<void> _loadData() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _isMexico = false;
+      _loadError = false;
+    });
 
     try {
       final user = SupabaseConfig.client.auth.currentUser;
       if (user == null) {
-        setState(() => _isLoading = false);
+        _loadError = true;
         return;
       }
 
       // Get driver info
       final driverResponse = await SupabaseConfig.client
           .from('drivers')
-          .select('id')
+          .select('id, country_code')
           .eq('user_id', user.id)
           .maybeSingle();
+
+      if (!mounted) return;
+      if (driverResponse == null || driverResponse['country_code'] == null) {
+        _loadError = true;
+        return;
+      }
+      if (driverResponse['country_code']?.toString().trim().toUpperCase() != 'MX') return;
+      _isMexico = true;
 
       if (driverResponse != null) {
         _driverId = driverResponse['id'];
@@ -64,14 +78,42 @@ class _MexicoInvoicesScreenState extends State<MexicoInvoicesScreen> {
         }).toList();
       }
 
-      setState(() => _isLoading = false);
-    } catch (e) {
-      setState(() => _isLoading = false);
+    } catch (_) {
+      _loadError = true;
+      _isMexico = false;
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (!_isLoading && !_isMexico) {
+      return Scaffold(
+        appBar: AppBar(title: Text('documents_title'.tr())),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  (_loadError ? 'fiscal_load_error' : 'fiscal_country_only_mx').tr(),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                if (_loadError)
+                  TextButton(onPressed: _loadData, child: Text('retry'.tr())),
+                ElevatedButton(
+                  onPressed: () => Navigator.pushReplacementNamed(context, '/documents', arguments: 'tax'),
+                  child: Text('fiscal_manage_documents'.tr()),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
@@ -182,7 +224,7 @@ class _MexicoInvoicesScreenState extends State<MexicoInvoicesScreen> {
                       ],
                     ),
             ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: _isLoading ? null : FloatingActionButton.extended(
         onPressed: _showRequestInvoiceDialog,
         backgroundColor: AppColors.primary,
         icon: const Icon(Icons.add, color: Colors.white),
@@ -446,169 +488,75 @@ class _MexicoInvoicesScreenState extends State<MexicoInvoicesScreen> {
   }
 
   Widget _buildDetailRow(String label, String value, {bool bold = false}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: bold ? FontWeight.bold : FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
+    return Padding(padding: const EdgeInsets.symmetric(vertical: 4), child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(child: Text(label, style: TextStyle(color: AppColors.textSecondary, fontSize: 12))),
+        const SizedBox(width: 12),
+        Expanded(child: Text(value, textAlign: TextAlign.right, style: TextStyle(
+          fontSize: 12, fontWeight: bold ? FontWeight.bold : FontWeight.w500))),
+      ],
+    ));
   }
 
-  void _showRequestInvoiceDialog() {
-    final rfcController = TextEditingController();
-    final nameController = TextEditingController();
+  Future<void> _showRequestInvoiceDialog() async {
+    if (!_isMexico || _driverId == null) return;
+    Map<String, dynamic>? fiscal;
+    try {
+      fiscal = await SupabaseConfig.client.from('drivers')
+          .select('rfc, fiscal_nombre, fiscal_cp, fiscal_regimen')
+          .eq('id', _driverId!).eq('country_code', 'MX').maybeSingle();
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('fiscal_load_error'.tr())));
+      return;
+    }
+    if (!mounted) return;
+    final rfc = fiscal?['rfc']?.toString().trim() ?? '';
+    final name = fiscal?['fiscal_nombre']?.toString().trim() ?? '';
+    final cp = fiscal?['fiscal_cp']?.toString().trim() ?? '';
+    final regimen = fiscal?['fiscal_regimen']?.toString().trim() ?? '';
+    final complete = [rfc, name, cp, regimen].every((value) => value.isNotEmpty);
     String selectedUso = 'G03';
-    String selectedRegimen = '612';
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.surface,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (context) => StatefulBuilder(
-        builder: (context, setSheetState) => Padding(
-          padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 20,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 32,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: AppColors.border,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
+    await showModalBottomSheet<void>(
+      context: context, backgroundColor: AppColors.surface, isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (sheetContext) => StatefulBuilder(builder: (sheetContext, setSheetState) =>
+        SafeArea(child: Padding(padding: const EdgeInsets.all(20),
+          child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('mx_request_invoice'.tr(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              if (complete) ...[
+                _buildDetailRow('RFC', rfc),
+                _buildDetailRow('fiscal_nombre'.tr(), name),
+                _buildDetailRow('fiscal_regimen'.tr(), regimen),
+              ] else Text('fiscal_complete_documents'.tr()),
+              TextButton.icon(icon: const Icon(Icons.folder_open),
+                label: Text('fiscal_manage_documents'.tr()), onPressed: () async {
+                  Navigator.pop(sheetContext);
+                  await Navigator.pushNamed(context, '/documents', arguments: 'tax');
+                  if (mounted) await _loadData();
+                }),
+              if (complete) ...[
+                DropdownButtonFormField<String>(initialValue: selectedUso,
+                  decoration: InputDecoration(labelText: 'mx_cfdi_use'.tr()),
+                  items: [for (final uso in ['G01', 'G03', 'P01'])
+                    DropdownMenuItem(value: uso, child: Text('cfdi.${uso.toLowerCase()}'.tr()))],
+                  onChanged: (value) { if (value != null) setSheetState(() => selectedUso = value); }),
                 const SizedBox(height: 16),
-                Center(
-                  child: Text(
-                    'mx_request_invoice'.tr(),
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                // RFC
-                Text('RFC', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: rfcController,
-                  textCapitalization: TextCapitalization.characters,
-                  maxLength: 13,
-                  decoration: InputDecoration(
-                    hintText: 'AAAA000000XXX',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                    filled: true,
-                    fillColor: AppColors.card,
-                    counterText: '',
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Name
-                Text('mx_business_name'.tr(), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: nameController,
-                  textCapitalization: TextCapitalization.words,
-                  decoration: InputDecoration(
-                    hintText: 'mx_name_hint'.tr(),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                    filled: true,
-                    fillColor: AppColors.card,
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Uso CFDI
-                Text('mx_cfdi_use'.tr(), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                const SizedBox(height: 8),
-                DropdownButtonFormField<String>(
-                  value: selectedUso,
-                  decoration: InputDecoration(
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                    filled: true,
-                    fillColor: AppColors.card,
-                  ),
-                  items: [
-                    DropdownMenuItem(value: 'G01', child: Text('cfdi.g01'.tr())),
-                    DropdownMenuItem(value: 'G03', child: Text('cfdi.g03'.tr())),
-                    DropdownMenuItem(value: 'P01', child: Text('cfdi.p01'.tr())),
-                  ],
-                  onChanged: (value) => setSheetState(() => selectedUso = value!),
-                ),
-                const SizedBox(height: 16),
-
-                // Régimen fiscal
-                Text('mx_fiscal_regime'.tr(), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                const SizedBox(height: 8),
-                DropdownButtonFormField<String>(
-                  value: selectedRegimen,
-                  decoration: InputDecoration(
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                    filled: true,
-                    fillColor: AppColors.card,
-                  ),
-                  items: [
-                    DropdownMenuItem(value: '601', child: Text('cfdi.601'.tr())),
-                    DropdownMenuItem(value: '603', child: Text('cfdi.603'.tr())),
-                    DropdownMenuItem(value: '612', child: Text('cfdi.612'.tr())),
-                    DropdownMenuItem(value: '621', child: Text('cfdi.621'.tr())),
-                    DropdownMenuItem(value: '625', child: Text('cfdi.625'.tr())),
-                  ],
-                  onChanged: (value) => setSheetState(() => selectedRegimen = value!),
-                ),
-                const SizedBox(height: 24),
-
-                // Submit button
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => _requestInvoice(
-                      rfcController.text.trim().toUpperCase(),
-                      nameController.text.trim(),
-                      selectedUso,
-                      selectedRegimen,
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                    child: Text('mx_generate_invoice'.tr(), style: const TextStyle(fontWeight: FontWeight.bold)),
-                  ),
-                ),
+                ElevatedButton(onPressed: () => _requestInvoice(rfc, name, selectedUso, regimen),
+                  child: Text('mx_request_invoice'.tr())),
               ],
-            ),
-          ),
-        ),
+            ],
+          )),
+        )),
       ),
     );
   }
 
   Future<void> _requestInvoice(String rfc, String name, String uso, String regimen) async {
+    if (!_isMexico || _driverId == null) return;
     if (rfc.length < 12 || name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('mx_fill_all_fields'.tr()), backgroundColor: AppColors.error),
@@ -632,6 +580,21 @@ class _MexicoInvoicesScreenState extends State<MexicoInvoicesScreen> {
     );
 
     try {
+      final driver = await SupabaseConfig.client
+          .from('drivers')
+          .select('id')
+          .eq('id', _driverId!)
+          .eq('country_code', 'MX')
+          .maybeSingle();
+      if (!mounted) return;
+      if (driver == null) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('fiscal_country_only_mx'.tr())),
+        );
+        await _loadData();
+        return;
+      }
       final response = await SupabaseConfig.client.functions.invoke(
         'generate-cfdi',
         body: {

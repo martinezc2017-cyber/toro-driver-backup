@@ -26,6 +26,7 @@ import '../providers/location_provider.dart';
 import '../providers/auth_provider.dart';
 import '../models/ride_model.dart';
 import '../models/driver_model.dart';
+import '../models/driver_document_readiness.dart';
 import '../utils/app_colors.dart';
 import '../widgets/galaxy_background.dart';
 import '../utils/app_theme.dart';
@@ -47,12 +48,12 @@ import '../services/cash_account_service.dart';
 import '../services/driver_qr_points_service.dart';
 import '../services/ride_service.dart';
 import '../services/driver_service.dart';
+import '../services/driver_document_readiness_service.dart';
 import '../services/background_location_service.dart';
 import 'earnings_screen.dart';
 import 'rides_screen.dart';
 import 'profile_screen.dart';
 import 'navigation_map_screen.dart';
-import '../widgets/driver_connect_banner.dart';
 import 'tourism/vehicle_request_screen.dart';
 import 'organizer/organizer_home_screen.dart';
 import 'cash_balance_screen.dart';
@@ -60,7 +61,6 @@ import 'rental/browse_rentals_screen.dart';
 import '../widgets/toro_3d_pin.dart';
 import '../widgets/bug_report_button.dart';
 import '../core/logging/app_logger.dart';
-import '../widgets/datos_fiscales_sheet.dart';
 
 /// Tracks which event chat screens are currently open on the driver side.
 /// Used to suppress chat notifications when the user is viewing the chat.
@@ -215,7 +215,7 @@ class _HomeScreenState extends State<HomeScreen>
       case AppLifecycleState.resumed:
         _isAppInBackground = false;
         if (mounted) {
-          setState(() {});
+          setState(() => _documentReadinessFuture = null);
           // Force refresh available rides when app comes back to foreground
           _refreshRidesOnResume();
           // CRITICAL: restart heartbeat immediately. On iOS the Dart Timer
@@ -1289,24 +1289,8 @@ class _HomeScreenState extends State<HomeScreen>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          // Profile completion banner for new drivers
-                          _buildDocsFaltantesBanner(),
-                          _buildProfileCompletionBanner(),
-                          // Recordatorio Stripe Connect ("conecta tu banco") — mismo
-                          // patron que el banner del vendedor: aparece si el chofer
-                          // aun NO puede recibir payouts; 1 toque -> onboarding. Sin
-                          // esto su dinero queda atrapado (le paso a Carlos).
-                          Consumer<DriverProvider>(
-                            builder: (_, dp, __) {
-                              final d = dp.driver;
-                              if (d == null) return const SizedBox.shrink();
-                              return DriverConnectBanner(
-                                driverId: d.id,
-                                email: d.email,
-                                provider: d.countryCode == 'MX' ? 'mx' : 'us',
-                              );
-                            },
-                          ),
+                          // One entry point for documents, vehicle and payments.
+                          _buildDocumentCenterBanner(),
                           // El banner "DEBES A TORO" enfada si sale con cualquier
                           // monto chico. Mostrarlo SOLO cuando la deuda está cerca
                           // del límite (>=80%, ya casi se llena y bloquea) o si la
@@ -1342,213 +1326,120 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
-  // Documentos que le faltan al chofer según la regla OFICIAL del servidor
-  // (estado_documentos_conductor: la misma que decide si se puede conectar y si
-  // se le aprueba). Antes el inicio solo revisaba las firmas: quien firmaba veía
-  // "Subir documentos" en verde aunque no hubiera subido INE, RFC ni comprobante.
-  Future<List<String>>? _faltantesFuture;
-  String? _faltantesDe;
+  Future<DriverDocumentReadiness>? _documentReadinessFuture;
+  String? _documentReadinessKey;
 
-  Future<List<String>> _cargarFaltantes(String driverId) async {
-    try {
-      final r = await Supabase.instance.client
-          .rpc('estado_documentos_conductor', params: {'p_driver_id': driverId});
-      if (r is! Map) return const [];
-      final faltan = ((r['faltantes'] ?? []) as List).map((t) => 'doc_tipo_$t'.tr());
-      final vencidos = ((r['vencidos'] ?? []) as List)
-          .map((t) => 'doc_tipo_vencido'.tr(args: ['doc_tipo_$t'.tr()]));
-      return [...vencidos, ...faltan];
-    } catch (_) {
-      return const [];
-    }
+  Future<void> _openDocumentCenter() async {
+    await Navigator.pushNamed(context, '/documents');
+    if (mounted) setState(() => _documentReadinessFuture = null);
   }
 
-  Widget _buildDocsFaltantesBanner() {
-    final driver = Provider.of<DriverProvider>(context, listen: false).driver;
-    if (driver == null) return const SizedBox.shrink();
-    if (_faltantesDe != driver.id || _faltantesFuture == null) {
-      _faltantesDe = driver.id;
-      _faltantesFuture = _cargarFaltantes(driver.id);
-    }
-    return FutureBuilder<List<String>>(
-      future: _faltantesFuture,
-      builder: (context, snap) {
-        final faltan = snap.data ?? const <String>[];
-        if (faltan.isEmpty) return const SizedBox.shrink();
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.errorSoft,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.error.withValues(alpha: 0.5)),
-          ),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              Icon(Icons.assignment_late, color: AppColors.error, size: 22),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text('home_docs_missing_title'.tr(),
-                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.bold)),
-              ),
-            ]),
-            const SizedBox(height: 6),
-            Text('home_docs_missing_list'.tr(args: [faltan.join(', ')]),
-                style: TextStyle(color: AppColors.error, fontSize: 13, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 4),
-            Text('home_docs_missing_desc'.tr(), style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () => Navigator.pushNamed(context, '/documents').then((_) {
-                  if (mounted) setState(() => _faltantesFuture = null); // al volver, se revisa otra vez
-                }),
-                icon: const Icon(Icons.upload_file, size: 18),
-                label: Text('home_docs_upload_btn'.tr()),
-                style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white),
-              ),
-            ),
-            // La constancia del RFC también se puede ESCRIBIR (RFC, nombre, CP y régimen).
-            if (faltan.contains('doc_tipo_rfc_constancia'.tr())) ...[
-              const SizedBox(height: 8),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () async {
-                    final ok = await mostrarDatosFiscales(context, driver.id);
-                    if (ok && mounted) setState(() => _faltantesFuture = null);
-                  },
-                  icon: const Icon(Icons.edit_note, size: 18),
-                  label: Text('fiscal_boton'.tr()),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.error,
-                    side: BorderSide(color: AppColors.error.withValues(alpha: 0.7)),
-                  ),
-                ),
-              ),
-            ],
-          ]),
-        );
-      },
-    );
-  }
+  Widget _buildDocumentCenterBanner() {
+    return Consumer<DriverProvider>(builder: (context, provider, _) {
+      final driver = provider.driver;
+      if (driver == null) return const SizedBox.shrink();
 
-  /// Profile completion banner for newly registered drivers
-  Widget _buildProfileCompletionBanner() {
-    try {
-      final driverProvider = Provider.of<DriverProvider>(
-        context,
-        listen: false,
-      );
-      final driver = driverProvider.driver;
-      if (driver == null || driver.canGoOnline) return const SizedBox.shrink();
-
-      // Check what's missing
-      final hasVehicle =
-          driver.vehicleType != null &&
-          driver.vehiclePlate != null &&
-          driver.vehiclePlate!.isNotEmpty;
-      final hasDocs = driver.allDocumentsSigned;
-
-      // If everything is done, don't show banner
-      if (hasVehicle && hasDocs && driver.adminApproved) {
-        return const SizedBox.shrink();
+      // Refresh when document/account fields change, without refetching on
+      // every GPS heartbeat or unrelated earnings update.
+      final key = jsonEncode([
+        DriverDocumentReadinessService.instance.revision,
+        driver.id,
+        driver.countryCode,
+        driver.stateCode,
+        driver.status.name,
+        driver.allDocumentsSigned,
+        driver.adminApproved,
+        driver.canReceiveRides,
+        driver.onboardingStage,
+        driver.trialModeAccepted,
+        driver.profileImageUrl,
+        driver.licenseNumber,
+        driver.licenseExpiry?.toIso8601String(),
+        driver.insurancePolicy,
+        driver.insuranceExpiry?.toIso8601String(),
+        driver.vehicleType,
+        driver.vehiclePlate,
+        driver.rfc,
+        driver.rfcValidated,
+        driver.curp,
+      ]);
+      if (_documentReadinessKey != key || _documentReadinessFuture == null) {
+        _documentReadinessKey = key;
+        _documentReadinessFuture =
+            DriverDocumentReadinessService.instance.load(driver.id);
       }
 
-      return Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF10202B), Color(0xFF0C0C12)],
-          ),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+      return FutureBuilder<DriverDocumentReadiness>(
+        future: _documentReadinessFuture,
+        builder: (context, snapshot) {
+          final checking = snapshot.connectionState != ConnectionState.done;
+          final status = checking ? null : snapshot.data;
+          if (status?.hasRequiredDocuments == true && driver.canGoOnline) {
+            return const SizedBox.shrink();
+          }
+
+          final missing = status != null && !status.hasRequiredDocuments;
+          final color = missing ? AppColors.error : AppColors.primary;
+          final summary = checking
+              ? 'docs_center_checking'.tr()
+              : snapshot.hasError || status == null
+                  ? 'docs_center_unavailable'.tr()
+                  : status.hasCountryMismatch(driver.countryCode)
+                      ? 'docs_center_country_mismatch'.tr()
+                  : missing
+                      ? 'docs_center_missing_summary'.tr(
+                          namedArgs: {'count': '${status.outstandingCount}'},
+                        )
+                      : 'docs_center_review_pending'.tr();
+
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.card,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: color.withValues(alpha: 0.4)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(
-                  Icons.assignment_outlined,
-                  color: AppColors.primary,
-                  size: 22,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'home_complete_profile_title'.tr(),
-                    style: const TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
+                Row(children: [
+                  Icon(Icons.folder_shared_outlined, color: color, size: 22),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'docs_center_title'.tr(),
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ]),
+                const SizedBox(height: 6),
+                Text(summary, style: TextStyle(
+                  color: AppColors.textSecondary, fontSize: 13,
+                )),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _openDocumentCenter,
+                    icon: const Icon(Icons.folder_open, size: 18),
+                    label: Text('docs_center_open'.tr()),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: color,
+                      foregroundColor: Colors.white,
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 4),
-            Text(
-              'home_complete_profile_desc'.tr(),
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
-            ),
-            const SizedBox(height: 12),
-            // Checklist
-            _buildCheckItem(
-              'home_profile_add_vehicle'.tr(),
-              hasVehicle,
-              () => Navigator.pushNamed(context, '/add-vehicle').then((_) {
-                // Refresh driver data so home detects new vehicle immediately
-                final user = Supabase.instance.client.auth.currentUser;
-                if (user != null) {
-                  try {
-                    Provider.of<DriverProvider>(context, listen: false).initialize(user.id);
-                  } catch (_) {}
-                }
-              }),
-            ),
-            const SizedBox(height: 6),
-            _buildCheckItem(
-              'home_profile_upload_docs'.tr(),
-              hasDocs,
-              () => Navigator.pushNamed(context, '/documents'),
-            ),
-          ],
-        ),
+          );
+        },
       );
-    } catch (_) {
-      return const SizedBox.shrink();
-    }
-  }
-
-  Widget _buildCheckItem(String label, bool done, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: done ? null : onTap,
-      child: Row(
-        children: [
-          Icon(
-            done ? Icons.check_circle : Icons.radio_button_unchecked,
-            color: done ? AppColors.success : AppColors.textTertiary,
-            size: 18,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              label,
-              style: TextStyle(
-                color: done ? AppColors.textSecondary : AppColors.textPrimary,
-                fontSize: 13,
-                decoration: done ? TextDecoration.lineThrough : null,
-              ),
-            ),
-          ),
-          if (!done)
-            Icon(Icons.arrow_forward_ios, color: AppColors.primary, size: 14),
-        ],
-      ),
-    );
+    });
   }
 
   // Banner for active ride - tap to enter navigation

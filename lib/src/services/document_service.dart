@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:easy_localization/easy_localization.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
@@ -13,9 +14,12 @@ import '../core/logging/toro_app_logger.dart';
 class DocumentService {
   static final DocumentService _instance = DocumentService._();
   static DocumentService get instance => _instance;
-  DocumentService._();
+  DocumentService._() : _client = SupabaseConfig.client;
 
-  final SupabaseClient _client = SupabaseConfig.client;
+  @visibleForTesting
+  DocumentService.withClient(this._client);
+
+  final SupabaseClient _client;
   final DocumentOcrService _ocrService = DocumentOcrService();
   static const String _bucketName = 'driver-documents';
 
@@ -28,28 +32,18 @@ class DocumentService {
     try {
       final response = await _client
           .from(SupabaseConfig.driversTable)
-          .select('''
-            license_number, license_expiry, license_image_url,
-            profile_image_url,
-            agreement_signed, agreement_signed_at,
-            background_check_status, background_check_date,
-            insurance_image_url, insurance_policy, insurance_expiry, insurance_provider,
-            vehicle_plate,
-            vehicle_photo_front_url, vehicle_photo_back_url,
-            vehicle_photo_left_url, vehicle_photo_right_url,
-            circulation_card_url, circulation_card_plate, circulation_card_insurer, circulation_card_expiry
-          ''')
+          .select()
           .eq('id', driverId)
           .maybeSingle();
 
       if (response == null) {
-        return DriverDocumentStatus.empty();
+        throw StateError('Driver profile not found');
       }
 
       return DriverDocumentStatus.fromJson(response);
     } catch (e) {
       AppLogger.log('DocumentService: Error getting driver docs: $e');
-      return DriverDocumentStatus.empty();
+      rethrow;
     }
   }
 
@@ -249,18 +243,7 @@ class DocumentService {
     try {
       final response = await _client
           .from('vehicles')
-          .select('''
-            insurance_company, insurance_policy, insurance_expiry,
-            insurance_card_front_url, insurance_card_back_url,
-            insurance_verified,
-            rideshare_endorsement, endorsement_expiry,
-            endorsement_document_url,
-            registration_url,
-            vehicle_photo_front_url, vehicle_photo_back_url,
-            vehicle_photo_interior_url, vehicle_photo_side_url,
-            inspection_due, maintenance_due,
-            status
-          ''')
+          .select()
           .eq('id', vehicleId)
           .maybeSingle();
 
@@ -268,23 +251,54 @@ class DocumentService {
       return VehicleDocumentStatus.fromJson(response);
     } catch (e) {
       AppLogger.log('DocumentService: Error getting vehicle docs: $e');
-      return null;
+      rethrow;
     }
   }
 
-  /// Get vehicle for driver
-  Future<String?> getDriverVehicleId(String driverId) async {
-    try {
-      final response = await _client
-          .from(SupabaseConfig.driversTable)
-          .select('current_vehicle_id')
-          .eq('id', driverId)
-          .maybeSingle();
+  /// Uses the driver's selected vehicle first. Older registrations stored the
+  /// auth user ID in vehicles.driver_id/user_id without current_vehicle_id.
+  /// The argument is the resolved drivers.id, not the auth user ID.
+  Future<Map<String, dynamic>?> getDriverVehicle(String driverId) async {
+    final driver = await _client
+        .from(SupabaseConfig.driversTable)
+        .select('id, user_id, current_vehicle_id')
+        .eq('id', driverId)
+        .maybeSingle();
+    if (driver == null) throw StateError('Driver profile not found');
 
-      return response?['current_vehicle_id'] as String?;
-    } catch (e) {
-      return null;
+    final selectedId = _documentText(driver['current_vehicle_id']);
+    if (selectedId != null) {
+      final selected = await _client
+          .from('vehicles')
+          .select()
+          .eq('id', selectedId)
+          .maybeSingle();
+      if (selected != null) return selected;
     }
+
+    Future<Map<String, dynamic>?> latest(String column, String id) => _client
+        .from('vehicles')
+        .select()
+        .eq(column, id)
+        .order('updated_at', ascending: false)
+        .limit(1)
+        .maybeSingle();
+
+    final owned = await latest('driver_id', driverId);
+    if (owned != null) return owned;
+    final userId = _documentText(driver['user_id']);
+    if (userId == null) return null;
+    if (userId != driverId) {
+      final legacy = await latest('driver_id', userId);
+      if (legacy != null) return legacy;
+    }
+    return latest('user_id', userId);
+  }
+
+  /// Get the same vehicle used by the vehicle details and documents screens.
+  Future<String?> getDriverVehicleId(String driverId) async {
+    final vehicle = await getDriverVehicle(driverId);
+    return vehicle?['id'] as String?;
   }
 
   /// Upload insurance card with automatic OCR extraction
@@ -325,7 +339,7 @@ class DocumentService {
             updateData['insurance_company'] = ocrData.insuranceCompany;
           }
           if (policyNumber == null && ocrData.policyNumber != null) {
-            updateData['insurance_policy'] = ocrData.policyNumber;
+            updateData['insurance_policy_number'] = ocrData.policyNumber;
           }
           if (expiryDate == null && ocrData.expiryDate != null) {
             updateData['insurance_expiry'] = ocrData.expiryDate!.toIso8601String().split('T')[0];
@@ -341,7 +355,7 @@ class DocumentService {
 
       // Override with manual values if provided
       if (insuranceCompany != null) updateData['insurance_company'] = insuranceCompany;
-      if (policyNumber != null) updateData['insurance_policy'] = policyNumber;
+      if (policyNumber != null) updateData['insurance_policy_number'] = policyNumber;
       if (expiryDate != null) {
         updateData['insurance_expiry'] = expiryDate.toIso8601String().split('T')[0];
       }
@@ -527,9 +541,10 @@ class DocumentService {
     VehicleDocumentStatus? vehicleDocs;
     VehicleInspection? latestInspection;
 
-    final vehicleId = await getDriverVehicleId(driverId);
+    final vehicle = await getDriverVehicle(driverId);
+    final vehicleId = vehicle?['id'] as String?;
     if (vehicleId != null) {
-      vehicleDocs = await getVehicleDocumentStatus(vehicleId);
+      vehicleDocs = VehicleDocumentStatus.fromJson(vehicle!);
       latestInspection = await getLatestInspection(vehicleId);
     }
 
@@ -538,6 +553,7 @@ class DocumentService {
       vehicleDocs: vehicleDocs,
       latestInspection: latestInspection,
       hasVehicle: vehicleId != null,
+      vehicleId: vehicleId,
     );
   }
 
@@ -548,7 +564,11 @@ class DocumentService {
   Future<String> _uploadFile(String entityId, String type, File file) async {
     final extension = file.path.split('.').last.toLowerCase();
     final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final fileName = '$entityId/${type}_$timestamp.$extension';
+    // The private bucket's policy is scoped to the authenticated user's folder;
+    // drivers.id and vehicles.id can differ from auth.uid().
+    final ownerId = _client.auth.currentUser?.id;
+    if (ownerId == null) throw StateError('Sign in before uploading documents');
+    final fileName = '$ownerId/${entityId}_${type}_$timestamp.$extension';
 
     try {
       await _client.storage.from(_bucketName).upload(
@@ -588,6 +608,14 @@ class DocumentService {
 // ============================================================================
 // MODELS
 // ============================================================================
+
+// Empty strings are not uploaded documents. Normalize legacy optional fields
+// before choosing fallbacks so an empty new column cannot hide an existing file.
+String? _documentText(dynamic value) {
+  if (value is! String) return null;
+  final text = value.trim();
+  return text.isEmpty ? null : text;
+}
 
 /// Status of driver's personal documents
 class DriverDocumentStatus {
@@ -645,7 +673,8 @@ class DriverDocumentStatus {
           ? DateTime.tryParse(json['license_expiry'])
           : null,
       licenseImageUrl: json['license_image_url'] as String?,
-      profileImageUrl: json['profile_image_url'] as String?,
+      profileImageUrl: _documentText(json['profile_image_url']) ??
+          _documentText(json['profile_photo_url']),
       agreementSigned: json['agreement_signed'] == true,
       agreementSignedAt: json['agreement_signed_at'] != null
           ? DateTime.tryParse(json['agreement_signed_at'])
@@ -655,7 +684,8 @@ class DriverDocumentStatus {
           ? DateTime.tryParse(json['background_check_date'])
           : null,
       insuranceImageUrl: json['insurance_image_url'] as String?,
-      insurancePolicy: (json['insurance_policy'] ?? json['insurance_policy_number']) as String?,
+      insurancePolicy: _documentText(json['insurance_policy_number']) ??
+          _documentText(json['insurance_policy']),
       insuranceExpiry: json['insurance_expiry'] != null
           ? DateTime.tryParse(json['insurance_expiry'])
           : null,
@@ -677,8 +707,8 @@ class DriverDocumentStatus {
   bool get hasLicense =>
       (licenseNumber != null && licenseNumber!.isNotEmpty) ||
       (licenseImageUrl != null && licenseImageUrl!.isNotEmpty);
-  bool get hasLicenseImage => licenseImageUrl != null;
-  bool get hasProfilePhoto => profileImageUrl != null;
+  bool get hasLicenseImage => _documentText(licenseImageUrl) != null;
+  bool get hasProfilePhoto => _documentText(profileImageUrl) != null;
 
   bool get isLicenseExpired {
     if (licenseExpiry == null) return false;
@@ -773,11 +803,13 @@ class VehicleDocumentStatus {
   factory VehicleDocumentStatus.fromJson(Map<String, dynamic> json) {
     return VehicleDocumentStatus(
       insuranceCompany: json['insurance_company'] as String?,
-      insurancePolicy: json['insurance_policy'] as String?,
+      insurancePolicy: _documentText(json['insurance_policy_number']) ??
+          _documentText(json['insurance_policy']),
       insuranceExpiry: json['insurance_expiry'] != null
           ? DateTime.tryParse(json['insurance_expiry'])
           : null,
-      insuranceCardFrontUrl: json['insurance_card_front_url'] as String?,
+      insuranceCardFrontUrl: _documentText(json['insurance_card_front_url']) ??
+          _documentText(json['insurance_document_url']),
       insuranceCardBackUrl: json['insurance_card_back_url'] as String?,
       insuranceVerified: json['insurance_verified'] == true,
       endorsementId: json['rideshare_endorsement'] as String?,
@@ -796,16 +828,16 @@ class VehicleDocumentStatus {
     );
   }
 
-  bool get hasInsurance => insuranceCardFrontUrl != null;
-  bool get hasEndorsement => endorsementDocumentUrl != null;
-  bool get hasRegistration => registrationUrl != null;
+  bool get hasInsurance => _documentText(insuranceCardFrontUrl) != null;
+  bool get hasEndorsement => _documentText(endorsementDocumentUrl) != null;
+  bool get hasRegistration => _documentText(registrationUrl) != null;
 
   int get vehiclePhotosCount {
     int count = 0;
-    if (vehiclePhotoFrontUrl != null) count++;
-    if (vehiclePhotoBackUrl != null) count++;
-    if (vehiclePhotoInteriorUrl != null) count++;
-    if (vehiclePhotoSideUrl != null) count++;
+    if (_documentText(vehiclePhotoFrontUrl) != null) count++;
+    if (_documentText(vehiclePhotoBackUrl) != null) count++;
+    if (_documentText(vehiclePhotoInteriorUrl) != null) count++;
+    if (_documentText(vehiclePhotoSideUrl) != null) count++;
     return count;
   }
 
@@ -886,12 +918,14 @@ class CompleteDocumentStatus {
   final VehicleDocumentStatus? vehicleDocs;
   final VehicleInspection? latestInspection;
   final bool hasVehicle;
+  final String? vehicleId;
 
   CompleteDocumentStatus({
     required this.driverDocs,
     this.vehicleDocs,
     this.latestInspection,
     required this.hasVehicle,
+    this.vehicleId,
   });
 
   /// Check if driver can go online

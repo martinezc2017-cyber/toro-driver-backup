@@ -63,11 +63,16 @@ class DriverProvider with ChangeNotifier {
       }
 
       setUserCountry(_driver!.countryCode);
-      await StripeConfig.switchProvider(
-        _driver!.countryCode.toUpperCase() == 'MX'
-            ? StripeProvider.mx
-            : StripeProvider.us,
-      );
+      // Un fallo de Stripe NUNCA debe dejar la app sin conductor (driver = null).
+      try {
+        await StripeConfig.switchProvider(
+          _driver!.countryCode.toUpperCase() == 'MX'
+              ? StripeProvider.mx
+              : StripeProvider.us,
+        );
+      } catch (e) {
+        debugPrint('STRIPE_CONFIG -> switchProvider failed: $e');
+      }
 
       // Load stats
       _stats = await _driverService.getDriverStats(driverId);
@@ -86,6 +91,7 @@ class DriverProvider with ChangeNotifier {
 
       _error = null;
     } catch (e) {
+      debugPrint('DRIVER_PROVIDER -> initialize failed: $e');
       _driver = null;
       _stats = _createEmptyStats();
       _error = e.toString();

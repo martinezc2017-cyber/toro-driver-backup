@@ -5,7 +5,6 @@ import '../utils/app_colors.dart';
 import '../utils/money_format.dart';
 import '../services/mexico_tax_service.dart';
 import '../config/supabase_config.dart';
-import '../widgets/datos_fiscales_sheet.dart';
 
 class MexicoTaxScreen extends StatefulWidget {
   const MexicoTaxScreen({super.key});
@@ -18,6 +17,8 @@ class _MexicoTaxScreenState extends State<MexicoTaxScreen> {
   final MexicoTaxService _taxService = MexicoTaxService();
 
   bool _isLoading = true;
+  bool _isMexico = false;
+  bool _loadError = false;
   String? _driverId;
   bool _hasRfc = false;
   String? _rfc;
@@ -33,21 +34,33 @@ class _MexicoTaxScreenState extends State<MexicoTaxScreen> {
   }
 
   Future<void> _loadData() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _isMexico = false;
+      _loadError = false;
+    });
 
     try {
       final user = SupabaseConfig.client.auth.currentUser;
       if (user == null) {
-        setState(() => _isLoading = false);
+        _loadError = true;
         return;
       }
 
       // Get driver info
       final driverResponse = await SupabaseConfig.client
           .from('drivers')
-          .select('id, rfc, rfc_validated')
+          .select('id, country_code, rfc, rfc_validated')
           .eq('user_id', user.id)
           .maybeSingle();
+
+      if (!mounted) return;
+      if (driverResponse == null || driverResponse['country_code'] == null) {
+        _loadError = true;
+        return;
+      }
+      if (driverResponse['country_code']?.toString().trim().toUpperCase() != 'MX') return;
+      _isMexico = true;
 
       if (driverResponse != null) {
         _driverId = driverResponse['id'];
@@ -67,14 +80,42 @@ class _MexicoTaxScreenState extends State<MexicoTaxScreen> {
         );
       }
 
-      setState(() => _isLoading = false);
-    } catch (e) {
-      setState(() => _isLoading = false);
+    } catch (_) {
+      _loadError = true;
+      _isMexico = false;
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (!_isLoading && !_isMexico) {
+      return Scaffold(
+        appBar: AppBar(title: Text('documents_title'.tr())),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  (_loadError ? 'fiscal_load_error' : 'fiscal_country_only_mx').tr(),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                if (_loadError)
+                  TextButton(onPressed: _loadData, child: Text('retry'.tr())),
+                ElevatedButton(
+                  onPressed: () => Navigator.pushReplacementNamed(context, '/documents', arguments: 'tax'),
+                  child: Text('fiscal_manage_documents'.tr()),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
@@ -222,7 +263,7 @@ class _MexicoTaxScreenState extends State<MexicoTaxScreen> {
               ),
               if (!_hasRfc)
                 TextButton(
-                  onPressed: _showRfcDialog,
+                  onPressed: _openFiscalDocuments,
                   child: Text('mx_register'.tr(), style: TextStyle(color: AppColors.primary)),
                 ),
             ],
@@ -488,85 +529,9 @@ class _MexicoTaxScreenState extends State<MexicoTaxScreen> {
     );
   }
 
-  // 12 oct 2026: el RFC solo no alcanza para la factura de retenciones; abre el formulario completo
-  // (RFC, nombre como en el SAT, CP fiscal, régimen, idCIF). El diálogo viejo queda sin uso.
-  Future<void> _showRfcDialog() async {
-    if (_driverId == null) return;
-    final ok = await mostrarDatosFiscales(context, _driverId!);
-    if (ok && mounted) _loadData();
-  }
-
-  // ignore: unused_element
-  Future<void> _showRfcDialogViejo() async {
-    final controller = TextEditingController();
-
-    final rfc = await showDialog<String>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        title: Text('mx_register_rfc'.tr()),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'mx_rfc_format_hint'.tr(),
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: controller,
-              textCapitalization: TextCapitalization.characters,
-              maxLength: 13,
-              decoration: InputDecoration(
-                labelText: 'RFC',
-                hintText: 'AAAA000000XXX',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                filled: true,
-                fillColor: AppColors.card,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: Text('mx_cancel'.tr()),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final rfc = controller.text.trim().toUpperCase();
-              if (rfc.length < 12) {
-                ScaffoldMessenger.of(dialogContext).showSnackBar(
-                  SnackBar(content: Text('mx_rfc_invalid'.tr()), backgroundColor: AppColors.error),
-                );
-                return;
-              }
-              Navigator.pop(dialogContext, rfc);
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-            child: Text('mx_save'.tr()),
-          ),
-        ],
-      ),
-    );
-
-    if (rfc == null || rfc.isEmpty) return;
-    if (!mounted) return;
-
-    try {
-      await _taxService.updateRfc(_driverId!, rfc);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('mx_rfc_saved'.tr()), backgroundColor: AppColors.success),
-      );
-      _loadData();
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
-      );
-    }
+  Future<void> _openFiscalDocuments() async {
+    await Navigator.pushNamed(context, '/documents', arguments: 'tax');
+    if (mounted) await _loadData();
   }
 
   Future<void> _downloadConstancia(String url) async {

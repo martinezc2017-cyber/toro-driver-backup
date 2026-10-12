@@ -18,6 +18,29 @@ class DatosFiscales {
 
 /// Abre el formulario. Devuelve true si se guardó.
 Future<bool> mostrarDatosFiscales(BuildContext context, String driverId) async {
+  // The account's persisted country decides which tax flow applies, regardless
+  // of language or which screen opened this form.
+  try {
+    final driver = await Supabase.instance.client
+        .from('drivers')
+        .select('country_code')
+        .eq('id', driverId)
+        .maybeSingle();
+    if (!context.mounted) return false;
+    if (driver?['country_code']?.toString().trim().toUpperCase() != 'MX') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('fiscal_country_only_mx'.tr())),
+      );
+      return false;
+    }
+  } catch (_) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('fiscal_load_error'.tr())),
+      );
+    }
+    return false;
+  }
   final r = await showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
@@ -45,6 +68,7 @@ class _DatosFiscalesSheetState extends State<_DatosFiscalesSheet> {
   String? _regimen;
   bool _cargando = true;
   bool _guardando = false;
+  bool _errorCarga = false;
 
   @override
   void initState() {
@@ -61,12 +85,18 @@ class _DatosFiscalesSheetState extends State<_DatosFiscalesSheet> {
   }
 
   Future<void> _cargar() async {
+    setState(() {
+      _cargando = true;
+      _errorCarga = false;
+    });
     try {
       final d = await Supabase.instance.client
           .from('drivers')
           .select('rfc, fiscal_nombre, fiscal_cp, fiscal_regimen, fiscal_idcif, name')
           .eq('id', widget.driverId)
+          .eq('country_code', 'MX')
           .maybeSingle();
+      if (!mounted) return;
       if (d != null) {
         _rfc.text = (d['rfc'] ?? '').toString();
         _nombre.text = (d['fiscal_nombre'] ?? d['name'] ?? '').toString().toUpperCase();
@@ -74,31 +104,48 @@ class _DatosFiscalesSheetState extends State<_DatosFiscalesSheet> {
         _idcif.text = (d['fiscal_idcif'] ?? '').toString();
         final reg = d['fiscal_regimen']?.toString();
         _regimen = DatosFiscales.regimenes.contains(reg) ? reg : null;
+      } else {
+        _errorCarga = true;
       }
-    } catch (_) {/* el formulario sirve vacío */}
+    } catch (_) {
+      if (!mounted) return;
+      _errorCarga = true;
+    }
     if (mounted) setState(() => _cargando = false);
   }
 
   Future<void> _guardar() async {
+    if (_guardando || _cargando || _errorCarga) return;
     if (!(_form.currentState?.validate() ?? false)) return;
     setState(() => _guardando = true);
     try {
-      await Supabase.instance.client.from('drivers').update({
+      final saved = await Supabase.instance.client.from('drivers').update({
         'rfc': _rfc.text.trim().toUpperCase(),
         'fiscal_nombre': _nombre.text.trim().toUpperCase(),
         'fiscal_cp': _cp.text.trim(),
         'fiscal_regimen': _regimen,
         'fiscal_idcif': _idcif.text.trim().isEmpty ? null : _idcif.text.trim(),
         'fiscal_capturado_at': DateTime.now().toUtc().toIso8601String(),
-      }).eq('id', widget.driverId);
+      })
+          .eq('id', widget.driverId)
+          .eq('country_code', 'MX')
+          .select('id')
+          .maybeSingle();
       if (!mounted) return;
+      if (saved == null) {
+        setState(() => _guardando = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('fiscal_save_error'.tr()), backgroundColor: AppColors.error),
+        );
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('fiscal_guardado'.tr())));
       Navigator.pop(context, true);
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
       setState(() => _guardando = false);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('fiscal_error_guardar'.tr(args: ['$e'])),
+        content: Text('fiscal_save_error'.tr()),
         backgroundColor: AppColors.error,
       ));
     }
@@ -120,6 +167,15 @@ class _DatosFiscalesSheetState extends State<_DatosFiscalesSheet> {
       padding: EdgeInsets.fromLTRB(20, 16, 20, 16 + abajo),
       child: _cargando
           ? const SizedBox(height: 160, child: Center(child: CircularProgressIndicator()))
+          : _errorCarga
+          ? Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('fiscal_load_error'.tr(), textAlign: TextAlign.center),
+                const SizedBox(height: 12),
+                TextButton(onPressed: _cargar, child: Text('retry'.tr())),
+              ],
+            )
           : Form(
               key: _form,
               child: SingleChildScrollView(

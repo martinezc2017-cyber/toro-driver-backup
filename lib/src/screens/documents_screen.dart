@@ -9,6 +9,7 @@ import '../config/supabase_config.dart';
 import 'pending_approval_screen.dart';
 import '../widgets/datos_fiscales_sheet.dart';
 import '../widgets/driver_connect_banner.dart';
+import '../widgets/leyenda_retencion_isr.dart';
 import '../models/driver_document_readiness.dart';
 import '../services/driver_document_readiness_service.dart';
 
@@ -834,24 +835,44 @@ class _DocumentsScreenState extends State<DocumentsScreen>
           for (final field in const {'fiscal_nombre': 'fiscal_nombre', 'fiscal_cp': 'fiscal_cp', 'fiscal_regimen': 'fiscal_regimen'}.entries)
             Padding(padding: const EdgeInsets.only(bottom: 8), child: _buildFiscalRow(
               Icons.description_outlined, field.value.tr(),
-              _driverData[field.key]?.toString() ?? 'doc_not_registered'.tr())),
+              _valorFiscal(field.key))),
           if (_driverId != null) ...[
             const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
+            // Botón visible: como texto plano nadie lo encontraba (Carlos, 13 oct 2026).
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
                 onPressed: () async {
                   final ok = await mostrarDatosFiscales(context, _driverId!);
                   if (ok && mounted) _loadDocuments();
                 },
-                icon: const Icon(Icons.edit_note, size: 18),
-                label: Text((_driverRfc ?? '').isEmpty ? 'fiscal_boton'.tr() : 'fiscal_editar'.tr()),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                icon: const Icon(Icons.edit_note, size: 20),
+                label: Text(
+                  (_driverRfc ?? '').isEmpty ? 'fiscal_boton'.tr() : 'fiscal_editar'.tr(),
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
               ),
             ),
+            const SizedBox(height: 10),
+            const LeyendaRetencionIsr(),
           ],
         ],
       ),
     );
+  }
+
+  /// El régimen se guarda como clave SAT ('625'); en pantalla va con su nombre.
+  String _valorFiscal(String campo) {
+    final v = _driverData[campo]?.toString().trim() ?? '';
+    if (v.isEmpty) return 'doc_not_registered'.tr();
+    if (campo == 'fiscal_regimen' && DatosFiscales.regimenes.contains(v)) return 'fiscal_reg_$v'.tr();
+    return v;
   }
 
   Widget _buildFiscalRow(IconData icon, String label, String value) {

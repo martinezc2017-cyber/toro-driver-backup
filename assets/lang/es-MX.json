@@ -3123,5 +3123,7 @@
   "docs_center_optional_certificate": "Adjuntar constancia (opcional)",
   "docs_center_mexico": "México",
   "docs_center_us": "Estados Unidos",
-  "docs_center_country_mismatch": "Los requisitos de tu cuenta no coinciden con tu país. Contacta a soporte para revisarlos."
+  "docs_center_country_mismatch": "Los requisitos de tu cuenta no coinciden con tu país. Contacta a soporte para revisarlos.",
+  "fiscal_leyenda_con": "Con RFC: se te retiene {} % de ISR.",
+  "fiscal_leyenda_sin": "Sin RFC: la ley obliga a retener {} % de ISR (Art. 113-A LISR)."
 }

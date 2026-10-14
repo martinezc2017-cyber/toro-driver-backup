@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../utils/app_colors.dart';
+import 'leyenda_retencion_isr.dart';
 
 /// Datos fiscales ESCRITOS por el conductor (12 oct 2026). Antes solo se aceptaba subir el PDF de
 /// la Constancia de Situación Fiscal. Aquí escribe lo que pide su CFDI de retenciones: RFC, nombre
@@ -188,6 +189,8 @@ class _DatosFiscalesSheetState extends State<_DatosFiscalesSheet> {
                       style: const TextStyle(color: AppColors.textPrimary, fontSize: 19, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 4),
                   Text('fiscal_sub'.tr(), style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                  const SizedBox(height: 10),
+                  const LeyendaRetencionIsr(),
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: _rfc,

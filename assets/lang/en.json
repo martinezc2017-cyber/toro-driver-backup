@@ -3123,5 +3123,7 @@
   "docs_center_optional_certificate": "Attach SAT certificate (optional)",
   "docs_center_mexico": "Mexico",
   "docs_center_us": "United States",
-  "docs_center_country_mismatch": "Your account requirements do not match your country. Contact support to review them."
+  "docs_center_country_mismatch": "Your account requirements do not match your country. Contact support to review them.",
+  "fiscal_leyenda_con": "With RFC: {}% income tax (ISR) is withheld.",
+  "fiscal_leyenda_sin": "Without RFC: the law requires a {}% ISR withholding (Art. 113-A LISR)."
 }

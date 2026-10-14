@@ -20,7 +20,8 @@ class _LanguageScreenState extends State<LanguageScreen> {
       'flag': '🇺🇸',
       'region': 'United States',
     },
-    {'code': 'es', 'name': 'Español', 'flag': '🇪🇸', 'region': ''},
+    // Somos de México: bandera y región mexicanas (Carlos, 13 oct 2026).
+    {'code': 'es', 'name': 'Español', 'flag': '🇲🇽', 'region': 'México'},
   ];
 
   @override

@@ -90,52 +90,92 @@ class _MarketplaceConfirmScreenState extends State<MarketplaceConfirmScreen> {
     });
   }
 
-  /// No había en la tienda: se cancela el pedido y se suelta la tarjeta del comprador (no paga nada).
+  /// No había en la tienda: se cancela el pedido y se suelta la tarjeta del comprador (no paga nada). Hay que estar en
+  /// la tienda; lo que no había queda fuera de venta unos días y TORO le paga la vuelta al chofer.
   Future<void> _noHay() async {
     final notaCtrl = TextEditingController();
+    final articulos = await _service.articulosDelPedido(widget.orderId);
+    if (!mounted) return;
+    // Varias cosas: cuáles no había (las que sí, siguen a la venta).
+    final faltan = {for (final a in articulos) '${a['product_id']}'};
     final ok = await showDialog<bool>(
       context: context,
-      builder: (c) => AlertDialog(
-        backgroundColor: const Color(0xFF161616),
-        title: Text('te_lo_compra.no_hay_titulo'.tr(), style: const TextStyle(color: AppColors.textPrimary)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('te_lo_compra.no_hay_explica'.tr(), style: const TextStyle(color: AppColors.textSecondary)),
-            const SizedBox(height: 12),
-            TextField(
-              controller: notaCtrl,
-              style: const TextStyle(color: AppColors.textPrimary),
-              decoration: InputDecoration(
-                hintText: 'te_lo_compra.no_hay_nota'.tr(),
-                hintStyle: const TextStyle(color: AppColors.textDisabled),
-              ),
+      builder: (c) => StatefulBuilder(
+        builder: (c, setD) => AlertDialog(
+          backgroundColor: const Color(0xFF161616),
+          title: Text('te_lo_compra.no_hay_titulo'.tr(), style: const TextStyle(color: AppColors.textPrimary)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('te_lo_compra.no_hay_explica'.tr(), style: const TextStyle(color: AppColors.textSecondary)),
+                if (articulos.length > 1) ...[
+                  const SizedBox(height: 12),
+                  Text('te_lo_compra.no_hay_cuales'.tr(),
+                      style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
+                  for (final a in articulos)
+                    CheckboxListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      value: faltan.contains('${a['product_id']}'),
+                      activeColor: Colors.orange,
+                      title: Text('${a['quantity'] ?? 1} × ${a['product_name_snapshot'] ?? ''}',
+                          style: const TextStyle(color: AppColors.textPrimary, fontSize: 13)),
+                      onChanged: (v) => setD(() => v == true
+                          ? faltan.add('${a['product_id']}')
+                          : faltan.remove('${a['product_id']}')),
+                    ),
+                ],
+                const SizedBox(height: 12),
+                TextField(
+                  controller: notaCtrl,
+                  style: const TextStyle(color: AppColors.textPrimary),
+                  decoration: InputDecoration(
+                    hintText: 'te_lo_compra.no_hay_nota'.tr(),
+                    hintStyle: const TextStyle(color: AppColors.textDisabled),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(c, false), child: Text('go_back'.tr())),
+            ElevatedButton(
+              onPressed: articulos.length > 1 && faltan.isEmpty ? null : () => Navigator.pop(c, true),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+              child: Text('te_lo_compra.no_hay_confirmar'.tr()),
             ),
           ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: Text('go_back'.tr())),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(c, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
-            child: Text('te_lo_compra.no_hay_confirmar'.tr()),
-          ),
-        ],
       ),
     );
     if (ok != true || _deliveryId == null) return;
     setState(() => _sinExistenciaBusy = true);
     try {
-      await _service.tiendaSinExistencia(deliveryId: _deliveryId!, nota: notaCtrl.text.trim());
+      final r = await _service.tiendaSinExistencia(
+        deliveryId: _deliveryId!,
+        nota: notaCtrl.text.trim(),
+        productos: articulos.length > 1 ? faltan.toList() : null,
+      );
       if (!mounted) return;
+      final pago = (r['pago_chofer'] as num?)?.toDouble() ?? 0;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('te_lo_compra.no_hay_listo'.tr()),
+        content: Text(pago > 0
+            ? 'te_lo_compra.no_hay_listo_pago'.tr(namedArgs: {'monto': pago.toStringAsFixed(2)})
+            : 'te_lo_compra.no_hay_listo'.tr()),
         backgroundColor: Colors.orange,
       ));
       Navigator.pop(context, false);
     } catch (e) {
-      if (mounted) _err(e.toString().replaceAll('PostgrestException', '').split(',').first);
+      if (!mounted) return;
+      final s = e.toString();
+      final lejos = RegExp(r'TE_LO_COMPRA_NO_ESTAS_EN_LA_TIENDA (\d+)').firstMatch(s);
+      _err(lejos != null
+          ? 'te_lo_compra.no_hay_lejos'.tr(namedArgs: {'metros': lejos.group(1)!})
+          : s.contains('TE_LO_COMPRA_SIN_UBICACION')
+              ? 'te_lo_compra.no_hay_sin_ubicacion'.tr()
+              : s.replaceAll('PostgrestException', '').split(',').first);
     }
     if (mounted) setState(() => _sinExistenciaBusy = false);
   }

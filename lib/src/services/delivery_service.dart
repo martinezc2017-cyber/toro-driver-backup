@@ -386,12 +386,29 @@ class DeliveryService {
   }
 
   /// TORO te lo compra: no había en la tienda. Cancela el pedido y suelta la tarjeta del comprador
-  /// (RPC driver_tienda_sin_existencia). Solo antes de comprar.
-  Future<void> tiendaSinExistencia({required String deliveryId, String? nota}) async {
-    await _client.rpc('driver_tienda_sin_existencia', params: {
+  /// (RPC driver_tienda_sin_existencia). Solo antes de comprar y estando en la tienda; lo que no había queda fuera de
+  /// venta unos días y al chofer se le paga la vuelta: devuelve {pago_chofer}. [productos] = lo que no había (null =
+  /// todo el pedido).
+  Future<Map<String, dynamic>> tiendaSinExistencia({required String deliveryId, String? nota, List<String>? productos}) async {
+    final res = await _client.rpc('driver_tienda_sin_existencia', params: {
       'p_delivery_id': deliveryId,
       'p_nota': nota,
+      'p_productos': productos,
     });
+    return res is Map ? Map<String, dynamic>.from(res) : <String, dynamic>{};
+  }
+
+  /// Artículos del pedido (para decir qué no había en la tienda).
+  Future<List<Map<String, dynamic>>> articulosDelPedido(String orderId) async {
+    try {
+      final rows = await _client
+          .from('marketplace_order_items')
+          .select('product_id, product_name_snapshot, quantity')
+          .eq('order_id', orderId);
+      return (rows as List).map((r) => Map<String, dynamic>.from(r as Map)).toList();
+    } catch (_) {
+      return [];
+    }
   }
 
   /// TORO te lo compra: no cabe en mi vehículo (antes de comprar). La entrega pide el siguiente tamaño y se le ofrece

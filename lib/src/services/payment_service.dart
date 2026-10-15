@@ -226,6 +226,8 @@ class PaymentService {
           .select()
           .eq('driver_id', driverId)
           .eq('status', 'completed')
+          // TORO te lo compra: el reembolso de lo que el chofer pagó en la tienda NO es ganancia.
+          .or('type.is.null,type.neq.reembolso_compra')
           .gte('created_at', startOfDay.toIso8601String());
 
       for (var rawItem in (todayResponse as List)) {
@@ -254,6 +256,8 @@ class PaymentService {
           .select()
           .eq('driver_id', driverId)
           .eq('status', 'completed')
+          // TORO te lo compra: el reembolso de lo que el chofer pagó en la tienda NO es ganancia.
+          .or('type.is.null,type.neq.reembolso_compra')
           .gte('created_at', startOfWeek.toIso8601String());
 
       for (var rawItem in (weekResponse as List)) {
@@ -296,6 +300,8 @@ class PaymentService {
           .select()
           .eq('driver_id', driverId)
           .eq('status', 'completed')
+          // TORO te lo compra: el reembolso de lo que el chofer pagó en la tienda NO es ganancia.
+          .or('type.is.null,type.neq.reembolso_compra')
           .gte('created_at', startOfMonth.toIso8601String());
 
       for (var rawItem in (monthResponse as List)) {
@@ -323,7 +329,9 @@ class PaymentService {
           .from('driver_earnings')
           .select()
           .eq('driver_id', driverId)
-          .eq('status', 'completed');
+          .eq('status', 'completed')
+          // TORO te lo compra: el reembolso de lo que el chofer pagó en la tienda NO es ganancia.
+          .or('type.is.null,type.neq.reembolso_compra');
 
       for (var rawItem in (totalResponse as List)) {
         final item = Map<String, dynamic>.from(rawItem as Map);
@@ -522,11 +530,13 @@ class PaymentService {
                       earning['delivery_id'] ??
                       earning['carpool_id'])
                   ?.toString(),
-          type: serviceType == 'package'
-              ? TransactionType.rideEarning
+          type: serviceType == 'reembolso_compra'
+              ? TransactionType.adjustment
               : TransactionType.rideEarning,
           amount: amount,
-          description: serviceType == 'package'
+          description: serviceType == 'reembolso_compra'
+              ? 'Reembolso: lo que pagaste en la tienda (TORO te lo compra)'
+              : serviceType == 'package'
               ? 'Entrega de paquete'
               : serviceType == 'carpool'
               ? 'Viaje compartido'
@@ -562,6 +572,8 @@ class PaymentService {
             .select('amount, net_fare, tip_amount, created_at')
             .eq('driver_id', driverId)
             .eq('status', 'completed')
+          // TORO te lo compra: el reembolso de lo que el chofer pagó en la tienda NO es ganancia.
+          .or('type.is.null,type.neq.reembolso_compra')
             .gte('created_at', dayStart.toIso8601String())
             .lt('created_at', dayEnd.toIso8601String());
 

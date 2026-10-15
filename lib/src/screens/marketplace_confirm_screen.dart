@@ -46,17 +46,29 @@ class _MarketplaceConfirmScreenState extends State<MarketplaceConfirmScreen> {
   String? _contactPhone;
   bool _noShowBusy = false;
 
+  // TORO te lo compra: en la recogida no hay PIN de vendedor; el chofer compra, sube el ticket y se le reembolsa al
+  // entregar. Se detecta del propio pedido (source = 'tienda') para no cambiar a quien abre esta pantalla.
+  final _montoCtrl = TextEditingController();
+  bool _teLoCompra = false;
+  double? _pagarEnTienda;
+  double? _subtotal;
+  String? _deliveryId;
+  bool _sinExistenciaBusy = false;
+
   bool get _isPickup => widget.mode == 'pickup';
-  String get _title => _isPickup ? 'marketplace.confirm_pickup'.tr() : 'marketplace.confirm_delivery'.tr();
-  String get _subtitle => _isPickup
-      ? 'marketplace.at_vendor_store'.tr()
-      : 'marketplace.at_buyer_address'.tr();
+  bool get _compra => _isPickup && _teLoCompra;
+  String get _title => _compra
+      ? 'te_lo_compra.titulo_recoger'.tr()
+      : (_isPickup ? 'marketplace.confirm_pickup'.tr() : 'marketplace.confirm_delivery'.tr());
+  String get _subtitle => _compra
+      ? 'te_lo_compra.compra_en'.tr()
+      : (_isPickup ? 'marketplace.at_vendor_store'.tr() : 'marketplace.at_buyer_address'.tr());
   String get _otpLabel => _isPickup
       ? 'marketplace.pickup_code'.tr()
       : 'marketplace.delivery_code'.tr();
-  String get _photoLabel => _isPickup
-      ? 'marketplace.photo_pickup'.tr()
-      : 'marketplace.photo_delivery'.tr();
+  String get _photoLabel => _compra
+      ? 'te_lo_compra.foto_ticket'.tr()
+      : (_isPickup ? 'marketplace.photo_pickup'.tr() : 'marketplace.photo_delivery'.tr());
   Color get _accent => _isPickup ? Colors.orange : Colors.green;
 
   @override
@@ -64,6 +76,68 @@ class _MarketplaceConfirmScreenState extends State<MarketplaceConfirmScreen> {
     super.initState();
     _captureGps();
     _loadContacts();
+    if (_isPickup) _loadTeLoCompra();
+  }
+
+  Future<void> _loadTeLoCompra() async {
+    final info = await _service.teLoCompraInfo(widget.orderId);
+    if (!mounted || info == null || info['source'] != 'tienda') return;
+    setState(() {
+      _teLoCompra = true;
+      _pagarEnTienda = (info['vendor_payout'] as num?)?.toDouble();
+      _subtotal = (info['subtotal'] as num?)?.toDouble();
+      _deliveryId = info['delivery_id']?.toString();
+    });
+  }
+
+  /// No había en la tienda: se cancela el pedido y se suelta la tarjeta del comprador (no paga nada).
+  Future<void> _noHay() async {
+    final notaCtrl = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        backgroundColor: const Color(0xFF161616),
+        title: Text('te_lo_compra.no_hay_titulo'.tr(), style: const TextStyle(color: AppColors.textPrimary)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('te_lo_compra.no_hay_explica'.tr(), style: const TextStyle(color: AppColors.textSecondary)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: notaCtrl,
+              style: const TextStyle(color: AppColors.textPrimary),
+              decoration: InputDecoration(
+                hintText: 'te_lo_compra.no_hay_nota'.tr(),
+                hintStyle: const TextStyle(color: AppColors.textDisabled),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: Text('go_back'.tr())),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(c, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+            child: Text('te_lo_compra.no_hay_confirmar'.tr()),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || _deliveryId == null) return;
+    setState(() => _sinExistenciaBusy = true);
+    try {
+      await _service.tiendaSinExistencia(deliveryId: _deliveryId!, nota: notaCtrl.text.trim());
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('te_lo_compra.no_hay_listo'.tr()),
+        backgroundColor: Colors.orange,
+      ));
+      Navigator.pop(context, false);
+    } catch (e) {
+      if (mounted) _err(e.toString().replaceAll('PostgrestException', '').split(',').first);
+    }
+    if (mounted) setState(() => _sinExistenciaBusy = false);
   }
 
   Future<void> _loadContacts() async {
@@ -142,6 +216,7 @@ class _MarketplaceConfirmScreenState extends State<MarketplaceConfirmScreen> {
   @override
   void dispose() {
     _otpCtrl.dispose();
+    _montoCtrl.dispose();
     super.dispose();
   }
 
@@ -170,7 +245,55 @@ class _MarketplaceConfirmScreenState extends State<MarketplaceConfirmScreen> {
     }
   }
 
+  /// TORO te lo compra: foto del ticket + total pagado en la tienda (sin PIN de vendedor).
+  Future<void> _submitCompra() async {
+    final monto = double.tryParse(_montoCtrl.text.trim().replaceAll(',', '').replaceAll(r'$', ''));
+    if (monto == null || monto <= 0) {
+      _err('te_lo_compra.monto_invalido'.tr());
+      return;
+    }
+    if (_subtotal != null && monto > _subtotal!) {
+      _err('te_lo_compra.monto_mayor'.tr(namedArgs: {'max': _subtotal!.toStringAsFixed(2)}));
+      return;
+    }
+    if (_photo == null) {
+      _err('te_lo_compra.foto_ticket_falta'.tr());
+      return;
+    }
+    if (_position == null) {
+      _err('marketplace.waiting_gps'.tr());
+      return;
+    }
+    if (_deliveryId == null) {
+      _err('nav.marketplace_not_found'.tr());
+      return;
+    }
+    setState(() => _submitting = true);
+    try {
+      final bytes = await _photo!.readAsBytes();
+      final url = await _service.uploadProofPhoto(
+        orderId: widget.orderId,
+        stage: 'pickup',
+        bytes: bytes,
+        lat: _position!.latitude,
+        lng: _position!.longitude,
+      );
+      if (url == null) throw 'marketplace.upload_failed'.tr();
+      await _service.comproEnTienda(deliveryId: _deliveryId!, monto: monto, photoUrl: url);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('te_lo_compra.compra_registrada'.tr(namedArgs: {'amount': monto.toStringAsFixed(2)})),
+        backgroundColor: Colors.green,
+      ));
+      Navigator.pop(context, true);
+    } catch (e) {
+      if (mounted) _err(e.toString().replaceAll('PostgrestException', '').split(',').first);
+    }
+    if (mounted) setState(() => _submitting = false);
+  }
+
   Future<void> _submit() async {
+    if (_compra) return _submitCompra();
     final otp = _otpCtrl.text.trim();
     if (otp.length != 4) {
       _err('marketplace.code_4_digits'.tr());
@@ -341,6 +464,54 @@ class _MarketplaceConfirmScreenState extends State<MarketplaceConfirmScreen> {
                 ),
               const SizedBox(height: 24),
 
+              if (_compra) ...[
+                // TORO te lo compra: cuánto pagar y que se le reembolsa al entregar; luego el total del ticket.
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.orange.withValues(alpha: 0.5)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'te_lo_compra.paga_en_tienda'.tr(namedArgs: {
+                          'amount': (_pagarEnTienda ?? 0).toStringAsFixed(2),
+                        }),
+                        style: const TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w800),
+                      ),
+                      const SizedBox(height: 4),
+                      Text('te_lo_compra.reembolso_al_entregar'.tr(),
+                          style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Text('te_lo_compra.total_ticket'.tr(),
+                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _montoCtrl,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: AppColors.textPrimary, fontSize: 28, fontWeight: FontWeight.bold),
+                  decoration: InputDecoration(
+                    prefixText: r'$ ',
+                    prefixStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 24),
+                    hintText: '0.00',
+                    hintStyle: TextStyle(color: AppColors.border),
+                    filled: true,
+                    fillColor: AppColors.border,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+              ] else ...[
               // OTP input
               Text(_otpLabel, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
@@ -363,6 +534,7 @@ class _MarketplaceConfirmScreenState extends State<MarketplaceConfirmScreen> {
                 ),
               ),
               const SizedBox(height: 24),
+              ],
 
               // Photo
               Text(_photoLabel, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w600)),
@@ -457,12 +629,30 @@ class _MarketplaceConfirmScreenState extends State<MarketplaceConfirmScreen> {
                 ),
                 child: _submitting
                     ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-                    : Text(_isPickup ? 'marketplace.confirm_pickup'.tr() : 'marketplace.confirm_delivery'.tr(),
+                    : Text(_compra
+                            ? 'te_lo_compra.ya_lo_compre'.tr()
+                            : (_isPickup ? 'marketplace.confirm_pickup'.tr() : 'marketplace.confirm_delivery'.tr()),
                         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               ),
               const SizedBox(height: 12),
+              // TORO te lo compra: si no hay, se cancela sin cobrarle al comprador.
+              if (_compra) ...[
+                OutlinedButton.icon(
+                  onPressed: _sinExistenciaBusy ? null : _noHay,
+                  icon: _sinExistenciaBusy
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.orange))
+                      : const Icon(Icons.remove_shopping_cart, color: Colors.orange),
+                  label: Text('te_lo_compra.no_hay'.tr(), style: const TextStyle(color: Colors.orange)),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(50),
+                    side: const BorderSide(color: Colors.orange),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
               Text(
-                'marketplace.missing_requirements'.tr(),
+                _compra ? 'te_lo_compra.requisitos'.tr() : 'marketplace.missing_requirements'.tr(),
                 textAlign: TextAlign.center,
                 style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
               ),

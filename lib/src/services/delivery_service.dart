@@ -223,7 +223,7 @@ class DeliveryService {
       }
       final order = await _client
           .from('marketplace_orders')
-          .select('id, status, subtotal, delivery_fee, flat_commission, total, '
+          .select('id, status, subtotal, delivery_fee, flat_commission, total, source, '
               'vendor_payout, payment_method, buyer_name, buyer_phone, '
               'pickup_otp, delivery_otp, '
               'vendor_id, vendor_pickup_address, delivery_address, '
@@ -335,6 +335,45 @@ class DeliveryService {
       'p_driver_lng': lng,
     });
     return res == true;
+  }
+
+  /// TORO te lo compra: ¿este pedido lo compra el chofer en la tienda? Devuelve source, cuánto pagar en la tienda
+  /// (vendor_payout, el precio publicado) y la entrega. null si no se pudo leer.
+  Future<Map<String, dynamic>?> teLoCompraInfo(String orderId) async {
+    try {
+      final row = await _client
+          .from('marketplace_orders')
+          .select('source, vendor_payout, subtotal, delivery_id')
+          .eq('id', orderId)
+          .maybeSingle();
+      return row == null ? null : Map<String, dynamic>.from(row);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// TORO te lo compra: el chofer ya compró en la tienda. Foto + total del ticket (RPC driver_compro_en_tienda).
+  /// El servidor rechaza un ticket mayor a lo que paga el comprador por los artículos. Se le reembolsa al entregar.
+  Future<Map<String, dynamic>> comproEnTienda({
+    required String deliveryId,
+    required double monto,
+    required String photoUrl,
+  }) async {
+    final res = await _client.rpc('driver_compro_en_tienda', params: {
+      'p_delivery_id': deliveryId,
+      'p_monto': monto,
+      'p_foto_url': photoUrl,
+    });
+    return (res is Map) ? Map<String, dynamic>.from(res) : <String, dynamic>{};
+  }
+
+  /// TORO te lo compra: no había en la tienda. Cancela el pedido y suelta la tarjeta del comprador
+  /// (RPC driver_tienda_sin_existencia). Solo antes de comprar.
+  Future<void> tiendaSinExistencia({required String deliveryId, String? nota}) async {
+    await _client.rpc('driver_tienda_sin_existencia', params: {
+      'p_delivery_id': deliveryId,
+      'p_nota': nota,
+    });
   }
 
   /// Confirms marketplace delivery. Calls RPC marketplace_confirm_delivery.

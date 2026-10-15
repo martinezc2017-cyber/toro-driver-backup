@@ -590,6 +590,8 @@ class DriverService {
           .from('driver_earnings')
           .select('*')
           .eq('driver_id', driverId)
+          // TORO te lo compra: el reembolso de lo pagado en la tienda NO es ganancia.
+          .or('type.is.null,type.neq.reembolso_compra')
           .gte('created_at', weekStart.toIso8601String())
           .lt('created_at', weekEnd.add(const Duration(days: 1)).toIso8601String())
           .order('created_at', ascending: false);

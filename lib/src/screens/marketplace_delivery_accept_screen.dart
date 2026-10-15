@@ -345,6 +345,44 @@ class _State extends State<MarketplaceDeliveryAcceptScreen> {
           ),
         ),
         const SizedBox(height: 12),
+        // TORO te lo compra: el chofer adelanta en la tienda; decide aceptar según traiga o no ese dinero.
+        if (order?['source'] == 'tienda') ...[
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.orange.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.orange, width: 1.5),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.shopping_cart_checkout, color: Colors.orange, size: 26),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('te_lo_compra.titulo'.tr(),
+                          style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1)),
+                      const SizedBox(height: 4),
+                      Text(
+                        'te_lo_compra.adelantas'.tr(namedArgs: {
+                          'amount': formatMoney((order?['vendor_payout'] as num?)?.toDouble() ?? 0, country: countryCode),
+                        }),
+                        style: const TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w800),
+                      ),
+                      const SizedBox(height: 2),
+                      Text('te_lo_compra.adelantas_detalle'.tr(),
+                          style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
         // Offer-expiration countdown (auto-decline if vendor doesn't act)
         _offerCountdownChip(),
         const SizedBox(height: 12),

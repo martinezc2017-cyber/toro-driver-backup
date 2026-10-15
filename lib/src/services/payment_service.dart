@@ -3,6 +3,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
+import '../core/logging/app_logger.dart';
 import '../config/stripe_config.dart';
 import '../models/earning_model.dart';
 
@@ -226,8 +227,6 @@ class PaymentService {
           .select()
           .eq('driver_id', driverId)
           .eq('status', 'completed')
-          // TORO te lo compra: el reembolso de lo que el chofer pagó en la tienda NO es ganancia.
-          .or('type.is.null,type.neq.reembolso_compra')
           .gte('created_at', startOfDay.toIso8601String());
 
       for (var rawItem in (todayResponse as List)) {
@@ -256,8 +255,6 @@ class PaymentService {
           .select()
           .eq('driver_id', driverId)
           .eq('status', 'completed')
-          // TORO te lo compra: el reembolso de lo que el chofer pagó en la tienda NO es ganancia.
-          .or('type.is.null,type.neq.reembolso_compra')
           .gte('created_at', startOfWeek.toIso8601String());
 
       for (var rawItem in (weekResponse as List)) {
@@ -300,8 +297,6 @@ class PaymentService {
           .select()
           .eq('driver_id', driverId)
           .eq('status', 'completed')
-          // TORO te lo compra: el reembolso de lo que el chofer pagó en la tienda NO es ganancia.
-          .or('type.is.null,type.neq.reembolso_compra')
           .gte('created_at', startOfMonth.toIso8601String());
 
       for (var rawItem in (monthResponse as List)) {
@@ -329,9 +324,7 @@ class PaymentService {
           .from('driver_earnings')
           .select()
           .eq('driver_id', driverId)
-          .eq('status', 'completed')
-          // TORO te lo compra: el reembolso de lo que el chofer pagó en la tienda NO es ganancia.
-          .or('type.is.null,type.neq.reembolso_compra');
+          .eq('status', 'completed');
 
       for (var rawItem in (totalResponse as List)) {
         final item = Map<String, dynamic>.from(rawItem as Map);
@@ -512,7 +505,7 @@ class PaymentService {
           .order('created_at', ascending: false)
           .range(offset, offset + limit - 1);
 
-      return (response as List).map((raw) {
+      final historial = (response as List).map((raw) {
         final earning = Map<String, dynamic>.from(raw as Map);
         final amount = _getEarningsFromLedger(earning);
         final serviceType =
@@ -530,13 +523,11 @@ class PaymentService {
                       earning['delivery_id'] ??
                       earning['carpool_id'])
                   ?.toString(),
-          type: serviceType == 'reembolso_compra'
-              ? TransactionType.adjustment
+          type: serviceType == 'package'
+              ? TransactionType.rideEarning
               : TransactionType.rideEarning,
           amount: amount,
-          description: serviceType == 'reembolso_compra'
-              ? 'Reembolso: lo que pagaste en la tienda (TORO te lo compra)'
-              : serviceType == 'package'
+          description: serviceType == 'package'
               ? 'Entrega de paquete'
               : serviceType == 'carpool'
               ? 'Viaje compartido'
@@ -546,6 +537,39 @@ class PaymentService {
           createdAt: DateTime.tryParse(dateStr) ?? DateTime.now(),
         );
       }).toList();
+
+      // TORO te lo compra: lo que el chofer pagó en la tienda y se le regresó al entregar. NO es ganancia (no está
+      // en driver_earnings ni suma en hoy/semana/total), pero sí está en su saldo retirable: aquí se ve en su lugar
+      // del historial (entre la primera y la última ganancia de esta página).
+      final arriba = offset == 0 ? null : (historial.isEmpty ? null : historial.first.createdAt);
+      final abajo = historial.length < limit ? null : historial.last.createdAt;
+      if (offset == 0 || historial.isNotEmpty) {
+        try {
+          final reembolsos = await _client.rpc('mis_reembolsos_tienda');
+          for (final raw in (reembolsos as List? ?? const [])) {
+            final r = Map<String, dynamic>.from(raw as Map);
+            final fecha = DateTime.tryParse('${r['reembolsado_at']}');
+            if (fecha == null) continue;
+            if (arriba != null && !fecha.isBefore(arriba)) continue;
+            if (abajo != null && !fecha.isAfter(abajo)) continue;
+            if (startDate != null && fecha.isBefore(startDate)) continue;
+            if (endDate != null && fecha.isAfter(endDate)) continue;
+            historial.add(EarningModel(
+              id: 'reembolso_${r['order_id']}',
+              driverId: driverId,
+              rideId: r['delivery_id']?.toString(),
+              type: TransactionType.adjustment,
+              amount: (r['monto'] as num?)?.toDouble() ?? 0,
+              description: 'te_lo_compra.history_refund'.tr(namedArgs: {'store': '${r['tienda'] ?? ''}'}),
+              createdAt: fecha,
+            ));
+          }
+          historial.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        } catch (e) {
+          AppLogger.log('PAYMENT_SERVICE -> reembolsos tienda: $e');
+        }
+      }
+      return historial;
     } catch (e) {
       return [];
     }
@@ -572,8 +596,6 @@ class PaymentService {
             .select('amount, net_fare, tip_amount, created_at')
             .eq('driver_id', driverId)
             .eq('status', 'completed')
-          // TORO te lo compra: el reembolso de lo que el chofer pagó en la tienda NO es ganancia.
-          .or('type.is.null,type.neq.reembolso_compra')
             .gte('created_at', dayStart.toIso8601String())
             .lt('created_at', dayEnd.toIso8601String());
 

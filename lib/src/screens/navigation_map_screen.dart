@@ -2462,8 +2462,15 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
         ride != null &&
         (ride.status == RideStatus.accepted ||
             ride.status == RideStatus.pending);
+    // Mercado: ya con el pedido (in_progress) el chofer va hacia el COMPRADOR, que comparte su ubicación desde el
+    // seguimiento del pedido (p. ej. en la fila de un retén se va moviendo).
+    final isGoingToBuyer =
+        ride != null &&
+        ride.type == RideType.marketplace &&
+        (ride.status == RideStatus.arrivedAtPickup ||
+            ride.status == RideStatus.inProgress);
 
-    if (!isGoingToPickup || !ride.hasRiderGps) {
+    if (!(isGoingToPickup || isGoingToBuyer) || !ride.hasRiderGps) {
       // Limpiar marcador si no aplica
       if (_lastRiderMarkerId != null) {
         await _riderMarkerManager!.deleteAll();

@@ -3162,5 +3162,6 @@
   "te_lo_compra.no_hay_nota": "¿Qué pasó? (opcional)",
   "te_lo_compra.no_hay_confirmar": "Sí, cancelar",
   "te_lo_compra.no_hay_listo": "Pedido cancelado: no había en la tienda.",
-  "te_lo_compra.requisitos": "Necesitas el total del ticket, la foto del ticket y tu ubicación."
+  "te_lo_compra.requisitos": "Necesitas el total del ticket, la foto del ticket y tu ubicación.",
+  "te_lo_compra.history_refund": "Reembolso de tu compra en {store} (TORO te lo compra)"
 }

@@ -15,6 +15,7 @@ import '../services/driver_qr_points_service.dart';
 import '../services/payment_methods_config_service.dart';
 import '../services/live_pricing.dart';
 import '../services/stripe_connect_service.dart';
+import '../widgets/datos_fiscales_sheet.dart' show DatosFiscales;
 import 'qr_points_screen.dart';
 import 'cash_out_screen.dart';
 
@@ -35,6 +36,8 @@ class _EarningsScreenState extends State<EarningsScreen> {
   // y mostraba los valores hardcodeados de USA (57% chofer / 20.4% plataforma)
   // aunque el chofer fuera MX (61% / 18%).
   LivePricing? _pct;
+  // Empresa (RFC de 12): el motor no le retiene ISR/IVA de plataforma, así que el desglose muestra 0 %.
+  bool _empresa = false;
 
   // Instancia REAL del servicio QR (no es singleton): hay que inicializarla o
   // el tier sale siempre 0 y los % quedan sin cargar.
@@ -99,6 +102,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
           _stripeBalance = bal;
           _openPayout = openPayout;
           _pct = pct;
+          _empresa = DatosFiscales.esEmpresa(driver.rfc);
         });
       }
     }
@@ -656,7 +660,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
                       'earn.split_detail'.tr(namedArgs: {
                         'insurance': _pct!.insurance.toStringAsFixed(0),
                         'iva': _pct!.iva.toStringAsFixed(0),
-                        'retention': _pct!.totalRetention.toStringAsFixed(1),
+                        'retention': (_empresa ? 0 : _pct!.totalRetention).toStringAsFixed(1),
                       }),
                       style: const TextStyle(
                         color: AppColors.textDisabled,

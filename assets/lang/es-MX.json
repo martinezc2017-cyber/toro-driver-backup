@@ -3125,5 +3125,21 @@
   "docs_center_us": "Estados Unidos",
   "docs_center_country_mismatch": "Los requisitos de tu cuenta no coinciden con tu país. Contacta a soporte para revisarlos.",
   "fiscal_leyenda_con": "Con RFC: se te retiene {} % de ISR.",
-  "fiscal_leyenda_sin": "Sin RFC: la ley obliga a retener {} % de ISR (Art. 113-A LISR)."
+  "fiscal_leyenda_sin": "Sin RFC: la ley obliga a retener {} % de ISR (Art. 113-A LISR).",
+  "fiscal_tipo": "Tipo",
+  "fiscal_tipo_pregunta": "¿Cómo estás dado de alta en el SAT?",
+  "fiscal_tipo_fisica": "Persona física",
+  "fiscal_tipo_moral": "Empresa",
+  "fiscal_rfc_ayuda_fisica": "Persona física: 13 caracteres.",
+  "fiscal_rfc_ayuda_moral": "Empresa (persona moral): 12 caracteres.",
+  "fiscal_rfc_error_moral": "RFC de empresa inválido: 3 letras, 6 números (fecha de constitución) y 3 caracteres.",
+  "fiscal_rfc_es_empresa": "Ese RFC es de empresa (12 caracteres). Elige «Empresa» arriba.",
+  "fiscal_rfc_es_persona": "Ese RFC es de persona física (13 caracteres). Elige «Persona física» arriba.",
+  "fiscal_razon_social": "Razón social (como aparece en el SAT)",
+  "fiscal_razon_social_ayuda": "Igual que en tu constancia, sin el régimen de capital (sin «S.A. de C.V.»).",
+  "fiscal_razon_social_error": "Escribe la razón social como aparece en el SAT.",
+  "fiscal_leyenda_empresa": "Empresa: a las personas morales no se les aplican las retenciones de plataforma (ISR e IVA). Tú facturas tus servicios.",
+  "fiscal_reg_601": "General de Ley Personas Morales (601)",
+  "fiscal_reg_624": "Coordinados – autotransporte (624)",
+  "fiscal_reg_603": "Personas morales con fines no lucrativos (603)"
 }

@@ -3125,5 +3125,21 @@
   "docs_center_us": "United States",
   "docs_center_country_mismatch": "Your account requirements do not match your country. Contact support to review them.",
   "fiscal_leyenda_con": "With RFC: {}% income tax (ISR) is withheld.",
-  "fiscal_leyenda_sin": "Without RFC: the law requires a {}% ISR withholding (Art. 113-A LISR)."
+  "fiscal_leyenda_sin": "Without RFC: the law requires a {}% ISR withholding (Art. 113-A LISR).",
+  "fiscal_tipo": "Type",
+  "fiscal_tipo_pregunta": "How are you registered with the SAT?",
+  "fiscal_tipo_fisica": "Individual",
+  "fiscal_tipo_moral": "Company",
+  "fiscal_rfc_ayuda_fisica": "Individual: 13 characters.",
+  "fiscal_rfc_ayuda_moral": "Company: 12 characters.",
+  "fiscal_rfc_error_moral": "Invalid company RFC: 3 letters, 6 digits (incorporation date) and 3 characters.",
+  "fiscal_rfc_es_empresa": "That RFC belongs to a company (12 characters). Choose “Company” above.",
+  "fiscal_rfc_es_persona": "That RFC belongs to an individual (13 characters). Choose “Individual” above.",
+  "fiscal_razon_social": "Company legal name (as registered with the SAT)",
+  "fiscal_razon_social_ayuda": "Exactly as on your tax certificate, without the capital regime (no “S.A. de C.V.”).",
+  "fiscal_razon_social_error": "Type the company name as registered with the SAT.",
+  "fiscal_leyenda_empresa": "Company: platform withholdings (ISR and IVA) don't apply to companies. You invoice your own services.",
+  "fiscal_reg_601": "General regime for companies (601)",
+  "fiscal_reg_624": "Coordinated companies – transport (624)",
+  "fiscal_reg_603": "Non-profit organizations (603)"
 }

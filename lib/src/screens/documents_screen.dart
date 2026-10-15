@@ -819,6 +819,7 @@ class _DocumentsScreenState extends State<DocumentsScreen>
     final rfc = (_driverRfc != null && _driverRfc!.isNotEmpty)
         ? _driverRfc!
         : 'doc_not_registered'.tr();
+    final empresa = DatosFiscales.esEmpresa(_driverRfc);
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -832,7 +833,13 @@ class _DocumentsScreenState extends State<DocumentsScreen>
         children: [
           _buildFiscalRow(Icons.description, 'RFC', rfc),
           const SizedBox(height: 8),
-          for (final field in const {'fiscal_nombre': 'fiscal_nombre', 'fiscal_cp': 'fiscal_cp', 'fiscal_regimen': 'fiscal_regimen'}.entries)
+          // Persona física o empresa: sale del RFC (12 = empresa, 13 = persona), nunca de una columna aparte.
+          if ((_driverRfc ?? '').isNotEmpty) ...[
+            _buildFiscalRow(empresa ? Icons.business : Icons.person, 'fiscal_tipo'.tr(),
+                (empresa ? 'fiscal_tipo_moral' : 'fiscal_tipo_fisica').tr()),
+            const SizedBox(height: 8),
+          ],
+          for (final field in {'fiscal_nombre': empresa ? 'fiscal_razon_social' : 'fiscal_nombre', 'fiscal_cp': 'fiscal_cp', 'fiscal_regimen': 'fiscal_regimen'}.entries)
             Padding(padding: const EdgeInsets.only(bottom: 8), child: _buildFiscalRow(
               Icons.description_outlined, field.value.tr(),
               _valorFiscal(field.key))),
@@ -860,7 +867,7 @@ class _DocumentsScreenState extends State<DocumentsScreen>
               ),
             ),
             const SizedBox(height: 10),
-            const LeyendaRetencionIsr(),
+            if (empresa) const LeyendaEmpresa() else const LeyendaRetencionIsr(),
           ],
         ],
       ),

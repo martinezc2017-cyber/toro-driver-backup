@@ -242,12 +242,30 @@ class DeliveryService {
           .from('marketplace_order_items')
           .select('id, product_name_snapshot, quantity, unit_price_snapshot, line_total')
           .eq('order_id', order['id']);
+      // TORO te lo compra: foto y tamaño de cada artículo y el vehículo que hace falta, para decidir si puede llevarlo.
+      Map<String, dynamic>? envio;
+      if (order?['source'] == 'tienda') {
+        final full = await getDeliveryFullContext(deliveryId);
+        final o = ((full?['orders'] as List?) ?? const []).cast<Map>().where((x) => x['id'] == order!['id']).firstOrNull;
+        if (o != null) {
+          envio = o['envio'] is Map ? Map<String, dynamic>.from(o['envio'] as Map) : null;
+          final porId = {for (final it in ((o['items'] as List?) ?? const []).cast<Map>()) it['id']: it};
+          for (final it in items) {
+            final extra = porId[it['id']];
+            if (extra != null) {
+              it['imagen'] = extra['imagen'];
+              it['envio'] = extra['envio'];
+            }
+          }
+        }
+      }
       return {
         'is_marketplace': true,
         'delivery': delivery,
         'order': order,
         'vendor': vendor,
         'items': items,
+        'envio': envio,
       };
     } catch (_) { return null; }
   }
@@ -374,6 +392,16 @@ class DeliveryService {
       'p_delivery_id': deliveryId,
       'p_nota': nota,
     });
+  }
+
+  /// TORO te lo compra: no cabe en mi vehículo (antes de comprar). La entrega pide el siguiente tamaño y se le ofrece
+  /// a otro chofer (RPC driver_no_cabe); devuelve {nivel, nombre} del vehículo que ahora hace falta.
+  Future<Map<String, dynamic>> noCabe({required String deliveryId, String? nota}) async {
+    final res = await _client.rpc('driver_no_cabe', params: {
+      'p_delivery_id': deliveryId,
+      'p_nota': nota,
+    });
+    return res is Map ? Map<String, dynamic>.from(res) : <String, dynamic>{};
   }
 
   /// Confirms marketplace delivery. Calls RPC marketplace_confirm_delivery.

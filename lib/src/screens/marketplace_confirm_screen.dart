@@ -140,6 +140,57 @@ class _MarketplaceConfirmScreenState extends State<MarketplaceConfirmScreen> {
     if (mounted) setState(() => _sinExistenciaBusy = false);
   }
 
+  /// No cabe en mi vehículo (antes de comprar): se le ofrece a un chofer con un vehículo más grande y el producto queda
+  /// marcado de ese tamaño para la próxima.
+  Future<void> _noCabe() async {
+    final notaCtrl = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        backgroundColor: const Color(0xFF161616),
+        title: Text('te_lo_compra.no_cabe_titulo'.tr(), style: const TextStyle(color: AppColors.textPrimary)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('te_lo_compra.no_cabe_explica'.tr(), style: const TextStyle(color: AppColors.textSecondary)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: notaCtrl,
+              style: const TextStyle(color: AppColors.textPrimary),
+              decoration: InputDecoration(
+                hintText: 'te_lo_compra.no_hay_nota'.tr(),
+                hintStyle: const TextStyle(color: AppColors.textDisabled),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: Text('go_back'.tr())),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(c, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+            child: Text('te_lo_compra.no_cabe'.tr()),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || _deliveryId == null) return;
+    setState(() => _sinExistenciaBusy = true);
+    try {
+      final r = await _service.noCabe(deliveryId: _deliveryId!, nota: notaCtrl.text.trim());
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('te_lo_compra.no_cabe_listo'.tr(namedArgs: {'vehiculo': '${r['nombre'] ?? ''}'.toLowerCase()})),
+        backgroundColor: Colors.orange,
+      ));
+      Navigator.pop(context, false);
+    } catch (e) {
+      if (mounted) _err(e.toString().replaceAll('PostgrestException', '').split(',').first);
+    }
+    if (mounted) setState(() => _sinExistenciaBusy = false);
+  }
+
   Future<void> _loadContacts() async {
     final rows = await _service.marketplaceContacts(widget.orderId);
     final want = _isPickup ? 'vendor' : 'buyer';
@@ -643,6 +694,18 @@ class _MarketplaceConfirmScreenState extends State<MarketplaceConfirmScreen> {
                       ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.orange))
                       : const Icon(Icons.remove_shopping_cart, color: Colors.orange),
                   label: Text('te_lo_compra.no_hay'.tr(), style: const TextStyle(color: Colors.orange)),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(50),
+                    side: const BorderSide(color: Colors.orange),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Llegó y no cabe en su vehículo: se le ofrece a uno más grande (no se le cobra nada al comprador).
+                OutlinedButton.icon(
+                  onPressed: _sinExistenciaBusy ? null : _noCabe,
+                  icon: const Icon(Icons.local_shipping_outlined, color: Colors.orange),
+                  label: Text('te_lo_compra.no_cabe'.tr(), style: const TextStyle(color: Colors.orange)),
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size.fromHeight(50),
                     side: const BorderSide(color: Colors.orange),

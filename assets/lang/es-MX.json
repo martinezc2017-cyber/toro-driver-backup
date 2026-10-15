@@ -3163,5 +3163,10 @@
   "te_lo_compra.no_hay_confirmar": "Sí, cancelar",
   "te_lo_compra.no_hay_listo": "Pedido cancelado: no había en la tienda.",
   "te_lo_compra.requisitos": "Necesitas el total del ticket, la foto del ticket y tu ubicación.",
-  "te_lo_compra.history_refund": "Reembolso de tu compra en {store} (TORO te lo compra)"
+  "te_lo_compra.history_refund": "Reembolso de tu compra en {store} (TORO te lo compra)",
+  "te_lo_compra.va_en": "Va en: {vehiculo}",
+  "te_lo_compra.no_cabe": "No cabe en mi vehículo",
+  "te_lo_compra.no_cabe_titulo": "¿No cabe en tu vehículo?",
+  "te_lo_compra.no_cabe_explica": "Se le ofrece a un chofer con un vehículo más grande. Al cliente no se le cobra nada de más.",
+  "te_lo_compra.no_cabe_listo": "Listo: se le ofrece a un chofer con {vehiculo}."
 }

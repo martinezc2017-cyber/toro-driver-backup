@@ -375,6 +375,16 @@ class _State extends State<MarketplaceDeliveryAcceptScreen> {
                       const SizedBox(height: 2),
                       Text('te_lo_compra.adelantas_detalle'.tr(),
                           style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                      // El vehículo que hace falta (una llanta de camión no va en carro): acepta solo si cabe en el tuyo.
+                      if (_ctx?['envio']?['nombre'] != null) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          'te_lo_compra.va_en'.tr(namedArgs: {
+                            'vehiculo': '${_ctx!['envio']['nombre']}${_kgTotal(items) > 0 ? ' (~${_kgTotal(items)} kg)' : ''}',
+                          }),
+                          style: const TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w800),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -435,10 +445,22 @@ class _State extends State<MarketplaceDeliveryAcceptScreen> {
                 const SizedBox(height: 8),
                 ...items.map((i) {
                   final m = i as Map<String, dynamic>;
+                  // TORO te lo compra: la foto de lo que va a comprar y su peso, para saber si cabe.
+                  final imagen = m['imagen']?.toString();
+                  final envio = m['envio'] is Map ? m['envio'] as Map : null;
+                  final kg = (envio?['kg'] as num?)?.round();
                   return Padding(
                     padding: const EdgeInsets.symmetric(vertical: 4),
                     child: Row(
                       children: [
+                        if (imagen != null && imagen.isNotEmpty) ...[
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.network(imagen, width: 56, height: 56, fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => const SizedBox(width: 56, height: 56)),
+                          ),
+                          const SizedBox(width: 10),
+                        ],
                         Text(
                           '${m['quantity']}×  ',
                           style: const TextStyle(
@@ -447,9 +469,16 @@ class _State extends State<MarketplaceDeliveryAcceptScreen> {
                           ),
                         ),
                         Expanded(
-                          child: Text(
-                            m['product_name_snapshot']?.toString() ?? '',
-                            style: const TextStyle(color: AppColors.textPrimary),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                m['product_name_snapshot']?.toString() ?? '',
+                                style: const TextStyle(color: AppColors.textPrimary),
+                              ),
+                              if (kg != null && kg > 0)
+                                Text('~$kg kg', style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                            ],
                           ),
                         ),
                       ],
@@ -582,6 +611,17 @@ class _State extends State<MarketplaceDeliveryAcceptScreen> {
         ],
       ),
     );
+  }
+
+  /// Kilos aproximados de todo el pedido (peso de cada artículo × cantidad).
+  int _kgTotal(List items) {
+    double total = 0;
+    for (final i in items) {
+      final m = i as Map;
+      final kg = (m['envio'] is Map ? (m['envio'] as Map)['kg'] as num? : null)?.toDouble() ?? 0;
+      total += kg * ((m['quantity'] as num?)?.toDouble() ?? 1);
+    }
+    return total.round();
   }
 
   Widget _sectionCard({

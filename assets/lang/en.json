@@ -3163,5 +3163,10 @@
   "te_lo_compra.no_hay_confirmar": "Yes, cancel",
   "te_lo_compra.no_hay_listo": "Order cancelled: the store didn’t have it.",
   "te_lo_compra.requisitos": "You need the receipt total, the receipt photo and your location.",
-  "te_lo_compra.history_refund": "Refund for your purchase at {store} (TORO buys it for you)"
+  "te_lo_compra.history_refund": "Refund for your purchase at {store} (TORO buys it for you)",
+  "te_lo_compra.va_en": "Needs: {vehiculo}",
+  "te_lo_compra.no_cabe": "Doesn't fit in my vehicle",
+  "te_lo_compra.no_cabe_titulo": "Doesn't fit in your vehicle?",
+  "te_lo_compra.no_cabe_explica": "It will be offered to a driver with a bigger vehicle. The customer is not charged anything extra.",
+  "te_lo_compra.no_cabe_listo": "Done: it will be offered to a driver with {vehiculo}."
 }

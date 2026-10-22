@@ -27,7 +27,14 @@ workflows:
       - name: Fetch signing files
         script: |
           keychain initialize
-          echo "$APP_STORE_CONNECT_PRIVATE_KEY" | base64 --decode > /tmp/AuthKey.p8
+          # La llave va SIN codificar (PEM): asi la exigen `app-store-connect` (que lee
+          # esta variable sola en el paso del build number) y la publicacion. Si alguien
+          # la guarda en base64, tambien se acepta.
+          if printf '%s' "$APP_STORE_CONNECT_PRIVATE_KEY" | grep -q "BEGIN PRIVATE KEY"; then
+            printf '%s\n' "$APP_STORE_CONNECT_PRIVATE_KEY" > /tmp/AuthKey.p8
+          else
+            echo "$APP_STORE_CONNECT_PRIVATE_KEY" | base64 --decode > /tmp/AuthKey.p8
+          fi
 
           # Use stored cert key if available, otherwise generate and print for saving
           if [ -n "$CERT_PRIVATE_KEY" ]; then

@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../providers/auth_provider.dart';
 import '../models/driver_model.dart';
 import '../services/driver_service.dart';
+import '../services/pais_cuenta_service.dart';
 import '../utils/app_colors.dart';
 import '../utils/haptic_service.dart';
 import '../utils/geo_utils.dart';
@@ -182,7 +183,13 @@ class _DriverOnboardingScreenState extends State<DriverOnboardingScreen> {
         updatedAt: now,
       );
 
-      final savedDriver = await driverService.createDriver(newDriver);
+      var savedDriver = await driverService.createDriver(newDriver);
+
+      // El país lo acaba de escoger aquí: queda confirmado para no volver a preguntárselo al entrar.
+      final eleccion = await PaisCuentaService.instance.elegir(_countryCode);
+      if (eleccion.ok) {
+        savedDriver = await driverService.getDriver(driverId) ?? savedDriver;
+      }
 
       // If organizer, create minimal organizer record
       if (_selectedRole == 'organizer') {

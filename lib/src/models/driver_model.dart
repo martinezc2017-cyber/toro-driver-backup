@@ -67,6 +67,9 @@ class DriverModel {
 
   // Country & tax fields (MX/US)
   final String countryCode; // 'US' or 'MX'
+  // Cuándo quedó elegido el país de la cuenta (por el conductor, soporte o al aprobar). null = la app
+  // se lo pregunta. Solo lo escribe el servidor (elegir_pais_conductor / admin_elegir_pais_conductor).
+  final DateTime? paisConfirmadoAt;
   final String? rfc; // Mexico: Registro Federal de Contribuyentes
   final bool rfcValidated;
   final String? curp; // Mexico: Clave Única de Registro de Población
@@ -199,6 +202,7 @@ class DriverModel {
     this.businessCardUrl,
     // Country & tax fields
     this.countryCode = 'US',
+    this.paisConfirmadoAt,
     this.rfc,
     this.rfcValidated = false,
     this.curp,
@@ -352,6 +356,9 @@ class DriverModel {
       businessCardUrl: json['business_card_url'] as String?,
       // Country & tax fields
       countryCode: json['country_code'] as String? ?? 'US',
+      paisConfirmadoAt: json['pais_confirmado_at'] != null
+          ? DateTime.tryParse(json['pais_confirmado_at'].toString())
+          : null,
       rfc: json['rfc'] as String?,
       rfcValidated: json['rfc_validated'] as bool? ?? false,
       curp: json['curp'] as String?,
@@ -493,6 +500,7 @@ class DriverModel {
     String? businessCardUrl,
     // Country & tax fields
     String? countryCode,
+    DateTime? paisConfirmadoAt,
     String? rfc,
     bool? rfcValidated,
     String? curp,
@@ -575,6 +583,7 @@ class DriverModel {
       businessCardUrl: businessCardUrl ?? this.businessCardUrl,
       // Country & tax fields
       countryCode: countryCode ?? this.countryCode,
+      paisConfirmadoAt: paisConfirmadoAt ?? this.paisConfirmadoAt,
       rfc: rfc ?? this.rfc,
       rfcValidated: rfcValidated ?? this.rfcValidated,
       curp: curp ?? this.curp,

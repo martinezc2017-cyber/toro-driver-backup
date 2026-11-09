@@ -20,6 +20,7 @@ void main() {
   const pantallasLimpias = <String>[
     'lib/src/screens/navigation_map_screen.dart',
     'lib/src/screens/earnings_screen.dart',
+    'lib/src/widgets/pais_cuenta.dart',
   ];
 
   const idiomas = <String>['es', 'en', 'es-MX'];

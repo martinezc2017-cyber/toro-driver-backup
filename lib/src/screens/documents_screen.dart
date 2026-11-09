@@ -10,6 +10,7 @@ import 'pending_approval_screen.dart';
 import '../widgets/datos_fiscales_sheet.dart';
 import '../widgets/driver_connect_banner.dart';
 import '../widgets/leyenda_retencion_isr.dart';
+import '../widgets/pais_cuenta.dart';
 import '../models/driver_document_readiness.dart';
 import '../services/driver_document_readiness_service.dart';
 
@@ -1473,9 +1474,19 @@ class _DocumentsScreenState extends State<DocumentsScreen>
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
       children: [
         _buildReadinessSummary(),
-        Text('docs_center_country'.tr(namedArgs: {
-          'country': (_isMexico ? 'docs_center_mexico' : 'docs_center_us').tr(),
-        }), style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+        // País de la cuenta: decide qué se pide aquí, el contrato, los pagos y la moneda. Se cambia
+        // en la pestaña Personal; en Vehículo solo se recuerda.
+        if (!vehicle && _driverId != null)
+          PaisCuentaTarjeta(
+            pais: _isMexico ? 'MX' : 'US',
+            driverId: _driverId!,
+            aprobado: _driverData['admin_approved'] == true,
+            onCambiado: _loadDocuments,
+          )
+        else
+          Text('docs_center_country'.tr(namedArgs: {
+            'country': (_isMexico ? 'docs_center_mexico' : 'docs_center_us').tr(),
+          }), style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
         const SizedBox(height: 6),
         Text('docs_center_tap_document'.tr(), style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
         const SizedBox(height: 12),

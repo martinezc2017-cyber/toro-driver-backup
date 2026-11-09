@@ -23,6 +23,7 @@ import 'driver_onboarding_screen.dart';
 import 'permissions_gate_screen.dart';
 import '../services/version_check_service.dart';
 import '../widgets/version_check_dialog.dart';
+import '../widgets/pais_cuenta.dart';
 import '../core/logging/uso_app_tracker.dart';
 
 class AuthWrapper extends StatefulWidget {
@@ -208,6 +209,15 @@ class _AuthWrapperState extends State<AuthWrapper> {
               body: OrganizerHomeScreen(onSwitchToDriverMode: null),
             ),
           );
+        }
+
+        // Nunca eligió el país de su cuenta (p. ej. quedó US por default al darse de alta, como
+        // Cherould Bolívard): se le pregunta antes de entrar, porque de ese país salen sus
+        // documentos, su contrato y sus pagos. Los aprobados ya lo tienen confirmado.
+        if (!driver.adminApproved && driver.paisConfirmadoAt == null) {
+          DebugLogger.log('WRAPPER_SCREEN', detail: 'ELEGIR_PAIS (driver=${driver.id}, detectado=${driver.countryCode})');
+          _uso('/elegir-pais');
+          return PaisCuentaScreen(driverId: driver.id, paisDetectado: driver.countryCode);
         }
 
         DebugLogger.log('WRAPPER_SCREEN', detail: 'HOME (driver=${driver.id}, role=${driver.role}, vehicleMode=${driver.vehicleMode})');

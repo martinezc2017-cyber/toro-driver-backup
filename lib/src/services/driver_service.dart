@@ -468,7 +468,7 @@ class DriverService {
           'tax_city': city,
           'tax_state': state,
           'tax_zip': zipCode,
-          'country_code': 'US',
+          // El país de la cuenta no se toca aquí: solo cambia con elegir_pais_conductor.
           'state_code': state.toUpperCase(),
           'w9_signed': certificationSigned,
           'w9_signed_at': DateTime.now().toIso8601String(),

@@ -921,6 +921,22 @@ class AuthService {
     }
   }
 
+  /// ¿Ya eligió el país de su cuenta? Entonces el GPS/IP de aquí no lo toca (el servidor tampoco lo
+  /// dejaría). Mientras no lo elige, la detección sirve para que la pantalla de elegir país traiga
+  /// marcado el probable.
+  Future<bool> _paisCuentaConfirmado(String userId) async {
+    try {
+      final row = await _client
+          .from('drivers')
+          .select('pais_confirmado_at')
+          .eq('id', userId)
+          .maybeSingle();
+      return row?['pais_confirmado_at'] != null;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Backfill GPS location for existing users who have null signup_lat
   Future<void> backfillLocationIfMissing() async {
     try {
@@ -969,13 +985,14 @@ class AuthService {
           position.latitude,
           position.longitude,
         );
+        final yaEligio = await _paisCuentaConfirmado(userId);
 
         await _client
             .from('profiles')
             .update({
               'signup_lat': position.latitude,
               'signup_lng': position.longitude,
-              'country_code': countryCode,
+              if (!yaEligio) 'country_code': countryCode,
               'driver_app_installed': true,
               'driver_app_last_open': DateTime.now().toIso8601String(),
               'driver_app_version': appVersion,
@@ -985,7 +1002,10 @@ class AuthService {
         // Also update drivers table country_code + version
         await _client
             .from('drivers')
-            .update({'country_code': countryCode, 'app_version': appVersion})
+            .update({
+              if (!yaEligio) 'country_code': countryCode,
+              'app_version': appVersion,
+            })
             .eq('id', userId);
 
         AppLogger.log(
@@ -1011,7 +1031,8 @@ class AuthService {
             final ipData = jsonDecode(ipResp.body) as Map<String, dynamic>;
             if (ipData['success'] == true) {
               final ipCC = ipData['country_code'] as String?;
-              if (ipCC == 'MX' || ipCC == 'US') {
+              if ((ipCC == 'MX' || ipCC == 'US') &&
+                  !await _paisCuentaConfirmado(userId)) {
                 updateProfiles['country_code'] = ipCC;
                 updateDrivers['country_code'] = ipCC;
               }

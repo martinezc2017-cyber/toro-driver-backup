@@ -102,32 +102,53 @@ class LocationService {
     _positionSubscription = null;
   }
 
+  // País de la CUENTA del conductor (lo elige él o soporte; el servidor lo protege). Se lee una vez
+  // por conductor: estando aprobado no puede cambiar.
+  String? _paisCuenta;
+  String? _paisCuentaDe;
+
+  Future<String?> _paisDeLaCuenta(String driverId) async {
+    if (_paisCuentaDe == driverId && _paisCuenta != null) return _paisCuenta;
+    try {
+      final row = await _client
+          .from(SupabaseConfig.driversTable)
+          .select('country_code')
+          .eq('id', driverId)
+          .maybeSingle();
+      _paisCuenta = row?['country_code']?.toString().toUpperCase();
+      _paisCuentaDe = driverId;
+    } catch (e) {
+      debugPrint('[LOCATION] No se pudo leer el país de la cuenta: $e');
+    }
+    return _paisCuenta;
+  }
+
   // Update location in database
   Future<void> _updateLocationInDatabase(
     String driverId,
     Position position,
   ) async {
     try {
-      // Update driver's location directly in drivers table (for admin visibility)
-      // Only update columns that exist in the drivers table
-      final detectedCountry = GeoUtils.countryCode(
-        position.latitude,
-        position.longitude,
-      );
-      final detectedState = GeoUtils.stateCode(
-        position.latitude,
-        position.longitude,
-      );
+      // El GPS dice DÓNDE está, no el país de su cuenta. Antes se escribía country_code con el GPS y un
+      // conductor de Mexicali que cruzaba a Calexico quedaba como cuenta de EUA (Stripe, moneda,
+      // documentos y viajes de EUA). El estado solo se guarda si está dentro de su país.
+      final pais = await _paisDeLaCuenta(driverId);
+      final update = <String, dynamic>{
+        'current_lat': position.latitude,
+        'current_lng': position.longitude,
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+      if (pais != null &&
+          GeoUtils.countryCode(position.latitude, position.longitude) == pais) {
+        update['state_code'] = GeoUtils.stateCode(
+          position.latitude,
+          position.longitude,
+        );
+      }
 
       await _client
           .from(SupabaseConfig.driversTable)
-          .update({
-            'current_lat': position.latitude,
-            'current_lng': position.longitude,
-            'country_code': detectedCountry,
-            'state_code': detectedState,
-            'updated_at': DateTime.now().toIso8601String(),
-          })
+          .update(update)
           .eq('id', driverId);
 
       // LocationService: Updated driver location - lat: ${position.latitude}, lng: ${position.longitude}');

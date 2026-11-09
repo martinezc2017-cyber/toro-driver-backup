@@ -229,15 +229,9 @@ class _PaisCuentaSelectorState extends State<PaisCuentaSelector> {
   Widget build(BuildContext context) {
     final cambia = _elegido != widget.paisActual;
     return SingleChildScrollView(
+      // Sin asa propia: la hoja de Material ya trae la suya y en pantalla completa no hace falta.
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-        Center(
-          child: Container(
-            width: 44,
-            height: 5,
-            margin: const EdgeInsets.only(bottom: 16),
-            decoration: BoxDecoration(color: AppColors.borderStrong, borderRadius: BorderRadius.circular(3)),
-          ),
-        ),
+        const SizedBox(height: 8),
         Text('pais_cuenta_hoja_titulo'.tr(),
             style: TextStyle(color: AppColors.textPrimary, fontSize: 22, fontWeight: FontWeight.w700)),
         const SizedBox(height: 6),

@@ -12,6 +12,14 @@
 		<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 		<key>CFBundleInfoDictionaryVersion</key>
 		<string>6.0</string>
+		<!-- Idiomas que trae la app (assets/lang). Sin esto el App Store la
+		     anuncia solo en ingles y iOS no sabe que tambien esta en espanol. -->
+		<key>CFBundleLocalizations</key>
+		<array>
+			<string>en</string>
+			<string>es</string>
+			<string>es-MX</string>
+		</array>
 		<key>CFBundleName</key>
 		<string>TORO Driver</string>
 		<key>CFBundlePackageType</key>
@@ -51,16 +59,22 @@
 		<key>MBXAccessToken</key>
 		<string>pk.eyJ1IjoibWFydGluZXpjMjAxNyIsImEiOiJjbWtocWtoZHIwbW1iM2dvdXZ3bmp0ZjBiIn0.MjYgv6DuvLTkrBVbrhtFbg</string>
 		<!-- Location Usage Descriptions -->
+		<!-- Apple (5.1.1) exige que cada texto diga PARA QUE se usa el dato, con
+		     un ejemplo concreto. "Necesita tu ubicacion" a secas lo rechazan. -->
 		<key>NSLocationWhenInUseUsageDescription</key>
-		<string>TORO Driver needs your location to navigate to pickup and dropoff locations.</string>
+		<string>TORO Driver uses your location to show you nearby ride requests, guide you to the pickup and drop-off points, and show the rider where you are during a trip.</string>
 		<key>NSLocationAlwaysUsageDescription</key>
-		<string>TORO Driver needs your location in the background to track rides and provide navigation.</string>
+		<string>While you are online or on a trip, TORO Driver uses your location in the background to send you nearby ride requests, show the rider where you are, and calculate the trip distance and fare.</string>
 		<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-		<string>TORO Driver needs your location to provide turn-by-turn navigation and track your ride progress.</string>
+		<string>While you are online or on a trip, TORO Driver uses your location, even when the app is in the background, to send you nearby ride requests, show the rider where you are, and calculate the trip distance and fare.</string>
 		<key>NSCameraUsageDescription</key>
-		<string>TORO Driver needs camera access to scan documents, take vehicle photos, and verify identity.</string>
+		<string>TORO Driver uses the camera to photograph your documents (for example your driver's license and insurance), your vehicle and your profile picture so your account can be verified.</string>
 		<key>NSPhotoLibraryUsageDescription</key>
-		<string>TORO Driver needs photo library access to upload vehicle and document photos.</string>
+		<string>TORO Driver accesses your photo library so you can choose existing photos of your documents, vehicle or profile picture to upload.</string>
+		<!-- Sin esta llave la app SE CIERRA cuando el chofer toca "Guardar imagen"
+		     en la hoja de compartir (QR de invitacion, comprobantes, fotos). -->
+		<key>NSPhotoLibraryAddUsageDescription</key>
+		<string>TORO Driver saves images you choose to keep, such as your invitation QR code or a trip receipt, to your photo library.</string>
 		<key>NSFaceIDUsageDescription</key>
 		<string>TORO Driver uses Face ID for secure biometric login to protect your account.</string>
 		<key>LSApplicationQueriesSchemes</key>

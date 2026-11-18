@@ -67,6 +67,34 @@ class VersionCheckService {
   int? _buildNumber;
   String? _platform;
 
+  /// Ficha de TORO Driver en el App Store.
+  static const String appStoreUrl =
+      'https://apps.apple.com/app/toro-driver/id6760872144';
+
+  /// Renglón de `app_versions` que manda en cada plataforma.
+  ///
+  /// iOS tiene el suyo (`toro_driver_ios`). Antes las dos plataformas leían el
+  /// mismo renglón, y ese renglón sigue los lanzamientos de Android: cada vez
+  /// que salía una versión de Android, el iPhone —y el revisor de Apple, que
+  /// siempre trae una versión que todavía no está publicada— veía "actualiza la
+  /// app" con un botón que abría Google Play. Apple lo rechaza (2.3.10) y,
+  /// si el aviso era obligatorio, el revisor ni siquiera podía entrar.
+  ///
+  /// Si el renglón de iOS no existe, la app se considera al día.
+  static String rowIdFor(String platform, String appName) =>
+      platform == 'ios' ? '${appName}_ios' : appName;
+
+  /// A qué tienda manda el botón de actualizar.
+  ///
+  /// En iOS SIEMPRE es el App Store: aunque en la base alguien capture por
+  /// error un enlace de otra tienda, el iPhone nunca lo abre.
+  static String? resolveStoreUrl(String platform, String? urlFromDb) {
+    if (platform != 'ios') return urlFromDb;
+    final host = Uri.tryParse(urlFromDb ?? '')?.host.toLowerCase() ?? '';
+    final isAppleStore = host == 'apps.apple.com' || host == 'itunes.apple.com';
+    return isAppleStore ? urlFromDb : appStoreUrl;
+  }
+
   /// Get current platform string
   String get _currentPlatform {
     if (_platform != null) return _platform!;
@@ -117,11 +145,12 @@ class VersionCheckService {
     }
 
     try {
-      // Read from app_versions table (simple, no RPC needed)
+      // Read from app_versions table (simple, no RPC needed).
+      // Cada plataforma lee SU renglón: ver [rowIdFor].
       final row = await _client
           .from('app_versions')
           .select()
-          .eq('id', appName)
+          .eq('id', rowIdFor(_currentPlatform, appName))
           .maybeSingle();
 
       if (row == null) {
@@ -149,7 +178,10 @@ class VersionCheckService {
         updateRequired: updateRequired,
         messageEn: row['message_en'] as String?,
         messageEs: row['message_es'] as String?,
-        storeUrl: row['store_url'] as String?,
+        storeUrl: resolveStoreUrl(
+          _currentPlatform,
+          row['store_url'] as String?,
+        ),
       );
 
       _cachedResult = result;

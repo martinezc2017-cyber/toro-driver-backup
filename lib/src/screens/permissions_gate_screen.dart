@@ -214,9 +214,9 @@ class _PermissionsGateScreenState extends State<PermissionsGateScreen>
 
               const SizedBox(height: 20),
 
-              const Text(
-                'TORO Driver necesita permisos',
-                style: TextStyle(
+              Text(
+                'permissions.title'.tr(),
+                style: const TextStyle(
                   color: AppColors.textPrimary,
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
